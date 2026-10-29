@@ -2,11 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createFailover } from '../failover.js';
 import { effectiveConfig, seed } from '../config.js';
+// Neutral fixed tiers so failover behavior is tested independently of auto-matching.
+const fixed = { ...seed, tiers: { ...seed.tiers, upper: ['gpt-6.1-sol', 'claude-opus-4-8', 'sol-mirror'], low: ['gpt-6-luna'] },
+  capabilities: { ...seed.capabilities, qa: { ...seed.capabilities.qa, provider: 'win', model: 'gpt-6.1-sol' } } };
 import { apply } from '../roles.js';
 const config = effectiveConfig({
-  tiers: { upper: [...seed.tiers.upper, 'sol-mirror'] },
   capabilities: { qa: { fallbacks: [{ provider: 'cpa', model: 'gpt-6.1-sol' }, { provider: 'win', model: 'claude-opus-4-8' }] } },
-});
+}, fixed);
 const role = { provider: 'win', model: 'gpt-6.1-sol', fallbacks: config.capabilities.qa.fallbacks, failover: config.failover };
 const fail = (code, status) => ({ code, status, message: `${code} failed` });
 function harness(opts = {}) {
@@ -64,10 +66,10 @@ test('未注册渠道的备选被跳过', async () => {
   assert.equal(f.route(agent, 1, 1, role).model, 'claude-opus-4-8');
 });
 test('备选必须同档位且不重复，策略可配置', () => {
-  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'cpa', model: 'gpt-6-luna' }] } } }), /同一档位/);
-  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'win', model: 'gpt-6.1-sol' }] } } }), /重复/);
-  assert.throws(() => effectiveConfig({ failover: { retries: 99 } }), /追加重试/);
-  assert.equal(effectiveConfig({ failover: { retries: 4, cooldownMs: 30000 } }).failover.retries, 4);
+  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'cpa', model: 'gpt-6-luna' }] } } }, fixed), /同一档位/);
+  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'win', model: 'gpt-6.1-sol' }] } } }, fixed), /重复/);
+  assert.throws(() => effectiveConfig({ failover: { retries: 99 } }, fixed), /追加重试/);
+  assert.equal(effectiveConfig({ failover: { retries: 4, cooldownMs: 30000 } }, fixed).failover.retries, 4);
 });
 test('DSH自带重试优先，之后由容灾层接管并改写下一次请求', async () => {
   const listeners = {};

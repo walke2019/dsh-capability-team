@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { loadProject, saveProject, themePath, projectRoot, STALE_LOCK_MS } from '../theme.js';
 import { seed, effectiveConfig, validateConfig, roleView, resolveRole, baseConfig, describeChanges } from '../config.js';
+import { base } from './fixture.mjs';
 const temp = () => mkdtemp(join(tmpdir(), 'team-config-'));
 test('持久化、项目隔离与版本冲突保护', async () => {
   const root = await temp();
@@ -20,9 +21,9 @@ test('持久化、项目隔离与版本冲突保护', async () => {
 test('档位、能力与角色都可配置，并与名称、描述统一生成', () => {
   const e = effectiveConfig({
     tiers: { premium: ['brand-new'] },
-    capabilities: { frontend: { provider: 'custom', model: 'brand-new', tier: 'premium' }, ops: { job: '部署', provider: 'p', model: 'gpt-6-luna', tier: 'low' } },
+    capabilities: { frontend: { provider: 'custom', model: 'brand-new', tier: 'premium', fallbacks: [] }, ops: { job: '部署', provider: 'p', model: 'gpt-5-nano', tier: 'low' } },
     roles: { 'diao-chan': { displayName: '界面工程师', description: '交互与无障碍验收' }, 'guan-yu': { displayName: '运维', capability: 'ops' }, 'chen-lin': null },
-  });
+  }, base);
   const ui = roleView(e).find(r => r.id === 'diao-chan');
   assert.deepEqual([ui.displayName, ui.description, ui.provider, ui.model, ui.tier], ['界面工程师', '交互与无障碍验收', 'custom', 'brand-new', 'premium']);
   assert.equal(JSON.stringify(ui).includes('貂蝉'), false);
@@ -41,14 +42,14 @@ test('null 恢复默认，false 删除角色', async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('拒绝越界：主控能力、重复名、未分档模型、未知字段', () => {
-  const bad = patch => () => effectiveConfig(patch);
+  const bad = patch => () => effectiveConfig(patch, base);
   assert.throws(bad({ roles: { x: { displayName: '甲', capability: 'orchestrator' } } }), /orchestrator/);
   assert.throws(bad({ roles: { 'lv-bu': { displayName: '孙权' } } }), /重复/);
-  assert.throws(bad({ capabilities: { qa: { model: 'unknown' } } }), /不在档位/);
+  assert.throws(bad({ capabilities: { qa: { model: 'unknown', fallbacks: [] } } }), /不在档位/);
   assert.throws(bad({ roles: { lead: { displayName: 'A', permissions: 'all' } } }), /未知字段/);
   assert.throws(bad({ roles: { lead: false } }), /lead/);
   assert.throws(bad({ roles: { Bad_Id: { displayName: 'A', capability: 'qa' } } }), /小写/);
-  assert.throws(() => validateConfig({ ...seed, tiers: { ...seed.tiers, upper: [] } }), /不在档位/);
+  assert.throws(() => validateConfig({ ...base, tiers: { ...base.tiers, upper: [] } }), /不在档位/);
 });
 test('失败的校验或确认不写入文件', async () => {
   const root = await temp();
@@ -82,11 +83,11 @@ test('旧版 names/descriptions/routes 文件自动迁移', async () => {
   const root = await temp();
   try {
     const path = themePath(root, root); await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, JSON.stringify({ revision: 3, name: '旧', names: { 'zhou-yu': '测试官' }, descriptions: { 'zhou-yu': '回归' }, routes: { qa: { provider: 'win', model: 'claude-opus-4-8', tier: 'upper' } } }));
-    const { revision, effective } = await loadProject(root, seed, root);
+    await writeFile(path, JSON.stringify({ revision: 3, name: '旧', names: { 'zhou-yu': '测试官' }, descriptions: { 'zhou-yu': '回归' }, routes: { qa: { provider: 'win', model: 'claude-sonnet-4-6', tier: 'upper', fallbacks: [] } } }));
+    const { revision, effective } = await loadProject(root, base, root);
     assert.equal(revision, 3);
-    assert.deepEqual([effective.roles['zhou-yu'].displayName, effective.roles['zhou-yu'].description, effective.capabilities.qa.model], ['测试官', '回归', 'claude-opus-4-8']);
-    await saveProject(root, { name: '新' }, 3, { root });
+    assert.deepEqual([effective.roles['zhou-yu'].displayName, effective.roles['zhou-yu'].description, effective.capabilities.qa.model], ['测试官', '回归', 'claude-sonnet-4-6']);
+    await saveProject(root, { name: '新' }, 3, { root, base });
     assert.equal(JSON.parse(await readFile(path, 'utf8')).names, undefined);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

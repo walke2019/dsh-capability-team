@@ -15,6 +15,7 @@
     "config.js",
     "team.js",
     "failover.js",
+    "defaults.js",
     "index.js",
     "free-worker.mjs",
     "integrations.js",
@@ -26,6 +27,7 @@
     "skills/project-role-theme/SKILL.md",
     "README.md",
     "tests/*.test.mjs",
+    "tests/fixture.mjs",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg"

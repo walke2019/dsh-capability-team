@@ -18,7 +18,7 @@ export function teamContext(team, agent, membership, failover) {
     const live = failover?.status(agent);
     if (live && !live.primary) self.currentRoute = `${live.active}（主模型不可用，已切换到同档备选）`;
   } catch (error) { self = { error: error.message }; }
-  const roster = roleView(loaded.effective).map(({ id, displayName, capability, provider, model }) => ({ id, displayName, capability, model: `${provider}/${model}` }));
+  const roster = roleView(loaded.effective).map(({ id, displayName, capability, provider, model }) => ({ id, displayName, capability, model: provider ? `${provider}/${model}` : '未分配（沿用会话模型）' }));
   return `项目团队配置（${loaded.effective.name}，版本 ${loaded.revision}，项目 ${project}）
 你的角色：${JSON.stringify(self)}
 团队名册：${JSON.stringify(roster)}
@@ -39,10 +39,12 @@ export function apply(ctx, team, failover) {
   ctx.effect(() => ctx.skills.register({ name: 'project-role-theme', source: 'runtime', content,
     description: '通过对话调整当前项目团队：角色改名或整体换主题、职责、能力、模型档位与分配、新增或移除角色；读取DSH渠道模型目录给出方案，由用户在确认框中批准后保存。' }));
   ctx.effect(() => ctx.tools.register({ name: 'capability_team_read', parameters: {}, output,
-    description: '读取当前项目的团队配置：版本、预设默认值、项目覆盖项与生效结果（档位、能力、角色及其模型）。',
+    description: '读取当前项目的团队配置：版本、默认值（按用户DSH渠道自动匹配的档位、主模型与同档备选）、项目覆盖项、生效结果，以及自动匹配报告（升档/低于要求档位/未分配/未识别的模型）。',
     async execute(_args, exec) {
       const { project, revision, overrides, effective } = await team.load(exec.agent);
-      return JSON.stringify({ project, revision, defaults: team.base, overrides, effective, roles: roleView(effective), coolingRoutes: failover?.cooling() ?? [] });
+      const { report, unknown, errors, detectedAt } = team.detection();
+      return JSON.stringify({ project, revision, defaults: team.base, overrides, effective, roles: roleView(effective), coolingRoutes: failover?.cooling() ?? [],
+        autoMatch: { detectedAt, report, unrecognized: unknown.slice(0, 50), unrecognizedCount: unknown.length, errors } });
     },
   }));
   ctx.effect(() => ctx.tools.register({ name: 'capability_model_catalog', parameters: {}, output,
@@ -58,7 +60,7 @@ export function apply(ctx, team, failover) {
       expected_revision: { type: 'integer', required: true, description: '最近一次 capability_team_read 返回的 revision' },
       name: { type: 'string', description: '配置或主题名称' },
       tiers: { type: 'object', description: `档位id → 完整模型ID数组（替换该档位列表）。${ENTRY_RULE}` },
-      capabilities: { type: 'object', description: `能力id → {job, provider, model, tier, search, fallbacks}；fallbacks 为有序的同档备选 [{provider, model}]，整体替换。${ENTRY_RULE}` },
+      capabilities: { type: 'object', description: `能力id → {job, provider, model, tier, search, fallbacks, prefer}；fallbacks 为有序的同档备选 [{provider, model}]，整体替换；prefer 为自动匹配时的厂商偏好顺序。${ENTRY_RULE}` },
       failover: { type: 'object', description: '容灾策略，按字段合并，null 恢复默认：{retries 同一模型追加重试次数, initialDelayMs, maxDelayMs, cooldownMs 故障模型冷却, retryCodes, failoverCodes, failoverStatuses}' },
       roles: { type: 'object', description: `队友内部id（lower-kebab-case）→ {displayName, capability, description}。${ENTRY_RULE}` },
     },

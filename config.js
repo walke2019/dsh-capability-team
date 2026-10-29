@@ -5,7 +5,7 @@ const ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const LINE_CONTROL = /[\x00-\x1f\x7f]/;
 const TEXT_CONTROL = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 const SECTIONS = ['tiers', 'capabilities', 'roles'];
-const CAPABILITY_KEYS = ['job', 'provider', 'model', 'tier', 'search', 'fallbacks'];
+const CAPABILITY_KEYS = ['job', 'provider', 'model', 'tier', 'search', 'fallbacks', 'prefer'];
 const FAILOVER_KEYS = ['retries', 'initialDelayMs', 'maxDelayMs', 'cooldownMs', 'retryCodes', 'failoverCodes', 'failoverStatuses'];
 const MAX_FALLBACKS = 8;
 const ROLE_KEYS = ['displayName', 'capability', 'description'];
@@ -23,20 +23,17 @@ export const seed = deepFreeze({
     failoverCodes: ['RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'EMPTY_RESPONSE', 'UNKNOWN', 'QUOTA', 'ACCOUNT_QUOTA', 'INVALID_CREDENTIAL', 'MISSING_CREDENTIAL', 'NO_ADAPTER'],
     failoverStatuses: [401, 403, 404, 408, 429, 500, 502, 503, 504],
   },
-  tiers: {
-    high: ['claude-opus-5-5', 'gpt-6-astra'],
-    upper: ['gpt-6.1-sol', 'claude-opus-4-8'],
-    medium: ['gemini-3.8-flash-high', 'grok/grok-4.7', 'claude-sonnet-5-5'],
-    low: ['gpt-6-luna', 'claude-haiku-5-5', 'gemini-3-flash-preview'],
-  },
+  // No channel or model is fixed here: tiers and routes are matched from each user's DSH catalog
+  // at runtime (defaults.js). `prefer` only orders vendors inside the matched tier.
+  tiers: { high: [], upper: [], medium: [], low: [] },
   capabilities: {
-    orchestrator: { job: '意图分析、任务分派、决策与最终交付', provider: 'cpa', model: 'claude-opus-5-5', tier: 'high', search: true },
-    'technical-director': { job: '技术方案、任务拆解、接口契约与技术验收', provider: 'win', model: 'gpt-6.1-sol', tier: 'upper', search: false },
-    backend: { job: '服务端、数据库、接口与后端测试', provider: 'win', model: 'gpt-6.1-sol', tier: 'upper', search: false },
-    frontend: { job: '页面、组件、交互与前端测试', provider: 'cpa', model: 'gemini-3.8-flash-high', tier: 'medium', search: false },
-    research: { job: '调用检索工具、核实来源与交叉验证', provider: 'cpa', model: 'grok/grok-4.7', tier: 'medium', search: true },
-    writer: { job: '文档与交付说明', provider: 'win', model: 'gpt-6-luna', tier: 'low', search: false },
-    qa: { job: '测试计划、回归测试、接口与界面验收、失败复现及证据；区分实测、模拟与未验证，不默认修改业务实现', provider: 'win', model: 'gpt-6.1-sol', tier: 'upper', search: false },
+    orchestrator: { job: '意图分析、任务分派、决策与最终交付', tier: 'high', search: true, prefer: ['claude', 'gpt', 'gemini', 'openai-o'] },
+    'technical-director': { job: '技术方案、任务拆解、接口契约与技术验收', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini', 'openai-o'] },
+    backend: { job: '服务端、数据库、接口与后端测试', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'deepseek', 'qwen', 'kimi', 'glm'] },
+    frontend: { job: '页面、组件、交互与前端测试', tier: 'medium', search: false, prefer: ['gemini', 'claude', 'gpt'] },
+    research: { job: '调用检索工具、核实来源与交叉验证', tier: 'medium', search: true, prefer: ['grok', 'gemini', 'gpt'] },
+    writer: { job: '文档与交付说明', tier: 'low', search: false, prefer: ['gpt', 'claude', 'gemini', 'deepseek', 'qwen'] },
+    qa: { job: '测试计划、回归测试、接口与界面验收、失败复现及证据；区分实测、模拟与未验证，不默认修改业务实现', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
   },
   roles: {
     lead: { displayName: '孙权', capability: 'orchestrator' },
@@ -78,11 +75,19 @@ export function validateConfig(config) {
   for (const [id, c] of entries(config.capabilities, '能力')) {
     onlyKeys(c, CAPABILITY_KEYS, `能力 ${id}`);
     if (!Object.hasOwn(tiers, c.tier)) throw new Error(`能力 ${id} 的档位 ${c.tier} 未配置`);
+    if (c.search !== undefined && typeof c.search !== 'boolean') throw new Error(`能力 ${id} 的 search 必须为布尔值`);
+    if (c.prefer !== undefined && (!Array.isArray(c.prefer) || c.prefer.length > 20)) throw new Error(`能力 ${id} 的 prefer 须为厂商标识数组`);
+    const common = { job: text(c.job, 2000, `能力 ${id} 的职责`, true), tier: c.tier, search: c.search === true, prefer: (c.prefer ?? []).map(v => text(v, 40, `能力 ${id} 的厂商偏好`)) };
+    // A capability may stay unassigned when the user's catalog has nothing usable; its role then keeps the session model.
+    if (c.provider === undefined && c.model === undefined) {
+      if (c.fallbacks?.length) throw new Error(`能力 ${id} 未指定主模型，不能只配置备选`);
+      capabilities[id] = { ...common, fallbacks: [] };
+      continue;
+    }
     const model = text(c.model, 200, `能力 ${id} 的模型ID`);
     if (!tiers[c.tier].includes(model)) throw new Error(`能力 ${id} 的模型 ${model} 不在档位 ${c.tier} 中；先经用户确认把该模型加入档位，不按名称猜测`);
-    if (c.search !== undefined && typeof c.search !== 'boolean') throw new Error(`能力 ${id} 的 search 必须为布尔值`);
     const provider = text(c.provider, 200, `能力 ${id} 的渠道`);
-    capabilities[id] = { job: text(c.job, 2000, `能力 ${id} 的职责`, true), provider, model, tier: c.tier, search: c.search === true,
+    capabilities[id] = { ...common, provider, model,
       fallbacks: validateFallbacks(c.fallbacks ?? [], { provider, model }, tiers[c.tier], `能力 ${id}`) };
   }
   if (!capabilities.orchestrator) throw new Error('必须保留 orchestrator 能力');
@@ -162,6 +167,20 @@ export function baseConfig(config = {}) {
   const roles = Object.fromEntries(Object.entries(config.bindings).map(([id, b]) => [id, isMap(b) ? { ...b } : b]));
   return deepFreeze(validateConfig({ ...seed, roles }));
 }
+/**
+ * Layer one automatic catalog match (defaults.js autoMatch) onto a base: detected tiers are added,
+ * and only capabilities without an explicit route in the base receive the detected primary and backups.
+ */
+export function withAutoRoutes(base, match) {
+  const tiers = { ...base.tiers };
+  for (const [tier, models] of Object.entries(match.tiers)) tiers[tier] = [...new Set([...(tiers[tier] ?? []), ...models])];
+  const capabilities = {};
+  for (const [id, c] of Object.entries(base.capabilities)) {
+    const route = match.routes[id];
+    capabilities[id] = c.provider === undefined && route ? { ...c, ...route } : c;
+  }
+  return deepFreeze(validateConfig({ ...base, tiers, capabilities }));
+}
 /** Upgrade the earlier names/descriptions/routes file format in memory. */
 export function migrateProject(raw) {
   if (!isMap(raw)) throw new Error('项目团队配置文件格式无效');
@@ -222,5 +241,5 @@ export function resolveRole(membership, effective) {
   const role = Object.hasOwn(effective.roles, id) ? effective.roles[id] : undefined;
   if (!role) throw new Error(`队友 ${id} 未在当前项目的团队配置中登记，无法确定模型。主控请加载 project-role-theme 技能，经用户确认后用 capability_team_save 登记该角色及能力；不按名称猜测模型。`);
   const c = effective.capabilities[role.capability];
-  return { id, displayName: role.displayName, capability: role.capability, description: role.description ?? c.job, provider: c.provider, model: c.model, tier: c.tier, search: c.search, fallbacks: c.fallbacks, failover: effective.failover };
+  return { id, displayName: role.displayName, capability: role.capability, description: role.description ?? c.job, provider: c.provider, model: c.model, tier: c.tier, search: c.search, fallbacks: c.fallbacks, failover: effective.failover, ...(c.provider === undefined ? { unassigned: true } : {}) };
 }
