@@ -18,7 +18,8 @@ test('当前命名：GPT-6 astra/sol/terra/luna，Gemini 4 代号旗舰', () => 
   assert.deepEqual(['gemini-4-argon', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'].map(tier), ['high', 'medium', 'low']);
   assert.deepEqual(['claude-opus-5.5', 'claude-fable-5.1', 'claude-sonnet-5.5', 'claude-haiku-5.5'].map(tier), ['high', 'high', 'upper', 'low']);
   assert.deepEqual(['deepseek-v4.1-flash', 'deepseek-v4-pro', 'qwen3.8-max-prime', 'qwen3.8-flash', 'kimi-k3.1-pro', 'glm-5.3-flash', 'glm-5.3-flashx', 'minimax-m3.1-flash', 'mimo-v2.6-pro'].map(tier),
-    ['low', 'upper', 'upper', 'low', 'upper', 'low', 'medium', 'low', 'upper']);
+    ['medium', 'upper', 'upper', 'low', 'upper', 'low', 'medium', 'low', 'upper']);
+  assert.equal(tier('deepseek-v4-flash'), 'medium');
   assert.deepEqual(['qwen3.8-27b', 'qwen3.8-2.4t-a95b'].map(tier), ['low', 'upper']);
 });
 test('上一代命名仍可识别：GPT-5 -pro/-mini/-nano、Gemini 3 -pro', () => {
@@ -32,6 +33,13 @@ test('代际按用户目录判断：同厂商有更新大版本时旧版降一�
   assert.equal(tierIn(['gemini-3.1-pro-preview', 'gemini-4-argon'], 'gemini-3.1-pro-preview'), 'upper');
   assert.equal(tierIn(['gemini-3.8-flash', 'gemini-4-argon'], 'gemini-3.8-flash'), 'medium'); // no Gemini 4 Flash yet
   assert.equal(tierIn(['gpt-5.4-mini', 'gpt-6.1-terra'], 'gpt-5.4-mini'), 'low');
+});
+test('同一大版本内的小版本：新版优先，旧版只作末位备选', () => {
+  const r = autoMatch(['deepseek-v4-flash', 'deepseek-v4.1-flash', 'gpt-6.1-terra'].map(model => ({ provider: 'p', model })), { frontend: { tier: 'medium', prefer: ['deepseek'] } });
+  assert.equal(r.routes.frontend.model, 'deepseek-v4.1-flash');
+  assert.deepEqual(r.routes.frontend.fallbacks.map(f => f.model), ['gpt-6.1-terra', 'deepseek-v4-flash']);
+  const only = autoMatch([{ provider: 'p', model: 'deepseek-v4-flash' }], { frontend: { tier: 'medium' } });
+  assert.equal(only.routes.frontend.model, 'deepseek-v4-flash'); // without v4.1 it is still a normal choice
 });
 test('按能力档位与厂商偏好选主模型，备选同档：同模型他渠道优先，其次异厂商', () => {
   const o = base.capabilities.orchestrator;

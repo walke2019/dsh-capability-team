@@ -62,9 +62,11 @@ export const VENDOR_RULES = Object.freeze([
     classes: [[/(flash-lite|-lite\b|-nano\b)/, 'low'], [/flash/, 'medium'], [/(pro|ultra)/, 'high']] },
   { vendor: 'grok', match: /^grok-/, floor: 4, base: 'upper',
     classes: [[/heavy/, 'high'], [/mini/, 'low'], [/(build|composer|code|non-reasoning)/, 'medium']] },
-  // Chinese vendors: "-flash" lines are priced like light models (~0.1/0.5 per M), unlike Gemini Flash.
+  // DeepSeek Flash is a full general model sold cheaply, not a trimmed mini: balanced tier.
+  // V4.1 so far ships only Flash; the newest Pro is still V4 (0813 update).
   { vendor: 'deepseek', match: /^deepseek-/, floor: 3, base: 'upper',
-    classes: [[/distill/, 'low'], [/(flash|lite)/, 'low']] },
+    classes: [[/distill/, 'low'], [/(flash|lite)/, 'medium']] },
+  // Other Chinese vendors' "-flash" lines are their light models (~0.1/0.5 per M), unlike Gemini Flash.
   { vendor: 'qwen', match: /^(qwen|qwq)/, floor: 3, base: 'upper', size: true,
     classes: [[/(max|prime|coder)/, 'upper'], [/plus/, 'medium'], [/(turbo|flash)/, 'low']] },
   { vendor: 'kimi', match: /^(kimi-|moonshot-)/, floor: 2, base: 'upper', classes: [[/(turbo|mini)/, 'medium']] },
@@ -109,6 +111,12 @@ function markGenerations(candidates) {
   for (const c of candidates) {
     if (c.version !== undefined && Math.floor(c.version) < newest[line(c)]) { c.legacy = true; c.tier = down(c.tier); }
   }
+  // Within one major, an older minor of the same line (deepseek-v4-flash next to v4.1-flash) stays in
+  // its tier but is marked superseded: it ranks after every current model, as a last-resort backup.
+  const lineKey = c => `${c.vendor}\u0000${c.tier}\u0000${c.family.replace(/\d+(\.\d+)?/g, '#')}`;
+  const latest = {};
+  for (const c of candidates) if (c.version !== undefined && !c.legacy) latest[lineKey(c)] = Math.max(latest[lineKey(c)] ?? 0, c.version);
+  for (const c of candidates) if (c.version !== undefined && !c.legacy && c.version < latest[lineKey(c)]) c.superseded = true;
   return candidates;
 }
 
@@ -120,7 +128,8 @@ function ranker(prefer, providerOrder) {
   const variant = c => Number(c.norm !== c.family);
   // Versionless aliases (gpt-astra-latest) point at a moving target: use pinned versions first.
   const alias = c => Number(c.version === undefined);
-  return (a, b) => Number(!!a.legacy) - Number(!!b.legacy) || alias(a) - alias(b) || pref(a.vendor) - pref(b.vendor) || (b.version ?? 0) - (a.version ?? 0)
+  const old = c => Number(!!c.legacy) * 2 + Number(!!c.superseded);
+  return (a, b) => old(a) - old(b) || alias(a) - alias(b) || pref(a.vendor) - pref(b.vendor) || (b.version ?? 0) - (a.version ?? 0)
     || variant(a) - variant(b) || prov(a.provider) - prov(b.provider) || a.model.localeCompare(b.model);
 }
 export const MAX_AUTO_FALLBACKS = 3;
@@ -131,7 +140,7 @@ export function pickFallbacks(pool, primary, limit = MAX_AUTO_FALLBACKS) {
   const same = rest.filter(c => c.norm === primary.norm && c.provider !== primary.provider).slice(0, 1);
   const seen = new Set([primary.family]); const distinct = [];
   for (const c of rest) if (!seen.has(c.family)) { seen.add(c.family); distinct.push(c); }
-  const current = distinct.filter(c => !c.legacy && c.version !== undefined);
+  const current = distinct.filter(c => !c.legacy && !c.superseded && c.version !== undefined);
   const others = current.filter(c => c.vendor !== primary.vendor);
   // One model per other vendor first, so a single vendor outage cannot take out every backup.
   const vendors = new Set(); const spread = [];
