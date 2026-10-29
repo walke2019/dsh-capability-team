@@ -24,6 +24,7 @@
     "theme.js",
     "allocation.js",
     "theme-plugin.js",
+    "tool-schema.js",
     "skills/project-role-theme/SKILL.md",
     "README.md",
     "tests/*.test.mjs",

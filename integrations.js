@@ -1,5 +1,6 @@
 import { gateway, schemas } from './search.js';
 import { executeFreeTask } from './task-bridge.js';
+import { params } from './tool-schema.js';
 const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] };
 export function apply(ctx, team) {
   for (const [name, parameters] of Object.entries(schemas)) {
@@ -16,7 +17,7 @@ export function apply(ctx, team) {
   ctx.effect(() => ctx.tools.register({
     name: 'capability_free_task',
     description: '主控派发简单文本分析到本机OpenCode固定免费模型，自动创建原生看板任务并回填结果。不可用于文件编辑、Git操作或含密钥的文本；不付费回退。',
-    parameters: { prompt: { type: 'string', required: true, description: '完整分析材料与要求；不得含凭据' }, subject: { type: 'string', description: '原生看板任务标题，1–120字符' } }, output,
+    parameters: params({ prompt: { type: 'string', description: '完整分析材料与要求；不得含凭据' }, subject: { type: 'string', description: '原生看板任务标题，1–120字符' } }, ['prompt']), output,
     async execute(args, exec) {
       const cwd = await ctx.workingDirectory.ensure(exec.agent, exec.signal);
       return JSON.stringify(await executeFreeTask({ teams: ctx.agentTeams, agent: exec.agent, prompt: args.prompt, subject: args.subject, cwd, signal: exec.signal }));
