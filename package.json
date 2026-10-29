@@ -1,0 +1,37 @@
+{
+  "name": "@local/dsh-preset-sanguo",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test tests/*.test.mjs" },
+  "exports": {
+    "./roles": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "roles.js",
+    "config.js",
+    "team.js",
+    "failover.js",
+    "index.js",
+    "free-worker.mjs",
+    "integrations.js",
+    "search.js",
+    "task-bridge.js",
+    "theme.js",
+    "allocation.js",
+    "theme-plugin.js",
+    "skills/project-role-theme/SKILL.md",
+    "README.md",
+    "tests/*.test.mjs",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
