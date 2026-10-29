@@ -25,10 +25,12 @@
 
    | 档位 | 当前官方ID（输入/输出 美元每百万 token） | 上一代命名 |
    |---|---|---|
-   | high 旗舰 | `gpt-6-astra`（10/50）、`claude-fable-5-1`（10/50）、`claude-opus-5-5`（4/20）、`gemini-4-argon`（2/10，Gemini 4 用代号） | `gpt-5.x-pro`、`gemini-3.x-pro` |
-   | upper 强力 | `gpt-6.1-sol`（2/10）、`claude-sonnet-5-5`（2/10）、`grok-4.7`（2/6）、`kimi-k3.1-pro`、`qwen3.8-max(-prime)`、`glm-5.3(-prime)`、`deepseek-v4-pro`、`mimo-v2.6-pro`、`minimax-m3` | `gpt-5.x` |
-   | medium 均衡 | `gpt-6.1-terra`（1/5）、`gemini-3.8-flash`、`deepseek-flash`（官方无版本名，现为 V4.1-Flash-1017）、`grok-build-0.1`、`glm-5.3-flashx` | `gpt-5.x-mini`、`gemini-3.6-flash` |
-   | low 轻量 | `gpt-6-luna`（0.1/0.5）、`claude-haiku-5.5`、`minimax-m3.1-flash`、`mimo-v2.6-flash`、`qwen3.8-flash`、`glm-5.3-flash`、`gemini-3.5-flash-lite` | `gpt-5.x-nano` |
+   | high 旗舰 | `gpt-6-astra`（10/50）、`claude-fable-5-1`（10/50）、`claude-opus-5-5`（4/20）、`gemini-4-argon`（2/10，Gemini 4 用代号） | `gpt-5.0~5.5-pro`、`gemini-3.x-pro` |
+   | upper 强力 | `gpt-6.1-sol`（2/10）、`claude-sonnet-5-5`（2/10）、`grok-4.7`（2/6）、`kimi-k3.1-pro`、`qwen3.8-max(-prime)`、`glm-5.3(-prime)`、`deepseek-v4-pro`、`mimo-v2.6-pro`、`minimax-m3` | `gpt-5.6-sol`、`gpt-5.x` |
+   | medium 均衡 | `gpt-6.1-terra`（1/5）、`gemini-3.8-flash`、`deepseek-flash`（官方无版本名，现为 V4.1-Flash-1017）、`grok-build-0.1`、`glm-5.3-flashx` | `gpt-5.6-terra`、`gpt-5.x-mini`、`gemini-3.6-flash` |
+   | low 轻量 | `gpt-6-luna`（0.1/0.5）、`claude-haiku-5.5`、`minimax-m3.1-flash`、`mimo-v2.6-flash`、`qwen3.8-flash`、`glm-5.3-flash`、`gemini-3.5-flash-lite` | `gpt-5.6-luna`、`gpt-5.x-nano` |
+
+   - OpenAI 从 GPT-5.6 起改用 astra/sol/terra/luna 四条线命名，各线独立升级。截至 2026-10-29，官方是 `gpt-6.1-sol`、`gpt-6.1-terra` 和 `gpt-6-luna` 并存，还没有 `gpt-6.1-luna`。规则只比较同一条线内的版本号，不写死具体版本：将来出现 `gpt-6.1-luna` 时，它会自动成为主模型，`gpt-6-luna` 改作末位备选。
 
    - GPT-6 各线都带 `-pro`，与同线价格相同，视为同一模型的推理模式，而非更高一档；GPT-5 时代的 `-pro` 才是旗舰。
    - DeepSeek Flash 是完整的通用模型，只是定价低，归均衡档。其他国产厂商的 `-flash` 是轻量版，归轻量档。Gemini Flash 约 0.8/4，也属均衡档。

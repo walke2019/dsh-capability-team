@@ -45,6 +45,16 @@ test('官方最新ID：DeepSeek 无版本名、Gemini 代号、Grok 产品线版
   assert.equal(r.routes.frontend.model, 'deepseek-flash'); // plain versionless official id is not an alias
   assert.deepEqual(r.routes.frontend.fallbacks.map(f => f.model), ['gpt-6.1-terra', 'gemini-flash-latest']);
 });
+test('GPT 各线独立升级：现有 6.1 sol/terra 与 6 luna 并存；将来出现 6.1-luna 时自动取代', () => {
+  const ids = ['gpt-6-luna', 'gpt-5.6-luna', 'gpt-6.1-terra', 'gpt-5.6-terra', 'gpt-6.1-sol', 'gpt-6-sol', 'gpt-5.6-sol'];
+  const r = autoMatch(ids.map(model => ({ provider: 'p', model })), { writer: { tier: 'low' }, frontend: { tier: 'medium' }, backend: { tier: 'upper' } });
+  assert.deepEqual([r.routes.writer.model, r.routes.frontend.model, r.routes.backend.model], ['gpt-6-luna', 'gpt-6.1-terra', 'gpt-6.1-sol']);
+  assert.equal(r.pools.find(c => c.model === 'gpt-5.6-sol').legacy, true); // previous major, one tier lower
+  assert.equal(classify('gpt-5.6-cyber'), undefined); // restricted Daybreak model
+  const next = autoMatch(['gpt-6-luna', 'gpt-6.1-luna'].map(model => ({ provider: 'p', model })), { writer: { tier: 'low' } });
+  assert.equal(next.routes.writer.model, 'gpt-6.1-luna');
+  assert.deepEqual(next.routes.writer.fallbacks.map(f => f.model), ['gpt-6-luna']);
+});
 test('同一大版本内的小版本：新版优先，旧版只作末位备选', () => {
   const r = autoMatch(['deepseek-v4-flash', 'deepseek-v4.1-flash', 'gpt-6.1-terra'].map(model => ({ provider: 'p', model })), { frontend: { tier: 'medium', prefer: ['deepseek'] } });
   assert.equal(r.routes.frontend.model, 'deepseek-v4.1-flash');
