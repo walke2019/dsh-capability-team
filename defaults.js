@@ -10,9 +10,9 @@
 
 /** Non-chat or non-agent models are never candidates. */
 // Also excluded: voice-only Live models, robotics, managed agents (deep-research, antigravity),
-// restricted specialty aliases (daybreak, rosalind), roleplay (-her) and models without tool calling
+// restricted specialty models (daybreak, rosalind, gpt-5.6-cyber), roleplay (-her) and models without tool calling
 // (grok multi-agent): a team member must be able to call tools.
-const NON_CHAT = /(image|imagine|video|veo|sora|dall-?e|tts|speech|voice|audio|realtime|transcri|whisper|embed|rerank|moderation|safety|guard|ocr|banana|lyria|auto-review|computer-use|search-preview|-lora\b|(^|-)live($|-)|translate|robotics|deep-research|antigravity|daybreak|rosalind|-her\b|multi-agent)/;
+const NON_CHAT = /(image|imagine|video|veo|sora|dall-?e|tts|speech|voice|audio|realtime|transcri|whisper|embed|rerank|moderation|safety|guard|ocr|banana|lyria|auto-review|computer-use|search-preview|-lora\b|(^|-)live($|-)|translate|robotics|deep-research|antigravity|daybreak|rosalind|-her\b|multi-agent|-cyber\b)/;
 /** Free / trial variants are unreliable for routing. */
 const FREE = /(^|[-:_/])free($|[-:_])/;
 
