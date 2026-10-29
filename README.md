@@ -16,19 +16,23 @@
 [defaults.js](defaults.js) 读取用户在 DSH 中已注册的全部渠道与模型（官方 API、OpenAI 兼容中转、自建网关均可），自动生成默认档位、主模型和同档备选，不依赖任何特定用户的渠道名。
 
 1. **归一化**：去掉网关前缀（`anthropic/`、`bai/`、`pro/deepseek-ai/` 等）、`:free` 等后缀、日期快照；`claude-opus-4-8` 与 `claude-opus-4.8` 视为同一模型。
-2. **排除**：图像、视频、语音、向量、审核等非对话模型；带 `free` 的免费/试用变体；落后两代以上的旧模型。
-3. **分档**（2026-10 市场快照，按厂商命名规律而非逐个型号）：
+2. **排除**：图像、视频、语音、向量、审核等非对话模型；带 `free` 的免费/试用变体；低于各厂商最低版本的旧模型（如 GPT-4、Claude 3、Gemini 2）。
+3. **分档**（2026-10 快照，已对照 OpenRouter 公开模型目录核对；按厂商命名规律而非逐个型号）。厂商换代时常改命名，因此同时保留当前与上一代写法：
 
-   | 档位 | 典型命名 |
-   |---|---|
-   | high 旗舰 | Claude Opus、GPT `-pro`、Gemini Pro/Ultra、Grok Heavy、o 系列 `-pro` |
-   | upper 强力 | GPT 主力版、Claude Sonnet、o 系列、DeepSeek、Qwen Max/Plus/Coder、Kimi、GLM、MiniMax、Mistral Large、大参数开源模型 |
-   | medium 均衡 | GPT `-mini`、Gemini Flash、Grok fast、GLM Air、Mistral 中型、中等参数开源模型 |
-   | low 轻量 | GPT `-nano`、Claude Haiku、Gemini Flash-Lite、各家 flash/lite、小参数开源模型 |
+   | 档位 | 当前命名（示例价格 输入/输出 每百万 token） | 上一代命名 |
+   |---|---|---|
+   | high 旗舰 | `gpt-6-astra`（10/50）、`claude-opus-5.5`（4/20）、`claude-fable-5.x`、`gemini-4-argon`（2/10，Gemini 4 用代号） | `gpt-5.x-pro`、`gemini-3.x-pro` |
+   | upper 强力 | `gpt-6.1-sol`、`claude-sonnet-5.5`、`grok-4.7`、`kimi-k3.1-pro`、`qwen3.8-max(-prime)`、`glm-5.3(-prime)`、`deepseek-v4-pro`、`mimo-v2.6-pro`、`minimax-m3` | `gpt-5.x` |
+   | medium 均衡 | `gpt-6.1-terra`（1/5）、`gemini-3.8-flash`、`glm-5.3-flashx` | `gpt-5.x-mini` |
+   | low 轻量 | `gpt-6-luna`（0.1/0.5）、`claude-haiku-5.5`、`deepseek-v4.1-flash`、`minimax-m3.1-flash`、`mimo-v2.6-flash`、`qwen3.8-flash`、`glm-5.3-flash`、`gemini-3.5-flash-lite` | `gpt-5.x-nano` |
 
-   落后一代的模型自动降一档，并排在同档新模型之后。开源模型按名称中的参数量（如 `-32b`）分档。无法识别的模型不猜，列入报告供主控询问用户。
+   - GPT-6 各线都带 `-pro`，与同线价格相同，视为同一模型的推理模式，而非更高一档；GPT-5 时代的 `-pro` 才是旗舰。
+   - 国产厂商的 `-flash` 定价约为 0.1/0.5，属轻量档；Gemini Flash 约 0.8/4，属均衡档。
+   - **代际按用户自己的目录判断**：同一厂商同一档线如果在目录里有更新的大版本，旧版降一档并排到最后。例如有 `gemini-4-argon` 时，`gemini-3.1-pro` 降为强力档；但当前还没有 Gemini 4 Flash，所以 `gemini-3.8-flash` 不降档。只接了上一代渠道的用户，上一代模型仍按其原档位使用。
+   - 开源模型按名称中的参数量（如 `-27b`、`-2.4t`）分档；`-latest` 等不带版本的别名排在固定版本之后。
+   - 无法识别的模型不猜，列入报告供主控询问用户。
 4. **分配**：每个能力取所需档位中最合适的模型，排序依次看：新一代优先 → 能力的厂商偏好 → 版本号 → 渠道注册顺序。默认要求：主控 high；技术总监、后端、测试 upper；前端、检索 medium；文档 low。
-5. **同档备选**（最多 3 个）：先放同一模型在其他渠道的副本，行为完全一致；再放其他厂商的同档模型，以分散单一厂商故障；同一模型的推理强度变体（`-high`、`-thinking` 等）视为同一个，不重复占位。
+5. **同档备选**（最多 3 个）：先放同一模型在其他渠道的副本，行为完全一致；再按每家一个放其他厂商的同档模型，以分散单一厂商故障；同一模型的模式变体（`-pro`、`-high`、`-thinking`、`-fast` 等）视为同一个，不重复占位。
 6. **不降档**：所需档位没有模型时，改用更高档；连更高档也没有时，暂用最强的低档，并在报告中标为 `below-tier`、建议补充渠道；完全没有可识别模型时，该能力不分配，沿用会话模型。
 
 渠道增减后，下一次请求会自动重新匹配，无需重启。项目中显式保存的配置优先于自动匹配。`capability_team_read` 的 `autoMatch` 字段会给出匹配报告和未识别的模型。

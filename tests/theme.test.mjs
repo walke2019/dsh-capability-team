@@ -21,7 +21,7 @@ test('持久化、项目隔离与版本冲突保护', async () => {
 test('档位、能力与角色都可配置，并与名称、描述统一生成', () => {
   const e = effectiveConfig({
     tiers: { premium: ['brand-new'] },
-    capabilities: { frontend: { provider: 'custom', model: 'brand-new', tier: 'premium', fallbacks: [] }, ops: { job: '部署', provider: 'p', model: 'gpt-5-nano', tier: 'low' } },
+    capabilities: { frontend: { provider: 'custom', model: 'brand-new', tier: 'premium', fallbacks: [] }, ops: { job: '部署', provider: 'p', model: 'gpt-6-luna', tier: 'low' } },
     roles: { 'diao-chan': { displayName: '界面工程师', description: '交互与无障碍验收' }, 'guan-yu': { displayName: '运维', capability: 'ops' }, 'chen-lin': null },
   }, base);
   const ui = roleView(e).find(r => r.id === 'diao-chan');
@@ -83,10 +83,10 @@ test('旧版 names/descriptions/routes 文件自动迁移', async () => {
   const root = await temp();
   try {
     const path = themePath(root, root); await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, JSON.stringify({ revision: 3, name: '旧', names: { 'zhou-yu': '测试官' }, descriptions: { 'zhou-yu': '回归' }, routes: { qa: { provider: 'win', model: 'claude-sonnet-4-6', tier: 'upper', fallbacks: [] } } }));
+    await writeFile(path, JSON.stringify({ revision: 3, name: '旧', names: { 'zhou-yu': '测试官' }, descriptions: { 'zhou-yu': '回归' }, routes: { qa: { provider: 'win', model: 'claude-sonnet-5-5', tier: 'upper', fallbacks: [] } } }));
     const { revision, effective } = await loadProject(root, base, root);
     assert.equal(revision, 3);
-    assert.deepEqual([effective.roles['zhou-yu'].displayName, effective.roles['zhou-yu'].description, effective.capabilities.qa.model], ['测试官', '回归', 'claude-sonnet-4-6']);
+    assert.deepEqual([effective.roles['zhou-yu'].displayName, effective.roles['zhou-yu'].description, effective.capabilities.qa.model], ['测试官', '回归', 'claude-sonnet-5-5']);
     await saveProject(root, { name: '新' }, 3, { root, base });
     assert.equal(JSON.parse(await readFile(path, 'utf8')).names, undefined);
   } finally { await rm(root, { recursive: true, force: true }); }
