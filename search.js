@@ -22,11 +22,20 @@ export function requestBody(kind, args) {
   }
   return body;
 }
-export async function gateway(kind, args, { fetcher = fetch, key = process.env.CPA_SEARCH_API_KEY, signal } = {}) {
+/** Gateway origin from the Host environment; only a credential-free https origin (optional path prefix) is accepted. */
+export function gatewayBase(raw = process.env.CPA_SEARCH_BASE_URL) {
+  if (!raw) throw new Error('聚合搜索未配置 CPA_SEARCH_BASE_URL（网关地址，如 https://gateway.example.com）；请在 Host 环境设置并重启');
+  let url;
+  try { url = new URL(raw); } catch { throw new Error('CPA_SEARCH_BASE_URL 不是合法地址'); }
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('CPA_SEARCH_BASE_URL 必须是不含账号、查询参数的 https 地址');
+  return url.href.replace(/\/+$/, '');
+}
+export async function gateway(kind, args, { fetcher = fetch, key = process.env.CPA_SEARCH_API_KEY, base = process.env.CPA_SEARCH_BASE_URL, signal } = {}) {
   const body = requestBody(kind, args);
   if (!key) throw new Error('聚合搜索未配置 CPA_SEARCH_API_KEY；请在 Host 环境设置新密钥并重启');
+  const origin = gatewayBase(base);
   const timeout = AbortSignal.timeout(kind === 'search' ? 15000 : 30000);
-  const response = await fetcher(`https://gateway.example.com/v1/${kind === 'search' ? 'search' : 'web/fetch'}`, {
+  const response = await fetcher(`${origin}/v1/${kind === 'search' ? 'search' : 'web/fetch'}`, {
     method: 'POST', redirect: 'error', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' }, body: JSON.stringify(body),
   });
