@@ -1,9 +1,9 @@
 - insert:
-    - id: preset-sanguo
+    - id: preset-capability-team
       name: '@deepseek-ai/dsh-agent-preset'
       config:
-        id: sanguo
-        name: 三国智囊多Agent团队
+        id: capability-team
+        name: 能力协作团队
         description: 主控加专业能力队友；角色名、职责、档位与模型分配可按项目通过对话配置，按能力强制路由，复用原生团队与任务看板。
         order: 5
         plugins:
@@ -12,8 +12,8 @@
             config:
               prefix: |
                 你在能力协作团队中工作。你的角色以原生团队身份与项目团队配置为准，子角色不得自称主控。
-          - id: sanguo-role-routing
-            name: '@local/dsh-preset-sanguo/roles'
+          - id: capability-team-routing
+            name: '@local/dsh-capability-team/roles'
             config:
               bindings:
                 lead: { displayName: 孙权, capability: orchestrator }

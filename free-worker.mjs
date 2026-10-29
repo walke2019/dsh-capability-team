@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { freeArgs } from './roles.js';
-export async function runFreeWorker(prompt, { executable = process.env.SANGUO_OPENCODE_EXECUTABLE, cwd = process.cwd(), signal, launch = spawn } = {}) {
+export async function runFreeWorker(prompt, { executable = process.env.CAPABILITY_TEAM_OPENCODE_EXECUTABLE, cwd = process.cwd(), signal, launch = spawn } = {}) {
   const exe = executable || (process.platform === 'win32'
     ? join(process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'npm', 'node_modules', 'opencode-ai', 'bin', 'opencode.exe') : 'opencode');
   if (/\.(?:cmd|bat|ps1)$/i.test(exe)) throw new Error('必须配置原生 OpenCode 可执行文件，禁止 shell 包装脚本');
