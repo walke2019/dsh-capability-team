@@ -34,6 +34,17 @@ test('代际按用户目录判断：同厂商有更新大版本时旧版降一�
   assert.equal(tierIn(['gemini-3.8-flash', 'gemini-4-argon'], 'gemini-3.8-flash'), 'medium'); // no Gemini 4 Flash yet
   assert.equal(tierIn(['gpt-5.4-mini', 'gpt-6.1-terra'], 'gpt-5.4-mini'), 'low');
 });
+test('官方最新ID：DeepSeek 无版本名、Gemini 代号、Grok 产品线版本号', () => {
+  const tier = id => classify(id)?.tier;
+  assert.deepEqual(['deepseek-flash', 'deepseek-v4-pro', 'gemini-4-argon', 'gemini-3.6-flash', 'grok-build-0.1', 'grok-4.20-0309-non-reasoning'].map(tier),
+    ['medium', 'upper', 'high', 'medium', 'medium', 'medium']);
+  for (const id of ['gemini-3.8-live', 'gemini-3.8-live-extended-thinking', 'gemini-3.5-live-translate-preview', 'gemini-omni-flash', 'gemini-3.8-flash-tts',
+    'grok-4.20-multi-agent-0309', 'minimax-m2-her', 'gpt-daybreak-blue-latest', 'gpt-rosalind-research', 'o4-mini-deep-research'])
+    assert.equal(classify(id), undefined, id);
+  const r = autoMatch(['deepseek-flash', 'gemini-flash-latest', 'gpt-6.1-terra'].map(model => ({ provider: 'p', model })), { frontend: { tier: 'medium', prefer: ['deepseek'] } });
+  assert.equal(r.routes.frontend.model, 'deepseek-flash'); // plain versionless official id is not an alias
+  assert.deepEqual(r.routes.frontend.fallbacks.map(f => f.model), ['gpt-6.1-terra', 'gemini-flash-latest']);
+});
 test('同一大版本内的小版本：新版优先，旧版只作末位备选', () => {
   const r = autoMatch(['deepseek-v4-flash', 'deepseek-v4.1-flash', 'gpt-6.1-terra'].map(model => ({ provider: 'p', model })), { frontend: { tier: 'medium', prefer: ['deepseek'] } });
   assert.equal(r.routes.frontend.model, 'deepseek-v4.1-flash');

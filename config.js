@@ -31,7 +31,7 @@ export const seed = deepFreeze({
     'technical-director': { job: '技术方案、任务拆解、接口契约与技术验收', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
     backend: { job: '服务端、数据库、接口与后端测试', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'deepseek', 'qwen', 'kimi', 'glm'] },
     frontend: { job: '页面、组件、交互与前端测试', tier: 'medium', search: false, prefer: ['gemini', 'claude', 'gpt'] },
-    research: { job: '调用检索工具、核实来源与交叉验证', tier: 'medium', search: true, prefer: ['grok', 'gemini', 'gpt'] },
+    research: { job: '调用检索工具、核实来源与交叉验证', tier: 'medium', search: true, prefer: ['gemini', 'gpt', 'grok'] },
     writer: { job: '文档与交付说明', tier: 'low', search: false, prefer: ['gpt', 'claude', 'gemini', 'deepseek', 'qwen'] },
     qa: { job: '测试计划、回归测试、接口与界面验收、失败复现及证据；区分实测、模拟与未验证，不默认修改业务实现', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
   },

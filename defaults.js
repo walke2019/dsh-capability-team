@@ -9,7 +9,10 @@
 // is present, older ones count as legacy (one tier lower, ranked last). Unknown ids are reported.
 
 /** Non-chat or non-agent models are never candidates. */
-const NON_CHAT = /(image|imagine|video|veo|sora|dall-?e|tts|speech|voice|audio|realtime|transcri|whisper|embed|rerank|moderation|safety|guard|ocr|banana|lyria|auto-review|computer-use|search-preview|-lora\b)/;
+// Also excluded: voice-only Live models, robotics, managed agents (deep-research, antigravity),
+// restricted specialty aliases (daybreak, rosalind), roleplay (-her) and models without tool calling
+// (grok multi-agent): a team member must be able to call tools.
+const NON_CHAT = /(image|imagine|video|veo|sora|dall-?e|tts|speech|voice|audio|realtime|transcri|whisper|embed|rerank|moderation|safety|guard|ocr|banana|lyria|auto-review|computer-use|search-preview|-lora\b|(^|-)live($|-)|translate|robotics|deep-research|antigravity|daybreak|rosalind|-her\b|multi-agent)/;
 /** Free / trial variants are unreliable for routing. */
 const FREE = /(^|[-:_/])free($|[-:_])/;
 
@@ -57,13 +60,17 @@ export const VENDOR_RULES = Object.freeze([
     classes: [[/-astra/, 'high'], [/-sol/, 'upper'], [/-terra/, 'medium'], [/-luna/, 'low'],
       [/-pro\b/, 'high'], [/-nano\b/, 'low'], [/-(mini|instant|chat)\b/, 'medium']] },
   { vendor: 'gpt-oss', match: /^gpt-oss/, base: 'medium', size: true },
-  // Gemini 4 uses codenames (gemini-4-argon) for the flagship; 3.x used -pro. Flash / Flash-Lite below.
-  { vendor: 'gemini', match: /^gemini-/, floor: 3, base: 'high',
-    classes: [[/(flash-lite|-lite\b|-nano\b)/, 'low'], [/flash/, 'medium'], [/(pro|ultra)/, 'high']] },
-  { vendor: 'grok', match: /^grok-/, floor: 4, base: 'upper',
+  // Gemini 4 names its flagship by codename (gemini-4-argon); 3.x used -pro. Flash / Flash-Lite below.
+  // gemini-omni-* is video generation, not chat.
+  { vendor: 'gemini', match: /^gemini-/, exclude: /omni/, floor: 3, base: 'upper',
+    classes: [[/(flash-lite|-lite\b|-nano\b)/, 'low'], [/flash/, 'medium'], [/(pro|ultra)/, 'high'], [/^gemini-\d+(\.\d+)?-[a-z]+($|-)/, 'high']] },
+  // Grok's own version is the number after "grok-"; product lines (grok-build-0.1, grok-composer-2.5)
+  // carry their own numbering and are treated as versionless.
+  { vendor: 'grok', match: /^grok-/, version: /^grok-(\d+(?:\.\d+)?)/, floor: 4, base: 'upper',
     classes: [[/heavy/, 'high'], [/mini/, 'low'], [/(build|composer|code|non-reasoning)/, 'medium']] },
   // DeepSeek Flash is a full general model sold cheaply, not a trimmed mini: balanced tier.
-  // V4.1 so far ships only Flash; the newest Pro is still V4 (0813 update).
+  // Official API ids (2026-10): versionless `deepseek-flash` (now V4.1-Flash-1017) and `deepseek-v4-pro`;
+  // the old `deepseek-v4-flash` id is retired and silently served by V4.1 Flash.
   { vendor: 'deepseek', match: /^deepseek-/, floor: 3, base: 'upper',
     classes: [[/distill/, 'low'], [/(flash|lite)/, 'medium']] },
   // Other Chinese vendors' "-flash" lines are their light models (~0.1/0.5 per M), unlike Gemini Flash.
@@ -77,7 +84,7 @@ export const VENDOR_RULES = Object.freeze([
   { vendor: 'mistral', match: /^(mistral|magistral|codestral|devstral|ministral)/, base: 'medium', size: true,
     classes: [[/large/, 'upper'], [/medium/, 'medium'], [/(small|ministral|tiny)/, 'low']] },
   { vendor: 'llama', match: /^(llama|meta-llama)/, floor: 4, base: 'medium', size: true },
-  { vendor: 'gemma', match: /^gemma/, base: 'low', size: true },
+  { vendor: 'gemma', match: /^gemma/, floor: 4, base: 'low', size: true },
 ]);
 export const TIER_ORDER = Object.freeze(['low', 'medium', 'upper', 'high']);
 const down = tier => TIER_ORDER[Math.max(0, TIER_ORDER.indexOf(tier) - 1)];
@@ -89,8 +96,8 @@ export function classify(modelId, { rules = VENDOR_RULES, allowFree = false } = 
   const norm = normalizeModelId(modelId);
   if (NON_CHAT.test(norm)) return undefined;
   const rule = rules.find(r => r.match.test(norm));
-  if (!rule) return undefined;
-  const version = versionOf(norm);
+  if (!rule || rule.exclude?.test(norm)) return undefined;
+  const version = rule.version ? (m => (m ? Number(m[1]) : undefined))(norm.match(rule.version)) : versionOf(norm);
   if (rule.floor !== undefined && version !== undefined && version < rule.floor) return undefined;
   const hit = (rule.classes ?? []).find(([re]) => re.test(norm));
   const tier = hit ? hit[1] : rule.size ? bySize(norm, rule.base) : rule.base;
@@ -126,8 +133,9 @@ function ranker(prefer, providerOrder) {
   const prov = p => { const i = providerOrder.indexOf(p); return i < 0 ? providerOrder.length : i; };
   // A bare id beats its mode variants (gpt-6.1-sol before gpt-6.1-sol-pro) as the default primary.
   const variant = c => Number(c.norm !== c.family);
-  // Versionless aliases (gpt-astra-latest) point at a moving target: use pinned versions first.
-  const alias = c => Number(c.version === undefined);
+  // `-latest` aliases point at a moving target that may include previews: use stable ids first.
+  // A plain versionless id (DeepSeek's official `deepseek-flash`) is the vendor's stable name, not penalized.
+  const alias = c => Number(/latest/.test(c.norm));
   const old = c => Number(!!c.legacy) * 2 + Number(!!c.superseded);
   return (a, b) => old(a) - old(b) || alias(a) - alias(b) || pref(a.vendor) - pref(b.vendor) || (b.version ?? 0) - (a.version ?? 0)
     || variant(a) - variant(b) || prov(a.provider) - prov(b.provider) || a.model.localeCompare(b.model);
@@ -140,7 +148,7 @@ export function pickFallbacks(pool, primary, limit = MAX_AUTO_FALLBACKS) {
   const same = rest.filter(c => c.norm === primary.norm && c.provider !== primary.provider).slice(0, 1);
   const seen = new Set([primary.family]); const distinct = [];
   for (const c of rest) if (!seen.has(c.family)) { seen.add(c.family); distinct.push(c); }
-  const current = distinct.filter(c => !c.legacy && !c.superseded && c.version !== undefined);
+  const current = distinct.filter(c => !c.legacy && !c.superseded && !/latest/.test(c.norm));
   const others = current.filter(c => c.vendor !== primary.vendor);
   // One model per other vendor first, so a single vendor outage cannot take out every backup.
   const vendors = new Set(); const spread = [];

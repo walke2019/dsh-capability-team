@@ -16,21 +16,28 @@
 [defaults.js](defaults.js) 读取用户在 DSH 中已注册的全部渠道与模型（官方 API、OpenAI 兼容中转、自建网关均可），自动生成默认档位、主模型和同档备选，不依赖任何特定用户的渠道名。
 
 1. **归一化**：去掉网关前缀（`anthropic/`、`bai/`、`pro/deepseek-ai/` 等）、`:free` 等后缀、日期快照；`claude-opus-4-8` 与 `claude-opus-4.8` 视为同一模型。
-2. **排除**：图像、视频、语音、向量、审核等非对话模型；带 `free` 的免费/试用变体；低于各厂商最低版本的旧模型（如 GPT-4、Claude 3、Gemini 2）。
-3. **分档**（2026-10 快照，已对照 OpenRouter 公开模型目录核对；按厂商命名规律而非逐个型号）。厂商换代时常改命名，因此同时保留当前与上一代写法：
+2. **排除**：
+   - 非对话模型：图像、视频（含 `gemini-omni-*`）、语音、实时语音（`*-live`）、翻译、向量、审核；
+   - 不能当团队成员的模型：不支持工具调用的（`grok-4.20-multi-agent`）、托管智能体（`deep-research`）、角色扮演（`-her`）、需审批的专用别名（`daybreak`、`rosalind`）；
+   - 带 `free` 的免费/试用变体；
+   - 低于各厂商最低版本的旧模型（如 GPT-4、Claude 3、Gemini 2、Gemma 3）。
+3. **分档**（2026-10-29 快照）。已对照各厂商官方模型页和 OpenRouter 公开目录核对，规则按厂商命名规律写，不逐个列型号。厂商换代时常改命名，所以当前和上一代的写法都保留：
 
-   | 档位 | 当前命名（示例价格 输入/输出 每百万 token） | 上一代命名 |
+   | 档位 | 当前官方ID（输入/输出 美元每百万 token） | 上一代命名 |
    |---|---|---|
-   | high 旗舰 | `gpt-6-astra`（10/50）、`claude-opus-5.5`（4/20）、`claude-fable-5.x`、`gemini-4-argon`（2/10，Gemini 4 用代号） | `gpt-5.x-pro`、`gemini-3.x-pro` |
-   | upper 强力 | `gpt-6.1-sol`、`claude-sonnet-5.5`、`grok-4.7`、`kimi-k3.1-pro`、`qwen3.8-max(-prime)`、`glm-5.3(-prime)`、`deepseek-v4-pro`、`mimo-v2.6-pro`、`minimax-m3` | `gpt-5.x` |
-   | medium 均衡 | `gpt-6.1-terra`（1/5）、`gemini-3.8-flash`、`deepseek-v4.1-flash`（`deepseek-v4-flash` 作末位备选）、`glm-5.3-flashx` | `gpt-5.x-mini` |
+   | high 旗舰 | `gpt-6-astra`（10/50）、`claude-fable-5-1`（10/50）、`claude-opus-5-5`（4/20）、`gemini-4-argon`（2/10，Gemini 4 用代号） | `gpt-5.x-pro`、`gemini-3.x-pro` |
+   | upper 强力 | `gpt-6.1-sol`（2/10）、`claude-sonnet-5-5`（2/10）、`grok-4.7`（2/6）、`kimi-k3.1-pro`、`qwen3.8-max(-prime)`、`glm-5.3(-prime)`、`deepseek-v4-pro`、`mimo-v2.6-pro`、`minimax-m3` | `gpt-5.x` |
+   | medium 均衡 | `gpt-6.1-terra`（1/5）、`gemini-3.8-flash`、`deepseek-flash`（官方无版本名，现为 V4.1-Flash-1017）、`grok-build-0.1`、`glm-5.3-flashx` | `gpt-5.x-mini`、`gemini-3.6-flash` |
    | low 轻量 | `gpt-6-luna`（0.1/0.5）、`claude-haiku-5.5`、`minimax-m3.1-flash`、`mimo-v2.6-flash`、`qwen3.8-flash`、`glm-5.3-flash`、`gemini-3.5-flash-lite` | `gpt-5.x-nano` |
 
    - GPT-6 各线都带 `-pro`，与同线价格相同，视为同一模型的推理模式，而非更高一档；GPT-5 时代的 `-pro` 才是旗舰。
    - DeepSeek Flash 是完整的通用模型，只是定价低，归均衡档。其他国产厂商的 `-flash` 是轻量版，归轻量档。Gemini Flash 约 0.8/4，也属均衡档。
-   - 同一大版本内的小版本，新版优先：目录里同时有 `deepseek-v4.1-flash` 和 `deepseek-v4-flash` 时，前者作主模型，后者只作最后一个备选；只有 `v4-flash` 时照常使用。DeepSeek 目前最新的 Pro 仍是 `deepseek-v4-pro`（0813 更新），尚无 v4.1 Pro。
+   - DeepSeek 官方 API 现在只有两个模型名：`deepseek-flash`（不带版本号，现在由 V4.1-Flash-1017 提供）和 `deepseek-v4-pro`。旧名 `deepseek-v4-flash` 仍能调用，但对应模型已下线，请求实际也由 V4.1 Flash 处理。中转站一般带版本号（如 `deepseek-v4.1-flash`），两种写法都能识别。
+   - 同一大版本内的小版本，新版优先：目录里同时有 `deepseek-v4.1-flash` 和 `deepseek-v4-flash` 时，前者作主模型，后者只作最后一个备选；只有 `v4-flash` 时照常使用。
+   - Grok 的版本号只看 `grok-` 后面的数字。`grok-build-0.1` 是编程智能体产品线，版本号自成体系，不当作旧代。
    - **代际按用户自己的目录判断**：同一厂商同一档线如果在目录里有更新的大版本，旧版降一档并排到最后。例如有 `gemini-4-argon` 时，`gemini-3.1-pro` 降为强力档；但当前还没有 Gemini 4 Flash，所以 `gemini-3.8-flash` 不降档。只接了上一代渠道的用户，上一代模型仍按其原档位使用。
-   - 开源模型按名称中的参数量（如 `-27b`、`-2.4t`）分档；`-latest` 等不带版本的别名排在固定版本之后。
+   - 开源模型按名称中的参数量（如 `-27b`、`-2.4t`）分档。
+   - `-latest` 别名会随新版本（含预览版）切换，排在固定版本之后。但厂商自己的无版本正式名（如 `deepseek-flash`）是稳定名称，照常排序。
    - 无法识别的模型不猜，列入报告供主控询问用户。
 4. **分配**：每个能力取所需档位中最合适的模型，排序依次看：新一代优先 → 能力的厂商偏好 → 版本号 → 渠道注册顺序。默认要求：主控 high；技术总监、后端、测试 upper；前端、检索 medium；文档 low。
 5. **同档备选**（最多 3 个）：先放同一模型在其他渠道的副本，行为完全一致；再按每家一个放其他厂商的同档模型，以分散单一厂商故障；同一模型的模式变体（`-pro`、`-high`、`-thinking`、`-fast` 等）视为同一个，不重复占位。
