@@ -25,6 +25,8 @@ export function apply(ctx, team, failover) {
     const previous = await next();
     if (!team.owns(agent)) return previous;
     const role = await team.resolve(agent);
+    // Nothing usable was detected for this capability: keep the session's own model instead of guessing.
+    if (role.unassigned) return previous;
     // Always explicit: the loop pins the last logged header, so the primary must be restored by name.
     return allocatedRequest(previous, failover.route(agent, turn, step, role));
   });

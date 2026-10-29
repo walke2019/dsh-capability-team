@@ -6,10 +6,32 @@
 
 ## 团队配置是数据
 
-[config.js](config.js) 中的 `seed` 只是初始默认值，含三部分：
-- **tiers**：档位 → 模型ID列表；
-- **capabilities**：能力 → 职责、渠道、模型、档位、是否允许检索；
+[config.js](config.js) 中的 `seed` 不写死任何渠道或模型，含三部分：
+- **tiers**：档位 → 模型ID列表（默认为空，安装后自动填充）；
+- **capabilities**：能力 → 职责、所需档位、厂商偏好 `prefer`、是否允许检索；渠道、模型与备选由自动匹配或项目配置提供；
 - **roles**：队友内部id → 显示名、能力、可选职责描述。
+
+## 安装即用：按用户 DSH 渠道自动匹配
+
+[defaults.js](defaults.js) 读取用户在 DSH 中已注册的全部渠道与模型（官方 API、OpenAI 兼容中转、自建网关均可），自动生成默认档位、主模型和同档备选，不依赖任何特定用户的渠道名。
+
+1. **归一化**：去掉网关前缀（`anthropic/`、`bai/`、`pro/deepseek-ai/` 等）、`:free` 等后缀、日期快照；`claude-opus-4-8` 与 `claude-opus-4.8` 视为同一模型。
+2. **排除**：图像、视频、语音、向量、审核等非对话模型；带 `free` 的免费/试用变体；落后两代以上的旧模型。
+3. **分档**（2026-10 市场快照，按厂商命名规律而非逐个型号）：
+
+   | 档位 | 典型命名 |
+   |---|---|
+   | high 旗舰 | Claude Opus、GPT `-pro`、Gemini Pro/Ultra、Grok Heavy、o 系列 `-pro` |
+   | upper 强力 | GPT 主力版、Claude Sonnet、o 系列、DeepSeek、Qwen Max/Plus/Coder、Kimi、GLM、MiniMax、Mistral Large、大参数开源模型 |
+   | medium 均衡 | GPT `-mini`、Gemini Flash、Grok fast、GLM Air、Mistral 中型、中等参数开源模型 |
+   | low 轻量 | GPT `-nano`、Claude Haiku、Gemini Flash-Lite、各家 flash/lite、小参数开源模型 |
+
+   落后一代的模型自动降一档，并排在同档新模型之后。开源模型按名称中的参数量（如 `-32b`）分档。无法识别的模型不猜，列入报告供主控询问用户。
+4. **分配**：每个能力取所需档位中最合适的模型，排序依次看：新一代优先 → 能力的厂商偏好 → 版本号 → 渠道注册顺序。默认要求：主控 high；技术总监、后端、测试 upper；前端、检索 medium；文档 low。
+5. **同档备选**（最多 3 个）：先放同一模型在其他渠道的副本，行为完全一致；再放其他厂商的同档模型，以分散单一厂商故障；同一模型的推理强度变体（`-high`、`-thinking` 等）视为同一个，不重复占位。
+6. **不降档**：所需档位没有模型时，改用更高档；连更高档也没有时，暂用最强的低档，并在报告中标为 `below-tier`、建议补充渠道；完全没有可识别模型时，该能力不分配，沿用会话模型。
+
+渠道增减后，下一次请求会自动重新匹配，无需重启。项目中显式保存的配置优先于自动匹配。`capability_team_read` 的 `autoMatch` 字段会给出匹配报告和未识别的模型。
 
 预设补丁的 `bindings` 可替换默认角色表。各项目还可覆盖其中任意项，覆盖结果合并后整体校验：
 - lead 必须且只有 lead 绑定 orchestrator；
@@ -58,7 +80,7 @@
 
 ## 验证
 
-运行 `node --test tests/*.test.mjs`。测试使用模拟的 ctx、目录和提问框，不调用模型、搜索或 Git 写操作。
+运行 `node --test tests/*.test.mjs`。测试使用模拟的 ctx、目录和提问框，不调用模型、搜索或 Git 写操作。自动匹配用中立的示例目录测试（官方 OpenAI、官方 Anthropic 和带厂商前缀的中转渠道），不依赖任何真实用户配置。
 
 以下事项尚未验证：
 - 真实 DSH 中按成员注册的上下文是否出现在提示词中；

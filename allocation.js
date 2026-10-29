@@ -15,7 +15,7 @@ export async function modelCatalog(llm, tiers = {}) {
 export function changedRoutes(before, after) {
   const known = new Set(Object.values(before.capabilities).flatMap(c => [c, ...c.fallbacks]).map(r => `${r.provider}/${r.model}`));
   return Object.entries(after.capabilities).flatMap(([id, c]) => [c, ...c.fallbacks]
-    .filter(r => !known.has(`${r.provider}/${r.model}`))
+    .filter(r => r.provider !== undefined && !known.has(`${r.provider}/${r.model}`))
     .map(r => ({ capability: id, provider: r.provider, model: r.model, tier: c.tier })));
 }
 export function verifyRoutes(routes, catalog) {

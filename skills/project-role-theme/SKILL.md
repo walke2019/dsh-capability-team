@@ -5,10 +5,10 @@ description: 用户要为当前项目调整团队时使用：角色改名或整�
 
 # 项目团队配置
 
-团队配置是数据：档位（tiers）、能力（capabilities）、角色（roles）。预设只提供默认值，每个项目可覆盖任意一项。
+团队配置是数据：档位（tiers）、能力（capabilities）、角色（roles）。默认值由插件按用户DSH中已注册的渠道和模型自动匹配：分档、选主模型、配同档备选。每个项目可覆盖任意一项，显式配置优先。
 
 ## 流程
-1. 调用 capability_team_read，取得 project、revision、defaults、overrides 与生效结果 effective。
+1. 调用 capability_team_read，取得 project、revision、defaults、overrides、生效结果 effective 与 autoMatch 报告。报告中 upgraded（已升档）、below-tier（低于要求档位）、unassigned（未分配）以及 unrecognized（未识别的模型）需要向用户说明，并询问是否补充渠道或手动指定。
 2. 涉及模型时调用 capability_model_catalog，取得DSH已注册渠道的精确模型ID及其所属档位。目录读取失败的渠道不得使用；未归档的模型不得按名字推断档位，向用户说明并询问应归入哪一档。
 3. 依据项目需求、复杂度和成本偏好起草方案。保留用户明确指定的名称和模型；高复杂度决策与技术、测试工作用较高档位，轻量工作用低档或免费通道。主题和分配由你理解后生成，不按关键词套模板。
 4. 在对话中展示完整方案表：内部id—显示名—能力—职责描述—渠道/模型ID—档位—理由—是否变更。新增模型时同时列出它要加入的档位。

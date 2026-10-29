@@ -7,7 +7,8 @@ import { apply } from '../theme-plugin.js';
 import { createTeam } from '../team.js';
 import { loadProject } from '../theme.js';
 import { seed } from '../config.js';
-function harness(root, { role = 'lead', answer = '保存', models = ['gpt-6.1-sol'] } = {}) {
+import { CATALOG, fakeLlm } from './fixture.mjs';
+function harness(root, { role = 'lead', answer = '保存', extra = [] } = {}) {
   const tools = {}; const contexts = []; const listeners = {}; const asked = []; let skill;
   const membership = agent => agent.member ?? { role, name: role };
   const ctx = {
@@ -17,7 +18,7 @@ function harness(root, { role = 'lead', answer = '保存', models = ['gpt-6.1-so
     agentTeams: { membership, tryMembership: membership },
     agents: { list: () => [] },
     workingDirectory: { ensure: async () => root },
-    llm: { listProviders: () => [{ id: 'win', name: 'W' }], listModels: async () => models.map(id => ({ id, name: id })) },
+    llm: fakeLlm({ ...CATALOG, openai: [...CATALOG.openai, ...extra] }),
     userQuestions: { ask: async req => { asked.push(req); return { answers: [{ id: 'confirm', selected: [answer] }] }; } },
     on: (event, fn) => { listeners[event] = fn; },
   };
@@ -51,12 +52,13 @@ test('保存前弹出真人确认框，取消则不写入', async () => {
 test('新模型必须在DSH目录中，档位可同步扩充', async () => {
   const root = await temp();
   try {
-    const h = harness(root, { models: ['fresh-model'] });
+    const h = harness(root, { extra: ['fresh-model'] });
+    const { tiers } = JSON.parse(await h.tools.capability_team_read.execute({}, { agent: h.agent() })).effective;
     const save = (args) => h.tools.capability_team_save.execute({ expected_revision: 0, ...args }, { agent: h.agent() });
-    await assert.rejects(save({ tiers: { upper: [...seed.tiers.upper, 'ghost'] }, capabilities: { qa: { model: 'ghost' } } }), /不在当前DSH模型目录/);
+    await assert.rejects(save({ tiers: { upper: [...tiers.upper, 'ghost'] }, capabilities: { qa: { provider: 'openai', model: 'ghost', fallbacks: [] } } }), /不在当前DSH模型目录/);
     assert.equal(h.asked.length, 0); // catalog failure never asks the user
-    await save({ tiers: { upper: [...seed.tiers.upper, 'fresh-model'] }, capabilities: { qa: { model: 'fresh-model' } } });
-    assert.equal((await loadProject(root, seed, root)).effective.capabilities.qa.model, 'fresh-model');
+    await save({ tiers: { upper: [...tiers.upper, 'fresh-model'] }, capabilities: { qa: { provider: 'openai', model: 'fresh-model', fallbacks: [] } } });
+    assert.equal((await loadProject(root, h.team.base, root)).effective.capabilities.qa.model, 'fresh-model');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('每个团队成员获得自己的动态上下文，随保存即时更新', async () => {
