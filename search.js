@@ -1,3 +1,4 @@
+import { params } from './tool-schema.js';
 const searchProviders = ['anysearch-search','serper-search','tavily-search','exa-search','jina-search','searchapi-search','linkup-search','youcom-search','firecrawl','duckduckgo-free'];
 const fetchProviders = ['jina-reader','firecrawl','tavily-search'];
 export function requestBody(kind, args) {
@@ -41,6 +42,6 @@ export async function gateway(kind, args, { fetcher = fetch, key = process.env.C
   try { return JSON.parse(text); } catch { throw new Error('聚合网关返回非JSON数据'); }
 }
 export const schemas = {
-  cpa_search: { query: { type: 'string', required: true, description: '搜索关键词' }, max_results: { type: 'integer', minimum: 1, maximum: 20 }, search_type: { type: 'string', enum: ['web','news','code'] }, provider: { type: 'string', enum: searchProviders } },
-  cpa_web_fetch: { url: { type: 'string', required: true, description: '公开网页URL，不含凭据' }, format: { type: 'string', enum: ['markdown','html'] }, provider: { type: 'string', enum: fetchProviders } },
+  cpa_search: params({ query: { type: 'string', description: '搜索关键词' }, max_results: { type: 'integer', description: '结果数量，1–20' }, search_type: { type: 'string', enum: ['web','news','code'] }, provider: { type: 'string', enum: searchProviders } }, ['query']),
+  cpa_web_fetch: params({ url: { type: 'string', description: '公开网页URL，不含凭据' }, format: { type: 'string', enum: ['markdown','html'] }, provider: { type: 'string', enum: fetchProviders } }, ['url']),
 };

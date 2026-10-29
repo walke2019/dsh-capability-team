@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { roleView, describeChanges, resolveRole, seed } from './config.js';
 import { modelCatalog, changedRoutes, verifyRoutes } from './allocation.js';
 import { saveProject } from './theme.js';
+import { params } from './tool-schema.js';
 const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] };
 const ENTRY_RULE = '每项：对象=新增或按字段合并；null=恢复预设默认；false=删除该项。';
 /** Model-facing team context for one Agent, rebuilt from the pinned project on every step. */
@@ -38,7 +39,7 @@ export function apply(ctx, team, failover) {
   const content = readFileSync(new URL('./skills/project-role-theme/SKILL.md', import.meta.url), 'utf8');
   ctx.effect(() => ctx.skills.register({ name: 'project-role-theme', source: 'runtime', content,
     description: '通过对话调整当前项目团队：角色改名或整体换主题、职责、能力、模型档位与分配、新增或移除角色；读取DSH渠道模型目录给出方案，由用户在确认框中批准后保存。' }));
-  ctx.effect(() => ctx.tools.register({ name: 'capability_team_read', parameters: {}, output,
+  ctx.effect(() => ctx.tools.register({ name: 'capability_team_read', parameters: params(), output,
     description: '读取当前项目的团队配置：版本、默认值（按用户DSH渠道自动匹配的档位、主模型与同档备选）、项目覆盖项、生效结果，以及自动匹配报告（升档/低于要求档位/未分配/未识别的模型）。',
     async execute(_args, exec) {
       const { project, revision, overrides, effective } = await team.load(exec.agent);
@@ -47,7 +48,7 @@ export function apply(ctx, team, failover) {
         autoMatch: { detectedAt, report, unrecognized: unknown.slice(0, 50), unrecognizedCount: unknown.length, errors } });
     },
   }));
-  ctx.effect(() => ctx.tools.register({ name: 'capability_model_catalog', parameters: {}, output,
+  ctx.effect(() => ctx.tools.register({ name: 'capability_model_catalog', parameters: params(), output,
     description: '读取DSH已注册渠道的精确模型ID，并标注其在当前项目档位中的归属；目录存在不代表调用一定成功。',
     async execute(_args, exec) {
       const { effective } = await team.load(exec.agent);
@@ -56,14 +57,14 @@ export function apply(ctx, team, failover) {
   }));
   ctx.effect(() => ctx.tools.register({ name: 'capability_team_save', output,
     description: '主控保存当前项目团队配置的变更。工具会向用户弹出包含完整差异的确认框，用户批准后才写入；新的或改动的模型须在DSH模型目录中。',
-    parameters: {
-      expected_revision: { type: 'integer', required: true, description: '最近一次 capability_team_read 返回的 revision' },
+    parameters: params({
+      expected_revision: { type: 'integer', description: '最近一次 capability_team_read 返回的 revision' },
       name: { type: 'string', description: '配置或主题名称' },
-      tiers: { type: 'object', description: `档位id → 完整模型ID数组（替换该档位列表）。${ENTRY_RULE}` },
-      capabilities: { type: 'object', description: `能力id → {job, provider, model, tier, search, fallbacks, prefer}；fallbacks 为有序的同档备选 [{provider, model}]，整体替换；prefer 为自动匹配时的厂商偏好顺序。${ENTRY_RULE}` },
-      failover: { type: 'object', description: '容灾策略，按字段合并，null 恢复默认：{retries 同一模型追加重试次数, initialDelayMs, maxDelayMs, cooldownMs 故障模型冷却, retryCodes, failoverCodes, failoverStatuses}' },
-      roles: { type: 'object', description: `队友内部id（lower-kebab-case）→ {displayName, capability, description}。${ENTRY_RULE}` },
-    },
+      tiers: { type: 'object', additionalProperties: true, description: `档位id → 完整模型ID数组（替换该档位列表）。${ENTRY_RULE}` },
+      capabilities: { type: 'object', additionalProperties: true, description: `能力id → {job, provider, model, tier, search, fallbacks, prefer}；fallbacks 为有序的同档备选 [{provider, model}]，整体替换；prefer 为自动匹配时的厂商偏好顺序。${ENTRY_RULE}` },
+      failover: { oneOf: [{ type: 'object', additionalProperties: true }, { type: 'null' }], description: '容灾策略，按字段合并，null 恢复默认：{retries 同一模型追加重试次数, initialDelayMs, maxDelayMs, cooldownMs 故障模型冷却, retryCodes, failoverCodes, failoverStatuses}' },
+      roles: { type: 'object', additionalProperties: true, description: `队友内部id（lower-kebab-case）→ {displayName, capability, description}。${ENTRY_RULE}` },
+    }, ['expected_revision']),
     async execute(args, exec) {
       if (ctx.agentTeams.membership(exec.agent).role !== 'lead') throw new Error('仅主控可保存团队配置；请把需求转给 lead');
       const project = await team.pin(exec.agent);
