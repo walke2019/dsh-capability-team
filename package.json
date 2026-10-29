@@ -3,6 +3,7 @@
   "version": "3.0.0",
   "description": "DSH 能力协作团队预设：按能力映射模型、可对话配置、同档备选容灾",
   "private": true,
+  "engines": { "node": ">=22" },
   "type": "module",
   "scripts": { "test": "node --test tests/*.test.mjs" },
   "exports": {
