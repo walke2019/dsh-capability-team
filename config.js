@@ -27,8 +27,8 @@ export const seed = deepFreeze({
   // at runtime (defaults.js). `prefer` only orders vendors inside the matched tier.
   tiers: { high: [], upper: [], medium: [], low: [] },
   capabilities: {
-    orchestrator: { job: '意图分析、任务分派、决策与最终交付', tier: 'high', search: true, prefer: ['claude', 'gpt', 'gemini', 'openai-o'] },
-    'technical-director': { job: '技术方案、任务拆解、接口契约与技术验收', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini', 'openai-o'] },
+    orchestrator: { job: '意图分析、任务分派、决策与最终交付', tier: 'high', search: true, prefer: ['claude', 'gpt', 'gemini'] },
+    'technical-director': { job: '技术方案、任务拆解、接口契约与技术验收', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
     backend: { job: '服务端、数据库、接口与后端测试', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'deepseek', 'qwen', 'kimi', 'glm'] },
     frontend: { job: '页面、组件、交互与前端测试', tier: 'medium', search: false, prefer: ['gemini', 'claude', 'gpt'] },
     research: { job: '调用检索工具、核实来源与交叉验证', tier: 'medium', search: true, prefer: ['grok', 'gemini', 'gpt'] },
