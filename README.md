@@ -220,3 +220,7 @@ node --test tests/*.test.mjs
 - 分档基于命名规律和价格，新厂商（如 nvidia、stepfun、cohere）目前会被列为“未识别”，需要手动指定档位。
 - 免费变体（`:free`、`-free`）一律不参与自动匹配，也不作备选。
 - 原生界面仍显示队友的内部 id，显示名只在模型上下文中生效。
+
+## 许可
+
+[MIT](LICENSE)
