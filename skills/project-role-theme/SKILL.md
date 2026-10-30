@@ -23,6 +23,7 @@ description: 用户要为当前项目调整团队时使用：角色改名或整�
 - 改模型：capabilities 中给出 provider、model、tier；模型必须在该档位列表中，必要时同时修改 tiers。
 - 调整档位：tiers 中给出该档位的完整模型ID数组。
 - 备选模型：capabilities 的 fallbacks 为有序数组 `[{"provider": "...", "model": "..."}]`，整体替换；每项必须与主模型同档、不重复，并在DSH目录中。付费模型可作备选，方案表中需标明。不得跨档或降档。
+- 派活工作流：workflow 按字段合并，null 恢复默认。mode 为 enforce（强制主控先用 capability_dispatch_plan 分析并指派，指派后不亲自执行）、remind（只提醒）或 off；analysisBudget 为制定计划前的只读分析次数；directBudget 为主控自行处理时的执行次数上限；freeTools 为免费模型工具级别（none 只处理文字，默认；read 可读取搜索项目文件；write 还可新建和编辑项目文件；任何级别都不能执行命令、联网、访问项目外路径或读写密钥文件；调高前须告知用户项目文件内容会发送到免费模型云端）；freeModels 为免费模型尝试顺序（空数组表示使用 OpenCode 模型目录中全部免费模型，新的在前；只能填目录中成本为 0 且未弃用的模型）；analysisTools / coordinationTools 为工具名数组，其余工具视为执行类。
 - 容灾策略：failover 按字段合并，null 恢复默认。retries 为DSH渠道自带重试之后，同一模型的追加重试次数（指数退避，从 initialDelayMs 起，最长 maxDelayMs）；用尽后才按顺序切换备选。cooldownMs 为故障模型的冷却时间，期间新请求直接用备选，到期自动回到主模型。retryCodes、failoverCodes、failoverStatuses 决定哪些错误重试、哪些切换。
 - 新增角色：roles 中新增 lower-kebab-case 内部id及其 capability，之后主控用该id创建队友。
 - 新增能力：capabilities 中新增完整的 job/provider/model/tier/search。

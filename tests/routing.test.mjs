@@ -35,6 +35,15 @@ test('每个默认角色按能力路由，且不发起模型调用', async () =>
     }
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+test('未分配模型时拒绝请求，不静默继承主控模型', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'route-unassigned-'));
+  try {
+    const f = fakeCtx(() => ({ role: 'teammate', name: 'lv-bu' }), () => root);
+    f.ctx.llm = { listProviders: () => [], listModels: async () => [] };
+    apply(f.ctx, createTeam(f.ctx, {}, { root }));
+    await assert.rejects(f.request({}, { provider: 'parent', model: 'inherited' }), /未分配合格模型.*不会自动沿用/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 test('静态规则不含角色名、模型或档位', () => {
   for (const r of Object.values(seed.roles)) assert.equal(policy.includes(r.displayName), false);
   for (const c of Object.values(base.capabilities)) assert.equal(policy.includes(c.model), false);
@@ -72,8 +81,49 @@ test('项目在首次请求时固定，切换子目录不换配置', async () =>
     assert.equal((await f.request(agent, {})).provider, 'pinned');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+test('渠道ID不变时显式刷新仍更新模型目录', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'route-refresh-'));
+  try {
+    const f = fakeCtx(() => ({ role: 'teammate', name: 'lv-bu' }), () => root);
+    let model = 'gpt-6-sol';
+    f.ctx.llm = { listProviders: () => [{ id: 'fixture' }], listModels: async () => [{ id: model }] };
+    const team = createTeam(f.ctx, {}, { root });
+    await team.refresh();
+    assert.equal(team.base.capabilities.backend.model, 'gpt-6-sol');
+    model = 'gpt-6.1-sol';
+    await team.refresh();
+    assert.equal(team.base.capabilities.backend.model, model);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+test('队友共享主会话禁用策略，策略变化立即影响同一步请求', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'route-policy-'));
+  try {
+    const lead = { id: 'fixture-lead' }, mate = { id: 'fixture-mate' };
+    let membership = { role: 'lead', root: lead };
+    const f = fakeCtx(() => membership, () => root);
+    const team = createTeam(f.ctx, {}, { root }); apply(f.ctx, team);
+    await team.refresh();
+    const role = team.base.capabilities.backend;
+    const all = [`${role.provider}/${role.model}`, ...role.fallbacks.map(r => `${r.provider}/${r.model}`)];
+    await team.savePolicy(lead, all, 0);
+    membership = { role: 'teammate', name: 'lv-bu', root: lead };
+    const rerouted = await f.request(mate, {});
+    assert.ok(!all.includes(`${rerouted.provider}/${rerouted.model}`));
+    await assert.rejects(team.savePolicy(mate, [], 1), /仅主会话/);
+    membership = { role: 'lead', root: lead };
+    await team.savePolicy(lead, team.detection().entries.map(r => `${r.provider}/${r.model}`), 1);
+    membership = { role: 'teammate', name: 'lv-bu', root: lead };
+    await assert.rejects(f.request(mate, {}), /未分配合格模型/);
+    membership = { role: 'lead', root: lead };
+    await team.savePolicy(lead, [], 2);
+    membership = { role: 'teammate', name: 'lv-bu', root: lead };
+    assert.equal((await f.request(mate, {})).model, role.model);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 test('免费通道禁止付费与参数注入', () => {
-  assert.throws(() => freeArgs('test', 'paid/model'), /免费/);
-  assert.throws(() => freeArgs(''), /任务/);
-  assert.deepEqual(freeArgs('--model paid/x').slice(-2), ['--', '--model paid/x']);
+  const allowed = ['opencode/a-free'];
+  assert.throws(() => freeArgs('test', 'paid/model', allowed), /免费/);
+  assert.throws(() => freeArgs('test', undefined, allowed), /免费/);
+  assert.throws(() => freeArgs('', 'opencode/a-free', allowed), /任务/);
+  assert.deepEqual(freeArgs('--model paid/x', 'opencode/a-free', allowed).slice(-2), ['--', '--model paid/x']);
 });

@@ -3,6 +3,7 @@ import { apply as applyIntegrations } from './integrations.js';
 import { apply as applyTheme } from './theme-plugin.js';
 import { createTeam } from './team.js';
 import { createFailover } from './failover.js';
+import { createWorkflow } from './workflow.js';
 export const inject = ['agents', 'agentTeams', 'systemPrompt', 'tools', 'workingDirectory', 'skills', 'llm', 'userQuestions'];
 export function apply(ctx, config = {}) {
   const team = createTeam(ctx, config); // Validates preset bindings up front.
@@ -12,7 +13,9 @@ export function apply(ctx, config = {}) {
     registered: provider => ctx.llm.listProviders().some(p => p.id === provider),
     log: message => ctx.logger?.info?.(`capability-team: ${message}`),
   });
+  const workflow = createWorkflow(ctx, team);
+  workflow.register();
   applyRoles(ctx, team, failover);
   applyIntegrations(ctx, team);
-  applyTheme(ctx, team, failover);
+  applyTheme(ctx, team, failover, workflow);
 }

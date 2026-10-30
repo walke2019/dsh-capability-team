@@ -64,7 +64,7 @@ test('过期锁自动回收，活动锁仍然拒绝', async () => {
     const lock = themePath(root, root) + '.lock'; await mkdir(dirname(lock), { recursive: true });
     await writeFile(lock, JSON.stringify({ pid: process.pid, at: Date.now() }));
     await assert.rejects(saveProject(root, { name: 'x' }, 0, { root }), /正在被其他会话保存/);
-    await writeFile(lock, JSON.stringify({ pid: process.pid, at: Date.now() - STALE_LOCK_MS - 1 }));
+    await writeFile(lock, JSON.stringify({ at: Date.now() - STALE_LOCK_MS - 1 }));
     assert.equal((await saveProject(root, { name: 'x' }, 0, { root })).revision, 1);
     await writeFile(lock, '');
     await assert.rejects(saveProject(root, { name: 'y' }, 1, { root }), /正在被/); // fresh empty lock

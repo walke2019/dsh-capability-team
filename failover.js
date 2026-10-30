@@ -46,7 +46,8 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
       state.tried.push({ route: key(current), code: failure.code, status: failure.status, message: String(failure.message).slice(0, 300) });
       if (!eligible) return false;
       cooling.set(key(current), { until: now() + policy.cooldownMs, failure: failure.code });
-      const next = list.findIndex((r, i) => i > state.index && registered(r.provider) && healthy(r));
+      const tried = new Set(state.tried.map(item => item.route));
+      const next = list.findIndex(r => !tried.has(key(r)) && registered(r.provider) && healthy(r));
       if (next < 0) { log(`同档备选已用尽：${JSON.stringify(state.tried)}`); return false; }
       log(`${key(current)} 不可用（${failure.code}${failure.status ? '/' + failure.status : ''}），切换到同档备选 ${key(list[next])}`);
       state.index = next; state.retries = 0;

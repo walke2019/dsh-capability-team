@@ -1,4 +1,7 @@
 - insert:
+    # Web cards for the capability_* tools (client.js); the Host half is empty.
+    - id: capability-team-ui
+      name: '@local/dsh-capability-team'
     - id: preset-capability-team
       name: '@deepseek-ai/dsh-agent-preset'
       config:

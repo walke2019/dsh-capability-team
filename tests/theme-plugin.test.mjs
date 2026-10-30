@@ -28,6 +28,18 @@ function harness(root, { role = 'lead', answer = '保存', extra = [] } = {}) {
   return { tools, contexts, listeners, asked, team, agent, get skill() { return skill; } };
 }
 const temp = () => mkdtemp(join(tmpdir(), 'team-plugin-'));
+test('初始化未完成时卸载不会抛错或在卸载后注册上下文', async () => {
+  let release; let cleanup; let contexts = 0;
+  const agent = { ctx: { systemPrompt: { context: () => { contexts++; return () => {}; } } } };
+  const pending = new Promise(resolve => { release = resolve; });
+  const ctx = { effect: fn => { const value = fn(); if (typeof value === 'function') cleanup = value; },
+    skills: { register: () => () => {} }, tools: { register: () => () => {} },
+    agentTeams: { tryMembership: () => ({ role: 'lead' }) }, agents: { list: () => [agent] }, on() {} };
+  apply(ctx, { pin: () => pending });
+  assert.doesNotThrow(() => cleanup());
+  release(); await pending; await Promise.resolve();
+  assert.equal(contexts, 0);
+});
 test('技能与工具注册；子角色不能保存', async () => {
   const root = await temp();
   try {

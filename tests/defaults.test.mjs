@@ -75,11 +75,12 @@ test('按能力档位与厂商偏好选主模型，备选同档：同模型他�
   assert.ok(match.unknown.includes('relay/house-model-x'));
   assert.ok(match.report.every(r => r.status === 'matched'));
 });
-test('所需档位缺失时先升档；连更高档也没有才用最强低档并标明', () => {
+test('所需档位缺失时可升档；没有合格模型时保持未分配，不降档', () => {
   const up = autoMatch([{ provider: 'p', model: 'claude-opus-5.5' }], { qa: { tier: 'upper' } });
   assert.equal(up.report[0].status, 'upgraded'); assert.equal(up.routes.qa.tier, 'high');
   const below = autoMatch([{ provider: 'p', model: 'gpt-6.1-terra' }], { orchestrator: { tier: 'high' } });
-  assert.equal(below.report[0].status, 'below-tier'); assert.match(below.report[0].reason, /补充渠道/);
+  assert.equal(below.report[0].status, 'unassigned'); assert.match(below.report[0].reason, /不降档/);
+  assert.equal(below.routes.orchestrator, undefined);
   const none = autoMatch([{ provider: 'p', model: 'house-model-x' }], { qa: { tier: 'upper' } });
   assert.equal(none.report[0].status, 'unassigned'); assert.equal(none.routes.qa, undefined);
 });

@@ -66,19 +66,22 @@ export function loadProjectSync(project, base = seed, root) {
 function alive(pid) {
   try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; }
 }
-async function acquire(lockPath) {
+export async function acquireLock(lockPath) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const handle = await open(lockPath, 'wx');
-      await handle.writeFile(JSON.stringify({ pid: process.pid, at: Date.now() }));
+      try { await handle.writeFile(JSON.stringify({ pid: process.pid, at: Date.now() })); }
+      catch (error) { await handle.close(); await unlink(lockPath); throw error; }
       return handle;
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
       let owner = {};
       try { owner = JSON.parse(await readFile(lockPath, 'utf8')); } catch { /* empty or partial lock: judged by file age */ }
       const since = Number(owner.at) || (await stat(lockPath).catch(() => ({ mtimeMs: Date.now() }))).mtimeMs;
-      const deadOwner = Number.isSafeInteger(owner.pid) && owner.pid !== process.pid && !alive(owner.pid);
-      if (attempt || !(deadOwner || Date.now() - since > STALE_LOCK_MS)) throw new Error('团队配置正在被其他会话保存，请稍后重新读取后重试');
+      const knownOwner = Number.isSafeInteger(owner.pid) && owner.pid > 0;
+      // A confirmation dialog can stay open for minutes. Age never invalidates a live owner's lock.
+      const stale = knownOwner ? !alive(owner.pid) : Date.now() - since > STALE_LOCK_MS;
+      if (attempt || !stale) throw new Error('团队配置正在被其他会话保存，请稍后重新读取后重试');
       await unlink(lockPath).catch(e => { if (e.code !== 'ENOENT') throw e; });
     }
   }
@@ -90,7 +93,7 @@ async function acquire(lockPath) {
 export async function saveProject(project, patch, expectedRevision, { base = seed, root = defaultRoot(), check } = {}) {
   const path = themePath(project, root);
   await mkdir(dirname(path), { recursive: true });
-  const lock = await acquire(path + '.lock');
+  const lock = await acquireLock(path + '.lock');
   const tmp = path + '.' + randomUUID() + '.tmp';
   try {
     const previous = await loadProject(project, base, root);
@@ -104,8 +107,7 @@ export async function saveProject(project, patch, expectedRevision, { base = see
     cache.delete(path);
     return { project: resolve(project), revision: stored.revision, effective };
   } finally {
-    await unlink(tmp).catch(e => { if (e.code !== 'ENOENT') throw e; });
-    await lock.close();
-    await unlink(path + '.lock').catch(e => { if (e.code !== 'ENOENT') throw e; });
+    try { await unlink(tmp).catch(e => { if (e.code !== 'ENOENT') throw e; }); }
+    finally { try { await lock.close(); } finally { await unlink(path + '.lock').catch(e => { if (e.code !== 'ENOENT') throw e; }); } }
   }
 }
