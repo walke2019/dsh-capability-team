@@ -7,6 +7,7 @@
 // lines between generations, so each rule lists both the current and the previous scheme.
 // "Current" is relative to the user's own catalog: when a newer major version of the same vendor
 // is present, older ones count as legacy (one tier lower, ranked last). Unknown ids are reported.
+import { routeMatcher } from './model-policy.js';
 
 /** Non-chat or non-agent models are never candidates. */
 // Also excluded: voice-only Live models, robotics, managed agents (deep-research, antigravity),
@@ -178,15 +179,17 @@ export function autoMatch(entries, capabilities, options = {}) {
   markGenerations(candidates);
   const providerOrder = [...new Set(entries.map(e => e.provider))];
   const tiers = Object.fromEntries(TIER_ORDER.map(t => [t, [...new Set(candidates.filter(c => c.tier === t).map(c => c.model))]]));
+  const disabled = routeMatcher(options.disabledRoutes ?? []);
+  const eligible = candidates.filter(c => !disabled(`${c.provider}/${c.model}`));
   const routes = {}; const report = [];
   for (const [id, cap] of Object.entries(capabilities)) {
     const start = TIER_ORDER.indexOf(cap.tier);
     if (start < 0) { report.push({ capability: id, status: 'unassigned', reason: `档位 ${cap.tier} 不是标准档位，需手动指定模型` }); continue; }
-    const has = t => candidates.some(c => c.tier === t);
-    // Prefer the required tier, then higher; only when nothing qualifies take the strongest lower tier and say so.
-    const tier = TIER_ORDER.slice(start).find(has) ?? TIER_ORDER.slice(0, start).reverse().find(has);
-    if (!tier) { report.push({ capability: id, status: 'unassigned', reason: 'DSH目录中没有可识别的对话模型，需手动指定' }); continue; }
-    const pool = candidates.filter(c => c.tier === tier).sort(ranker(cap.prefer ?? [], providerOrder));
+    const has = t => eligible.some(c => c.tier === t);
+    // Never fill a required capability with a lower tier just to make the roster look ready.
+    const tier = TIER_ORDER.slice(start).find(has);
+    if (!tier) { report.push({ capability: id, status: 'unassigned', reason: `DSH目录中没有 ${cap.tier} 档或更高档模型；不降档，请补充渠道或显式调整能力配置` }); continue; }
+    const pool = eligible.filter(c => c.tier === tier).sort(ranker(cap.prefer ?? [], providerOrder));
     const [primary] = pool;
     const fallbacks = pickFallbacks(pool, primary);
     const delta = TIER_ORDER.indexOf(tier) - start;

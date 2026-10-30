@@ -6,8 +6,14 @@
   "license": "MIT",
   "engines": { "node": ">=22" },
   "type": "module",
-  "scripts": { "test": "node --test tests/*.test.mjs" },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "lint": "node scripts/check.mjs syntax",
+    "build": "node scripts/check.mjs package"
+  },
   "exports": {
+    ".": "./ui.js",
+    "./client": "./client.js",
     "./roles": "./index.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
@@ -27,11 +33,20 @@
     "allocation.js",
     "theme-plugin.js",
     "tool-schema.js",
+    "workflow.js",
+    "opencode.js",
+    "ui.js",
+    "runtime-view.js",
+    "model-policy.js",
+    "session-policy.js",
+    "request-evidence.js",
+    "client.js",
     "skills/project-role-theme/SKILL.md",
     "README.md",
     "LICENSE",
     "tests/*.test.mjs",
     "tests/fixture.mjs",
+    "scripts/check.mjs",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg"
@@ -39,6 +54,17 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
     }
   }
 }

@@ -9,6 +9,9 @@ const CAPABILITY_KEYS = ['job', 'provider', 'model', 'tier', 'search', 'fallback
 const FAILOVER_KEYS = ['retries', 'initialDelayMs', 'maxDelayMs', 'cooldownMs', 'retryCodes', 'failoverCodes', 'failoverStatuses'];
 const MAX_FALLBACKS = 8;
 const ROLE_KEYS = ['displayName', 'capability', 'description'];
+const WORKFLOW_KEYS = ['mode', 'analysisBudget', 'directBudget', 'freeTools', 'freeModels', 'analysisTools', 'coordinationTools'];
+const FREE_TOOL_LEVELS = ['none', 'read', 'write'];
+const WORKFLOW_MODES = ['enforce', 'remind', 'off'];
 const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v);
 function deepFreeze(value) {
   for (const child of Object.values(value)) if (child && typeof child === 'object') deepFreeze(child);
@@ -22,6 +25,26 @@ export const seed = deepFreeze({
     retryCodes: ['RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'EMPTY_RESPONSE', 'UNKNOWN'],
     failoverCodes: ['RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'EMPTY_RESPONSE', 'UNKNOWN', 'QUOTA', 'ACCOUNT_QUOTA', 'INVALID_CREDENTIAL', 'MISSING_CREDENTIAL', 'NO_ADAPTER'],
     failoverStatuses: [401, 403, 404, 408, 429, 500, 502, 503, 504],
+  },
+  // Lead dispatch workflow: every new user request is analysed and assigned before execution.
+  // Tools not listed in either list count as execution (shell, file writes, search, generic subagents).
+  workflow: {
+    mode: 'enforce',
+    analysisBudget: 6, // read-only steps allowed before a dispatch plan exists
+    directBudget: 3, // execution steps allowed when the Lead decides to handle a request alone
+    // Tools of the free OpenCode model: none (text only) / read (read+search project) / write (also
+    // create and edit project files). Never shell, web or outside paths. Project files reach the free
+    // model's cloud from `read` up, so the default is none.
+    freeTools: 'none',
+    // Optional order of free models; empty = every free model in OpenCode's catalog, newest first.
+    // Entries are re-checked against the catalog at run time, so a paid model can never be listed in.
+    freeModels: [],
+    analysisTools: ['read', 'glob', 'grep', 'read_image'],
+    coordinationTools: ['spawn_teammate', 'send_message', 'wait_agent', 'list_agents', 'interrupt_agent',
+      'team_task_create', 'team_task_get', 'team_task_list', 'team_task_update', 'ask_user_question',
+      'capability_team_read', 'capability_model_catalog', 'capability_team_save',
+      'skill', 'todo_write', 'get_goal', 'create_goal', 'update_goal', 'exit_plan_mode', 'present',
+      'job_list', 'job_output', 'job_kill', 'working_directory'],
   },
   // No channel or model is fixed here: tiers and routes are matched from each user's DSH catalog
   // at runtime (defaults.js). `prefer` only orders vendors inside the matched tier.
@@ -102,7 +125,32 @@ export function validateConfig(config) {
     roles[id] = { displayName, capability: r.capability, ...(r.description === undefined ? {} : { description: text(r.description, 2000, `角色 ${id} 的职责描述`, true) }) };
   }
   if (!roles.lead) throw new Error('必须保留 lead 角色');
-  return { name, failover: validateFailover(config.failover ?? seed.failover), tiers, capabilities, roles };
+  return { name, failover: validateFailover(config.failover ?? seed.failover), workflow: validateWorkflow(config.workflow ?? seed.workflow), tiers, capabilities, roles };
+}
+function toolNames(list, label) {
+  if (!Array.isArray(list) || list.length > 100) throw new Error(`${label}须为不超过100项的工具名数组`);
+  return [...new Set(list.map(n => text(n, 80, label)))];
+}
+function oneOf(value, allowed, label) {
+  if (!allowed.includes(value)) throw new Error(`${label}须为 ${allowed.join(' / ')}`);
+  return value;
+}
+function validateWorkflow(w) {
+  onlyKeys(w, WORKFLOW_KEYS, '工作流约束');
+  const merged = { ...seed.workflow, ...w };
+  if (!WORKFLOW_MODES.includes(merged.mode)) throw new Error(`工作流模式须为 ${WORKFLOW_MODES.join(' / ')}`);
+  const out = {
+    mode: merged.mode,
+    analysisBudget: count(merged.analysisBudget, 0, 50, '指派前只读分析次数'),
+    directBudget: count(merged.directBudget, 0, 50, '主控自行执行次数'),
+    freeTools: oneOf(merged.freeTools, FREE_TOOL_LEVELS, '免费模型工具级别'),
+    freeModels: toolNames(merged.freeModels, '免费模型列表'),
+    analysisTools: toolNames(merged.analysisTools, '分析类工具'),
+    coordinationTools: toolNames(merged.coordinationTools, '协调类工具'),
+  };
+  const both = out.analysisTools.filter(n => out.coordinationTools.includes(n));
+  if (both.length) throw new Error(`工具 ${both.join(', ')} 不能同时属于分析类和协调类`);
+  return out;
 }
 /** Ordered same-tier backups: never another tier, never the primary twice. */
 function validateFallbacks(list, primary, tierModels, label) {
@@ -155,6 +203,7 @@ export function effectiveConfig(overrides = {}, base = seed) {
   return validateConfig({
     name: overrides.name ?? base.name,
     failover: { ...base.failover, ...(overrides.failover ?? {}) },
+    workflow: { ...(base.workflow ?? seed.workflow), ...(overrides.workflow ?? {}) },
     tiers: layer(base.tiers, overrides.tiers),
     capabilities: layer(base.capabilities, overrides.capabilities),
     roles: layer(base.roles, overrides.roles),
@@ -184,12 +233,12 @@ export function withAutoRoutes(base, match) {
 /** Upgrade the earlier names/descriptions/routes file format in memory. */
 export function migrateProject(raw) {
   if (!isMap(raw)) throw new Error('项目团队配置文件格式无效');
-  const { revision = 0, name, failover, names = {}, descriptions = {}, routes = {}, tiers = {}, capabilities = {}, roles = {} } = raw;
+  const { revision = 0, name, failover, workflow, names = {}, descriptions = {}, routes = {}, tiers = {}, capabilities = {}, roles = {} } = raw;
   const legacyRoles = {};
   for (const id of new Set([...Object.keys(names), ...Object.keys(descriptions)])) {
     legacyRoles[id] = { ...(names[id] === undefined ? {} : { displayName: names[id] }), ...(descriptions[id] === undefined ? {} : { description: descriptions[id] }) };
   }
-  return { revision, ...(name === undefined ? {} : { name }), ...(failover === undefined ? {} : { failover }), tiers: { ...tiers }, capabilities: { ...routes, ...capabilities }, roles: { ...legacyRoles, ...roles } };
+  return { revision, ...(name === undefined ? {} : { name }), ...(failover === undefined ? {} : { failover }), ...(workflow === undefined ? {} : { workflow }), tiers: { ...tiers }, capabilities: { ...routes, ...capabilities }, roles: { ...legacyRoles, ...roles } };
 }
 /**
  * Apply one conversational patch to stored overrides.
@@ -203,6 +252,10 @@ export function applyPatch(overrides, patch) {
   const failover = patch.failover === null ? undefined : patch.failover === undefined ? overrides.failover : { ...(overrides.failover ?? {}), ...patch.failover };
   if (patch.failover !== undefined && patch.failover !== null) onlyKeys(patch.failover, FAILOVER_KEYS, '容灾策略');
   if (failover !== undefined) next.failover = failover;
+  // workflow follows the same rule: fields merge, null restores the preset policy.
+  const workflow = patch.workflow === null ? undefined : patch.workflow === undefined ? overrides.workflow : { ...(overrides.workflow ?? {}), ...patch.workflow };
+  if (patch.workflow !== undefined && patch.workflow !== null) onlyKeys(patch.workflow, WORKFLOW_KEYS, '工作流约束');
+  if (workflow !== undefined) next.workflow = workflow;
   for (const section of SECTIONS) {
     next[section] = { ...(overrides[section] ?? {}) };
     if (patch[section] === undefined) continue;
@@ -227,6 +280,8 @@ export function describeChanges(before, after) {
   const lines = before.name === after.name ? [] : [`配置名称：${before.name} → ${after.name}`];
   const fa = JSON.stringify(before.failover); const fb = JSON.stringify(after.failover);
   if (fa !== fb) lines.push(`容灾策略：${fa} → ${fb}`);
+  const wa = JSON.stringify(before.workflow); const wb = JSON.stringify(after.workflow);
+  if (wa !== wb) lines.push(`工作流约束：${wa} → ${wb}`);
   for (const section of SECTIONS) {
     for (const id of new Set([...Object.keys(before[section]), ...Object.keys(after[section])])) {
       const a = JSON.stringify(before[section][id]); const b = JSON.stringify(after[section][id]);

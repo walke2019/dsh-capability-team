@@ -14,6 +14,16 @@ test('免费结果先回填再完成', async () => {
   const result = await executeFreeTask({ teams, agent: {}, prompt: 'test', worker: async () => ({ model: 'free', text: '结果' }) });
   assert.equal(result.status, 'completed'); assert.deepEqual(teams.actions, ['claim','edit','complete']); assert.match(teams.getTask().description, /结果/);
 });
+test('工具级别与模型顺序透传给执行器，默认无工具；改动文件写入看板', async () => {
+  const seen = [];
+  const worker = async (_p, opts) => { seen.push([opts.tools, opts.models]); return { model: 'free', text: 'x', toolCalls: [{ tool: 'edit', status: 'completed', file: 'a.md' }, { tool: 'write', status: 'error', file: 'b' }] }; };
+  await executeFreeTask({ teams: fakeTeams(), agent: {}, prompt: 't', worker });
+  const teams = fakeTeams();
+  const r = await executeFreeTask({ teams, agent: {}, prompt: 't', worker, tools: 'write', models: ['m'] });
+  assert.deepEqual(seen, [['none', undefined], ['write', ['m']]]);
+  assert.deepEqual(r.changedFiles, ['a.md']);
+  assert.match(teams.getTask().description, /改动文件：a\.md/);
+});
 test('无效输入在创建持久任务前拒绝', async () => {
   const teams = fakeTeams(); let created = false;
   teams.createTask = async () => { created = true; throw new Error('不应调用'); };
