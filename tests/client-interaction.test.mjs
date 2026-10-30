@@ -154,6 +154,11 @@ test('工作台按角色id匹配队友实时状态，未启动角色显示配置
   assert.ok(JSON.stringify(card('running')).includes('p/live'));
   assert.ok(JSON.stringify(card('inactive')).includes('p/fe-model'));
   assert.ok(card('idle'));
+  assert.equal(card('running').props['data-delegated'], '');
+  assert.equal(card('inactive').props['data-delegated'], undefined);
+  assert.equal(card('idle').props['data-delegated'], undefined);
+  const canvas = h.find(view, n => n.props?.className === 'ctm-bd-canvas');
+  assert.ok(canvas.props.ref && h.find(canvas, n => typeof n.type === 'function' && Array.isArray(n.props.links)));
 });
 
 test('大目录分页渲染，在用模型排在前面', async () => {

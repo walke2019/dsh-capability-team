@@ -30,7 +30,17 @@ export function applyModelPolicy(role, disabledRoutes = []) {
   const allowed = candidates.filter(r => !disabled(routeKey(r)));
   if (!allowed.length) throw new Error(`角色 ${role.displayName ?? role.id} 的主模型及同档备选均已被全局模型策略禁用；请恢复合格模型或重新配置，不会降档。`);
   const [primary, ...fallbacks] = allowed;
-  return { ...role, ...primary, fallbacks, policyExcluded: candidates.filter(r => disabled(routeKey(r))).map(routeKey) };
+  // A disabled long-context route is dropped; requests then stay on the allowed primary and backups.
+  const { longContext, ...rest } = role;
+  const keep = longContext && !disabled(routeKey(longContext)) ? { longContext } : {};
+  return { ...rest, ...primary, fallbacks, ...keep, policyExcluded: candidates.filter(r => disabled(routeKey(r))).map(routeKey) };
+}
+/** Roles as requests see them under the policy: excluded routes dropped, roles with no allowed route marked blocked. */
+export function policyRoleView(roles, disabledRoutes = []) {
+  return roles.map(role => {
+    try { return applyModelPolicy(role, disabledRoutes); }
+    catch (error) { return { ...role, provider: undefined, model: undefined, fallbacks: [], blocked: error.message }; }
+  });
 }
 export function allocationPreview(roles, disabledRoutes) {
   return roles.map(role => {

@@ -45,8 +45,11 @@ test('技能与工具注册；子角色不能保存', async () => {
   try {
     const h = harness(root, { role: 'teammate' });
     assert.equal(h.skill.name, 'project-role-theme');
-    assert.deepEqual(Object.keys(h.tools), ['capability_team_read', 'capability_model_catalog', 'capability_team_save']);
+    assert.deepEqual(Object.keys(h.tools), ['capability_team_read', 'capability_model_catalog', 'capability_team_save', 'capability_team_export', 'capability_team_import']);
     await assert.rejects(h.tools.capability_team_save.execute({ expected_revision: 0 }, { agent: h.agent() }), /仅主控/);
+    const exported = JSON.parse(await h.tools.capability_team_export.execute({}, { agent: h.agent() }));
+    assert.equal(exported.format, 'capability-team-template');
+    await assert.rejects(h.tools.capability_team_import.execute({ expected_revision: 0, template: exported }, { agent: h.agent() }), /仅主控/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('保存前弹出真人确认框，取消则不写入', async () => {
@@ -59,6 +62,24 @@ test('保存前弹出真人确认框，取消则不写入', async () => {
     const yes = harness(root);
     const saved = JSON.parse(await yes.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'lv-bu': { displayName: '后端' } } }, { agent: yes.agent() }));
     assert.equal(saved.revision, 1);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+test('导入模板与保存走同一确认流程：取消不写入，确认后角色与策略按模板生效', async () => {
+  const root = await temp();
+  try {
+    const h = harness(root);
+    const template = JSON.parse(await h.tools.capability_team_export.execute({}, { agent: h.agent() }));
+    template.roles = { lead: template.roles.lead, 'zhou-yu': { displayName: '质检', capability: 'qa' } };
+    template.capabilities.qa.planFirst = true;
+    const no = harness(root, { answer: '取消' });
+    await assert.rejects(no.tools.capability_team_import.execute({ expected_revision: 0, template }, { agent: no.agent() }), /未确认/);
+    assert.match(no.asked[0].questions[0].detail, /质检/);
+    assert.equal((await loadProject(root, seed, root)).revision, 0);
+    const saved = JSON.parse(await h.tools.capability_team_import.execute({ expected_revision: 0, template }, { agent: h.agent() }));
+    assert.deepEqual(saved.roles.map(r => r.id).sort(), ['lead', 'zhou-yu']);
+    const { effective } = await loadProject(root, h.team.base, root);
+    assert.equal(effective.capabilities.qa.planFirst, true);
+    assert.equal(effective.roles['zhou-yu'].displayName, '质检');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('新模型必须在DSH目录中，档位可同步扩充', async () => {

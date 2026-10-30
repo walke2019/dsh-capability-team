@@ -1,5 +1,6 @@
 // Extract only recorded model identities, never prompt/content/replayState.
 // Request headers prove configuration admission, not successful provider completion.
+import { foldUsage } from './usage.js';
 export function requestEvidence(snapshot, limit = 30) {
   const inherited = snapshot.inheritedEventCount ?? 0;
   const result = [];
@@ -31,6 +32,9 @@ export async function readTeamEvidence(query, teams, agent) {
 }
 export async function readRequestEvidence(query, sessionId) {
   if (!query) return { records: [], unavailable: '当前宿主未提供会话日志查询服务' };
-  try { return { records: requestEvidence(await query.readSession(sessionId)) }; }
+  try {
+    const snapshot = await query.readSession(sessionId);
+    return { records: requestEvidence(snapshot), usage: foldUsage(snapshot) };
+  }
   catch (error) { return { records: [], unavailable: String(error.message ?? error) }; }
 }

@@ -10,7 +10,8 @@ window.__ModuleLoader__.load({
     const NS = 'capability-team';
 
     const zh = {
-      'nav.models': '模型管理', 'nav.roles': '角色与配置', 'nav.logs': '请求日志',
+      'nav.models': '模型管理', 'nav.roles': '角色与配置', 'nav.usage': '用量', 'nav.logs': '请求日志',
+      'usage.hint': '计费 token = 未缓存输入 + 缓存写入 + 输出，缓存读取单独列出；按 DSH 用量记录折叠，重试单独计入。只统计本团队各会话的非继承日志，刷新时更新。', 'usage.total': '团队合计 {n}', 'usage.billable': '计费 {n}', 'usage.cacheRead': '缓存读取 {n}', 'usage.budget': '预算 {used} / {max}', 'usage.over': '已达预算，请求被阻止', 'usage.none': '暂无用量记录', 'usage.io': '输入 {i} · 输出 {o}',
       'models.preview': '已保存策略下的请求候选（非实际调用）', 'models.blocked': '已阻止：无允许模型', 'models.unassigned': '尚未分配', 'models.refreshPreview': '策略已保存，请刷新状态获取新的候选预览。',
       'evidence.title': '本会话模型日志', 'evidence.hint': '只展示本会话非继承日志。请求配置不等于调用成功，响应记录也不等于任务完成。',
       'evidence.request-header': '已记录请求配置', 'evidence.assistant-message': '已记录助手响应', 'evidence.empty': '暂无可核实记录',
@@ -19,6 +20,7 @@ window.__ModuleLoader__.load({
       'models.filter': '筛选模型或角色…', 'models.noMatch': '没有匹配的模型', 'models.orphans': '目录外的已禁用模型', 'models.unused': '暂未被角色使用',
       'evidence.short.request-header': '请求', 'evidence.short.assistant-message': '响应', 'logs.thisSession': '本会话', 'logs.count': '{n} 条', 'logs.interrupted': '已中断',
       'roles.fallbackList': '备选：{list}',
+      'roles.editOnly': '只能修改 {list}', 'roles.noEdit': '不能修改文件', 'roles.noShell': '不能执行命令', 'roles.deny': '禁用 {list}', 'roles.accessHint': '权限由工具守卫强制执行', 'roles.whenToUse': '适用：{text}', 'roles.maxTokens': '每会话预算 {n}', 'roles.longContext': '≥{n} 改用 {route}', 'roles.planFirst': '执行前需主控批准计划',
       'workflow.mode': '执行模式', 'workflow.mode.enforce': '强制', 'workflow.mode.remind': '仅提醒', 'workflow.mode.off': '关闭', 'workflow.analysisBudget': '指派前只读分析', 'workflow.directBudget': '主控自行处理上限',
       'workflow.freeTools': '免费模型工具', 'workflow.freeModels': '免费模型顺序', 'workflow.analysisTools': '分析类工具', 'workflow.coordinationTools': '协调类工具', 'workflow.allFree': '目录中全部免费模型', 'workflow.times': '{n} 次',
       'models.primary': '主用', 'models.fallback': '备用', 'models.save': '全局保存', 'models.saving': '正在保存…', 'models.saved': '已全局保存；所有会话的下一次请求按新规则检查。',
@@ -73,7 +75,8 @@ window.__ModuleLoader__.load({
       'output': '原始输出',
     };
     const en = {
-      'nav.models': 'Models', 'nav.roles': 'Roles & settings', 'nav.logs': 'Request records',
+      'nav.models': 'Models', 'nav.roles': 'Roles & settings', 'nav.usage': 'Usage', 'nav.logs': 'Request records',
+      'usage.hint': 'Billable tokens = uncached input + cache write + output; cache reads are listed apart. Folded from DSH usage records, retries counted separately. Only non-inherited logs of this team, updated on refresh.', 'usage.total': 'Team total {n}', 'usage.billable': 'Billable {n}', 'usage.cacheRead': 'Cache read {n}', 'usage.budget': 'Budget {used} / {max}', 'usage.over': 'Budget reached; requests blocked', 'usage.none': 'No usage recorded', 'usage.io': 'In {i} · out {o}',
       'models.preview': 'Candidates under saved policy (not actual calls)', 'models.blocked': 'Blocked: no allowed model', 'models.unassigned': 'Unassigned', 'models.refreshPreview': 'Policy saved. Refresh to load updated candidates.',
       'evidence.title': 'Session model records', 'evidence.hint': 'Only non-inherited session records. A request header does not prove success; an assistant response does not prove task completion.',
       'evidence.request-header': 'Recorded request configuration', 'evidence.assistant-message': 'Recorded assistant response', 'evidence.empty': 'No verifiable records',
@@ -82,6 +85,7 @@ window.__ModuleLoader__.load({
       'models.filter': 'Filter models or roles…', 'models.noMatch': 'No matching models', 'models.orphans': 'Disabled models outside the catalog', 'models.unused': 'Not used by any role',
       'evidence.short.request-header': 'Request', 'evidence.short.assistant-message': 'Response', 'logs.thisSession': 'This session', 'logs.count': '{n} records', 'logs.interrupted': 'Interrupted',
       'roles.fallbackList': 'Fallbacks: {list}',
+      'roles.editOnly': 'Edits only {list}', 'roles.noEdit': 'No file edits', 'roles.noShell': 'No commands', 'roles.deny': 'Denied: {list}', 'roles.accessHint': 'Enforced by a tool guard', 'roles.whenToUse': 'Use when: {text}', 'roles.maxTokens': 'Budget {n} per session', 'roles.longContext': '≥{n} uses {route}', 'roles.planFirst': 'Plan approval before changes',
       'workflow.mode': 'Mode', 'workflow.mode.enforce': 'Enforce', 'workflow.mode.remind': 'Remind only', 'workflow.mode.off': 'Off', 'workflow.analysisBudget': 'Read-only steps before dispatch', 'workflow.directBudget': 'Lead direct-action limit',
       'workflow.freeTools': 'Free-model tools', 'workflow.freeModels': 'Free-model order', 'workflow.analysisTools': 'Analysis tools', 'workflow.coordinationTools': 'Coordination tools', 'workflow.allFree': 'All free models in catalog', 'workflow.times': '{n}',
       'models.primary': 'Primary', 'models.fallback': 'Fallback', 'models.save': 'Save globally', 'models.saving': 'Saving…', 'models.saved': 'Saved globally; every session uses it from its next request.',
@@ -252,7 +256,7 @@ window.__ModuleLoader__.load({
 .ctm-ov-panel{container-type:inline-size}
 .ctm-ov-split{display:flex;flex-direction:column;gap:16px;min-width:0}
 .ctm-ov-split>*{flex-shrink:0;min-width:0}
-@container (min-width:640px){.ctm-ov-split{display:grid;grid-template-columns:minmax(240px,2fr) minmax(0,3fr);align-items:start}.ctm-bd{position:sticky;top:30px}}
+@container (min-width:720px){.ctm-ov-split{display:grid;grid-template-columns:minmax(300px,2fr) minmax(0,3fr);align-items:start}.ctm-bd{position:sticky;top:30px}}
 .ctm-bd{display:flex;flex-direction:column;gap:8px;min-width:0}
 .ctm-bd-head{display:flex;align-items:center;gap:8px}
 .ctm-bd-head .ctm-badge{margin-left:0}
@@ -263,13 +267,19 @@ window.__ModuleLoader__.load({
 .ctm-bd-lead{position:relative;display:flex;justify-content:center}
 .ctm-bd-lead>.ctm-bd-card{width:min(100%,280px)}
 .ctm-bd-mates{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:18px 8px;padding-top:2px}
-.ctm-bd-lead+.ctm-bd-mates::before{content:'';position:absolute;left:50%;top:-18px;width:1.5px;height:10px;background:var(--dsw-alias-border-l1)}
-.ctm-bd-mates>.ctm-bd-card::before{content:'';position:absolute;left:50%;top:-10px;width:1.5px;height:10px;background:var(--dsw-alias-border-l1)}
-.ctm-bd-lead+.ctm-bd-mates::after{content:'';position:absolute;left:12%;right:12%;top:-8px;height:1.5px;background:var(--dsw-alias-border-l1)}
-.ctm-bd-lead+.ctm-bd-mates[data-flow]::after,.ctm-bd-mates>.ctm-bd-card[data-status=running]::before{background:repeating-linear-gradient(90deg,var(--ctm-accent) 0 5px,transparent 5px 9px);background-size:18px 100%;animation:ctm-flow .9s linear infinite}
-.ctm-bd-mates>.ctm-bd-card[data-status=running]::before{background:repeating-linear-gradient(180deg,var(--ctm-accent) 0 4px,transparent 4px 7px);background-size:100% 14px;animation:ctm-flow-v .7s linear infinite}
-@keyframes ctm-flow{to{background-position:18px 0}}
-@keyframes ctm-flow-v{to{background-position:0 14px}}
+.ctm-bd-lead,.ctm-bd-mates{z-index:1}
+.ctm-bd-links{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.ctm-bd-link{fill:none;stroke:var(--dsw-alias-border-l1);stroke-width:1.5;stroke-linejoin:round}
+.ctm-bd-link-end{fill:var(--dsw-alias-border-l1)}
+.ctm-bd-link[data-active]{stroke:color-mix(in srgb,var(--ctm-accent) 35%,transparent)}
+.ctm-bd-link-draw{fill:none;stroke:var(--ctm-accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:ctm-draw .6s ease-out forwards}
+.ctm-bd-link-flow{fill:none;stroke:var(--ctm-accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:5 7;opacity:0;animation:ctm-flow .8s linear infinite,ctm-fade-in .3s .6s forwards}
+.ctm-bd-link-dot{fill:var(--ctm-accent);filter:drop-shadow(0 0 3px var(--ctm-accent))}
+.ctm-bd-link-end[data-active]{fill:var(--ctm-accent)}
+@keyframes ctm-draw{to{stroke-dashoffset:0}}
+@keyframes ctm-flow{to{stroke-dashoffset:-12}}
+@keyframes ctm-fade-in{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.ctm-bd-link-draw{animation:none;stroke-dashoffset:0}.ctm-bd-link-flow,.ctm-bd-link-dot{display:none}}
 .ctm-bd-card{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 10px 11px;border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px rgba(0,0,0,.05);transition:border-color .2s,box-shadow .2s,opacity .2s}
 .ctm-bd-card[data-status=inactive]{opacity:.62;border-style:dashed}
 .ctm-bd-card[data-status=failed]{border-color:var(--dsw-alias-state-error-primary)}
@@ -329,6 +339,11 @@ window.__ModuleLoader__.load({
 .ctm-ov-desc{font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ctm-ov-kv{padding:8px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
 .ctm-ov-logs{display:flex;flex-direction:column;border-top:.5px solid var(--dsw-alias-border-l2)}
+.ctm-us-meter{height:4px;border-radius:2px;background:var(--dsw-alias-bg-layer-2);overflow:hidden}
+.ctm-us-meter>i{display:block;height:100%;background:var(--ctm-accent)}
+.ctm-us-meter[data-tone=warn]>i{background:var(--dsw-alias-state-warning-primary,#d97706)}
+.ctm-us-meter[data-tone=error]>i{background:var(--dsw-alias-state-error-primary)}
+.ctm-us-num{font-variant-numeric:tabular-nums}
 .ctm-ov-log{display:flex;align-items:center;gap:6px;min-width:0;padding:5px 10px}
 .ctm-ov-log+.ctm-ov-log{border-top:.5px solid var(--dsw-alias-border-l2)}
 .ctm-ov-log .ctm-badge{margin-left:0}
@@ -655,9 +670,25 @@ window.__ModuleLoader__.load({
             r.tier ? badge(label(t, `tier.${r.tier}`, r.tier), r.tier === 'high' ? 'brand' : undefined, 'tier') : null),
           h('span', { className: 'ctm-sub' }, [r.id, r.capability].filter(Boolean).join(' · ')),
           r.description ? h('span', { className: 'ctm-ov-desc' }, r.description) : null,
-          h('span', { className: r.provider ? 'ctm-ov-route' : 'ctm-ov-route ctm-warn' }, r.provider ? `${r.provider}/${r.model}` : t('team.unassigned')),
-          fallbacks.length ? h('span', { className: 'ctm-sub', title: fallbacks.join('\n') }, fmt(t('roles.fallbackList'), { list: fallbacks.join('、') })) : null);
+          r.whenToUse ? h('span', { className: 'ctm-sub' }, fmt(t('roles.whenToUse'), { text: r.whenToUse })) : null,
+          h('span', { className: r.provider ? 'ctm-ov-route' : 'ctm-ov-route ctm-warn', title: r.blocked },
+            r.provider ? `${r.provider}/${r.model}` : t(r.blocked ? 'models.blocked' : 'team.unassigned')),
+          fallbacks.length ? h('span', { className: 'ctm-sub', title: fallbacks.join('\n') }, fmt(t('roles.fallbackList'), { list: fallbacks.join('、') })) : null,
+          r.maxTokens || r.longContext || r.planFirst ? h('div', { className: 'ctm-chips' },
+            r.planFirst ? badge(t('roles.planFirst'), 'brand', 'p') : null,
+            r.maxTokens ? badge(fmt(t('roles.maxTokens'), { n: compact(r.maxTokens) }), undefined, 'm') : null,
+            r.longContext ? badge(fmt(t('roles.longContext'), { n: compact(r.longContext.thresholdTokens), route: `${r.longContext.provider}/${r.longContext.model}` }), undefined, 'l') : null) : null,
+          accessBadges(r.access, t));
       }));
+    }
+    /** Permission chips for one role; nothing when the capability has no access policy. */
+    function accessBadges(access, t) {
+      if (!access || typeof access !== 'object') return null;
+      const items = [];
+      if (Array.isArray(access.editPaths)) items.push(access.editPaths.length ? fmt(t('roles.editOnly'), { list: access.editPaths.join('、') }) : t('roles.noEdit'));
+      if (access.shell === false) items.push(t('roles.noShell'));
+      if (access.deny?.length) items.push(fmt(t('roles.deny'), { list: access.deny.join('、') }));
+      return items.length ? h('div', { className: 'ctm-chips', title: t('roles.accessHint') }, ...items.map((text, i) => badge(text, 'warn', 'a' + i))) : null;
     }
 
     function WorkflowList({ workflow, t }) {
@@ -674,6 +705,38 @@ window.__ModuleLoader__.load({
         h('span', { key: `k${key}`, className: 'ctm-sub' }, label(t, `workflow.${key}`, key)),
         h('div', { key: `v${key}`, className: 'ctm-text' }, value(key, v)),
       ]));
+    }
+
+    const billable = u => (u?.uncachedInputTokens ?? 0) + (u?.cacheWriteTokens ?? 0) + (u?.outputTokens ?? 0);
+    const usageTotal = members => (members ?? []).reduce((n, m) => n + billable(m.usage?.totals), 0);
+    const compact = n => n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k` : String(n);
+    /** Per-member token usage from the last refresh, with each role's budget when its capability sets maxTokens. */
+    function UsageGroups({ d, roles, t }) {
+      const members = (d.memberEvidence?.length ? d.memberEvidence : [{ name: 'lead', ...(d.requestEvidence ?? {}) }]).filter(m => m.usage);
+      const byId = new Map(roles.map(r => [r.id, r]));
+      const top = Math.max(1, ...members.map(m => billable(m.usage.totals)));
+      return h('div', { className: 'ctm-ov-block' },
+        h('p', { className: 'ctm-sub ctm-ov-help' }, t('usage.hint')),
+        members.length ? h('span', { className: 'ctm-label' }, fmt(t('usage.total'), { n: compact(usageTotal(members)) })) : null,
+        ...(members.length ? members.map((m, index) => {
+          const role = byId.get(m.name);
+          const used = billable(m.usage.totals);
+          const max = role?.maxTokens;
+          const ratio = max ? Math.min(1, used / max) : used / top;
+          const tone = max && used >= max ? 'error' : max && ratio >= 0.8 ? 'warn' : undefined;
+          return h('details', { key: m.sessionId ?? index, className: 'ctm-ov-group', open: index === 0 },
+            h('summary', null,
+              h('span', { className: 'ctm-name' }, role?.displayName ?? m.name),
+              h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('usage.billable'), { n: compact(used) })),
+              max ? badge(fmt(t('usage.budget'), { used: compact(used), max: compact(max) }), tone ?? 'brand', 'b') : null),
+            h('div', { className: 'ctm-us-meter', 'data-tone': tone, role: 'presentation' }, h('i', { style: { width: `${(ratio * 100).toFixed(1)}%` } })),
+            tone === 'error' ? h('p', { className: 'ctm-ov-note ctm-error' }, t('usage.over')) : null,
+            m.usage.routes.length ? h('div', { className: 'ctm-ov-logs' }, ...m.usage.routes.map(r => h('div', { key: r.route, className: 'ctm-ov-log' },
+              h('span', { className: 'ctm-ov-route', title: r.route }, r.route),
+              h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('usage.io'), { i: compact(r.uncachedInputTokens + r.cacheWriteTokens), o: compact(r.outputTokens) })),
+              r.cacheReadTokens ? h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('usage.cacheRead'), { n: compact(r.cacheReadTokens) })) : null)))
+              : h('p', { className: 'ctm-sub' }, t('usage.none')));
+        }) : [h('p', { key: 'none', className: 'ctm-sub' }, t('usage.none'))]));
     }
 
     function EvidenceGroups({ d, sessionId, t }) {
@@ -748,19 +811,83 @@ window.__ModuleLoader__.load({
       return cards.map(card => {
         const owner = card.member?.name ?? card.id;
         const mine = tasks.filter(task => task.ownerName === owner && task.status !== 'completed');
-        return { ...card, status: card.member?.status ?? 'inactive',
+        const status = card.member?.status ?? 'inactive';
+        const task = mine.find(task => task.status === 'in_progress') ?? mine[0];
+        return { ...card, status,
           model: card.member?.model ? [card.member.provider, card.member.model].filter(Boolean).join('/')
             : primary.get(card.id) ?? (card.role?.provider ? `${card.role.provider}/${card.role.model}` : null),
-          liveModel: !!card.member?.model,
-          task: mine.find(task => task.status === 'in_progress') ?? mine[0], queued: mine.length };
+          liveModel: !!card.member?.model, task, queued: mine.length,
+          // A teammate is "delegated to" while it works or holds an in-progress task from the Lead.
+          delegated: !card.lead && (status === 'running' || status === 'provisioning' || task?.status === 'in_progress') };
       });
+    }
+    /**
+     * Lead → teammate paths in canvas coordinates. First-row cards get an S-curve into their top edge;
+     * lower rows would be hidden behind the row above, so they drop down the gutter beside the card and enter from the side.
+     */
+    function boardLinks(lead, mates, origin) {
+      if (!lead || !mates.length) return [];
+      const x = v => v.toFixed(1);
+      const top = Math.min(...mates.map(m => m.rect.top));
+      const x1 = lead.left + lead.width / 2 - origin.left, y1 = lead.bottom - origin.top;
+      const bus = (lead.bottom + top) / 2 - origin.top;
+      return mates.map(({ id, active, rect }) => {
+        const cx = rect.left + rect.width / 2 - origin.left;
+        if (rect.top - top < 2) {
+          const y2 = rect.top - origin.top, bend = Math.max(12, (y2 - y1) / 2);
+          return { id, active, d: `M${x(x1)} ${x(y1)}C${x(x1)} ${x(y1 + bend)} ${x(cx)} ${x(y2 - bend)} ${x(cx)} ${x(y2)}`, end: [cx, y2] };
+        }
+        // Gutter: halfway to the neighbour in the same row, or the canvas padding when the card stands alone.
+        const row = mates.filter(m => Math.abs(m.rect.top - rect.top) < 2 && m.id !== id);
+        const right = row.filter(m => m.rect.left > rect.left).sort((a, b) => a.rect.left - b.rect.left)[0];
+        const left = row.filter(m => m.rect.left < rect.left).sort((a, b) => b.rect.left - a.rect.left)[0];
+        const gx = (right ? (rect.right + right.rect.left) / 2 : left ? (left.rect.right + rect.left) / 2 : rect.left - 4) - origin.left;
+        const ex = (right ? rect.right : rect.left) - origin.left, ey = rect.top + 16 - origin.top;
+        return { id, active, d: `M${x(x1)} ${x(y1)}V${x(bus)}H${x(gx)}V${x(ey)}H${x(ex)}`, end: [ex, ey] };
+      });
+    }
+    /** Measure the rendered cards and keep one Lead → teammate path each; re-measured on layout changes. */
+    function useBoardLinks(canvas, cards) {
+      const [links, setLinks] = React.useState([]);
+      const signature = cards.map(c => `${c.id}:${c.lead ? 'L' : c.delegated ? 1 : 0}`).join('|');
+      (React.useLayoutEffect ?? React.useEffect)(() => {
+        const root = canvas.current;
+        if (!root) return undefined;
+        const measure = () => {
+          const lead = root.querySelector('.ctm-bd-lead>[data-card]');
+          const mates = [...root.querySelectorAll('.ctm-bd-mates>[data-card]')].map(el => ({
+            id: el.getAttribute('data-card'), active: el.hasAttribute('data-delegated'), rect: el.getBoundingClientRect() }));
+          const next = boardLinks(lead?.getBoundingClientRect(), mates, root.getBoundingClientRect());
+          setLinks(old => JSON.stringify(old) === JSON.stringify(next) ? old : next);
+        };
+        measure();
+        const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+        if (observer) { observer.observe(root); for (const el of root.querySelectorAll('[data-card]')) observer.observe(el); }
+        else window.addEventListener?.('resize', measure);
+        return () => { observer ? observer.disconnect() : window.removeEventListener?.('resize', measure); };
+      }, [canvas, signature]);
+      return links;
+    }
+    function BoardLinks({ links }) {
+      if (!links.length) return null;
+      // Active paths are keyed by their state, so a new delegation remounts and replays the draw-in.
+      return h('svg', { className: 'ctm-bd-links', 'aria-hidden': true, focusable: 'false' },
+        ...links.map(link => h('g', { key: `${link.id}:${link.active ? 1 : 0}` },
+          h('path', { className: 'ctm-bd-link', d: link.d, ...(link.active ? { 'data-active': '' } : {}) }),
+          link.active ? h('path', { className: 'ctm-bd-link-draw', d: link.d, pathLength: 1 }) : null,
+          link.active ? h('path', { className: 'ctm-bd-link-flow', d: link.d }) : null,
+          link.active ? h('circle', { className: 'ctm-bd-link-dot', r: 2.5 },
+            h('animateMotion', { dur: '1.6s', begin: '0.6s', repeatCount: 'indefinite', path: link.d })) : null,
+          h('circle', { className: 'ctm-bd-link-end', cx: link.end[0], cy: link.end[1], r: 2.5, ...(link.active ? { 'data-active': '' } : {}) }))));
     }
     function TeamBoard({ roles, activity, allocations, since, t }) {
       const cards = boardCards(roles, activity, allocations);
       const lead = cards.filter(c => c.lead);
       const mates = cards.filter(c => !c.lead);
       const running = cards.filter(c => c.status === 'running').length;
-      const card = c => h('div', { key: c.id, className: 'ctm-bd-card', 'data-status': c.status },
+      const canvas = React.useRef(null);
+      const links = useBoardLinks(canvas, cards);
+      const card = c => h('div', { key: c.id, className: 'ctm-bd-card', 'data-status': c.status, 'data-card': c.id, ...(c.delegated ? { 'data-delegated': '' } : {}) },
         h('div', { className: 'ctm-bd-top' },
           h('span', { className: 'ctm-bd-avatar', 'aria-hidden': true }, Array.from(c.name)[0] ?? '?'),
           h('div', { className: 'ctm-who' }, h('span', { className: 'ctm-name' }, c.name), h('span', { className: 'ctm-sub' }, c.role?.capability ?? c.id)),
@@ -780,9 +907,10 @@ window.__ModuleLoader__.load({
           running ? badge(fmt(t('live.runningCount'), { n: running }), 'brand', 'run') : null,
           activity?.at ? h('span', { className: 'ctm-sub ctm-bd-at' }, h('i', { className: 'ctm-bd-pulse', 'aria-hidden': true }), t('live.polling')) : null),
         activity?.unavailable ? h('p', { className: 'ctm-ov-note ctm-warn' }, activity.unavailable) : null,
-        h('div', { className: 'ctm-bd-canvas' },
+        h('div', { className: 'ctm-bd-canvas', ref: canvas },
+          h(BoardLinks, { links }),
           lead.length ? h('div', { className: 'ctm-bd-lead' }, ...lead.map(card)) : null,
-          mates.length ? h('div', { className: 'ctm-bd-mates', ...(mates.some(c => c.status === 'running') ? { 'data-flow': '' } : {}) }, ...mates.map(card)) : null));
+          mates.length ? h('div', { className: 'ctm-bd-mates' }, ...mates.map(card)) : null));
     }
 
     function Overview({ sessionId, t, load, save, live, cache }) {
@@ -843,6 +971,7 @@ window.__ModuleLoader__.load({
       const tabs = [
         ['models', policy?.rows?.length],
         ['roles', team?.roles?.length],
+        ['usage', usageTotal(d?.memberEvidence) ? compact(usageTotal(d.memberEvidence)) : null],
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       return h('section', { className: 'ctm-ov' },
@@ -872,6 +1001,7 @@ window.__ModuleLoader__.load({
           d ? h('nav', { className: 'ctm-ov-tabs', 'aria-label': t('overview.title') },
             ...tabs.map(([id, count]) => h('button', { key: id, type: 'button', className: 'ctm-ov-tab', 'aria-pressed': tab === id, onClick: () => setTab(id) },
               t('nav.' + id), count ? h('span', { className: 'ctm-ov-count' }, String(count)) : null))) : null,
+          d ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'usage', hidden: tab !== 'usage' }, h(UsageGroups, { d, roles: team?.roles ?? [], t })) : null,
           d ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'logs', hidden: tab !== 'logs' }, h(EvidenceGroups, { d, sessionId, t })) : null,
           d ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'models', hidden: tab !== 'models' },
             h('div', { className: 'ctm-ov-split' },

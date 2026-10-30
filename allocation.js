@@ -13,8 +13,9 @@ export async function modelCatalog(llm, tiers = {}) {
 }
 /** Every capability whose provider/model changed must exist in the live catalog. */
 export function changedRoutes(before, after) {
-  const known = new Set(Object.values(before.capabilities).flatMap(c => [c, ...c.fallbacks]).map(r => `${r.provider}/${r.model}`));
-  return Object.entries(after.capabilities).flatMap(([id, c]) => [c, ...c.fallbacks]
+  const routes = c => [c, ...c.fallbacks, ...(c.longContext ? [c.longContext] : [])];
+  const known = new Set(Object.values(before.capabilities).flatMap(routes).map(r => `${r.provider}/${r.model}`));
+  return Object.entries(after.capabilities).flatMap(([id, c]) => routes(c)
     .filter(r => r.provider !== undefined && !known.has(`${r.provider}/${r.model}`))
     .map(r => ({ capability: id, provider: r.provider, model: r.model, tier: c.tier })));
 }

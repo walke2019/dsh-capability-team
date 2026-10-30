@@ -4,6 +4,8 @@ import { apply as applyTheme } from './theme-plugin.js';
 import { createTeam } from './team.js';
 import { createFailover } from './failover.js';
 import { createWorkflow } from './workflow.js';
+import { applyAccess } from './access.js';
+import { createPlanGate } from './plan-gate.js';
 export const inject = ['agents', 'agentTeams', 'systemPrompt', 'tools', 'workingDirectory', 'skills', 'llm', 'userQuestions'];
 export function apply(ctx, config = {}) {
   const team = createTeam(ctx, config); // Validates preset bindings up front.
@@ -13,9 +15,12 @@ export function apply(ctx, config = {}) {
     registered: provider => ctx.llm.listProviders().some(p => p.id === provider),
     log: message => ctx.logger?.info?.(`capability-team: ${message}`),
   });
-  const workflow = createWorkflow(ctx, team);
+  const planGate = createPlanGate(ctx, team);
+  const workflow = createWorkflow(ctx, team, { onDelegate: (lead, roles) => planGate.reset(lead, roles) });
   workflow.register();
+  planGate.register();
+  applyAccess(ctx, team);
   applyRoles(ctx, team, failover);
   applyIntegrations(ctx, team);
-  applyTheme(ctx, team, failover, workflow);
+  applyTheme(ctx, team, failover, workflow, planGate);
 }

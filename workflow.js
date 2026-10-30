@@ -2,6 +2,7 @@
 // registered roles or justifies handling it alone. A tool guard enforces the declared plan, so the
 // Lead cannot silently do specialist work itself. All limits are project data (config.workflow).
 import { params } from './tool-schema.js';
+import { accessSummary } from './access.js';
 
 export const WORKFLOW_MODES = ['enforce', 'remind', 'off'];
 const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] };
@@ -16,7 +17,8 @@ const FREE_TOOL_TEXT = {
 const DECISION = { delegate: '指派队友', free: '交给免费模型', direct: '主控自行处理' };
 export function toolClass(name, workflow) {
   if (name === FREE_TOOL) return 'free';
-  if (name === 'capability_dispatch_plan' || workflow.coordinationTools.includes(name)) return 'coordination';
+  // The team's own planning tools always coordinate, whatever a project lists.
+  if (['capability_dispatch_plan', 'capability_submit_plan', 'capability_review_plan'].includes(name) || workflow.coordinationTools.includes(name)) return 'coordination';
   if (workflow.analysisTools.includes(name)) return 'analysis';
   return 'execution';
 }
@@ -93,7 +95,7 @@ export function validatePlan(args, effective) {
   return { mode: 'delegate', analysis, ...(args.reason ? { reason: text(args.reason, 500, '理由') } : {}), assignments: list };
 }
 
-export function createWorkflow(ctx, team) {
+export function createWorkflow(ctx, team, { onDelegate } = {}) {
   const states = new WeakMap();
   const state = agent => {
     if (!states.has(agent)) states.set(agent, { plan: undefined, analysisUsed: 0, directUsed: 0 });
@@ -105,7 +107,10 @@ export function createWorkflow(ctx, team) {
     return project ? team.loadSync(project, agent).effective : team.base;
   };
   const rosterText = effective => Object.entries(effective.roles).filter(([id]) => id !== 'lead')
-    .map(([id, r]) => `${id}=${r.displayName}/${r.capability}`).join('，');
+    .map(([id, r]) => {
+      const when = effective.capabilities[r.capability]?.whenToUse;
+      return `${id}=${r.displayName}/${r.capability}${when ? `（${when}）` : ''}`;
+    }).join('，');
   return {
     state,
     /** A new user request starts a new dispatch cycle; teammate reports keep the current plan. */
@@ -151,6 +156,7 @@ export function createWorkflow(ctx, team) {
           const plan = validatePlan(args, effective);
           const s = state(exec.agent);
           s.plan = plan;
+          if (plan.mode === 'delegate') onDelegate?.(ctx.agentTeams.membership(exec.agent), plan.assignments.map(a => a.role));
           // Structured result: the model reads the fields, the Web card renders them without parsing prose.
           const result = { mode: plan.mode, decision: DECISION[plan.mode], analysis: plan.analysis, ...(plan.reason ? { reason: plan.reason } : {}) };
           if (plan.mode === 'direct') {
@@ -162,7 +168,9 @@ export function createWorkflow(ctx, team) {
           } else {
             result.assignments = plan.assignments.map(a => {
               const c = effective.capabilities[a.capability];
-              return { role: a.role, displayName: a.displayName, capability: a.capability, model: c.provider ? `${c.provider}/${c.model}` : '会话模型', task: a.task };
+              const limits = accessSummary(c.access);
+              return { role: a.role, displayName: a.displayName, capability: a.capability, model: c.provider ? `${c.provider}/${c.model}` : '会话模型', ...(limits ? { access: limits } : {}),
+                ...(c.planFirst ? { planFirst: '执行前会提交计划，需主控用 capability_review_plan 批准' } : {}), task: a.task };
             });
             result.next = '已存在的队友用 send_message 派发，不存在的用 spawn_teammate（name 用内部id）创建；可并行的同时派发，用看板任务跟踪；主控只协调与验收，不亲自执行。';
           }
