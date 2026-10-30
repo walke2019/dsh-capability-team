@@ -2,17 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
-function harness(remote = { commands: {} }) {
+function harness(remote = { commands: {} }, sessions, { runEffects = false } = {}) {
   let plugin, cursor = 0, states = [];
   const React = {
     createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
     useState(initial) { const index = cursor++; if (!(index in states)) states[index] = initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; },
     useRef(initial) { const index = cursor++; return states[index] ??= { current: initial }; },
-    useEffect() {},
+    useEffect(fn) { if (runEffects) fn(); },
   };
   new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => { plugin = spec.factory(() => React); } } } });
   let view;
-  plugin.apply({ effect() {}, locale: { bind: () => key => key }, remote, slots: {
+  plugin.apply({ effect() {}, locale: { bind: () => key => key }, remote, sessions, slots: {
     inject: (_name, fn) => fn(), register(options, component) { if (options.id === 'capability-team-overview') view = component; },
   } });
   const render = (component, props) => { cursor = 0; return component(props); };
@@ -237,4 +237,76 @@ test('按前缀排除：预览匹配数、加入草稿并随保存提交，被�
   await h.find(view, n => n.type === 'button').props.onClick();
   assert.equal(JSON.stringify(calls[0][1]), '["@cf/*"]');
   assert.equal(calls[0][2], 5);
+});
+
+test('不刷新也实时显示：工作台与用量来自 DSH 自带的会话投影，且不执行任何命令', async () => {
+  const lines = []; const refreshed = [];
+  const state = { byId: { s2: { running: true } }, projectionsBySession: {
+    s1: { values: { agentTeam: { members: [{ id: 's1', name: 'lead', role: 'lead', phase: 'active' }, { id: 's2', name: 'qa', role: 'teammate', phase: 'active' }, { id: 's3', name: 'fe', role: 'teammate', phase: 'provisioning' }],
+      tasks: [{ id: 'task-1', subject: '回归测试', status: 'in_progress', ownerName: 'qa' }] } } },
+    s2: { values: { tokenUsage: { uncachedInputTokens: 1000, outputTokens: 200, cacheReadTokens: 5000, cacheWriteTokens: 0 },
+      modelSelection: { next: { provider: 'cpa', model: 'gpt-6.1-sol' } },
+      sessionStats: { turns: 1, steps: 4, llmMs: 160000, toolMs: 3000, ttftMs: 20000, ttftSteps: 4, decodeMs: 10000, decodeTokens: 400 } } },
+  } };
+  const sessions = { list: { getSnapshot: () => state, subscribe: () => () => {} }, refreshProjections: async id => { refreshed.push(id); } };
+  const remote = { commands: { execute: async (_id, line) => { lines.push(line); return { ok: false }; } } };
+  const h = harness(remote, sessions);
+  const props = { sessionId: 's1', t: key => key };
+  const element = h.view(props);
+  const tree = h.render(element.type, element.props);
+  assert.deepEqual(lines, []);
+  assert.ok(!h.find(tree, n => n.props?.className === 'ctm-ov-empty'), '有实时数据时不显示空状态');
+  assert.ok(JSON.stringify(tree).includes('overview.live'));
+  const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
+  const view = board.type(board.props);
+  const card = status => h.find(view, n => n.props?.className === 'ctm-bd-card' && n.props['data-status'] === status);
+  assert.ok(JSON.stringify(card('running')).includes('回归测试'));
+  assert.ok(JSON.stringify(card('running')).includes('cpa/gpt-6.1-sol'));
+  assert.ok(card('provisioning'));
+  const usage = h.find(tree, n => typeof n.type === 'function' && Array.isArray(n.props.rows));
+  assert.deepEqual(usage.props.rows.map(r => [r.name, r.totals?.outputTokens, r.model, r.stats?.steps]), [['qa', 200, 'cpa/gpt-6.1-sol', 4]]);
+  const rendered = JSON.stringify(usage.type(usage.props));
+  assert.ok(rendered.includes('usage.ttft') && rendered.includes('usage.decode'), '显示首 token 延迟与解码速度');
+  assert.deepEqual(refreshed.sort(), ['s3']); // asks the host once for a member the store has not loaded
+});
+
+test('点击队友卡片按官方方式打开其会话；主控卡片不可点', () => {
+  const opened = [];
+  const state = { byId: {}, projectionsBySession: { L: { values: { agentTeam: { members: [{ id: 'L', name: 'lead', role: 'lead', phase: 'active' }, { id: 'Q', name: 'qa', role: 'teammate', phase: 'active' }], tasks: [] } } }, Q: { values: {} } } };
+  const sessions = { list: { getSnapshot: () => state, subscribe: () => () => {} }, refreshProjections: async () => {} };
+  const h = harness({ commands: {} }, sessions);
+  const element = h.view({ sessionId: 'L', t: key => key });
+  const tree = h.render(element.type, { ...element.props, openMember: (parent, child) => opened.push([parent, child]) });
+  const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
+  const view = board.type(board.props);
+  const qa = h.find(view, n => n.props?.['data-card'] === 'qa');
+  const lead = h.find(view, n => n.props?.['data-card'] === 'lead');
+  assert.equal(lead.props.onClick, undefined);
+  qa.props.onClick();
+  qa.props.onKeyDown({ key: 'Enter', preventDefault() {} });
+  assert.deepEqual(opened, [['L', 'Q'], ['L', 'Q']]);
+});
+
+test('配置自动读取：组队后读取一次，之后只在配置保存计数变化时再读', async () => {
+  const lines = [];
+  let version = 0; let members = [{ id: 'L', name: 'lead', role: 'lead', phase: 'active' }];
+  const snapshotOf = () => ({ byId: {}, projectionsBySession: { L: { values: { agentTeam: { members, tasks: [] }, capabilityTeamConfig: { version } } } } });
+  const sessions = { list: { getSnapshot: snapshotOf, subscribe: () => () => {} }, refreshProjections: async () => {} };
+  const reply = { ok: true, value: { result: { kind: 'success', text: JSON.stringify({ preset: 'capability-team', ready: true, memberEvidence: [], team: { roles: [], modelPolicy: { revision: 0, disabledRoutes: [], rows: [], allocations: [] } } }) } } };
+  const remote = { commands: { execute: async (_id, line) => { lines.push(line); return reply; } } };
+  const h = harness(remote, sessions, { runEffects: true });
+  const element = h.view({ sessionId: 'L', t: key => key });
+  const draw = async () => { h.render(element.type, element.props); await new Promise(r => setImmediate(r)); };
+  await draw();
+  assert.equal(lines.length, 0, '只有主控、尚未组队时不读取');
+  members = [...members, { id: 'Q', name: 'qa', role: 'teammate', phase: 'active' }];
+  await draw(); await draw();
+  assert.equal(lines.length, 1, '组队后自动读取一次');
+  await draw();
+  assert.equal(lines.length, 1, '配置未变不重复读取');
+  version = 1;
+  await draw(); await draw();
+  assert.equal(lines.length, 2, '保存计数变化后再读一次');
+  await draw();
+  assert.equal(lines.length, 2, '同一计数只自动读取一次');
 });

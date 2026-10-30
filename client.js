@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
 
     const zh = {
       'nav.models': '模型管理', 'nav.roles': '角色与配置', 'nav.usage': '用量', 'nav.logs': '请求日志',
-      'usage.hint': '计费 token = 未缓存输入 + 缓存写入 + 输出，缓存读取单独列出；按 DSH 用量记录折叠，重试单独计入。只统计本团队各会话的非继承日志，刷新时更新。', 'usage.total': '团队合计 {n}', 'usage.billable': '计费 {n}', 'usage.cacheRead': '缓存读取 {n}', 'usage.budget': '预算 {used} / {max}', 'usage.over': '已达预算，请求被阻止', 'usage.none': '暂无用量记录', 'usage.io': '输入 {i} · 输出 {o}',
+      'usage.hint': '计费 token = 未缓存输入 + 缓存写入 + 输出，缓存读取单独列出，重试单独计入。总量与每步耗时由宿主实时推送；按模型拆分的 token 来自上次刷新。', 'usage.total': '团队合计 {n}', 'usage.billable': '计费 {n}', 'usage.cacheRead': '缓存读取 {n}', 'usage.budget': '预算 {used} / {max}', 'usage.over': '已达预算，请求被阻止', 'usage.none': '暂无用量记录', 'usage.io': '输入 {i} · 输出 {o}', 'usage.step': '{n} 步 · 平均 {s}s/步', 'usage.ttft': '首 token {s}s', 'usage.decode': '{n} token/s', 'usage.stepHint': 'DSH 会话统计：每步模型墙钟时间、首 token 延迟与解码速度', 'overview.live': '实时',
       'models.preview': '已保存策略下的请求候选（非实际调用）', 'models.blocked': '已阻止：无允许模型', 'models.unassigned': '尚未分配', 'models.refreshPreview': '策略已保存，请刷新状态获取新的候选预览。',
       'evidence.title': '本会话模型日志', 'evidence.hint': '只展示本会话非继承日志。请求配置不等于调用成功，响应记录也不等于任务完成。',
       'evidence.request-header': '已记录请求配置', 'evidence.assistant-message': '已记录助手响应', 'evidence.empty': '暂无可核实记录',
@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
       'models.filter': '筛选模型或角色…', 'models.noMatch': '没有匹配的模型', 'models.orphans': '目录外的已禁用模型', 'models.unused': '暂未被角色使用',
       'evidence.short.request-header': '请求', 'evidence.short.assistant-message': '响应', 'logs.thisSession': '本会话', 'logs.count': '{n} 条', 'logs.interrupted': '已中断',
       'roles.fallbackList': '备选：{list}',
-      'roles.editOnly': '只能修改 {list}', 'roles.noEdit': '不能修改文件', 'roles.noShell': '不能执行命令', 'roles.deny': '禁用 {list}', 'roles.accessHint': '权限由工具守卫强制执行', 'roles.whenToUse': '适用：{text}', 'roles.maxTokens': '每会话预算 {n}', 'roles.longContext': '≥{n} 改用 {route}', 'roles.planFirst': '执行前需主控批准计划',
+      'roles.editOnly': '只能修改 {list}', 'roles.noEdit': '不能修改文件', 'roles.noShell': '不能执行命令', 'roles.preset': 'DSH 沙箱 {name}', 'roles.current': '当前 {route}', 'roles.liveModel': '最近一次请求实际使用的模型（实时）', 'logs.live': '实时：各成员最近一次请求的模型', 'logs.steps': '{n} 步', 'roles.deny': '禁用 {list}', 'roles.accessHint': '权限由工具守卫强制执行', 'roles.whenToUse': '适用：{text}', 'roles.maxTokens': '每会话预算 {n}', 'roles.longContext': '≥{n} 改用 {route}', 'roles.planFirst': '执行前需主控批准计划',
       'workflow.mode': '执行模式', 'workflow.mode.enforce': '强制', 'workflow.mode.remind': '仅提醒', 'workflow.mode.off': '关闭', 'workflow.analysisBudget': '指派前只读分析', 'workflow.directBudget': '主控自行处理上限',
       'workflow.freeTools': '免费模型工具', 'workflow.freeModels': '免费模型顺序', 'workflow.analysisTools': '分析类工具', 'workflow.coordinationTools': '协调类工具', 'workflow.allFree': '目录中全部免费模型', 'workflow.times': '{n} 次',
       'models.primary': '主用', 'models.fallback': '备用', 'models.save': '全局保存', 'models.saving': '正在保存…', 'models.saved': '已全局保存；所有会话的下一次请求按新规则检查。',
@@ -61,7 +61,7 @@ window.__ModuleLoader__.load({
       'overview.ready': '已就绪', 'overview.notMounted': '未挂载', 'overview.abnormal': '需处理', 'overview.preset': '预设', 'overview.missingTools': '缺少工具', 'overview.details': '挂载诊断',
       'overview.revision': '版本 {rev}', 'overview.updated': '更新于 {time}', 'overview.statRoles': '角色', 'overview.firstLoad': '读取团队配置', 'overview.logNote': '实时状态由宿主推送，不写入对话；点“刷新”读取配置时，对话里会留下一条命令记录。', 'overview.statWorking': '工作中',
       'live.title': '团队工作台', 'live.runningCount': '{n} 个正在工作', 'live.polling': '实时推送', 'live.running': '工作中', 'live.idle': '空闲', 'live.inactive': '未启动', 'live.provisioning': '启动中', 'live.failed': '异常',
-      'live.noTask': '暂无任务', 'live.busyNoTask': '正在处理消息…', 'live.liveModel': '运行时模型（宿主上报）', 'live.configModel': '配置的主用模型（尚未启动）',
+      'live.noTask': '暂无任务', 'live.open': '打开该队友的会话', 'live.busyNoTask': '正在处理消息…', 'live.liveModel': '运行时模型（宿主上报）', 'live.configModel': '配置的主用模型（尚未启动）',
       'models.prefixTitle': '按前缀排除', 'models.prefixPlaceholder': '输入前缀，如 @cf/、cpa/or/、grok-imagine', 'models.prefixAdd': '排除',
       'models.prefixPreview': '{rule} 将排除 {n} 个模型：{list}', 'models.prefixInvalid': '前缀至少 2 个字符，不能含空格或中间的 *', 'models.prefixExists': '这条规则已存在',
       'models.prefixHelp': '前缀同时匹配“渠道/模型”和单独的模型 ID；规则会持续生效，以后新增的同前缀模型也会被排除。保存后生效。',
@@ -76,7 +76,7 @@ window.__ModuleLoader__.load({
     };
     const en = {
       'nav.models': 'Models', 'nav.roles': 'Roles & settings', 'nav.usage': 'Usage', 'nav.logs': 'Request records',
-      'usage.hint': 'Billable tokens = uncached input + cache write + output; cache reads are listed apart. Folded from DSH usage records, retries counted separately. Only non-inherited logs of this team, updated on refresh.', 'usage.total': 'Team total {n}', 'usage.billable': 'Billable {n}', 'usage.cacheRead': 'Cache read {n}', 'usage.budget': 'Budget {used} / {max}', 'usage.over': 'Budget reached; requests blocked', 'usage.none': 'No usage recorded', 'usage.io': 'In {i} · out {o}',
+      'usage.hint': 'Billable tokens = uncached input + cache write + output; cache reads are listed apart, retries counted separately. Totals and step times are pushed live by the host; per-model token splits come from the last refresh.', 'usage.total': 'Team total {n}', 'usage.billable': 'Billable {n}', 'usage.cacheRead': 'Cache read {n}', 'usage.budget': 'Budget {used} / {max}', 'usage.over': 'Budget reached; requests blocked', 'usage.none': 'No usage recorded', 'usage.io': 'In {i} · out {o}', 'usage.step': '{n} steps · {s}s/step', 'usage.ttft': 'first token {s}s', 'usage.decode': '{n} tokens/s', 'usage.stepHint': 'DSH session stats: model wall time per step, time to first token, and decode speed', 'overview.live': 'Live',
       'models.preview': 'Candidates under saved policy (not actual calls)', 'models.blocked': 'Blocked: no allowed model', 'models.unassigned': 'Unassigned', 'models.refreshPreview': 'Policy saved. Refresh to load updated candidates.',
       'evidence.title': 'Session model records', 'evidence.hint': 'Only non-inherited session records. A request header does not prove success; an assistant response does not prove task completion.',
       'evidence.request-header': 'Recorded request configuration', 'evidence.assistant-message': 'Recorded assistant response', 'evidence.empty': 'No verifiable records',
@@ -85,7 +85,7 @@ window.__ModuleLoader__.load({
       'models.filter': 'Filter models or roles…', 'models.noMatch': 'No matching models', 'models.orphans': 'Disabled models outside the catalog', 'models.unused': 'Not used by any role',
       'evidence.short.request-header': 'Request', 'evidence.short.assistant-message': 'Response', 'logs.thisSession': 'This session', 'logs.count': '{n} records', 'logs.interrupted': 'Interrupted',
       'roles.fallbackList': 'Fallbacks: {list}',
-      'roles.editOnly': 'Edits only {list}', 'roles.noEdit': 'No file edits', 'roles.noShell': 'No commands', 'roles.deny': 'Denied: {list}', 'roles.accessHint': 'Enforced by a tool guard', 'roles.whenToUse': 'Use when: {text}', 'roles.maxTokens': 'Budget {n} per session', 'roles.longContext': '≥{n} uses {route}', 'roles.planFirst': 'Plan approval before changes',
+      'roles.editOnly': 'Edits only {list}', 'roles.noEdit': 'No file edits', 'roles.noShell': 'No commands', 'roles.preset': 'DSH sandbox {name}', 'roles.current': 'Now {route}', 'roles.liveModel': 'Model of the latest request (live)', 'logs.live': 'Live: model of each member\'s latest request', 'logs.steps': '{n} steps', 'roles.deny': 'Denied: {list}', 'roles.accessHint': 'Enforced by a tool guard', 'roles.whenToUse': 'Use when: {text}', 'roles.maxTokens': 'Budget {n} per session', 'roles.longContext': '≥{n} uses {route}', 'roles.planFirst': 'Plan approval before changes',
       'workflow.mode': 'Mode', 'workflow.mode.enforce': 'Enforce', 'workflow.mode.remind': 'Remind only', 'workflow.mode.off': 'Off', 'workflow.analysisBudget': 'Read-only steps before dispatch', 'workflow.directBudget': 'Lead direct-action limit',
       'workflow.freeTools': 'Free-model tools', 'workflow.freeModels': 'Free-model order', 'workflow.analysisTools': 'Analysis tools', 'workflow.coordinationTools': 'Coordination tools', 'workflow.allFree': 'All free models in catalog', 'workflow.times': '{n}',
       'models.primary': 'Primary', 'models.fallback': 'Fallback', 'models.save': 'Save globally', 'models.saving': 'Saving…', 'models.saved': 'Saved globally; every session uses it from its next request.',
@@ -126,7 +126,7 @@ window.__ModuleLoader__.load({
       'overview.ready': 'Ready', 'overview.notMounted': 'Not mounted', 'overview.abnormal': 'Needs attention', 'overview.preset': 'Preset', 'overview.missingTools': 'Missing tools', 'overview.details': 'Activation details',
       'overview.revision': 'revision {rev}', 'overview.updated': 'updated {time}', 'overview.statRoles': 'Roles', 'overview.firstLoad': 'Load team configuration', 'overview.logNote': 'Live status is pushed by the host and is not logged; Refresh runs a command that leaves one entry in the conversation.', 'overview.statWorking': 'Working',
       'live.title': 'Team board', 'live.runningCount': '{n} working', 'live.polling': 'Live push', 'live.running': 'Working', 'live.idle': 'Idle', 'live.inactive': 'Not started', 'live.provisioning': 'Starting', 'live.failed': 'Failed',
-      'live.noTask': 'No task', 'live.busyNoTask': 'Handling a message…', 'live.liveModel': 'Runtime model (reported by host)', 'live.configModel': 'Configured primary (not started)',
+      'live.noTask': 'No task', 'live.open': 'Open this teammate\'s session', 'live.busyNoTask': 'Handling a message…', 'live.liveModel': 'Runtime model (reported by host)', 'live.configModel': 'Configured primary (not started)',
       'models.prefixTitle': 'Exclude by prefix', 'models.prefixPlaceholder': 'Prefix, e.g. @cf/, cpa/or/, grok-imagine', 'models.prefixAdd': 'Exclude',
       'models.prefixPreview': '{rule} excludes {n} models: {list}', 'models.prefixInvalid': 'At least 2 characters, no spaces or inner *', 'models.prefixExists': 'Rule already exists',
       'models.prefixHelp': 'A prefix matches both "provider/model" and the bare model id; rules persist and also exclude models added later. Takes effect after saving.',
@@ -282,6 +282,9 @@ window.__ModuleLoader__.load({
 @media (prefers-reduced-motion:reduce){.ctm-bd-link-draw{animation:none;stroke-dashoffset:0}.ctm-bd-link-flow,.ctm-bd-link-dot{display:none}}
 .ctm-bd-card{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 10px 11px;border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px rgba(0,0,0,.05);transition:border-color .2s,box-shadow .2s,opacity .2s}
 .ctm-bd-card[data-status=inactive]{opacity:.62;border-style:dashed}
+.ctm-bd-card[data-open]{cursor:pointer}
+.ctm-bd-card[data-open]:hover{border-color:var(--ctm-accent)}
+.ctm-bd-card[data-open]:focus-visible{outline:2px solid var(--ctm-accent);outline-offset:2px}
 .ctm-bd-card[data-status=failed]{border-color:var(--dsw-alias-state-error-primary)}
 .ctm-bd-card[data-status=running]{border-color:var(--ctm-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ctm-accent) 14%,transparent),0 4px 14px color-mix(in srgb,var(--ctm-accent) 18%,transparent);animation:ctm-glow 2.4s ease-in-out infinite}
 @keyframes ctm-glow{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--ctm-accent) 8%,transparent),0 4px 18px color-mix(in srgb,var(--ctm-accent) 26%,transparent)}}
@@ -661,7 +664,7 @@ window.__ModuleLoader__.load({
     const PolicyEditor = React.memo ? React.memo(ModelPolicyEditor, (a, b) => a.sessionId === b.sessionId && a.policy === b.policy
       && a.save === b.save && (a.t === b.t || a.t('models.save') === b.t('models.save'))) : ModelPolicyEditor;
 
-    function RoleCards({ roles, t }) {
+    function RoleCards({ roles, live, t }) {
       return h('div', { className: 'ctm-ov-roles' }, ...roles.map(r => {
         const fallbacks = (Array.isArray(r.fallbacks) ? r.fallbacks : []).map(routeText).filter(Boolean);
         return h('div', { key: r.id, className: 'ctm-ov-role' },
@@ -673,6 +676,7 @@ window.__ModuleLoader__.load({
           r.whenToUse ? h('span', { className: 'ctm-sub' }, fmt(t('roles.whenToUse'), { text: r.whenToUse })) : null,
           h('span', { className: r.provider ? 'ctm-ov-route' : 'ctm-ov-route ctm-warn', title: r.blocked },
             r.provider ? `${r.provider}/${r.model}` : t(r.blocked ? 'models.blocked' : 'team.unassigned')),
+          liveRoleLine(live?.get(r.id), t),
           fallbacks.length ? h('span', { className: 'ctm-sub', title: fallbacks.join('\n') }, fmt(t('roles.fallbackList'), { list: fallbacks.join('、') })) : null,
           r.maxTokens || r.longContext || r.planFirst ? h('div', { className: 'ctm-chips' },
             r.planFirst ? badge(t('roles.planFirst'), 'brand', 'p') : null,
@@ -681,12 +685,20 @@ window.__ModuleLoader__.load({
           accessBadges(r.access, t));
       }));
     }
+    /** The member currently filling this role: live status and the model of its latest request. */
+    function liveRoleLine(member, t) {
+      if (!member) return null;
+      return h('div', { className: 'ctm-chips' },
+        badge(label(t, `live.${member.status}`, member.status), LIVE[member.status], 's'),
+        member.model ? h('span', { className: 'ctm-sub', title: t('roles.liveModel') }, fmt(t('roles.current'), { route: [member.provider, member.model].filter(Boolean).join('/') })) : null);
+    }
     /** Permission chips for one role; nothing when the capability has no access policy. */
     function accessBadges(access, t) {
       if (!access || typeof access !== 'object') return null;
       const items = [];
       if (Array.isArray(access.editPaths)) items.push(access.editPaths.length ? fmt(t('roles.editOnly'), { list: access.editPaths.join('、') }) : t('roles.noEdit'));
-      if (access.shell === false) items.push(t('roles.noShell'));
+      if (access.preset) items.push(fmt(t('roles.preset'), { name: access.preset }));
+      else if (access.shell === false) items.push(t('roles.noShell'));
       if (access.deny?.length) items.push(fmt(t('roles.deny'), { list: access.deny.join('、') }));
       return items.length ? h('div', { className: 'ctm-chips', title: t('roles.accessHint') }, ...items.map((text, i) => badge(text, 'warn', 'a' + i))) : null;
     }
@@ -708,35 +720,89 @@ window.__ModuleLoader__.load({
     }
 
     const billable = u => (u?.uncachedInputTokens ?? 0) + (u?.cacheWriteTokens ?? 0) + (u?.outputTokens ?? 0);
-    const usageTotal = members => (members ?? []).reduce((n, m) => n + billable(m.usage?.totals), 0);
+    const usageTotal = rows => (rows ?? []).reduce((n, row) => n + billable(row.totals), 0);
     const compact = n => n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k` : String(n);
-    /** Per-member token usage from the last refresh, with each role's budget when its capability sets maxTokens. */
-    function UsageGroups({ d, roles, t }) {
-      const members = (d.memberEvidence?.length ? d.memberEvidence : [{ name: 'lead', ...(d.requestEvidence ?? {}) }]).filter(m => m.usage);
+    const splitRoute = route => { const i = route.indexOf('/'); return i > 0 ? { provider: route.slice(0, i), model: route.slice(i + 1) } : {}; };
+    const PHASE = { provisioning: 'provisioning', failed: 'failed' };
+    /** Roster and board tasks from the Lead's live `agentTeam` projection, with each member's routed model. */
+    function teamActivityFrom(team, live) {
+      return {
+        members: (team.members ?? []).map(m => {
+          // DSH's modelSelection: the pending pick, else the model of the last request header, which this plugin routes.
+          const next = live.projections(m.id)?.modelSelection?.next;
+          return { id: m.id, name: m.name, role: m.role,
+            status: PHASE[m.phase] ?? (m.phase === 'active' ? (live.running(m.id) ? 'running' : 'idle') : 'inactive'),
+            ...(next?.provider && next.model ? { provider: next.provider, model: next.model } : {}), diagnostics: m.error ? [String(m.error.message ?? m.error)] : [] };
+        }),
+        tasks: (team.tasks ?? []).map(task => ({ id: task.id, subject: task.subject, status: task.status, ...(task.ownerName ? { ownerName: task.ownerName } : {}) })),
+      };
+    }
+    /**
+     * One usage row per member from DSH's own live projections: totals from token-meter's `tokenUsage`, timing from
+     * `sessionStats`, the current model from `modelSelection`. Per-model token splits come from the last refresh.
+     */
+    function usageRows(d, liveTeam, live) {
+      const snapshot = new Map((d?.memberEvidence?.length ? d.memberEvidence : d ? [{ sessionId: d.sessionId, name: 'lead', ...(d.requestEvidence ?? {}) }] : [])
+        .filter(m => m.usage).map(m => [m.sessionId, m]));
+      const members = liveTeam?.members ?? [...snapshot.values()].map(m => ({ id: m.sessionId, name: m.name }));
+      return members.map(m => {
+        const values = liveTeam ? live.projections(m.id) : undefined;
+        const before = snapshot.get(m.id)?.usage;
+        const next = values?.modelSelection?.next;
+        return { id: m.id, name: m.name, totals: values?.tokenUsage ?? before?.totals, routes: before?.routes ?? [],
+          ...(next?.provider && next.model ? { model: `${next.provider}/${next.model}` } : {}), ...(values?.sessionStats ? { stats: values.sessionStats } : {}) };
+      }).filter(row => row.totals || row.routes.length || row.stats);
+    }
+    /** Average model seconds per step, time to first token, and decode speed from one session's `sessionStats`. */
+    function statsLine(stats, t) {
+      if (!stats?.steps) return null;
+      const parts = [fmt(t('usage.step'), { n: stats.steps, s: (stats.llmMs / stats.steps / 1000).toFixed(1) })];
+      if (stats.ttftSteps) parts.push(fmt(t('usage.ttft'), { s: (stats.ttftMs / stats.ttftSteps / 1000).toFixed(1) }));
+      if (stats.decodeMs) parts.push(fmt(t('usage.decode'), { n: Math.round(stats.decodeTokens / (stats.decodeMs / 1000)) }));
+      return parts.join(' · ');
+    }
+    /** Per-member token usage, each role's budget when its capability sets maxTokens, and model time per step. */
+    function UsageGroups({ rows: members, roles, t }) {
       const byId = new Map(roles.map(r => [r.id, r]));
-      const top = Math.max(1, ...members.map(m => billable(m.usage.totals)));
+      const top = Math.max(1, ...members.map(m => billable(m.totals)));
       return h('div', { className: 'ctm-ov-block' },
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('usage.hint')),
         members.length ? h('span', { className: 'ctm-label' }, fmt(t('usage.total'), { n: compact(usageTotal(members)) })) : null,
         ...(members.length ? members.map((m, index) => {
           const role = byId.get(m.name);
-          const used = billable(m.usage.totals);
+          const used = billable(m.totals);
           const max = role?.maxTokens;
           const ratio = max ? Math.min(1, used / max) : used / top;
           const tone = max && used >= max ? 'error' : max && ratio >= 0.8 ? 'warn' : undefined;
-          return h('details', { key: m.sessionId ?? index, className: 'ctm-ov-group', open: index === 0 },
+          const timing = statsLine(m.stats, t);
+          return h('details', { key: m.id ?? index, className: 'ctm-ov-group', open: index === 0 },
             h('summary', null,
               h('span', { className: 'ctm-name' }, role?.displayName ?? m.name),
               h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('usage.billable'), { n: compact(used) })),
               max ? badge(fmt(t('usage.budget'), { used: compact(used), max: compact(max) }), tone ?? 'brand', 'b') : null),
             h('div', { className: 'ctm-us-meter', 'data-tone': tone, role: 'presentation' }, h('i', { style: { width: `${(ratio * 100).toFixed(1)}%` } })),
             tone === 'error' ? h('p', { className: 'ctm-ov-note ctm-error' }, t('usage.over')) : null,
-            m.usage.routes.length ? h('div', { className: 'ctm-ov-logs' }, ...m.usage.routes.map(r => h('div', { key: r.route, className: 'ctm-ov-log' },
+            m.model || m.stats ? h('div', { className: 'ctm-ov-log' },
+              m.model ? h('span', { className: 'ctm-ov-route', title: m.model }, m.model) : null,
+              timing ? h('span', { className: 'ctm-sub ctm-us-num', title: t('usage.stepHint') }, timing) : null) : null,
+            m.routes.length ? h('div', { className: 'ctm-ov-logs' }, ...m.routes.map(r => h('div', { key: r.route, className: 'ctm-ov-log' },
               h('span', { className: 'ctm-ov-route', title: r.route }, r.route),
               h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('usage.io'), { i: compact(r.uncachedInputTokens + r.cacheWriteTokens), o: compact(r.outputTokens) })),
               r.cacheReadTokens ? h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('usage.cacheRead'), { n: compact(r.cacheReadTokens) })) : null)))
-              : h('p', { className: 'ctm-sub' }, t('usage.none')));
+              : m.model || m.stats ? null : h('p', { className: 'ctm-sub' }, t('usage.none')));
         }) : [h('p', { key: 'none', className: 'ctm-sub' }, t('usage.none'))]));
+    }
+
+    /** Live per-member request summary: the model of the latest request and how many steps it took so far. */
+    function LiveRequests({ rows, t }) {
+      const list = rows.filter(row => row.model || row.stats);
+      if (!list.length) return null;
+      return h('div', { className: 'ctm-ov-block' },
+        h('span', { className: 'ctm-label' }, t('logs.live')),
+        h('div', { className: 'ctm-ov-logs' }, ...list.map(row => h('div', { key: row.id, className: 'ctm-ov-log' },
+          h('span', { className: 'ctm-name' }, row.name),
+          row.model ? h('span', { className: 'ctm-ov-route', title: row.model }, row.model) : null,
+          row.stats?.steps ? h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('logs.steps'), { n: row.stats.steps })) : null))));
     }
 
     function EvidenceGroups({ d, sessionId, t }) {
@@ -880,14 +946,17 @@ window.__ModuleLoader__.load({
             h('animateMotion', { dur: '1.6s', begin: '0.6s', repeatCount: 'indefinite', path: link.d })) : null,
           h('circle', { className: 'ctm-bd-link-end', cx: link.end[0], cy: link.end[1], r: 2.5, ...(link.active ? { 'data-active': '' } : {}) }))));
     }
-    function TeamBoard({ roles, activity, allocations, since, t }) {
+    function TeamBoard({ roles, activity, allocations, since, t, open }) {
       const cards = boardCards(roles, activity, allocations);
       const lead = cards.filter(c => c.lead);
       const mates = cards.filter(c => !c.lead);
       const running = cards.filter(c => c.status === 'running').length;
       const canvas = React.useRef(null);
       const links = useBoardLinks(canvas, cards);
-      const card = c => h('div', { key: c.id, className: 'ctm-bd-card', 'data-status': c.status, 'data-card': c.id, ...(c.delegated ? { 'data-delegated': '' } : {}) },
+      const openable = c => open && !c.lead && c.member?.id;
+      const card = c => h('div', { key: c.id, className: 'ctm-bd-card', 'data-status': c.status, 'data-card': c.id, ...(c.delegated ? { 'data-delegated': '' } : {}),
+        ...(openable(c) ? { role: 'button', tabIndex: 0, title: t('live.open'), 'data-open': '', onClick: () => open(c.member.id),
+          onKeyDown: event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(c.member.id); } } } : {}) },
         h('div', { className: 'ctm-bd-top' },
           h('span', { className: 'ctm-bd-avatar', 'aria-hidden': true }, Array.from(c.name)[0] ?? '?'),
           h('div', { className: 'ctm-who' }, h('span', { className: 'ctm-name' }, c.name), h('span', { className: 'ctm-sub' }, c.role?.capability ?? c.id)),
@@ -913,21 +982,24 @@ window.__ModuleLoader__.load({
           mates.length ? h('div', { className: 'ctm-bd-mates' }, ...mates.map(card)) : null));
     }
 
-    function Overview({ sessionId, t, load, save, live, cache }) {
+    function Overview({ sessionId, t, load, save, live, cache, openMember }) {
       const [state, setState] = React.useState({ pending: false });
       const [tab, setTab] = React.useState('models');
       const ticket = React.useRef(0);
       const [, redraw] = React.useState(0);
       const [children, setChildren] = React.useState(null);
-      // The status command is logged into the conversation by the host, so it only runs on an explicit click.
+      const configVersionNow = () => live?.projections?.(sessionId)?.capabilityTeamConfig?.version;
+      // The status command leaves a card in the conversation (never model context), so it runs on a click, once when
+      // a team session has no snapshot yet, and again only when a configuration save moves the config counter.
       const refresh = async () => {
         const id = ++ticket.current;
+        const configVersion = configVersionNow();
         setState(previous => ({ ...(previous.sessionId === sessionId ? previous : {}), pending: true, error: undefined, sessionId }));
         try {
           const data = await load(sessionId);
           const at = Date.now();
-          cache?.put(sessionId, { data, at });
-          if (ticket.current === id) setState({ data, sessionId, at });
+          cache?.put(sessionId, { data, at, configVersion });
+          if (ticket.current === id) setState({ data, sessionId, at, configVersion });
         } catch (error) {
           if (ticket.current === id) setState(previous => ({ ...(previous.sessionId === sessionId ? previous : {}), pending: false, error: String(error.message ?? error), sessionId }));
         }
@@ -945,9 +1017,29 @@ window.__ModuleLoader__.load({
       const stored = state.sessionId === sessionId ? state : null;
       const cached = stored?.data ? null : cache?.get(sessionId);
       // Before the first manual read in this panel, show the last cached snapshot for this session.
-      const current = cached ? { ...stored, data: cached.data, at: cached.at, cached: true } : stored ?? {};
+      const current = cached ? { ...stored, data: cached.data, at: cached.at, configVersion: cached.configVersion, cached: true } : stored ?? {};
       const d = current.data;
-      const roster = liveRoster(sessionId, d?.activity, children?.sessionId === sessionId ? children.entries : null, live, current.at);
+      // The Lead's agentTeam projection is pushed live; without it the board falls back to the last refresh.
+      const liveTeam = live?.projections?.(sessionId)?.agentTeam;
+      const liveActivity = liveTeam ? teamActivityFrom(liveTeam, live) : null;
+      const roster = liveRoster(sessionId, liveActivity ?? d?.activity, children?.sessionId === sessionId ? children.entries : null, live, liveActivity ? Date.now() : current.at);
+      const usage = usageRows(d, liveTeam, live);
+      const shown = !!(d || liveTeam);
+      const boardRoles = d?.team?.roles ?? (liveTeam?.members ?? []).map(m => ({ id: m.name, displayName: m.name, ...(m.role === 'lead' ? { capability: 'orchestrator' } : {}) }));
+      const configVersion = configVersionNow();
+      // At most one automatic read per session and config counter; a failed one waits for a click or the next save.
+      const autoKey = React.useRef('');
+      React.useEffect(() => {
+        if (current.pending || !liveTeam) return;
+        const formed = (liveTeam.members?.length ?? 0) > 1;
+        const stale = d ? configVersion !== undefined && current.configVersion !== configVersion : formed;
+        const key = `${sessionId}:${d ? configVersion : 'initial'}`;
+        if (!stale || autoKey.current === key) return;
+        autoKey.current = key;
+        refresh();
+      }, [sessionId, configVersion, !!d, !!liveTeam, liveTeam?.members?.length, current.pending]);
+      // Live member rows by role id (teammates spawn under their role id) for the role and log tabs.
+      const liveByRole = new Map((roster?.members ?? []).map(m => [m.role === 'lead' ? 'lead' : m.name, m]));
       const since = new Map((roster?.members ?? []).filter(m => m.since).map(m => [m.id, m.since]));
       const working = (roster?.members ?? []).filter(m => m.status === 'running').length;
       const team = d?.team;
@@ -971,7 +1063,7 @@ window.__ModuleLoader__.load({
       const tabs = [
         ['models', policy?.rows?.length],
         ['roles', team?.roles?.length],
-        ['usage', usageTotal(d?.memberEvidence) ? compact(usageTotal(d.memberEvidence)) : null],
+        ['usage', usageTotal(usage) ? compact(usageTotal(usage)) : null],
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       return h('section', { className: 'ctm-ov' },
@@ -979,6 +1071,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'ctm-ov-titlerow' },
             h('h2', { className: 'ctm-ov-title' }, t('overview.title')),
             health ? badge(health.text, health.tone, 'health') : null,
+            liveTeam ? badge(t('overview.live'), 'success', 'live') : null,
             h('button', { type: 'button', className: 'ctm-btn ctm-ov-refresh', disabled: current.pending, onClick: refresh, 'aria-busy': !!current.pending },
               t(current.pending ? 'overview.loading' : 'overview.refresh'))),
           h('p', { className: 'ctm-sub' }, team ? [team.name, fmt(t('overview.revision'), { rev: team.revision })].filter(Boolean).join(' · ') : t('overview.hint'),
@@ -986,7 +1079,7 @@ window.__ModuleLoader__.load({
           h('p', { className: 'ctm-sub ctm-ov-lognote' }, t('overview.logNote'))),
         h('div', { className: 'ctm-ov-scroll' },
           current.error ? h('p', { role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, current.error) : null,
-          !d ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(current.pending ? 'overview.loading' : 'overview.empty')),
+          !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(current.pending ? 'overview.loading' : 'overview.empty')),
             current.pending ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
           d && team ? h('div', { className: 'ctm-ov-stats' },
             stat(team.roles?.length ?? 0, t('overview.statRoles'), undefined, 'r'),
@@ -998,18 +1091,20 @@ window.__ModuleLoader__.load({
             ? h('details', { className: 'ctm-ov-group ctm-ov-diag' }, h('summary', null, h('span', { className: 'ctm-name' }, t('overview.details'))), h('div', { className: 'ctm-ov-block' }, ...diagnostics))
             : h('div', { className: 'ctm-ov-callout', 'data-tone': health.tone }, ...diagnostics)) : null,
           ...(team?.catalogErrors ?? []).map(error => h('p', { key: error.provider, role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, `${error.provider}: ${error.error}`)),
-          d ? h('nav', { className: 'ctm-ov-tabs', 'aria-label': t('overview.title') },
+          shown ? h('nav', { className: 'ctm-ov-tabs', 'aria-label': t('overview.title') },
             ...tabs.map(([id, count]) => h('button', { key: id, type: 'button', className: 'ctm-ov-tab', 'aria-pressed': tab === id, onClick: () => setTab(id) },
               t('nav.' + id), count ? h('span', { className: 'ctm-ov-count' }, String(count)) : null))) : null,
-          d ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'usage', hidden: tab !== 'usage' }, h(UsageGroups, { d, roles: team?.roles ?? [], t })) : null,
-          d ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'logs', hidden: tab !== 'logs' }, h(EvidenceGroups, { d, sessionId, t })) : null,
-          d ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'models', hidden: tab !== 'models' },
+          shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'usage', hidden: tab !== 'usage' }, h(UsageGroups, { rows: usage, roles: team?.roles ?? [], t })) : null,
+          shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'logs', hidden: tab !== 'logs' },
+            liveTeam ? h(LiveRequests, { rows: usage, t }) : null,
+            d ? h(EvidenceGroups, { d, sessionId, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData'))) : null,
+          shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'models', hidden: tab !== 'models' },
             h('div', { className: 'ctm-ov-split' },
-              team ? h(TeamBoard, { roles: team.roles ?? [], activity: roster, allocations: policy?.allocations, since, t }) : null,
+              team || liveTeam ? h(TeamBoard, { roles: boardRoles, activity: roster, allocations: policy?.allocations, since, t, open: openMember && (id => openMember(sessionId, id)) }) : null,
               policy ? h(PolicyEditor, { key: `${sessionId}:${policy.revision}`, sessionId, policy, save, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null,
-          d ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'roles', hidden: tab !== 'roles' },
+          shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'roles', hidden: tab !== 'roles' },
             team ? h(React.Fragment, null,
-              h(RoleCards, { roles: team.roles ?? [], t }),
+              h(RoleCards, { roles: team.roles ?? [], live: liveByRole, t }),
               team.modelNotice ? h('p', { className: 'ctm-sub ctm-ov-help' }, team.modelNotice) : null,
               h('div', { className: 'ctm-ov-block' }, h('div', { className: 'ctm-label' }, t('overview.policy')), h(WorkflowList, { workflow: team.workflow, t })))
               : h('p', { className: 'ctm-sub' }, t('overview.noData'))) : null));
@@ -1046,10 +1141,15 @@ window.__ModuleLoader__.load({
     /** Host-pushed agent status (no polling, nothing logged) plus the read-only direct-child catalog. */
     function liveStore(ctx) {
       const remote = ctx.remote;
+      const sessions = ctx.sessions;
       const states = new Map();
       const listeners = new Set();
+      const requested = new Set();
       let roster = 0;
       const notify = () => { for (const listener of listeners) listener(); };
+      // DSH's own projection frames (agentTeam, modelSelection, tokenUsage, sessionStats) reach the shared Session store without any command.
+      if (typeof sessions?.list?.subscribe === 'function') ctx.effect(() => sessions.list.subscribe(notify), 'capability-team: session store');
+      const snapshot = () => { try { return sessions?.list?.getSnapshot?.(); } catch { return undefined; } };
       const on = (event, listener) => { if (typeof remote?.$on === 'function') remote.$on(event, listener); };
       on('api-session/status', (id, running) => {
         const previous = states.get(id) ?? {};
@@ -1062,6 +1162,16 @@ window.__ModuleLoader__.load({
       on('api-session/removed', id => { states.delete(id); roster++; notify(); });
       return {
         startedAt: Date.now(),
+        /** Live projection values of one session; asks the host once for a session the store has not loaded yet. */
+        projections(id) {
+          const entry = snapshot()?.projectionsBySession?.[id];
+          if (!entry && id && !requested.has(id) && typeof sessions?.refreshProjections === 'function') {
+            requested.add(id);
+            sessions.refreshProjections(id).catch(() => { requested.delete(id); });
+          }
+          return entry?.values;
+        },
+        running: id => snapshot()?.byId?.[id]?.running,
         status: id => states.get(id),
         rosterVersion: () => roster,
         subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
@@ -1081,7 +1191,7 @@ window.__ModuleLoader__.load({
     };
 
     return {
-      inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs'],
+      inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'capability-team: dictionaries');
         ctx.effect(() => {
@@ -1112,7 +1222,10 @@ window.__ModuleLoader__.load({
         }), 'capability-team: right sidebar tab');
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab', key: 'capability-team-overview', id: 'capability-team-overview', locale: NS,
-        }, props => h(Overview, { ...props, t: props.t ?? bound, load, save, live, cache: snapshotCache })));
+        }, props => h(Overview, { ...props, t: props.t ?? bound, load, save, live, cache: snapshotCache,
+          // Same navigation as DSH's own Team panel: open the teammate's continuable session.
+          openMember: typeof ctx.uiWorkspace?.openSession === 'function'
+            ? (parentSessionId, childSessionId) => ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' }) : undefined })));
         // Each view receives `t`; fall back to the bound translator when the slot does not inject one.
         const withT = View => function CapabilityToolView(props) { return h(View, { ...props, t: props.t ?? bound }); };
         for (const [key, View] of Object.entries(VIEWS)) {

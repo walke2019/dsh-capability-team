@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { globRegex, checkAccess, applyAccess, accessSummary } from '../access.js';
+import { globRegex, checkAccess, applyAccess, accessSummary, presetActive, ensurePreset } from '../access.js';
 import { effectiveConfig } from '../config.js';
 const where = { project: '/repo', cwd: '/repo', label: '角色 W' };
 const docsOnly = { deny: [], editPaths: ['**/*.md', 'docs/**'], shell: false };
@@ -39,7 +39,7 @@ test('shell 与禁用工具（含前缀规则）；空 editPaths 不能改任何
 });
 test('配置校验：默认值、null 取消限制、拒绝越界路径和未知字段', () => {
   const base = effectiveConfig({});
-  assert.deepEqual(base.capabilities.research.access, { deny: [], editPaths: [], shell: false });
+  assert.deepEqual(base.capabilities.research.access, { deny: [], editPaths: [], shell: false, preset: 'read-only' });
   assert.equal(base.capabilities.backend.access, undefined);
   assert.equal(effectiveConfig({ capabilities: { writer: { access: null } } }).capabilities.writer.access, undefined);
   assert.deepEqual(effectiveConfig({ capabilities: { qa: { access: { editPaths: ['./tests/**'] } } } }).capabilities.qa.access, { deny: [], editPaths: ['tests/**'], shell: true });
@@ -71,4 +71,37 @@ test('whenToUse：默认写入名册与角色视图，可清除，校验长度�
   assert.equal(effectiveConfig({ capabilities: { writer: { whenToUse: null } } }).capabilities.writer.whenToUse, undefined);
   assert.throws(() => effectiveConfig({ capabilities: { qa: { whenToUse: 'x'.repeat(501) } } }), /适用场景/);
   assert.throws(() => effectiveConfig({ capabilities: { qa: { whenToUse: 'a\nb' } } }), /适用场景/);
+});
+
+test('官方权限预设：生效后放行命令（由沙箱约束），未生效或不存在时仍拦截；请求前自动切换', () => {
+  const research = effectiveConfig({}).capabilities.research.access;
+  const where2 = { project: '/repo', cwd: '/repo', label: '角色 R' };
+  assert.match(checkAccess({ name: 'bash', arguments: {} }, research, where2), /权限预设 read-only 尚未生效/);
+  assert.equal(checkAccess({ name: 'bash', arguments: {} }, research, { ...where2, sandboxed: true }), undefined);
+  assert.match(checkAccess({ name: 'write', arguments: { file_path: 'a.md' } }, research, { ...where2, sandboxed: true }), /不允许修改任何文件/); // file tools stay guarded
+  const current = new Map(); const logs = [];
+  const presets = { current: s => current.get(s) ?? 'danger-full-access', set: (s, name) => { if (name === 'missing') throw new Error('unknown preset'); current.set(s, name); } };
+  const session = {};
+  assert.equal(presetActive(presets, session, research), false);
+  ensurePreset(presets, session, research);
+  assert.equal(presetActive(presets, session, research), true);
+  ensurePreset(presets, {}, { ...research, preset: 'missing' }, m => logs.push(m));
+  assert.match(logs[0], /无法应用权限预设 missing/);
+  assert.equal(presetActive(undefined, session, research), false);
+  assert.equal(presetActive({ current: () => { throw new Error('x'); } }, session, research), false);
+  assert.match(accessSummary(research), /运行在 DSH 权限预设 read-only 中，命令只在该沙箱内执行/);
+  assert.throws(() => effectiveConfig({ capabilities: { qa: { access: { preset: 'custom' } } } }), /不能是 custom 或 auto/);
+  assert.throws(() => effectiveConfig({ capabilities: { qa: { access: { preset: 'a b' } } } }), /DSH 权限预设名/);
+});
+test('守卫读取官方预设是否生效来决定是否放行命令', () => {
+  let guard;
+  const effective = effectiveConfig({});
+  let active = false;
+  const ctx = { effect: fn => fn(), tools: { guard: fn => { guard = fn; } }, get: key => key === 'permissionPresets' ? { current: () => active ? 'read-only' : 'danger-full-access' } : undefined,
+    agentTeams: { tryMembership: () => ({ role: 'teammate', name: 'zhao-yun' }) }, workingDirectory: { get: () => '/repo' } };
+  applyAccess(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }) });
+  const call = () => guard({ agent: { id: 'r', session: {} }, name: 'bash', arguments: {} });
+  assert.match(call(), /尚未生效/);
+  active = true;
+  assert.equal(call(), undefined);
 });

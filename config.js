@@ -6,7 +6,7 @@ const LINE_CONTROL = /[\x00-\x1f\x7f]/;
 const TEXT_CONTROL = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 const SECTIONS = ['tiers', 'capabilities', 'roles'];
 const CAPABILITY_KEYS = ['job', 'whenToUse', 'provider', 'model', 'tier', 'search', 'fallbacks', 'prefer', 'access', 'maxTokens', 'longContext', 'planFirst'];
-const ACCESS_KEYS = ['deny', 'editPaths', 'shell'];
+const ACCESS_KEYS = ['deny', 'editPaths', 'shell', 'preset'];
 const FAILOVER_KEYS = ['retries', 'initialDelayMs', 'maxDelayMs', 'cooldownMs', 'retryCodes', 'failoverCodes', 'failoverStatuses'];
 const MAX_FALLBACKS = 8;
 const ROLE_KEYS = ['displayName', 'capability', 'description'];
@@ -58,7 +58,8 @@ export const seed = deepFreeze({
     frontend: { job: '页面、组件、交互与前端测试', whenToUse: '要修改页面、组件、样式或前端交互，或修复界面缺陷时', tier: 'medium', search: false, prefer: ['gemini', 'claude', 'gpt'] },
     // access: tools a role may not use, whether it may run commands, and the project paths it may edit.
     research: { job: '调用检索工具、核实来源与交叉验证', whenToUse: '需要联网查资料、核实版本或文档、对比方案出处时；只读，不改文件', tier: 'medium', search: true, prefer: ['gemini', 'gpt', 'grok'],
-      access: { editPaths: [], shell: false } },
+      // read-only is DSH's own sandbox preset: once it is in effect the session may run read-only commands.
+      access: { editPaths: [], shell: false, preset: 'read-only' } },
     writer: { job: '文档与交付说明', whenToUse: '要写或改 README、说明文档、变更记录、交付说明时；只改文档，不改代码', tier: 'low', search: false, prefer: ['gpt', 'claude', 'gemini', 'deepseek', 'qwen'],
       access: { editPaths: ['**/*.md', '**/*.mdx', '**/*.txt', 'docs/**'], shell: false } },
     qa: { job: '测试计划、回归测试、接口与界面验收、失败复现及证据；区分实测、模拟与未验证，不默认修改业务实现', whenToUse: '实现完成后需要独立验证、编写或运行测试、复现缺陷并留存证据时', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
@@ -162,7 +163,12 @@ function validateAccess(a, label) {
       if (v.startsWith('/') || /^[A-Za-z]:/.test(v) || v.startsWith('~') || v.split('/').includes('..')) throw new Error(`${label}的路径规则 ${v} 须为项目内的相对路径，不能含 ..`);
     }
   }
-  return { deny, editPaths, shell: a.shell !== false };
+  let preset;
+  if (a.preset !== undefined && a.preset !== null) {
+    preset = text(a.preset, 64, `${label}的 preset`);
+    if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(preset) || ['custom', 'auto'].includes(preset)) throw new Error(`${label}的 preset 须为 DSH 权限预设名（不能是 custom 或 auto）`);
+  }
+  return { deny, editPaths, shell: a.shell !== false, ...(preset ? { preset } : {}) };
 }
 function toolNames(list, label) {
   if (!Array.isArray(list) || list.length > 100) throw new Error(`${label}须为不超过100项的工具名数组`);

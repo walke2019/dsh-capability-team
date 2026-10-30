@@ -26,11 +26,25 @@ export function editTarget(exec) {
   if (!key || (exec.name === 'str_replace_editor' && exec.arguments?.command === 'view')) return undefined;
   return typeof exec.arguments?.[key] === 'string' ? exec.arguments[key] : '';
 }
-/** Pure decision for one call under a capability's access policy; returns a denial reason or undefined. */
-export function checkAccess(exec, access, { project, cwd, label }) {
+/** Whether the session currently runs under the capability's DSH permission preset (sandbox and approval both match). */
+export function presetActive(presets, session, access) {
+  if (!access?.preset || typeof presets?.current !== 'function') return false;
+  try { return presets.current(session) === access.preset; } catch { return false; }
+}
+/** Switch the session to the capability's DSH permission preset when it is not already in effect. */
+export function ensurePreset(presets, session, access, log = () => {}) {
+  if (!access?.preset || typeof presets?.set !== 'function' || presetActive(presets, session, access)) return;
+  try { presets.set(session, access.preset); }
+  catch (error) { log(`无法应用权限预设 ${access.preset}：${error.message ?? error}；命令仍按 access.shell 拦截`); }
+}
+/**
+ * Pure decision for one call under a capability's access policy; returns a denial reason or undefined.
+ * `sandboxed` means DSH's own permission preset is in effect, so its sandbox, not this guard, bounds commands.
+ */
+export function checkAccess(exec, access, { project, cwd, label, sandboxed = false }) {
   if (!access) return undefined;
   if (access.deny.length && matchesTool(exec.name, access.deny)) return `${label}不允许使用工具 ${exec.name}（项目团队配置的 access.deny）。需要时请向 lead 汇报，由主控改派或经用户确认调整权限。`;
-  if (!access.shell && matchesTool(exec.name, SHELL_TOOLS)) return `${label}不允许执行命令（项目团队配置的 access.shell=false）。需要运行命令时请向 lead 汇报。`;
+  if (!access.shell && !sandboxed && matchesTool(exec.name, SHELL_TOOLS)) return `${label}不允许执行命令（项目团队配置的 access.shell=false${access.preset ? `，权限预设 ${access.preset} 尚未生效` : ''}）。需要运行命令时请向 lead 汇报。`;
   if (!access.editPaths) return undefined;
   const target = editTarget(exec);
   if (target === undefined) return undefined;
@@ -46,7 +60,8 @@ export function accessSummary(access) {
   if (!access) return undefined;
   const parts = [];
   if (access.editPaths) parts.push(access.editPaths.length ? `只能修改 ${access.editPaths.join('、')}` : '不能修改文件');
-  if (!access.shell) parts.push('不能执行命令');
+  if (access.preset) parts.push(`运行在 DSH 权限预设 ${access.preset} 中${access.shell ? '' : '，命令只在该沙箱内执行'}`);
+  else if (!access.shell) parts.push('不能执行命令');
   if (access.deny.length) parts.push(`禁用工具 ${access.deny.join('、')}`);
   return parts.length ? parts.join('；') : undefined;
 }
@@ -63,6 +78,7 @@ export function applyAccess(ctx, team) {
       return /未在当前项目的团队配置中登记/.test(error.message) ? undefined : `团队配置读取失败，已停止执行：${error.message}`;
     }
     const cwd = ctx.workingDirectory.get?.(exec.agent.session) ?? project;
-    return checkAccess(exec, role.access, { project, cwd, label: `角色 ${role.displayName}（${role.capability}）` });
+    const sandboxed = presetActive(ctx.get?.('permissionPresets'), exec.agent.session, role.access);
+    return checkAccess(exec, role.access, { project, cwd, sandboxed, label: `角色 ${role.displayName}（${role.capability}）` });
   }));
 }

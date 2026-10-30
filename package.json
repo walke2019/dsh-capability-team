@@ -43,6 +43,7 @@
     "long-context.js",
     "plan-gate.js",
     "template.js",
+    "config-projection.js",
     "session-policy.js",
     "request-evidence.js",
     "client.js",
