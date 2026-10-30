@@ -26,7 +26,7 @@ description: 用户要为当前项目调整团队时使用：角色改名或整�
 - 派活工作流：workflow 按字段合并，null 恢复默认。mode 为 enforce（强制主控先用 capability_dispatch_plan 分析并指派，指派后不亲自执行）、remind（只提醒）或 off；analysisBudget 为制定计划前的只读分析次数；directBudget 为主控自行处理时的执行次数上限；freeTools 为免费模型工具级别（none 只处理文字，默认；read 可读取搜索项目文件；write 还可新建和编辑项目文件；任何级别都不能执行命令、联网、访问项目外路径或读写密钥文件；调高前须告知用户项目文件内容会发送到免费模型云端）；freeModels 为免费模型尝试顺序（空数组表示使用 OpenCode 模型目录中全部免费模型，新的在前；只能填目录中成本为 0 且未弃用的模型）；analysisTools / coordinationTools 为工具名数组，其余工具视为执行类。
 - 容灾策略：failover 按字段合并，null 恢复默认。retries 为DSH渠道自带重试之后，同一模型的追加重试次数（指数退避，从 initialDelayMs 起，最长 maxDelayMs）；用尽后才按顺序切换备选。cooldownMs 为故障模型的冷却时间，期间新请求直接用备选，到期自动回到主模型。retryCodes、failoverCodes、failoverStatuses 决定哪些错误重试、哪些切换。
 - 新增角色：roles 中新增 lower-kebab-case 内部id及其 capability，之后主控用该id创建队友。
-- 权限：capabilities 的 access 为 `{"deny": [...], "editPaths": [...], "shell": true/false}`，整体替换，`null` 取消限制。deny 为禁用的工具名或以 `*` 结尾的前缀；editPaths 为允许修改的项目内相对路径 glob（`**` 跨目录），`[]` 表示不能改任何文件，省略表示不限；shell=false 禁止 bash/pwsh/终端。只限制路径而保留 shell 等于没有限制，方案中需向用户说明。默认 research 不能改文件、writer 只能改文档，两者都不能执行命令。
+- 权限：capabilities 的 access 为 `{"deny": [...], "editPaths": [...], "shell": true/false}`，整体替换，`null` 取消限制。deny 为禁用的工具名或以 `*` 结尾的前缀；editPaths 为允许修改的项目内相对路径 glob（`**` 跨目录），`[]` 表示不能改任何文件，省略表示不限；shell=false 禁止 bash/pwsh/终端；preset 为 DSH 官方权限预设名（如 read-only），生效后命令改由官方沙箱约束，未生效时仍按 shell 拦截。只限制路径而保留 shell 等于没有限制，方案中需向用户说明。默认 research 用 read-only 预设（不能改文件、可执行只读命令），writer 只能改文档且不能执行命令。
 - 适用场景：capabilities 的 whenToUse 用一句话写清什么情况下派给该能力（≤500字），会写进主控名册与派活提示；与 job（做什么）区分开，`null` 清除。
 - 预算：capabilities 的 maxTokens 为该能力每个成员会话的计费 token 上限（≥1000），用尽后该成员的请求被阻止，`null` 取消。只统计 token，不换算金额。
 - 长上下文：capabilities 的 longContext 为 `{"thresholdTokens": N, "provider": "...", "model": "..."}`，会话下一次提示词达到 N 时改用该模型，降到八成以下切回。模型须与主模型同档且在DSH目录中，方案表中说明其上下文窗口；`null` 取消。

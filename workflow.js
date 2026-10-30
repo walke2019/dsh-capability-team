@@ -172,7 +172,7 @@ export function createWorkflow(ctx, team, { onDelegate } = {}) {
               return { role: a.role, displayName: a.displayName, capability: a.capability, model: c.provider ? `${c.provider}/${c.model}` : '会话模型', ...(limits ? { access: limits } : {}),
                 ...(c.planFirst ? { planFirst: '执行前会提交计划，需主控用 capability_review_plan 批准' } : {}), task: a.task };
             });
-            result.next = '已存在的队友用 send_message 派发，不存在的用 spawn_teammate（name 用内部id）创建；可并行的同时派发，用看板任务跟踪；主控只协调与验收，不亲自执行。';
+            result.next = '已存在的队友用 send_message 派发，不存在的用 spawn_teammate（name 用内部id）创建；可并行的同时派发，每项任务在看板建一条即可。派发时要求队友完成后只汇报一次最终结果、不发进度通报。之后用 wait_agent（timeoutMs=600000）等待，醒来只处理最终结果、阻塞或决策请求；主控只协调与验收，不亲自执行。';
           }
           return JSON.stringify(result);
         },
