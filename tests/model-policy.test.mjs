@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyModelPolicy, validateDisabledRoutes, modelPolicyRows } from '../model-policy.js';
+import { applyModelPolicy, validateDisabledRoutes, modelPolicyRows, policyRoleView } from '../model-policy.js';
 const role = { id: 'backend', tier: 'upper', provider: 'a', model: 'main', fallbacks: [{ provider: 'b', model: 'backup' }, { provider: 'c', model: 'backup' }] };
 test('角色预览与请求过滤共用规则，阻止和未分配明确区分', () => {
   const result = modelPolicyRows({}, [role, { id: 'empty' }], ['a/main']);
@@ -72,4 +72,13 @@ test('前缀规则同样作用于自动匹配，不会被选为主模型或备�
   assert.ok(JSON.stringify(base.routes.orchestrator).includes('relay'));
   const ruled = autoMatch(entries, caps, { disabledRoutes: ['relay/*'] });
   assert.equal(JSON.stringify(ruled.routes.orchestrator).includes('relay'), false);
+});
+test('角色视图按前缀规则替换显式路由，全部排除时标记阻止', () => {
+  const [shown] = policyRoleView([role], ['ma*']);
+  assert.equal(`${shown.provider}/${shown.model}`, 'b/backup');
+  assert.deepEqual(shown.fallbacks, [{ provider: 'c', model: 'backup' }]);
+  const [blocked, empty] = policyRoleView([role, { id: 'empty' }], ['a/*', 'backup*']);
+  assert.equal(blocked.provider, undefined); assert.deepEqual(blocked.fallbacks, []);
+  assert.match(blocked.blocked, /均已被全局模型策略禁用/);
+  assert.equal(empty.blocked, undefined);
 });

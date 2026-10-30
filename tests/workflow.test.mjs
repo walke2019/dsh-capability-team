@@ -152,3 +152,20 @@ test('对话保存：workflow 按字段合并、null 恢复默认，变更出现
   assert.ok(lines.some(l => l.startsWith('工作流约束')), lines.join('\n'));
   assert.throws(() => applyPatch({}, { workflow: { bogus: 1 } }), /未知字段/);
 });
+
+test('delegate 计划把被指派的角色交给 onDelegate（用于让旧的队友计划批准失效）；planFirst 写入指派结果', async () => {
+  const eff = effectiveConfig({ capabilities: { backend: { planFirst: true } } }, base);
+  const tools = {}; const calls = [];
+  const lead = { id: 'lead' };
+  const ctx = { effect: f => f(), on: () => {},
+    tools: { guard: () => () => {}, register: t => { tools[t.name] = t; return () => {}; } },
+    agentTeams: { tryMembership: () => ({ id: 'T', role: 'lead' }), membership: () => ({ id: 'T', role: 'lead', name: 'lead' }) } };
+  const team = { base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff }) };
+  createWorkflow(ctx, team, { onDelegate: (m, roles) => calls.push([m.id, roles]) }).register();
+  const out = JSON.parse(await tools.capability_dispatch_plan.execute({ analysis: 'x', mode: 'delegate', assignments: [{ role: 'lv-bu', task: 't' }, { role: 'zhou-yu', task: 'q' }] }, { agent: lead }));
+  assert.deepEqual(calls, [['T', ['lv-bu', 'zhou-yu']]]);
+  assert.match(out.assignments[0].planFirst, /capability_review_plan/);
+  assert.equal(out.assignments[1].planFirst, undefined);
+  await tools.capability_dispatch_plan.execute({ analysis: 'x', mode: 'direct', reason: '小事' }, { agent: lead });
+  assert.equal(calls.length, 1);
+});

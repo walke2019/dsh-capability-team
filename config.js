@@ -5,7 +5,8 @@ const ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const LINE_CONTROL = /[\x00-\x1f\x7f]/;
 const TEXT_CONTROL = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 const SECTIONS = ['tiers', 'capabilities', 'roles'];
-const CAPABILITY_KEYS = ['job', 'provider', 'model', 'tier', 'search', 'fallbacks', 'prefer'];
+const CAPABILITY_KEYS = ['job', 'whenToUse', 'provider', 'model', 'tier', 'search', 'fallbacks', 'prefer', 'access', 'maxTokens', 'longContext', 'planFirst'];
+const ACCESS_KEYS = ['deny', 'editPaths', 'shell'];
 const FAILOVER_KEYS = ['retries', 'initialDelayMs', 'maxDelayMs', 'cooldownMs', 'retryCodes', 'failoverCodes', 'failoverStatuses'];
 const MAX_FALLBACKS = 8;
 const ROLE_KEYS = ['displayName', 'capability', 'description'];
@@ -42,7 +43,7 @@ export const seed = deepFreeze({
     analysisTools: ['read', 'glob', 'grep', 'read_image'],
     coordinationTools: ['spawn_teammate', 'send_message', 'wait_agent', 'list_agents', 'interrupt_agent',
       'team_task_create', 'team_task_get', 'team_task_list', 'team_task_update', 'ask_user_question',
-      'capability_team_read', 'capability_model_catalog', 'capability_team_save',
+      'capability_team_read', 'capability_model_catalog', 'capability_team_save', 'capability_team_export', 'capability_team_import',
       'skill', 'todo_write', 'get_goal', 'create_goal', 'update_goal', 'exit_plan_mode', 'present',
       'job_list', 'job_output', 'job_kill', 'working_directory'],
   },
@@ -50,13 +51,17 @@ export const seed = deepFreeze({
   // at runtime (defaults.js). `prefer` only orders vendors inside the matched tier.
   tiers: { high: [], upper: [], medium: [], low: [] },
   capabilities: {
+    // whenToUse tells the Lead when to pick a capability; job says what it does.
     orchestrator: { job: '意图分析、任务分派、决策与最终交付', tier: 'high', search: true, prefer: ['claude', 'gpt', 'gemini'] },
-    'technical-director': { job: '技术方案、任务拆解、接口契约与技术验收', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
-    backend: { job: '服务端、数据库、接口与后端测试', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'deepseek', 'qwen', 'kimi', 'glm'] },
-    frontend: { job: '页面、组件、交互与前端测试', tier: 'medium', search: false, prefer: ['gemini', 'claude', 'gpt'] },
-    research: { job: '调用检索工具、核实来源与交叉验证', tier: 'medium', search: true, prefer: ['gemini', 'gpt', 'grok'] },
-    writer: { job: '文档与交付说明', tier: 'low', search: false, prefer: ['gpt', 'claude', 'gemini', 'deepseek', 'qwen'] },
-    qa: { job: '测试计划、回归测试、接口与界面验收、失败复现及证据；区分实测、模拟与未验证，不默认修改业务实现', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
+    'technical-director': { job: '技术方案、任务拆解、接口契约与技术验收', whenToUse: '需求跨多个模块、需要先定方案或接口契约，或要对他人的实现做技术验收时', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
+    backend: { job: '服务端、数据库、接口与后端测试', whenToUse: '要修改服务端代码、数据库结构或接口，或修复后端缺陷时', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'deepseek', 'qwen', 'kimi', 'glm'] },
+    frontend: { job: '页面、组件、交互与前端测试', whenToUse: '要修改页面、组件、样式或前端交互，或修复界面缺陷时', tier: 'medium', search: false, prefer: ['gemini', 'claude', 'gpt'] },
+    // access: tools a role may not use, whether it may run commands, and the project paths it may edit.
+    research: { job: '调用检索工具、核实来源与交叉验证', whenToUse: '需要联网查资料、核实版本或文档、对比方案出处时；只读，不改文件', tier: 'medium', search: true, prefer: ['gemini', 'gpt', 'grok'],
+      access: { editPaths: [], shell: false } },
+    writer: { job: '文档与交付说明', whenToUse: '要写或改 README、说明文档、变更记录、交付说明时；只改文档，不改代码', tier: 'low', search: false, prefer: ['gpt', 'claude', 'gemini', 'deepseek', 'qwen'],
+      access: { editPaths: ['**/*.md', '**/*.mdx', '**/*.txt', 'docs/**'], shell: false } },
+    qa: { job: '测试计划、回归测试、接口与界面验收、失败复现及证据；区分实测、模拟与未验证，不默认修改业务实现', whenToUse: '实现完成后需要独立验证、编写或运行测试、复现缺陷并留存证据时', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
   },
   roles: {
     lead: { displayName: '孙权', capability: 'orchestrator' },
@@ -99,11 +104,18 @@ export function validateConfig(config) {
     onlyKeys(c, CAPABILITY_KEYS, `能力 ${id}`);
     if (!Object.hasOwn(tiers, c.tier)) throw new Error(`能力 ${id} 的档位 ${c.tier} 未配置`);
     if (c.search !== undefined && typeof c.search !== 'boolean') throw new Error(`能力 ${id} 的 search 必须为布尔值`);
+    if (c.planFirst !== undefined && c.planFirst !== null && typeof c.planFirst !== 'boolean') throw new Error(`能力 ${id} 的 planFirst 必须为布尔值`);
     if (c.prefer !== undefined && (!Array.isArray(c.prefer) || c.prefer.length > 20)) throw new Error(`能力 ${id} 的 prefer 须为厂商标识数组`);
-    const common = { job: text(c.job, 2000, `能力 ${id} 的职责`, true), tier: c.tier, search: c.search === true, prefer: (c.prefer ?? []).map(v => text(v, 40, `能力 ${id} 的厂商偏好`)) };
+    const common = { job: text(c.job, 2000, `能力 ${id} 的职责`, true),
+      ...(c.whenToUse === undefined || c.whenToUse === null ? {} : { whenToUse: text(c.whenToUse, 500, `能力 ${id} 的适用场景`) }), tier: c.tier, search: c.search === true, prefer: (c.prefer ?? []).map(v => text(v, 40, `能力 ${id} 的厂商偏好`)),
+      ...(c.access === undefined || c.access === null ? {} : { access: validateAccess(c.access, `能力 ${id} 的权限`) }),
+      ...(c.planFirst === true ? { planFirst: true } : {}),
+      // Per-session budget of billable tokens (uncached input + cache write + output) for each member with this capability.
+      ...(c.maxTokens === undefined || c.maxTokens === null ? {} : { maxTokens: count(c.maxTokens, 1000, 1e10, `能力 ${id} 的 maxTokens`) }) };
     // A capability may stay unassigned when the user's catalog has nothing usable; its role then keeps the session model.
     if (c.provider === undefined && c.model === undefined) {
       if (c.fallbacks?.length) throw new Error(`能力 ${id} 未指定主模型，不能只配置备选`);
+      if (c.longContext) throw new Error(`能力 ${id} 未指定主模型，不能只配置长上下文路由`);
       capabilities[id] = { ...common, fallbacks: [] };
       continue;
     }
@@ -111,7 +123,8 @@ export function validateConfig(config) {
     if (!tiers[c.tier].includes(model)) throw new Error(`能力 ${id} 的模型 ${model} 不在档位 ${c.tier} 中；先经用户确认把该模型加入档位，不按名称猜测`);
     const provider = text(c.provider, 200, `能力 ${id} 的渠道`);
     capabilities[id] = { ...common, provider, model,
-      fallbacks: validateFallbacks(c.fallbacks ?? [], { provider, model }, tiers[c.tier], `能力 ${id}`) };
+      fallbacks: validateFallbacks(c.fallbacks ?? [], { provider, model }, tiers[c.tier], `能力 ${id}`),
+      ...(c.longContext === undefined || c.longContext === null ? {} : { longContext: validateLongContext(c.longContext, { provider, model }, tiers[c.tier], `能力 ${id} 的长上下文路由`) }) };
   }
   if (!capabilities.orchestrator) throw new Error('必须保留 orchestrator 能力');
   const roles = {}; const names = new Set();
@@ -126,6 +139,30 @@ export function validateConfig(config) {
   }
   if (!roles.lead) throw new Error('必须保留 lead 角色');
   return { name, failover: validateFailover(config.failover ?? seed.failover), workflow: validateWorkflow(config.workflow ?? seed.workflow), tiers, capabilities, roles };
+}
+/** Same-tier route taken once a session's next prompt reaches thresholdTokens; never another tier. */
+function validateLongContext(lc, primary, tierModels, label) {
+  onlyKeys(lc, ['thresholdTokens', 'provider', 'model'], label);
+  const route = { provider: text(lc.provider, 200, `${label}的渠道`), model: text(lc.model, 200, `${label}的模型ID`) };
+  if (!tierModels.includes(route.model)) throw new Error(`${label} ${route.provider}/${route.model} 不在同一档位中；不允许跨档或自动降档`);
+  if (route.provider === primary.provider && route.model === primary.model) throw new Error(`${label}不能与主模型相同`);
+  return { thresholdTokens: count(lc.thresholdTokens, 8000, 10000000, `${label}的 thresholdTokens`), ...route };
+}
+/** Access policy: denied tool names (or prefix*), shell on/off, and project-relative globs that may be edited (absent = any). */
+function validateAccess(a, label) {
+  onlyKeys(a, ACCESS_KEYS, label);
+  if (a.shell !== undefined && typeof a.shell !== 'boolean') throw new Error(`${label}的 shell 必须为布尔值`);
+  const deny = toolNames(a.deny ?? [], `${label}的禁用工具`);
+  for (const name of deny) if (!/^[A-Za-z0-9_.:-]+\*?$/.test(name)) throw new Error(`${label}的禁用工具 ${name} 须为工具名或以 * 结尾的前缀`);
+  let editPaths = null;
+  if (a.editPaths !== undefined && a.editPaths !== null) {
+    if (!Array.isArray(a.editPaths) || a.editPaths.length > 50) throw new Error(`${label}的 editPaths 须为不超过50项的路径规则数组`);
+    editPaths = [...new Set(a.editPaths.map(v => text(v, 200, `${label}的路径规则`).split('\\').join('/').replace(/^\.\//, '')))];
+    for (const v of editPaths) {
+      if (v.startsWith('/') || /^[A-Za-z]:/.test(v) || v.startsWith('~') || v.split('/').includes('..')) throw new Error(`${label}的路径规则 ${v} 须为项目内的相对路径，不能含 ..`);
+    }
+  }
+  return { deny, editPaths, shell: a.shell !== false };
 }
 function toolNames(list, label) {
   if (!Array.isArray(list) || list.length > 100) throw new Error(`${label}须为不超过100项的工具名数组`);
@@ -267,11 +304,14 @@ export function applyPatch(overrides, patch) {
   }
   return next;
 }
+/** Optional capability policies a role carries: present only when its capability sets them. */
+const rolePolicies = c => ({ ...(c.access ? { access: c.access } : {}), ...(c.maxTokens ? { maxTokens: c.maxTokens } : {}),
+  ...(c.longContext ? { longContext: c.longContext } : {}), ...(c.planFirst ? { planFirst: true } : {}) });
 /** One model-facing row per role, with the route its capability resolves to. */
 export function roleView(effective) {
   return Object.entries(effective.roles).map(([id, r]) => {
     const c = effective.capabilities[r.capability];
-    return { id, displayName: r.displayName, capability: r.capability, description: r.description ?? c.job, provider: c.provider, model: c.model, tier: c.tier, search: c.search, fallbacks: c.fallbacks };
+    return { id, displayName: r.displayName, capability: r.capability, description: r.description ?? c.job, ...(c.whenToUse ? { whenToUse: c.whenToUse } : {}), provider: c.provider, model: c.model, tier: c.tier, search: c.search, fallbacks: c.fallbacks, ...rolePolicies(c) };
   });
 }
 const SECTION_LABEL = { tiers: '档位', capabilities: '能力', roles: '角色' };
@@ -296,5 +336,5 @@ export function resolveRole(membership, effective) {
   const role = Object.hasOwn(effective.roles, id) ? effective.roles[id] : undefined;
   if (!role) throw new Error(`队友 ${id} 未在当前项目的团队配置中登记，无法确定模型。主控请加载 project-role-theme 技能，经用户确认后用 capability_team_save 登记该角色及能力；不按名称猜测模型。`);
   const c = effective.capabilities[role.capability];
-  return { id, displayName: role.displayName, capability: role.capability, description: role.description ?? c.job, provider: c.provider, model: c.model, tier: c.tier, search: c.search, fallbacks: c.fallbacks, failover: effective.failover, ...(c.provider === undefined ? { unassigned: true } : {}) };
+  return { id, displayName: role.displayName, capability: role.capability, description: role.description ?? c.job, provider: c.provider, model: c.model, tier: c.tier, search: c.search, fallbacks: c.fallbacks, failover: effective.failover, ...rolePolicies(c), ...(c.provider === undefined ? { unassigned: true } : {}) };
 }
