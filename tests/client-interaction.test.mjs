@@ -244,7 +244,7 @@ test('不刷新也实时显示：工作台与用量来自 DSH 自带的会话投
   const state = { byId: { s2: { running: true } }, projectionsBySession: {
     s1: { values: { agentTeam: { members: [{ id: 's1', name: 'lead', role: 'lead', phase: 'active' }, { id: 's2', name: 'qa', role: 'teammate', phase: 'active' }, { id: 's3', name: 'fe', role: 'teammate', phase: 'provisioning' }],
       tasks: [{ id: 'task-1', subject: '回归测试', status: 'in_progress', ownerName: 'qa' }] } } },
-    s2: { values: { tokenUsage: { uncachedInputTokens: 1000, outputTokens: 200, cacheReadTokens: 5000, cacheWriteTokens: 0 },
+    s2: { values: { capabilityTeamUsage: { totals: { uncachedInputTokens: 1000, outputTokens: 200, cacheReadTokens: 5000, cacheWriteTokens: 0 }, routes: [{ route: 'provider-a/gpt-6.1-sol', uncachedInputTokens: 1000, outputTokens: 200, cacheReadTokens: 5000, cacheWriteTokens: 0 }], coverage: 'complete', reportedSamples: 1, attemptsWithoutUsage: 0 },
       modelSelection: { next: { provider: 'provider-a', model: 'gpt-6.1-sol' } },
       sessionStats: { turns: 1, steps: 4, llmMs: 160000, toolMs: 3000, ttftMs: 20000, ttftSteps: 4, decodeMs: 10000, decodeTokens: 400 } } },
   } };

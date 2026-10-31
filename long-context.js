@@ -14,6 +14,7 @@ export function promptTokens(projections, session) {
 export function createLongContext() {
   const active = new WeakMap(); // session → whether the long-context route is engaged
   return {
+    reset(session) { active.delete(session); },
     /** The role with its long-context route first while the session's prompt is large; the role itself otherwise. */
     apply(session, role, tokens) {
       const lc = role.longContext;

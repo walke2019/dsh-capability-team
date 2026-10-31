@@ -1,6 +1,8 @@
 // Dispatch workflow: for each user request the Lead analyses the conversation, then either assigns
 // registered roles or justifies handling it alone. A tool guard enforces the declared plan, so the
 // Lead cannot silently do specialist work itself. All limits are project data (config.workflow).
+import { fileLimitRules } from './file-limits.js';
+import { baseName } from './session-rotation.js';
 import { params } from './tool-schema.js';
 import { accessSummary } from './access.js';
 
@@ -18,7 +20,7 @@ const DECISION = { delegate: '指派队友', free: '交给免费模型', direct:
 export function toolClass(name, workflow) {
   if (name === FREE_TOOL) return 'free';
   // The team's own planning tools always coordinate, whatever a project lists.
-  if (['capability_dispatch_plan', 'capability_submit_plan', 'capability_review_plan'].includes(name) || workflow.coordinationTools.includes(name)) return 'coordination';
+  if (['capability_dispatch_plan', 'capability_submit_plan', 'capability_review_plan', 'capability_task_budget', 'capability_member_override', 'capability_handoff', 'capability_rotate_member', 'capability_memory_search', 'capability_memory_write'].includes(name) || workflow.coordinationTools.includes(name)) return 'coordination';
   if (workflow.analysisTools.includes(name)) return 'analysis';
   return 'execution';
 }
@@ -90,12 +92,13 @@ export function validatePlan(args, effective) {
     if (!entry) throw new Error(`角色 ${role} 未在当前项目团队配置中登记；可用：${Object.keys(effective.roles).filter(r => r !== 'lead').join('、')}。需要新角色时先加载 project-role-theme 技能经用户确认登记`);
     if (seen.has(role)) throw new Error(`角色 ${role} 重复指派；把同一角色的工作合并为一项`);
     seen.add(role);
-    return { role, displayName: entry.displayName, capability: entry.capability, task: text(a.task, 2000, `角色 ${role} 的任务`) };
+    if (a.complexity !== undefined && !['simple','medium','complex'].includes(a.complexity)) throw new Error('无效 complexity');
+    return { role, complexity: a.complexity ?? 'medium', displayName: entry.displayName, capability: entry.capability, task: text(a.task, 2000, `角色 ${role} 的任务`) };
   });
   return { mode: 'delegate', analysis, ...(args.reason ? { reason: text(args.reason, 500, '理由') } : {}), assignments: list };
 }
 
-export function createWorkflow(ctx, team, { onDelegate } = {}) {
+export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchConfirm, rotation } = {}) {
   const states = new WeakMap();
   const state = agent => {
     if (!states.has(agent)) states.set(agent, { plan: undefined, analysisUsed: 0, directUsed: 0 });
@@ -117,6 +120,8 @@ export function createWorkflow(ctx, team, { onDelegate } = {}) {
     onClaimed(agent, message) {
       if (message?.source?.kind !== 'user' || !isLead(agent)) return;
       states.set(agent, { plan: undefined, analysisUsed: 0, directUsed: 0 });
+      const invalidation=onAssignments?.(agent, []);
+      void invalidation?.catch?.(() => {}); // a newer dispatch may supersede this invalidation
     },
     guard(exec) {
       if (!isLead(exec.agent)) return undefined;
@@ -125,6 +130,12 @@ export function createWorkflow(ctx, team, { onDelegate } = {}) {
       catch (error) { return `团队配置读取失败，已停止执行：${error.message}`; }
       const workflow = effective.workflow;
       if (workflow.mode !== 'enforce') return undefined;
+      // A successor planned by capability_rotate_member stands in for its assigned role.
+      const name = exec.arguments?.name;
+      if (exec.name === 'spawn_teammate' && rotation?.plannedSuccessor(exec.agent.id, name)) {
+        const plan = state(exec.agent).plan;
+        if (plan?.mode === 'delegate' && plan.assignments.some(a => a.role === baseName(name))) return undefined;
+      }
       return decide(state(exec.agent), exec, workflow, rosterText(effective));
     },
     /** Model-facing status line for the Lead's team context. */
@@ -132,8 +143,10 @@ export function createWorkflow(ctx, team, { onDelegate } = {}) {
       if (workflow.mode === 'off') return undefined;
       const s = state(agent);
       const head = workflow.mode === 'enforce' ? '工作流约束（强制）' : '工作流约束（提醒）';
-      const plan = s.plan ? `本次需求的指派：${planSummary(s.plan)}${s.plan.mode === 'direct' ? `，已用自行执行 ${s.directUsed}/${workflow.directBudget}` : ''}`
-        : `本次需求尚未指派：先调用 capability_dispatch_plan（指派前只读分析 ${s.analysisUsed}/${workflow.analysisBudget}）`;
+      // Budgets only, no running counters: a counter changes every step and would resend the whole runtime
+      // context snapshot each time. The guard still enforces the limits and says how many were used.
+      const plan = s.plan ? `本次需求的指派：${planSummary(s.plan)}${s.plan.mode === 'direct' ? `，自行执行上限 ${workflow.directBudget} 次` : ''}`
+        : `本次需求尚未指派：先调用 capability_dispatch_plan（指派前最多只读分析 ${workflow.analysisBudget} 次）`;
       return `${head}：${plan}。免费模型工具级别：${workflow.freeTools}`;
     },
     register() {
@@ -147,16 +160,21 @@ export function createWorkflow(ctx, team, { onDelegate } = {}) {
           reason: { type: 'string', description: 'free 与 direct 时必填：为什么这样分流' },
           assignments: { type: 'array', description: 'delegate 时必填：每个角色一项，role 用团队名册中的内部id', items: params({
             role: { type: 'string', description: '团队名册中的内部id，不用显示名' },
+            complexity: { type: 'string', enum: ['simple','medium','complex'], description: '任务复杂度，默认medium：15/40/80步' },
             task: { type: 'string', description: '交给该角色的具体任务、交付物与验收标准' },
           }, ['role', 'task']) },
         }, ['analysis', 'mode']),
         async execute(args, exec) {
           if (!isLead(exec.agent)) throw new Error('只有主控制定指派计划；子角色完成自己的任务并向 lead 汇报');
-          const { effective } = await team.load(exec.agent);
+          const { effective, policy } = await team.load(exec.agent);
           const plan = validatePlan(args, effective);
+          // The user confirms roles and models first; a cancel throws, so no plan exists and nobody is dispatched.
+          const confirmation = plan.mode === 'delegate' && dispatchConfirm
+            ? await dispatchConfirm.confirm(exec, plan, effective, policy, effective.workflow.confirmDispatch) : null;
           const s = state(exec.agent);
           s.plan = plan;
           if (plan.mode === 'delegate') onDelegate?.(ctx.agentTeams.membership(exec.agent), plan.assignments.map(a => a.role));
+          await onAssignments?.(exec.agent, plan.mode === 'delegate' ? plan.assignments : []);
           // Structured result: the model reads the fields, the Web card renders them without parsing prose.
           const result = { mode: plan.mode, decision: DECISION[plan.mode], analysis: plan.analysis, ...(plan.reason ? { reason: plan.reason } : {}) };
           if (plan.mode === 'direct') {
@@ -169,11 +187,16 @@ export function createWorkflow(ctx, team, { onDelegate } = {}) {
             result.assignments = plan.assignments.map(a => {
               const c = effective.capabilities[a.capability];
               const limits = accessSummary(c.access);
-              return { role: a.role, displayName: a.displayName, capability: a.capability, model: c.provider ? `${c.provider}/${c.model}` : '会话模型', ...(limits ? { access: limits } : {}),
+              const route = confirmation?.routes.find(r => r.role === a.role);
+              const model = route?.primary ? `${route.primary.provider}/${route.primary.model}` : c.provider ? `${c.provider}/${c.model}` : '会话模型';
+              const fallbacks = (route?.fallbacks ?? c.fallbacks ?? []).slice(0, 3).map(f => `${f.provider}/${f.model}`);
+              return { role: a.role, complexity: a.complexity, estimatedSteps: {simple:15,medium:40,complex:80}[a.complexity], displayName: a.displayName, capability: a.capability, model, fallbacks, ...(limits ? { access: limits } : {}),
                 ...(c.planFirst ? { planFirst: '执行前会提交计划，需主控用 capability_review_plan 批准' } : {}), task: a.task };
             });
             result.next = '已存在的队友用 send_message 派发，不存在的用 spawn_teammate（name 用内部id）创建；可并行的同时派发，每项任务在看板建一条即可。派发时要求队友完成后只汇报一次最终结果、不发进度通报。之后用 wait_agent（timeoutMs=600000）等待，醒来只处理最终结果、阻塞或决策请求；主控只协调与验收，不亲自执行。';
           }
+          if (plan.mode !== 'free' && effective.workflow.fileLimits) result.fileRules = fileLimitRules(effective.workflow.fileLimits);
+          if (confirmation?.asked) result.confirmed = { by: 'user', scope: confirmation.scope, changed: confirmation.routes.filter(r => r.changed).map(r => r.role) };
           return JSON.stringify(result);
         },
       }));

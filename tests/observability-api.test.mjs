@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { handleRuntime, applyObservabilityApi, RUNTIME_PATH } from '../observability-api.js';
+import { bindRuntime, createRuntimeObservability } from '../runtime-observability.js';
+const req = (id = 'lead') => new Request(`http://host${RUNTIME_PATH}?sessionId=${id}`);
+function fixture() {
+  const agent = { id: 'lead', ctx: {} }, runtime = createRuntimeObservability();
+  const teams = { tryMembership: a => a === agent ? { role: 'lead' } : null, listMembers: () => [agent] };
+  const services = { agents: { get: id => id === 'lead' ? agent : null }, agentTeams: teams };
+  const ctx = { get: k => services[k], agentPresets: { composedPreset: () => 'capability-team' } };
+  bindRuntime(agent, runtime, teams); return { ctx, agent, runtime };
+}
+test('GET is live-only, lead-only, validates input and never activates or writes', async () => {
+  const { ctx } = fixture(); const response = handleRuntime(ctx, req()); assert.equal(response.status, 200); assert.equal((await response.json()).schemaVersion, 1);
+  assert.equal(handleRuntime(ctx, req('unknown')).status, 404); assert.equal(handleRuntime(ctx, req('')).status, 400);
+  assert.equal(handleRuntime(ctx, new Request(`http://host${RUNTIME_PATH}?sessionId=lead&sessionId=lead`)).status, 400);
+  ctx.get('agentTeams').tryMembership = () => ({ role: 'teammate' }); assert.equal(handleRuntime(ctx, req()).status, 404);
+  ctx.get('agentTeams').tryMembership = () => ({ role: 'lead' });
+  ctx.agentPresets.composedPreset = () => 'other'; assert.equal(handleRuntime(ctx, req()).status, 404);
+  ctx.agentPresets.composedPreset = () => 'capability-team';
+  ctx.get('agentTeams').listMembers = () => { throw new Error('sk-BAIT'); };
+  const unavailable = handleRuntime(ctx, req()); assert.equal(unavailable.status, 503); assert.ok(!(await unavailable.text()).includes('sk-BAIT'));
+});
+test('SSE first snapshot and trailing burst coalescing, cancellation', async () => {
+  const { ctx, agent, runtime } = fixture(); const abort = new AbortController(); const response = handleRuntime(ctx, new Request(req(), { signal: abort.signal }), true);
+  assert.equal(response.headers.get('content-type'), 'text/event-stream'); const reader = response.body.getReader(); const decoder = new TextDecoder();
+  const first = decoder.decode((await reader.read()).value); assert.ok(first.startsWith('data: '));
+  runtime.failure(agent, {}); runtime.failure(agent, {}); runtime.failure(agent, {});
+  const frame = decoder.decode((await reader.read()).value); const data = JSON.parse(frame.slice(6)); assert.equal(data.members[0].counters.requestFailures, 3); abort.abort(); assert.equal((await reader.read()).done, true);
+});
+test('routes are registered exclusively through host owner-fenced connection seam', async () => {
+  const routes = []; const ctx = { inject: (_, callback) => callback({ connection: { fetch: { register: route => routes.push(route) } } }) };
+  applyObservabilityApi(ctx); assert.equal(routes.length, 2); assert.deepEqual(routes[0].methods, ['GET']);
+  // Model the actual host createSharedFetchHandler owner fence; plugin handler never sees remote peers.
+  const fenced = (route, request, peer) => peer.principal.kind !== 'owner' ? new Response('forbidden', { status: 403 }) : route.fetch(request);
+  assert.equal((await fenced(routes[0], req(), { principal: { kind: 'remote' } })).status, 403);
+});

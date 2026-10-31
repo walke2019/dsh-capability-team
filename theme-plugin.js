@@ -53,7 +53,7 @@ async function confirm(ctx, exec, lines, revision) {
   const item = answer.answers.find(a => a.id === 'confirm');
   if (!item?.selected.includes('保存')) throw new Error(`用户未确认，未保存。${item?.custom ? `用户意见：${item.custom}` : ''}`);
 }
-export function apply(ctx, team, failover, workflow, planGate) {
+export function apply(ctx, team, failover, workflow, planGate, taskControl) {
   const content = readFileSync(new URL('./skills/project-role-theme/SKILL.md', import.meta.url), 'utf8');
   ctx.effect(() => ctx.skills.register({ name: 'project-role-theme', source: 'runtime', content,
     description: '通过对话调整当前项目团队：角色改名或整体换主题、职责、能力、模型档位与分配、新增或移除角色；读取DSH渠道模型目录给出方案，由用户在确认框中批准后保存。' }));
@@ -142,8 +142,11 @@ export function apply(ctx, team, failover, workflow, planGate) {
     });
     const removeContext = agent.ctx.systemPrompt.context({ name: 'capability-team:roster', order: 98, required: true,
       text: () => teamContext(team, agent, ctx.agentTeams.tryMembership(agent), failover, workflow, planGate) });
+    const removeBudgetContext = taskControl && ctx.agentTeams.tryMembership(agent)?.role === 'lead'
+      ? agent.ctx.systemPrompt.context({ name: 'capability-team:task-budget', order: 99, required: true,
+        text: () => taskControl.summary(agent) }) : () => {};
     const removeWriter = registerPolicyWriter(agent, (routes, revision) => team.savePolicy(agent, routes, revision));
-    installed.set(agent, () => { removeReader(); removeWriter(); removeContext(); });
+    installed.set(agent, () => { removeReader(); removeWriter(); removeContext(); removeBudgetContext(); });
   };
   for (const agent of ctx.agents.list()) void install(agent);
   ctx.on('agent/created', ({ agent }) => install(agent));

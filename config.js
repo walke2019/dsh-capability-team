@@ -1,6 +1,8 @@
 // Team configuration is data: the seed below is only the initial default.
 // Every project may override tiers, capabilities and roles through the
 // conversational save tool; nothing here is consulted by name.
+import { validateFileLimits } from './file-limits.js';
+import { validateRotation } from './session-rotation.js';
 const ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const LINE_CONTROL = /[\x00-\x1f\x7f]/;
 const TEXT_CONTROL = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
@@ -8,11 +10,12 @@ const SECTIONS = ['tiers', 'capabilities', 'roles'];
 const CAPABILITY_KEYS = ['job', 'whenToUse', 'provider', 'model', 'tier', 'search', 'fallbacks', 'prefer', 'access', 'maxTokens', 'longContext', 'planFirst'];
 const ACCESS_KEYS = ['deny', 'editPaths', 'shell', 'preset'];
 const FAILOVER_KEYS = ['retries', 'initialDelayMs', 'maxDelayMs', 'cooldownMs', 'retryCodes', 'failoverCodes', 'failoverStatuses'];
-const MAX_FALLBACKS = 8;
+const MAX_FALLBACKS = 3;
 const ROLE_KEYS = ['displayName', 'capability', 'description'];
-const WORKFLOW_KEYS = ['mode', 'analysisBudget', 'directBudget', 'freeTools', 'freeModels', 'analysisTools', 'coordinationTools'];
+const WORKFLOW_KEYS = ['mode', 'analysisBudget', 'directBudget', 'freeTools', 'freeModels', 'analysisTools', 'coordinationTools', 'fileLimits', 'confirmDispatch', 'rotation'];
 const FREE_TOOL_LEVELS = ['none', 'read', 'write'];
 const WORKFLOW_MODES = ['enforce', 'remind', 'off'];
+export const CONFIRM_MODES = ['always', 'on-change', 'never'];
 const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v);
 function deepFreeze(value) {
   for (const child of Object.values(value)) if (child && typeof child === 'object') deepFreeze(child);
@@ -37,6 +40,9 @@ export const seed = deepFreeze({
     // create and edit project files). Never shell, web or outside paths. Project files reach the free
     // model's cloud from `read` up, so the default is none.
     freeTools: 'none',
+    // Show the user each assigned role's model and fallbacks before a delegate plan takes effect:
+    // always / on-change (the first plan of a session, then only when a route changes) / never.
+    confirmDispatch: 'on-change',
     // Optional order of free models; empty = every free model in OpenCode's catalog, newest first.
     // Entries are re-checked against the catalog at run time, so a paid model can never be listed in.
     freeModels: [],
@@ -190,6 +196,9 @@ function validateWorkflow(w) {
     freeModels: toolNames(merged.freeModels, '免费模型列表'),
     analysisTools: toolNames(merged.analysisTools, '分析类工具'),
     coordinationTools: toolNames(merged.coordinationTools, '协调类工具'),
+    fileLimits: validateFileLimits(merged.fileLimits),
+    confirmDispatch: oneOf(merged.confirmDispatch, CONFIRM_MODES, '分派确认方式'),
+    rotation: validateRotation(merged.rotation),
   };
   const both = out.analysisTools.filter(n => out.coordinationTools.includes(n));
   if (both.length) throw new Error(`工具 ${both.join(', ')} 不能同时属于分析类和协调类`);
@@ -338,7 +347,10 @@ export function describeChanges(before, after) {
 }
 /** Resolve the native Team identity to one configured role; unknown members fail with guidance. */
 export function resolveRole(membership, effective) {
-  const id = !membership || membership.role === 'lead' ? 'lead' : membership.name;
+  const name = !membership || membership.role === 'lead' ? 'lead' : membership.name;
+  // A rotation successor `<role>-r<N>` keeps its role's model, access and budget.
+  const base = name.replace(/-r\d+$/, '');
+  const id = Object.hasOwn(effective.roles, name) || !Object.hasOwn(effective.roles, base) ? name : base;
   const role = Object.hasOwn(effective.roles, id) ? effective.roles[id] : undefined;
   if (!role) throw new Error(`队友 ${id} 未在当前项目的团队配置中登记，无法确定模型。主控请加载 project-role-theme 技能，经用户确认后用 capability_team_save 登记该角色及能力；不按名称猜测模型。`);
   const c = effective.capabilities[role.capability];

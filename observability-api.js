@@ -1,0 +1,56 @@
+import { runtimeBinding } from './runtime-observability.js';
+import { safeId } from './activity-summary.js';
+export const RUNTIME_PATH = '/api/capability-team.runtime';
+export const RUNTIME_STREAM_PATH = `${RUNTIME_PATH}/stream`;
+function resolve(ctx, request) {
+  const url = new URL(request.url), ids = url.searchParams.getAll('sessionId');
+  if (ids.length !== 1 || !safeId(ids[0]) || [...url.searchParams.keys()].some(k => k !== 'sessionId')) return { error: 400 };
+  // Never resolve/activate a session from user-controlled input.
+  const agent = ctx.get?.('agents')?.get(ids[0]);
+  if (!agent) return { error: 404 };
+  const teams = ctx.get?.('agentTeams');
+  if (!teams || !ctx.agentPresets) return { error: 503 };
+  const membership = teams.tryMembership(agent);
+  if (!membership || membership.role !== 'lead' || ctx.agentPresets?.composedPreset(agent.ctx) !== 'capability-team') return { error: 404 };
+  const binding = runtimeBinding(agent);
+  if (!binding) return { error: 503 };
+  return { binding, agent, snapshot: () => binding.runtime.snapshot(agent.id, teams.listMembers(agent)) };
+}
+export function handleRuntime(ctx, request, stream = false) {
+  if (request.method !== 'GET') return new Response('method not allowed', { status: 405 });
+  // In production Connection refuses non-owner peers before invoking any registered fetch route.
+  let resolved;
+  try { resolved = resolve(ctx, request); } catch { return Response.json({ error: 503 }, { status: 503 }); }
+  if (resolved.error) return Response.json({ error: resolved.error }, { status: resolved.error, headers: { 'cache-control': 'no-store' } });
+  if (!stream) {
+    try { return Response.json(resolved.snapshot(), { headers: { 'cache-control': 'no-store' } }); }
+    catch { return Response.json({ error: 503 }, { status: 503 }); }
+  }
+  let dispose = () => {}, timer = null, closed = false, abortCleanup = () => {};
+  const body = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder();
+      const close = () => { if (closed) return; closed = true; if (timer) clearTimeout(timer); dispose(); request.signal.removeEventListener('abort', close); controller.close(); };
+      const emit = () => {
+        timer = null; if (closed) return;
+        try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(resolved.snapshot())}\n\n`)); }
+        catch { close(); }
+      };
+      emit();
+      dispose = resolved.binding.runtime.onChanged(() => { if (!closed && timer === null) timer = setTimeout(emit, 350); });
+      abortCleanup = () => request.signal.removeEventListener('abort', close);
+      request.signal.addEventListener('abort', close, { once: true });
+      if (request.signal.aborted) close();
+    },
+    cancel() { closed = true; if (timer) clearTimeout(timer); dispose(); abortCleanup(); },
+  });
+  return new Response(body, { headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-store', 'x-accel-buffering': 'no' } });
+}
+export function applyObservabilityApi(ctx) {
+  ctx.inject?.(['connection', 'agents', 'agentTeams', 'agentPresets'], scoped => {
+    for (const [path, stream] of [[RUNTIME_PATH, false], [RUNTIME_STREAM_PATH, true]]) {
+      // Host createSharedFetchHandler enforces peer.principal.kind === 'owner'.
+      scoped.connection.fetch.register({ path, methods: ['GET'], requestBody: 'buffered', fetch: request => Promise.resolve(handleRuntime(scoped, request, stream)) });
+    }
+  });
+}

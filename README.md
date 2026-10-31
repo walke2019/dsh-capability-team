@@ -36,6 +36,11 @@ DeepSeek Harness（DSH）的多智能体预设：一个主控加若干专业能�
 - [长上下文路由](#长上下文路由)
 - [搜索与免费通道](#搜索与免费通道)
 - [运行时细节](#运行时细节)
+- [文件铁律](#文件铁律)
+- [派活确认](#派活确认)
+- [会话轮换与交接](#会话轮换与交接)
+- [任务控制](#任务控制)
+- [记忆枢纽](#记忆枢纽)
 - [开发与测试](#开发与测试)
 - [验证状态与已知限制](#验证状态与已知限制)
 
@@ -61,6 +66,9 @@ DeepSeek Harness（DSH）的多智能体预设：一个主控加若干专业能�
 |---|---|---|
 | `CPA_SEARCH_BASE_URL` | 使用搜索工具时 | 聚合搜索网关地址，只接受不含账号和查询参数的 `https` 地址，例如 `https://gateway.example.com` |
 | `CPA_SEARCH_API_KEY` | 使用搜索工具时 | 聚合搜索网关密钥，只从环境读取，不写入配置或日志 |
+| `CPA_EMBED_BASE_URL` | 否 | 记忆枢纽的嵌入网关地址（`https`）。不设时依次用 `CPA_SEARCH_BASE_URL`、`CPA_BASE_URL` 的同源地址，请求 `<origin>/v1/embeddings` |
+| `CPA_EMBED_API_KEY` | 否 | 嵌入网关密钥；不设时依次用 `CPA_SEARCH_API_KEY`、`CPA_API_KEY` |
+| `CPA_EMBED_MODEL` / `CPA_EMBED_DIMENSIONS` | 否 | 嵌入模型与维度，默认 `jina-embeddings-v3` / `512` |
 | `CAPABILITY_TEAM_HOME` | 否 | 项目团队配置的存放目录，默认 `~/.dsh/capability-team-themes` |
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | 否 | 免费通道使用的 OpenCode 原生可执行文件；默认在 `PATH` 中查找（各平台通用） |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | 否 | OpenCode 模型目录文件；默认 `$XDG_CACHE_HOME/opencode/models.json`（未设置时为 `~/.cache/…`） |
@@ -283,10 +291,90 @@ DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时�
 - **旧格式迁移**：旧版 names/descriptions/routes 格式的文件读取时自动迁移，下次保存时写成新格式。
 - **工具参数**：所有工具参数都是标准 JSON Schema（根对象 `type: "object"`，必填项写在 `required` 数组中），并且只使用 DSH 支持的关键字子集。辅助函数见 [tool-schema.js](tool-schema.js)。Claude 等接口会严格校验工具定义，不合法的定义会让整轮请求返回 400。
 
+## 文件铁律
+
+[file-limits.js](file-limits.js) 在工具层对所有团队成员强制执行，`npm run lint` 也对本仓库执行同一套规则：
+
+| 规则 | 默认值 |
+|---|---|
+| 源文件 | 300 行起应考虑拆分，**硬上限 500 行** |
+| 测试文件 | **硬上限 800 行** |
+| 已超标的文件 | 只能减不能增（改后行数不得多于改前） |
+| 整文件读取 | 超过 400 行的代码文件不能不带 `limit` 整读，先 grep 再按 `offset/limit` 小段读 |
+| 覆盖已有文件 | 禁止用 `write` 整体覆盖，已有文件只能用 `edit` 局部改 |
+| 队友汇报 | 每条 `send_message` 不超过 1500 字，超长分条发、先发结论 |
+
+带 `// @generated` 首行的生成文件、锁文件、`node_modules`/`dist`/`vendor` 不受行数限制，但生成文件不能直接改。阈值通过对话修改 `workflow.fileLimits`（`false` 关闭）。
+
+客户端按这个规则拆成 [client/](client/) 下的源文件，`npm run build:client` 按文件名顺序拼成发布用的 [client.js](client.js)（DSH 每个包只加载一个客户端脚本，官方包也是构建成单文件）。`npm test` 前会自动构建，`npm run lint` 会检查 client.js 是否与源文件一致。
+
+## 派活确认
+
+[dispatch-confirm.js](dispatch-confirm.js)：主控的派活计划指派队友时，`capability_dispatch_plan` 先停下来，在对话里这次调用的下方显示一张确认卡片：
+
+- 每个角色一行：任务、主模型（下拉框，候选为同档且未被全局策略禁用的模型）、回退模型（最多 3 个，可增删和调整顺序）；
+- 修改范围：**只用于这次任务**（只影响本次主控会话里这个角色的请求），或**保存为项目默认**（写入项目配置，会影响使用该能力的所有角色）；
+- 点“确认分派”后主控才能创建或通知队友；点“取消”时计划不生效，主控需要再问你怎么调整。
+
+`workflow.confirmDispatch` 控制何时确认：`on-change`（默认，每个新会话第一次指派时确认，之后只在路由变化时确认）、`always`、`never`。不能显示卡片的客户端（命令行、ACP）在 8 秒后改用 DSH 原生提问框，可以逐行填写“角色id: 主模型, 回退1, 回退2”。回退模型在配置校验中也限制为最多 3 个。
+
+插件的所有返回 JSON 的工具都有自己的卡片（模型目录、预算、临时模型、导出/导入、搜索、网页读取、交接、轮换、记忆），对话里不再直接显示 JSON。
+
+## 会话轮换与交接
+
+[session-rotation.js](session-rotation.js) 统计每个队友会话的压缩次数、轮数、同一文件的重复读取次数和上下文占用比例：
+
+| 档位 | 默认条件（满足任一） | 动作 |
+|---|---|---|
+| 软阈值 | 压缩 ≥2 次、上下文 ≥60%、同一文件读 ≥15 次 | 队友的运行时上下文出现提醒：做完手上这一项就写交接 |
+| 硬阈值 | 压缩 ≥3 次、上下文 ≥80%、≥8 轮 | 主控不能再给它派新活，需要先轮换 |
+
+- 队友调用 `capability_handoff` 写交接（已完成、剩余、踩过的坑、未决问题、验证方法），插件自动附上 `git diff --stat`、它名下未完成的看板任务和最后一次测试结果；
+- 主控调用 `capability_rotate_member`，得到接替者名字 `<角色>-r<N>`（DSH 团队名单不能复用名字）、接替者的首条消息，以及要依次调用的 `interrupt_agent` / `spawn_teammate` / 看板操作；
+- 接替者沿用原角色的模型、权限、预算和已确认的路由；主控再给旧成员发消息会被拦下并提示改发给接替者；
+- 团队名额（`maxMembers`，DSH 默认 8）用完时不轮换，改为省上下文模式，并建议调大 DSH 的 `maxMembers`。
+
+阈值通过对话修改 `workflow.rotation`（`false` 关闭）。
+
+## 任务控制
+
+团队工作台的每张队友卡片下方有“任务控制”区：已用/估算步数（接近估算黄色、超出红色，不是质量评级）、临时模型（原模型 → 临时模型、到期时间、自动恢复规则）、最近操作记录。可以设置临时模型（候选只来自后端目录，设置前在页面内确认，写明费用与缓存影响）、恢复配置模型、结束租约，或在没有租约时按复杂度开始计数。409 时不自动重试，提示重新确认。
+
+用量页每个成员还显示**每步平均输入**（未缓存输入 + 缓存读取 + 缓存写入，除以步数）和**缓存读取占比**；每步平均超过 8 万 token 时提示轮换会话。
+
+## 记忆枢纽
+
+[memory-hub.js](memory-hub.js) / [memory-store.js](memory-store.js) / [memory-embed.js](memory-embed.js)：把团队学到的结论按项目保存下来，下次接到相关任务时自动带上。
+
+- **自动入库**：交接（同一角色的新交接替换旧的）、交接里的踩坑（项目范围）、队友成功发给主控的最终汇报（200 字以上）；
+- **主动写入**：`capability_memory_write`，类型 `pitfall` / `decision` / `note`；`decision` 带 `key` 时同主题的新决定替换旧的；相同内容自动合并；
+- **作用域**：`role`（默认，本角色）、`project`（全队）、`session`、`global`（仅主控可写）；别的项目的记忆不可见；
+- **自动召回**：成员收到新任务时按任务文本检索，最多 2400 字注入运行时上下文；任务不变时不重算，避免每步重发上下文；
+- **按需检索**：`capability_memory_search`；
+- **检索方式**：BM25 全文（英文单词 + 中文单字和双字）与向量余弦，用倒数排名融合（RRF）合并，再按 30 天半衰期衰减、按被使用次数小幅加权；嵌入不可用时只用全文，并在结果里说明原因，之后自动补算缺失的向量；
+- **遗忘**：180 天未被使用的记忆和被替换的记忆在整理时删除，每个项目最多保留 2000 条；
+- 存储：`$CAPABILITY_TEAM_HOME/memory/<项目哈希>.jsonl` 与 `global.jsonl`，只追加写入，整理时原子替换。
+
+### 嵌入网关契约
+
+记忆枢纽按 OpenAI 兼容格式调用 `<网关>/v1/embeddings`，与 `/v1/search` 用同一个网关和密钥。网关需要把它转发到 Jina：
+
+```http
+POST /v1/embeddings
+Authorization: Bearer <CPA 密钥>
+Content-Type: application/json
+
+{"model":"jina-embeddings-v3","input":["文本1","文本2"],"dimensions":512,"task":"retrieval.passage","normalized":true}
+```
+
+响应：`{"data":[{"index":0,"embedding":[...]}, ...]}`，`data` 的条数与 `input` 相同。`task` 为 `retrieval.passage`（入库）或 `retrieval.query`（检索），可直接透传给 `https://api.jina.ai/v1/embeddings`。网关尚未提供这个路由时，插件会识别网关返回的路由列表并降级为全文检索。
+
 ## 开发与测试
 
 ```sh
-node --test tests/*.test.mjs
+npm test          # 先构建 client.js，再跑全部测试
+npm run lint      # 语法、文件行数、client.js 是否最新
+npm run build     # 发布前检查打包文件集合
 ```
 
 测试使用模拟的 ctx、模型目录和提问框，不调用模型、搜索或 Git 写操作。自动匹配用中立的示例目录测试（官方 OpenAI、官方 Anthropic 和带厂商前缀的中转渠道，见 [tests/fixture.mjs](tests/fixture.mjs)），不依赖任何真实用户配置。
@@ -310,6 +398,11 @@ node --test tests/*.test.mjs
 | [plan-gate.js](plan-gate.js) | 队友计划提交、主控审批与执行守卫 |
 | [template.js](template.js) | 团队模板导出与导入 |
 | [config-projection.js](config-projection.js) | 配置保存计数投影，触发面板自动读取配置 |
+| [file-limits.js](file-limits.js) | 文件铁律（工具守卫与 lint 共用） |
+| [dispatch-confirm.js](dispatch-confirm.js) | 派活确认：路由、校验、HTTP 接口与原生提问框兜底 |
+| [session-rotation.js](session-rotation.js) | 会话轮换信号、交接与接替者 |
+| [memory-hub.js](memory-hub.js) / [memory-store.js](memory-store.js) / [memory-embed.js](memory-embed.js) | 记忆枢纽：入库、召回、混合检索与嵌入网关 |
+| [client/](client/) / [scripts/build-client.mjs](scripts/build-client.mjs) | 客户端源文件与单文件构建 |
 
 修改工具参数后，[tests/tool-schema.test.mjs](tests/tool-schema.test.mjs) 会逐个检查已注册工具的 Schema。
 
@@ -351,7 +444,7 @@ node --test tests/*.test.mjs
 
 已验证：
 
-- 165 项回归测试通过，包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
+- 288 项回归测试通过（含文件铁律、派活确认、会话轮换、任务控制面板与记忆枢纽），包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
 - 使用桌面自带 CLI 在隔离 DSH_HOME 中启动真实宿主，能力协作团队预设已注册，诊断插件成功激活；这不是生产桌面进程重新加载后的会话验收；
 - 已安装包和已连接 Client 的 `capability-team-overview` 活动注册已核实，但此后源码修复仍需确认运行进程重新加载；
 - 独立浏览器访问 GUI 返回 401，尚未完成已认证页面的读取、勾选、保存、恢复操作验收；
@@ -364,13 +457,17 @@ node --test tests/*.test.mjs
 - 原生提问框的确认保存流程；
 - 每次请求的能力路由；
 - 真实故障下的容灾切换（需要实际制造失败请求，会产生付费调用）；
-- 聚合搜索网关的真实调用。
+- 聚合搜索网关的真实调用；
+- 派活确认卡片、任务控制面板与会话轮换在真实桌面会话中的交互（目前只有模拟 Hook 的组件测试）；
+- 记忆枢纽的向量检索：网关 `/v1/embeddings` 尚未部署（2026-10-31 实测返回路由列表），目前只用全文检索。
 
 已知限制：
 
 - 分档基于命名规律和价格，新厂商（如 nvidia、stepfun、cohere）目前会被列为“未识别”，需要手动指定档位。
 - 免费变体（`:free`、`-free`）一律不参与自动匹配，也不作备选。
 - 原生界面仍显示队友的内部 id，显示名只在模型上下文中生效。
+- 轮换后的接替者（`<角色>-rN`）不会自动开始任务步数计数，需要在任务控制区手动开始。
+- 派活确认中“只用于这次任务”的路由保存在内存里，DSH 重启后恢复为项目配置。
 
 ## 许可
 

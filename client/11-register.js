@@ -1,0 +1,185 @@
+    const BaseComponent = React.Component || class DummyComponent { constructor(props) { this.props = props; } };
+    class ErrorBoundary extends BaseComponent {
+      constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+      }
+      componentDidCatch(error, errorInfo) {
+        if (typeof console !== 'undefined' && console.error) {
+          console.error('CapabilityTeam tab render error caught by ErrorBoundary:', error, errorInfo);
+        }
+      }
+      render() {
+        if (this.state.hasError) {
+          const t = this.props.t ?? (k => k);
+          return h('div', { className: 'ctm-ov-callout', 'data-tone': 'error', style: { margin: '16px' } },
+            h('p', { className: 'ctm-error' }, t('error.tabCrashed')),
+            this.state.error ? h('pre', { className: 'ctm-pre ctm-error' }, String(this.state.error?.message ?? this.state.error)) : null,
+            h('button', { type: 'button', className: 'ctm-btn', style: { marginTop: '8px' }, onClick: () => this.setState({ hasError: false, error: null }) },
+              t('models.reset')));
+        }
+        return this.props.children;
+      }
+    }
+
+    /** The status command ships catalog rows as tuples to keep its (visible) log entry small. */
+    function expandStatus(data) {
+      const policy = data?.team?.modelPolicy;
+      if (policy && Array.isArray(policy.rows)) {
+        policy.rows = policy.rows.map(row => {
+          if (!Array.isArray(row)) return row;
+          const [key, tier, primaryFor = [], fallbackFor = []] = row;
+          const slash = key.indexOf('/');
+          return { key, provider: key.slice(0, slash), model: key.slice(slash + 1), tiers: tier ? [tier] : [], primaryFor, fallbackFor };
+        });
+      }
+      return data;
+    }
+    /** Last manual snapshot per session: memory first, browser storage across panel reloads; never required. */
+    const snapshotCache = (() => {
+      const memory = new Map();
+      const keyOf = id => `capability-team:snapshot:${id}`;
+      return {
+        get(id) {
+          if (memory.has(id)) return memory.get(id);
+          try { const raw = window.localStorage?.getItem(keyOf(id)); const value = raw ? JSON.parse(raw) : null; if (value) memory.set(id, value); return value; } catch { return null; }
+        },
+        put(id, value) {
+          memory.set(id, value);
+          try { window.localStorage?.setItem(keyOf(id), JSON.stringify(value)); } catch { /* storage full or blocked */ }
+        },
+      };
+    })();
+    /** Host-pushed agent status (no polling, nothing logged) plus the read-only direct-child catalog. */
+    function liveStore(ctx) {
+      const remote = ctx.remote;
+      const sessions = ctx.sessions;
+      const states = new Map();
+      const listeners = new Set();
+      const requested = new Set();
+      let roster = 0;
+      const notify = () => { for (const listener of listeners) listener(); };
+      // DSH's own projection frames (agentTeam, modelSelection, tokenUsage, sessionStats) reach the shared Session store without any command.
+      if (typeof sessions?.list?.subscribe === 'function') ctx.effect(() => sessions.list.subscribe(notify), 'capability-team: session store');
+      const snapshot = () => { try { return sessions?.list?.getSnapshot?.(); } catch { return undefined; } };
+      const on = (event, listener) => { if (typeof remote?.$on === 'function') remote.$on(event, listener); };
+      on('api-session/status', (id, running) => {
+        const previous = states.get(id) ?? {};
+        if (!previous.known) roster++;
+        states.set(id, { known: true, running: !!running, since: running ? previous.since ?? Date.now() : undefined, error: running ? undefined : previous.error });
+        notify();
+      });
+      on('api-session/error', (id, message) => { states.set(id, { ...(states.get(id) ?? {}), known: true, error: String(message) }); notify(); });
+      on('api-session/added', () => { roster++; notify(); });
+      on('api-session/removed', id => { states.delete(id); roster++; notify(); });
+      return {
+        startedAt: Date.now(),
+        /** Live projection values of one session; asks the host once for a session the store has not loaded yet. */
+        projections(id) {
+          const entry = snapshot()?.projectionsBySession?.[id];
+          if (!entry && id && !requested.has(id) && typeof sessions?.refreshProjections === 'function') {
+            requested.add(id);
+            sessions.refreshProjections(id).catch(() => { requested.delete(id); });
+          }
+          return entry?.values;
+        },
+        parentSessionId: id => {
+          const direct = snapshot()?.projectionsBySession?.[id]?.values?.agentTeam?.parentSessionId;
+          if (direct) return direct;
+          try {
+            return sessions?.binding?.(id)?.session?.getSnapshot?.()?.subagent?.address?.parentSessionId;
+          } catch { return undefined; }
+        },
+        // True when the session is a subagent (has a subagent address) but its parent could not be resolved;
+        // the overview must then show only the notice, never a team canvas rooted at the wrong session.
+        isOrphanSubagent: id => {
+          try {
+            const addr = sessions?.binding?.(id)?.session?.getSnapshot?.()?.subagent?.address;
+            const direct = snapshot()?.projectionsBySession?.[id]?.values?.agentTeam?.parentSessionId;
+            return !!addr && !addr.parentSessionId && !direct;
+          } catch { return false; }
+        },
+        running: id => snapshot()?.byId?.[id]?.running,
+        status: id => states.get(id),
+        rosterVersion: () => roster,
+        subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+        async children(parentId) {
+          const reply = await remote?.subagents?.list?.(parentId);
+          if (!reply?.ok) throw new Error(reply?.error?.message ?? 'subagent catalog unavailable');
+          return reply.value?.entries ?? [];
+        },
+      };
+    }
+
+    const VIEWS = {
+      capability_dispatch_plan: DispatchPlanView,
+      capability_free_task: FreeTaskView,
+      capability_team_read: teamView('read'),
+      capability_team_save: teamView('save'),
+      capability_team_import: teamView('save'),
+      capability_model_catalog: CatalogView,
+      capability_task_budget: BudgetView,
+      capability_member_override: OverrideView,
+      capability_team_export: ExportView,
+      cpa_search: SearchView,
+      cpa_web_fetch: FetchView,
+      capability_handoff: HandoffView,
+      capability_rotate_member: RotateView,
+      capability_memory_search: MemorySearchView,
+      capability_memory_write: MemoryWriteView,
+    };
+
+    // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, CatalogView, BudgetView, SearchView, ExportView, contextMetrics });
+    const plugin = {
+      inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
+      apply(ctx) {
+        ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'capability-team: dictionaries');
+        ctx.effect(() => {
+          const tag = document.createElement('style');
+          tag.dataset.plugin = '@local/dsh-capability-team';
+          tag.textContent = CSS;
+          document.head.appendChild(tag);
+          return () => tag.remove();
+        }, 'capability-team: styles');
+        const bound = ctx.locale.bind(NS);
+        const execute = async (sessionId, line) => {
+          const reply = await ctx.remote.commands.execute(sessionId, line, []);
+          if (!reply.ok) throw new Error(reply.error?.message ?? 'Remote command failed');
+          const result = reply.value?.result;
+          if (!result || result.kind === 'error') throw new Error(result?.text ?? 'capability-status is unavailable');
+          const data = parse(result.text);
+          if (!data) throw new Error('Invalid capability-status response');
+          return data;
+        };
+        const load = async sessionId => expandStatus(await execute(sessionId, '/capability-status'));
+        const live = liveStore(ctx);
+        const save = (sessionId, disabledRoutes, expectedRevision) => execute(sessionId,
+          '/capability-model-policy ' + JSON.stringify({ disabledRoutes, expectedRevision }));
+        ctx.effect(() => ctx.sidebarRightTabs.register({
+          id: 'capability-team-overview', kind: 'capability-team-overview',
+          title: () => bound('overview.title'),
+          guide: [{ order: 35, title: () => bound('overview.title'), description: () => bound('overview.hint') }],
+        }), 'capability-team: right sidebar tab');
+        ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+          name: 'sidebar.right.pane.tab', key: 'capability-team-overview', id: 'capability-team-overview', locale: NS,
+        }, props => h(Overview, { ...props,
+          // Item 3: Overview owns its own bilingual dictionary lookup keyed by its own locale toggle, not the
+          // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
+          // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.
+          // `hostT` is only a fallback for any key missing from the plugin's own zh/en dictionaries.
+          hostT: bound, load, save, live, cache: snapshotCache,
+          // Same navigation as DSH's own Team panel: open the teammate's continuable session.
+          openMember: typeof ctx.uiWorkspace?.openSession === 'function'
+            ? (parentSessionId, childSessionId) => ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' }) : undefined })));
+        // Each view receives `t`; fall back to the bound translator when the slot does not inject one.
+        const withT = View => function CapabilityToolView(props) { return h(View, { ...props, t: props.t ?? bound }); };
+        for (const [key, View] of Object.entries(VIEWS)) {
+          // `inject` hands each view its session id, which the dispatch confirmation card needs.
+          ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name: 'tool.call.toolview', key, locale: NS, inject: sessionId => ({ sessionId }) }, withT(View)));
+        }
+      },
+    };

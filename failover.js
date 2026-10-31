@@ -9,7 +9,8 @@ function wait(ms, signal) {
     signal?.addEventListener('abort', stop, { once: true });
   });
 }
-export function createFailover({ now = Date.now, sleep = wait, registered = () => true, log = () => {} } = {}) {
+export function createFailover({ now = Date.now, sleep = wait, registered = () => true, log = () => {}, telemetry = () => {} } = {}) {
+  const observe = event => { try { telemetry(event); } catch { /* observability never changes recovery */ } };
   const cooling = new Map(); // route key → { until, failure }
   const steps = new WeakMap(); // agent → per-step state
   const healthy = route => (cooling.get(key(route))?.until ?? 0) <= now();
@@ -18,11 +19,12 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
     /** Route for this attempt: the step's current candidate, else the first healthy registered one. */
     route(agent, turn, step, role) {
       const list = candidates(role);
+      const signature = `${list.map(key).join('|')}|${role.taskLeaseSignature ?? ''}`;
       let state = steps.get(agent);
-      if (!state || state.turn !== turn || state.step !== step || state.signature !== list.map(key).join('|')) {
+      if (!state || state.turn !== turn || state.step !== step || state.signature !== signature) {
         const usable = list.map((r, i) => i).filter(i => registered(list[i].provider));
         const start = usable.find(i => healthy(list[i])) ?? usable[0] ?? 0;
-        state = { turn, step, signature: list.map(key).join('|'), index: start, retries: 0, tried: [], role };
+        state = { turn, step, signature, index: start, retries: 0, tried: [], role };
         steps.set(agent, state);
       }
       state.role = role;
@@ -40,16 +42,21 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
         const backoff = Math.min(policy.initialDelayMs * 2 ** (state.retries - 1), policy.maxDelayMs);
         const hinted = failure.providerRetryAfterMs > 0 && failure.providerRetryAfterMs <= policy.maxDelayMs ? failure.providerRetryAfterMs : backoff;
         log(`同一模型 ${key(current)} 第${state.retries}/${policy.retries}次追加重试（${failure.code}），等待 ${hinted}ms`);
-        return sleep(hinted, signal);
+        const retry = await sleep(hinted, signal);
+        if (retry) observe({ kind: 'retry', agent });
+        return retry;
       }
       const eligible = policy.failoverCodes.includes(failure.code) || policy.failoverStatuses.includes(failure.status);
       state.tried.push({ route: key(current), code: failure.code, status: failure.status, message: String(failure.message).slice(0, 300) });
       if (!eligible) return false;
-      cooling.set(key(current), { until: now() + policy.cooldownMs, failure: failure.code });
+      const until = now() + policy.cooldownMs;
+      cooling.set(key(current), { until, failure: failure.code });
+      observe({ kind: 'cooldown', agent, route: current, until, code: failure.code, status: failure.status });
       const tried = new Set(state.tried.map(item => item.route));
       const next = list.findIndex(r => !tried.has(key(r)) && registered(r.provider) && healthy(r));
       if (next < 0) { log(`同档备选已用尽：${JSON.stringify(state.tried)}`); return false; }
       log(`${key(current)} 不可用（${failure.code}${failure.status ? '/' + failure.status : ''}），切换到同档备选 ${key(list[next])}`);
+      observe({ kind: 'switch', agent, from: current, to: list[next], code: failure.code, status: failure.status });
       state.index = next; state.retries = 0;
       return true;
     },

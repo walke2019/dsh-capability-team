@@ -2,6 +2,7 @@
 // The check is lexical (no filesystem I/O) and runs as a monotonic tools.guard, so no later listener can allow a denied call.
 import { isAbsolute, relative, resolve } from 'node:path';
 import { resolveRole } from './config.js';
+import { checkFileLimits } from './file-limits.js';
 /** Tools that run arbitrary commands; a path restriction is meaningless while these stay available. */
 export const SHELL_TOOLS = ['bash', 'pwsh', 'terminal_*'];
 /** DSH file tools that modify files, with the argument holding the target path (dsh-tool-fs, dsh-tool-str-replace-editor). */
@@ -71,14 +72,15 @@ export function applyAccess(ctx, team) {
     if (membership === undefined) return undefined;
     const project = team.pinned(exec.agent);
     if (!project) return undefined; // Pinned before the first request; nothing can run earlier.
-    let role;
-    try { role = resolveRole(membership, team.loadSync(project, exec.agent).effective); }
+    let role, effective;
+    try { effective = team.loadSync(project, exec.agent).effective; role = resolveRole(membership, effective); }
     catch (error) {
       // An unregistered teammate is already blocked at request routing; a broken config fails closed.
       return /未在当前项目的团队配置中登记/.test(error.message) ? undefined : `团队配置读取失败，已停止执行：${error.message}`;
     }
     const cwd = ctx.workingDirectory.get?.(exec.agent.session) ?? project;
     const sandboxed = presetActive(ctx.get?.('permissionPresets'), exec.agent.session, role.access);
-    return checkAccess(exec, role.access, { project, cwd, sandboxed, label: `角色 ${role.displayName}（${role.capability}）` });
+    return checkAccess(exec, role.access, { project, cwd, sandboxed, label: `角色 ${role.displayName}（${role.capability}）` })
+      ?? checkFileLimits(exec, effective.workflow.fileLimits, { project, cwd, role: membership.role });
   }));
 }
