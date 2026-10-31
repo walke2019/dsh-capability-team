@@ -69,6 +69,7 @@
     "board-dispatch.js",
     "teammate-context.js",
     "token-discipline.js",
+    "route-health.js",
     "skills/project-role-theme/SKILL.md",
     "README.md",
     "README.zh-CN.md",

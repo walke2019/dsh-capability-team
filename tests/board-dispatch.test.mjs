@@ -85,3 +85,14 @@ test('写入范围：只拦认领了带范围任务的队友，范围外的修�
   assert.equal(board.guard(exec('edit', { file_path: 'server.js' }), { enforce: false }), undefined, '可关闭');
   assert.equal(board.guard({ name: 'edit', arguments: { file_path: 'server.js' }, agent: { id: 'lead' } }), undefined, '主控不受限');
 });
+
+test('队友刚创建时改派会失败，插件稍后重试直到分到任务', async () => {
+  const { teams, tasks, lead, roster } = fakeTeams([]);
+  const board = createBoardDispatch({ agentTeams: teams }, { pinned: () => '/p' });
+  await board.create(lead, { assignments: [assignments[1]] }, {});
+  let tries = 0;
+  const sleep = async () => { tries++; if (tries === 2) roster.push({ id: 'diao-chan', name: 'diao-chan', role: 'teammate' }); };
+  assert.equal(await board.handOut(lead, 'diao-chan', 'diao-chan', { sleep }), true);
+  assert.equal(tasks[0].ownerName, 'diao-chan');
+  assert.equal(await board.handOut(lead, 'diao-chan', 'nobody', { attempts: 2, sleep: async () => {} }), true, '没有可分的任务时直接成功');
+});

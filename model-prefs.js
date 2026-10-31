@@ -23,7 +23,8 @@ export function habitOf(choices, limits = PREF_LIMITS) {
 }
 /** Health notes for routes: strikes from the failover layer; a route is unhealthy at PREF_LIMITS.unhealthyStrikes. */
 export function unhealthyRoutes(health = {}, limits = PREF_LIMITS) {
-  return Object.fromEntries(Object.entries(health).filter(([, h]) => h.cooling || (h.strikes ?? 0) >= limits.unhealthyStrikes).map(([k, h]) => [k, h.strikes ?? 1]));
+  // A credential failure (wrong or missing key) stays bad until fixed, so one is enough.
+  return Object.fromEntries(Object.entries(health).filter(([, h]) => h.cooling || h.credential || (h.strikes ?? 0) >= limits.unhealthyStrikes).map(([k, h]) => [k, h.strikes ?? 1]));
 }
 /**
  * Apply learning to one offered row: preselect the habit when every route in it is offered and healthy, and

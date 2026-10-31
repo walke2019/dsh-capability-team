@@ -31,14 +31,14 @@ export function toolClass(name, workflow) {
  * Pure decision for one Lead tool call; mutates `state` counters only when the call is allowed.
  * Returns a denial reason string, or undefined to allow.
  */
-export function decide(state, exec, workflow, roster) {
+export function decide(state, exec, workflow) {
   const kind = toolClass(exec.name, workflow);
   const plan = state.plan;
   const replan = '重新调用 capability_dispatch_plan';
   if (kind === 'coordination') {
     if (exec.name !== 'spawn_teammate') return undefined;
     const name = exec.arguments?.name;
-    if (!plan) return `创建队友前先调用 capability_dispatch_plan：分析本次需求，指派合适的已登记角色（${roster}）。`;
+    if (!plan) return `创建队友前先调用 capability_dispatch_plan：分析本次需求，指派合适的已登记角色（角色与适用场景见团队上下文的名册）。`;
     if (plan.mode !== 'delegate' || !plan.assignments.some(a => a.role === name)) {
       return `队友 ${name} 不在本轮指派计划中（当前：${planSummary(plan)}）。需要该角色时先${replan}把它加入指派。`;
     }
@@ -47,7 +47,7 @@ export function decide(state, exec, workflow, roster) {
   if (!plan) {
     if (kind === 'analysis' && state.analysisUsed < workflow.analysisBudget) { state.analysisUsed += 1; return undefined; }
     const why = kind === 'analysis' ? `指派前的只读分析已用满 ${workflow.analysisBudget} 次` : `${exec.name} 属于执行类操作`;
-    return `${why}。主控必须先调用 capability_dispatch_plan：分析用户这次的需求涉及哪些能力，指派最合适的已登记角色（${roster}）；长篇纯文本（总结、翻译、起草、整理给定材料）选 free 交给免费模型；只有简单问答或一两步即可完成的小事才选择 direct 并说明理由。`;
+    return `${why}。主控必须先调用 capability_dispatch_plan：分析用户这次的需求涉及哪些能力，指派最合适的已登记角色（角色与适用场景见团队上下文的名册）；长篇纯文本（总结、翻译、起草、整理给定材料）选 free 交给免费模型；只有简单问答或一两步即可完成的小事才选择 direct 并说明理由。`;
   }
   if (kind === 'free') {
     if (plan.mode === 'free') return undefined;
@@ -111,11 +111,6 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
     const project = team.pinned(agent);
     return project ? team.loadSync(project, agent).effective : team.base;
   };
-  const rosterText = effective => Object.entries(effective.roles).filter(([id]) => id !== 'lead')
-    .map(([id, r]) => {
-      const when = effective.capabilities[r.capability]?.whenToUse;
-      return `${id}=${r.displayName}/${r.capability}${when ? `（${when}）` : ''}`;
-    }).join('，');
   return {
     state,
     /** A new user request starts a new dispatch cycle; teammate reports keep the current plan. */
@@ -138,7 +133,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
         const plan = state(exec.agent).plan;
         if (plan?.mode === 'delegate' && plan.assignments.some(a => a.role === baseName(name))) return undefined;
       }
-      return decide(state(exec.agent), exec, workflow, rosterText(effective));
+      return decide(state(exec.agent), exec, workflow);
     },
     /** Model-facing status line for the Lead's team context. */
     status(agent, workflow) {

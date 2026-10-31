@@ -40,6 +40,10 @@ export function trimText(text, rules, spillPath) {
 }
 export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'capability-team-spill'), rulesOf } = {}) {
   const compacting = new WeakSet();
+  // `compaction` is not in the plugin's inject list, and cordis throws on a direct read of an un-injected
+  // service (that once stopped the DSH host). It arrives through ctx.inject when the host provides it.
+  let compactionService;
+  const compaction = () => compactionService;
   const rules = agent => {
     if (rulesOf) return rulesOf(agent);
     const project = team.pinned(agent);
@@ -55,17 +59,21 @@ export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'ca
       return tokens !== undefined && window ? tokens / window : undefined;
     } catch { return undefined; }
   };
+  async function compactIdleUnsafe(agent) {
+    const r = rules(agent);
+    const service = compaction();
+    if (!r || compacting.has(agent) || !isMember(agent) || typeof service?.compactNow !== 'function') return false;
+    const ratio = ratioOf(agent);
+    if (ratio === undefined || ratio < r.idleCompactRatio) return false;
+    compacting.add(agent);
+    try { return (await service.compactNow(agent, AbortSignal.timeout(180000))) !== null; }
+    finally { compacting.delete(agent); }
+  }
   const api = {
-    /** Compact an idle member whose context is above the idle threshold. Returns true when it ran. */
+    /** Compact an idle member whose context is above the idle threshold. Never throws; returns true when it ran. */
     async compactIdle(agent) {
-      const r = rules(agent);
-      if (!r || compacting.has(agent) || !isMember(agent) || typeof ctx.compaction?.compactNow !== 'function') return false;
-      const ratio = ratioOf(agent);
-      if (ratio === undefined || ratio < r.idleCompactRatio) return false;
-      compacting.add(agent);
-      try { return (await ctx.compaction.compactNow(agent, AbortSignal.timeout(180000))) !== null; }
-      catch { return false; } // busy (new work arrived) or nothing compactable: try again on the next idle
-      finally { compacting.delete(agent); }
+      // busy (new work arrived), nothing compactable or any host error: skip, and try again on the next idle
+      try { return await compactIdleUnsafe(agent); } catch { return false; }
     },
     /** Post-execute decision: trim an oversized log/listing result for a team member. */
     async trim(exec, result) {
@@ -79,7 +87,9 @@ export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'ca
       return [{ type: 'text', text: trimText(text, r, path) }];
     },
     register() {
-      ctx.on('agent/status', ({ agent, status }) => { if (status === 'idle') void api.compactIdle(agent); });
+      try { ctx.inject?.(['compaction'], scoped => { compactionService = scoped.compaction; scoped.effect?.(() => () => { compactionService = undefined; }); }); } catch { /* host without compaction */ }
+      // Listeners must never reject: an unhandled rejection inside a host event stops the DSH host.
+      ctx.on('agent/status', ({ agent, status }) => { if (status === 'idle') api.compactIdle(agent).catch(() => {}); });
       ctx.on('tools/post-execute', async (exec, result, next) => {
         const decision = await next();
         if (decision?.kind !== 'accept' || decision.content !== undefined || result?.isError) return decision;

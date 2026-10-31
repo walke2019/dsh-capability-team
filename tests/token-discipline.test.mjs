@@ -53,15 +53,31 @@ test('成员空闲且上下文超过阈值时压缩；未超过、非成员、�
   const calls = [];
   const state = { contextWindow: 200000, surfaceTokens: 0 };
   let tokens = 90000;
-  const ctx = mkCtx({ compaction: { compactNow: async agent => { calls.push(agent.id); return { shadowedSeqs: [] }; } },
-    get: () => ({ stateOf: () => ({ ...state, surfaceTokens: tokens }) }) });
+  const service = { compactNow: async agent => { calls.push(agent.id); return { shadowedSeqs: [] }; } };
+  const projections = { stateOf: () => ({ ...state, surfaceTokens: tokens }) };
+  const ctx = mkCtx({ get: () => projections, on: () => {}, inject: (names, fn) => { assert.deepEqual(names, ['compaction']); fn({ compaction: service }); } });
   const td = createTokenDiscipline(ctx, {}, { rulesOf: () => TOKEN_RULES });
+  td.register();
   assert.equal(await td.compactIdle(member), true, '90k/200k = 45% ≥ 35%');
   tokens = 50000;
   assert.equal(await td.compactIdle(member), false, '25% 不压缩');
   tokens = 150000;
   assert.equal(await td.compactIdle({ id: 'other', session: {} }), false, '非成员不动');
-  const busy = createTokenDiscipline(mkCtx({ compaction: { compactNow: async () => { throw new Error('busy'); } }, get: ctx.get }), {}, { rulesOf: () => TOKEN_RULES });
+  const busy = createTokenDiscipline(mkCtx({ get: () => projections, on: () => {}, inject: (_n, fn) => fn({ compaction: { compactNow: async () => { throw new Error('busy'); } } }) }), {}, { rulesOf: () => TOKEN_RULES });
+  busy.register();
   assert.equal(await busy.compactIdle(member), false, '忙时放弃，下次空闲再试');
   assert.deepEqual(calls, ['m']);
+});
+
+test('宿主禁止直接读取未注入的服务时也不会抛出（曾因此导致 DSH 宿主退出）', async () => {
+  const guarded = new Proxy(mkCtx({ get: name => { if (name === 'compaction') throw new Error('cannot get property "compaction" without inject'); return undefined; } }), {
+    get(target, prop) { if (prop === 'compaction') throw new Error('cannot get property "compaction" without inject'); return target[prop]; },
+  });
+  let listener;
+  guarded.on = (name, fn) => { if (name === 'agent/status') listener = fn; };
+  const td = createTokenDiscipline(guarded, {}, { rulesOf: () => TOKEN_RULES });
+  td.register();
+  assert.equal(await td.compactIdle(member), false);
+  assert.doesNotThrow(() => listener({ agent: member, status: 'idle' }));
+  await new Promise(resolve => setTimeout(resolve, 10)); // an unhandled rejection would fail the test run
 });

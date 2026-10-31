@@ -243,7 +243,7 @@ DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时�
 | `directBudget` | 3 | `direct` 模式下主控自行执行的次数上限 |
 | `freeTools` | `none` | 免费模型的工具级别：`none` 只处理文字；`read` 可读取、搜索项目文件；`write` 还可新建、编辑项目文件（见下文） |
 | `freeModels` | `[]` | 免费模型的尝试顺序；空数组表示使用 OpenCode 模型目录中的全部免费模型，新的在前 |
-| `analysisTools` | read、glob、grep、read_image | 分析类工具 |
+| `analysisTools` | read、glob、grep、read_image、session_search、session_event_search、session_event_read | 分析类工具（只读，制定计划前可少量使用） |
 | `coordinationTools` | 团队、看板、提问、技能、目标等工具 | 协调类工具，不受限制 |
 | `fileLimits` | 见[文件铁律](#文件铁律) | 文件行数与读写规则；`false` 关闭 |
 | `confirmDispatch` | `on-change` | 见[派活确认](#派活确认) |
@@ -397,7 +397,7 @@ DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时�
 [model-prefs.js](model-prefs.js)：每次确认分派都会按能力记下你选的主模型和回退顺序（每个项目最多保留 20 次）。
 
 - **预选**：最近 10 次里某个主模型至少选过 2 次且占多数，下次派活卡片就预选它和你最近一次的回退顺序，并标注“按你的习惯”。卡片仍要你确认，不会悄悄替你改。
-- **避开故障**：容灾层记录的近期故障（冷却中，或连续失败 ≥2 次）的模型不会被预选，并排到回退最后，卡片上标注失败次数。
+- **避开故障**：近期故障的模型（冷却中、连续失败 ≥2 次，或密钥错误）不会被预选，并排到回退最后，卡片上标注失败次数。故障记录存在 `$CAPABILITY_TEAM_HOME/route-health.json`，DSH 重启后仍然有效：密钥错误保留一天，其他故障保留一小时。
 - **建议固化**：最近 3 次选择完全相同时，卡片提示保存为项目默认。
 - 主控可用 `capability_model_prefs`（`read` / `clear`）查看或清空学到的偏好；数据存在 `$CAPABILITY_TEAM_HOME/model-prefs/`。
 
@@ -467,6 +467,7 @@ npm run build     # 发布前检查打包文件集合
 | [dispatch-confirm.js](dispatch-confirm.js) | 派活确认：路由、校验、HTTP 接口与原生提问框兜底 |
 | [session-rotation.js](session-rotation.js) | 会话轮换信号、交接与接替者 |
 | [board-dispatch.js](board-dispatch.js) | 看板派活：子任务、写入范围、依赖、自动分配与改派 |
+| [route-health.js](route-health.js) | 持久化的模型故障记录 |
 | [model-prefs.js](model-prefs.js) | 模型偏好学习与故障避让 |
 | [token-discipline.js](token-discipline.js) / [teammate-context.js](teammate-context.js) | Token 铁律：空闲压缩、输出截断、队友前缀精简 |
 | [memory-hub.js](memory-hub.js) / [memory-store.js](memory-store.js) / [memory-embed.js](memory-embed.js) | 记忆枢纽：入库、召回、混合检索与嵌入网关 |

@@ -243,7 +243,7 @@ Only the lead is constrained; teammates use all tools as usual. The limits are p
 | `directBudget` | 3 | Cap on the lead's own executions in `direct` mode |
 | `freeTools` | `none` | Free model tool level: `none` text only; `read` may read and search project files; `write` may also create and edit project files (see below) |
 | `freeModels` | `[]` | Order of free models to try; empty means every free model in OpenCode's catalog, newest first |
-| `analysisTools` | read, glob, grep, read_image | Analysis tools |
+| `analysisTools` | read, glob, grep, read_image, session_search, session_event_search, session_event_read | Analysis tools (read-only, a few allowed before planning) |
 | `coordinationTools` | team, board, question, skill, goal tools, … | Coordination tools, unrestricted |
 | `fileLimits` | see [File rules](#file-rules) | File size and read/write rules; `false` disables |
 | `confirmDispatch` | `on-change` | See [Dispatch confirmation](#dispatch-confirmation) |
@@ -397,7 +397,7 @@ Change thresholds in conversation via `workflow.tokens` (`idleCompactRatio`, `tr
 [model-prefs.js](model-prefs.js): every confirmed dispatch records, per capability, the primary and fallback order you chose (up to 20 per project).
 
 - **Preselect**: when a primary was chosen at least twice and in most of the last 10 choices, the next card preselects it with your latest fallback order, marked "your usual choice". The card still asks; nothing changes silently.
-- **Avoid failures**: models with recent failures recorded by the failover layer (cooling, or ≥2 consecutive failures) are never preselected and move to the end of the fallbacks, with the failure count shown.
+- **Avoid failures**: models with recent failures (cooling, ≥2 consecutive failures, or a credential error) are never preselected and move to the end of the fallbacks, with the failure count shown. Failures are kept in `$CAPABILITY_TEAM_HOME/route-health.json` and survive a DSH restart: credential errors for a day, other failures for an hour.
 - **Suggest saving**: when the last 3 choices are identical, the card suggests saving them as the project default.
 - The lead can view or clear what was learned with `capability_model_prefs` (`read` / `clear`); data lives in `$CAPABILITY_TEAM_HOME/model-prefs/`.
 
@@ -468,6 +468,7 @@ Tests use mocked ctx, model catalogs and question dialogs, and make no model, se
 | [dispatch-confirm.js](dispatch-confirm.js) | Dispatch confirmation: routes, validation, HTTP API and native dialog fallback |
 | [session-rotation.js](session-rotation.js) | Session rotation signals, handoffs and successors |
 | [board-dispatch.js](board-dispatch.js) | Board dispatch: subtasks, write scopes, dependencies, hand-out and reassignment |
+| [route-health.js](route-health.js) | Route failures that survive restarts |
 | [model-prefs.js](model-prefs.js) | Learned model preferences and failure avoidance |
 | [token-discipline.js](token-discipline.js) / [teammate-context.js](teammate-context.js) | Token rules: idle compaction, output trimming, lean teammate prefix |
 | [memory-hub.js](memory-hub.js) / [memory-store.js](memory-store.js) / [memory-embed.js](memory-embed.js) | Memory hub: ingestion, recall, hybrid search and embeddings |

@@ -50,7 +50,8 @@ export const seed = deepFreeze({
     // Optional order of free models; empty = every free model in OpenCode's catalog, newest first.
     // Entries are re-checked against the catalog at run time, so a paid model can never be listed in.
     freeModels: [],
-    analysisTools: ['read', 'glob', 'grep', 'read_image'],
+    // Read-only lookups, including session history, so the Lead can orient itself before planning.
+    analysisTools: ['read', 'glob', 'grep', 'read_image', 'session_search', 'session_event_search', 'session_event_read'],
     coordinationTools: ['spawn_teammate', 'send_message', 'wait_agent', 'list_agents', 'interrupt_agent',
       'team_task_create', 'team_task_get', 'team_task_list', 'team_task_update', 'ask_user_question',
       'capability_team_read', 'capability_model_catalog', 'capability_team_save', 'capability_team_export', 'capability_team_import',

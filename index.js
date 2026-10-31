@@ -15,6 +15,7 @@ import { createBoardDispatch } from './board-dispatch.js';
 import { baseName } from './session-rotation.js';
 import { applySkillCatalog, scopeTools } from './teammate-context.js';
 import { createTokenDiscipline } from './token-discipline.js';
+import { createRouteHealth, mergeHealth } from './route-health.js';
 import { createRotation } from './session-rotation.js';
 import { createMemoryHub } from './memory-hub.js';
 import { setPluginIntegrations } from './integrations-config.js';
@@ -27,8 +28,9 @@ export function apply(host, config = {}) {
   setPluginIntegrations(config.integrations);
   void team.refresh(); // First catalog match in the background; requests await it if still pending.
   const observability = createRuntimeObservability();
+  const routeHealth = createRouteHealth(team.root);
   const failover = createFailover({
-    telemetry: event => observability.telemetry(event),
+    telemetry: event => { observability.telemetry(event); routeHealth.record(event); },
     // A provider missing from DSH throws before the stream starts, which no hook can recover.
     registered: provider => ctx.llm.listProviders().some(p => p.id === provider),
     log: message => ctx.logger?.info?.(`capability-team: ${message}`),
@@ -39,7 +41,7 @@ export function apply(host, config = {}) {
   const rotation = createRotation(ctx, team, { onHandoff: handoff => memory.ingestHandoff(handoff) });
   const board = createBoardDispatch(ctx, team);
   const prefs = createModelPrefs(team.root);
-  const workflow = createWorkflow(ctx, team, { onDelegate: (lead, roles) => planGate.reset(lead, roles), onAssignments: (lead, assignments) => taskControl.dispatch(lead, assignments), dispatchConfirm: createDispatchConfirm(ctx, team, { prefs, health: () => failover.health() }), rotation, board });
+  const workflow = createWorkflow(ctx, team, { onDelegate: (lead, roles) => planGate.reset(lead, roles), onAssignments: (lead, assignments) => taskControl.dispatch(lead, assignments), dispatchConfirm: createDispatchConfirm(ctx, team, { prefs, health: () => mergeHealth(routeHealth.recent(), failover.health()) }), rotation, board });
   taskControl.setWorkflow(workflow);
   taskControl.register();
   workflow.register();

@@ -54,14 +54,26 @@ export function createBoardDispatch(ctx, team) {
   const teams = () => ctx.agentTeams;
   const boardOf = lead => { if (!leads.has(lead.id)) leads.set(lead.id, new Map()); return leads.get(lead.id); };
   const listTasks = lead => { try { return teams().listTasks?.(lead) ?? []; } catch { return []; } };
-  /** Reassign ready, unowned tasks planned for `role` to member `name` (Lead authority). */
-  async function handOut(lead, role, name) {
-    const planned = boardOf(lead);
+  /** Reassign ready, unowned tasks planned for `role` to member `name` (Lead authority). Returns how many failed. */
+  async function handOutOnce(lead, role, name) {
+    const planned = boardOf(lead); let failed = 0;
     for (const task of listTasks(lead)) {
       const entry = planned.get(task.id);
       if (!entry || entry.role !== role || task.status !== 'pending' || task.ownerName || !task.ready) continue;
-      try { await teams().updateTask(lead, { taskId: task.id, expectedRevision: task.revision, action: 'reassign', owner: name }); } catch { /* raced or blocked: the member can still claim it */ }
+      try { await teams().updateTask(lead, { taskId: task.id, expectedRevision: task.revision, action: 'reassign', owner: name }); } catch { failed++; }
     }
+    return failed;
+  }
+  /**
+   * Hand out with a few retries: a member that just claimed its first message may still be provisioning, and
+   * DSH only reassigns to active members. If it never succeeds, the member can still claim the task itself.
+   */
+  async function handOut(lead, role, name, { attempts = 4, delayMs = 1500, sleep = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
+    for (let i = 0; i < attempts; i++) {
+      if (!(await handOutOnce(lead, role, name))) return true;
+      if (i < attempts - 1) await sleep(delayMs);
+    }
+    return false;
   }
   const api = {
     /** Create the plan's tasks on the board and hand ready ones to members that already exist. */
@@ -79,7 +91,8 @@ export function createBoardDispatch(ctx, team) {
       const members = (() => { try { return teams().listMembers(lead); } catch { return []; } })();
       for (const role of Object.keys(byRole)) {
         const live = members.filter(m => m.role !== 'lead' && baseName(m.name) === role).sort((a, b) => b.name.length - a.name.length || b.name.localeCompare(a.name))[0];
-        if (live) await handOut(lead, role, live.name);
+        // Existing members are already active, so one attempt is enough and dispatch is not delayed.
+        if (live) await handOut(lead, role, live.name, { attempts: 1 });
       }
       return byRole;
     },

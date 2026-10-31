@@ -1,6 +1,7 @@
 // Same-route retries, then ordered same-tier failover, with a per-route cooldown that doubles while a route keeps
 // failing (a dead provider is not retried every minute) and resets once it has stayed quiet for a while.
 // DSH's own provider retry policy (dsh-llm-retry) runs first; this layer only acts once it declines.
+import { isCredential } from './route-health.js';
 const key = r => `${r.provider}/${r.model}`;
 export const MAX_COOLDOWN_MS = 30 * 60_000;
 /** Cooldown for the n-th consecutive failure: base, 2×, 4×… capped at 30 minutes. */
@@ -59,8 +60,8 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
       const prior = cooling.get(key(current));
       const strikes = prior && now() - prior.until < 10 * policy.cooldownMs ? prior.strikes + 1 : 1;
       const until = now() + escalatedCooldown(policy.cooldownMs, strikes);
-      cooling.set(key(current), { until, failure: failure.code, strikes, lastFailureAt: now() });
-      observe({ kind: 'cooldown', agent, route: current, until, code: failure.code, status: failure.status, strikes });
+      cooling.set(key(current), { until, failure: failure.code, strikes, lastFailureAt: now(), credential: isCredential(failure.code, status) });
+      observe({ kind: 'cooldown', agent, route: current, until, code: failure.code, status, strikes });
       const tried = new Set(state.tried.map(item => item.route));
       const next = list.findIndex(r => !tried.has(key(r)) && registered(r.provider) && healthy(r));
       if (next < 0) { log(`同档备选已用尽：${JSON.stringify(state.tried)}`); return false; }
@@ -78,6 +79,6 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
     },
     cooling: () => [...cooling].filter(([, v]) => v.until > now()).map(([route, v]) => ({ route, failure: v.failure, until: new Date(v.until).toISOString(), strikes: v.strikes })),
     /** Recent failure record per route (for ranking choices), including routes whose cooldown has ended. */
-    health: () => Object.fromEntries([...cooling].map(([route, v]) => [route, { strikes: v.strikes, lastFailureAt: v.lastFailureAt, cooling: v.until > now() }])),
+    health: () => Object.fromEntries([...cooling].map(([route, v]) => [route, { strikes: v.strikes, lastFailureAt: v.lastFailureAt, cooling: v.until > now(), credential: v.credential }])),
   };
 }
