@@ -66,6 +66,7 @@
     "integrations-config.js",
     "skills/project-role-theme/SKILL.md",
     "README.md",
+    "README.zh-CN.md",
     "LICENSE",
     "tests/*.test.mjs",
     "tests/fixture.mjs",
