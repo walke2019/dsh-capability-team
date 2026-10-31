@@ -88,7 +88,12 @@ test('嵌入请求：成功返回归一化向量；404 时降级并说明原因'
   const ok = createEmbedder({ config, fetcher: async (url, init) => { sent = JSON.parse(init.body); return new Response(JSON.stringify({ data: [{ index: 0, embedding: [3, 4, 0] }] })); } });
   const out = await ok.embed(['你好'], 'retrieval.query');
   assert.deepEqual(out.vectors[0], [0.6, 0.8, 0]);
-  assert.deepEqual(sent, { model: 'jina-embeddings-v3', input: ['你好'], dimensions: 3, task: 'retrieval.query', normalized: true });
+  assert.deepEqual(sent, { provider: 'jina', model: 'jina-embeddings-v3', input: ['你好'], dimensions: 3, task: 'retrieval.query' });
+  const empty = createEmbedder({ config, fetcher: async () => new Response(JSON.stringify({ data: [{ index: 0, embedding: [] }] })) });
+  assert.equal(await empty.embed(['x']), undefined, '空向量不算成功');
+  const limited = createEmbedder({ config, fetcher: async () => new Response('{}', { status: 429 }) });
+  await limited.embed(['x']);
+  assert.match(limited.lastError, /429（限流/);
   const missing = createEmbedder({ config, fetcher: async () => new Response('{}', { status: 404 }) });
   assert.equal(await missing.embed(['x']), undefined);
   assert.match(missing.lastError, /尚未提供 \/v1\/embeddings/);

@@ -64,8 +64,8 @@ DeepSeek Harness（DSH）的多智能体预设：一个主控加若干专业能�
 
 | 变量 | 必需 | 作用 |
 |---|---|---|
-| `CPA_SEARCH_BASE_URL` | 使用搜索工具时 | 聚合搜索网关地址，只接受不含账号和查询参数的 `https` 地址，例如 `https://gateway.example.com` |
-| `CPA_SEARCH_API_KEY` | 使用搜索工具时 | 聚合搜索网关密钥，只从环境读取，不写入配置或日志 |
+| `CPA_SEARCH_BASE_URL` | 否 | 聚合搜索网关地址，只接受不含账号和查询参数的 `https` 地址，例如 `https://gateway.example.com`；不设时使用 `CPA_BASE_URL` 的同源地址 |
+| `CPA_SEARCH_API_KEY` | 否 | 聚合搜索网关密钥，只从环境读取，不写入配置或日志；不设时使用 `CPA_API_KEY` |
 | `CPA_EMBED_BASE_URL` | 否 | 记忆枢纽的嵌入网关地址（`https`）。不设时依次用 `CPA_SEARCH_BASE_URL`、`CPA_BASE_URL` 的同源地址，请求 `<origin>/v1/embeddings` |
 | `CPA_EMBED_API_KEY` | 否 | 嵌入网关密钥；不设时依次用 `CPA_SEARCH_API_KEY`、`CPA_API_KEY` |
 | `CPA_EMBED_MODEL` / `CPA_EMBED_DIMENSIONS` | 否 | 嵌入模型与维度，默认 `jina-embeddings-v3` / `512` |
@@ -73,7 +73,7 @@ DeepSeek Harness（DSH）的多智能体预设：一个主控加若干专业能�
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | 否 | 免费通道使用的 OpenCode 原生可执行文件；默认在 `PATH` 中查找（各平台通用） |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | 否 | OpenCode 模型目录文件；默认 `$XDG_CACHE_HOME/opencode/models.json`（未设置时为 `~/.cache/…`） |
 
-不用搜索工具时，这两个变量可以不设，只有调用 `cpa_search` / `cpa_web_fetch` 时才会报“未配置”。
+搜索、网页读取和记忆枢纽的嵌入默认都走 `CPA_BASE_URL` 所在网关、使用 `CPA_API_KEY`；网关不同的部署才需要单独设置。
 
 ## 默认能力与角色
 
@@ -367,7 +367,7 @@ Content-Type: application/json
 {"model":"jina-embeddings-v3","input":["文本1","文本2"],"dimensions":512,"task":"retrieval.passage","normalized":true}
 ```
 
-响应：`{"data":[{"index":0,"embedding":[...]}, ...]}`，`data` 的条数与 `input` 相同。`task` 为 `retrieval.passage`（入库）或 `retrieval.query`（检索），可直接透传给 `https://api.jina.ai/v1/embeddings`。网关尚未提供这个路由时，插件会识别网关返回的路由列表并降级为全文检索。
+请求体还带 `"provider":"jina"`。响应：`{"data":[{"index":0,"embedding":[...]}, ...]}`，插件要求 `data` 条数与 `input` 相同且每个向量非空，否则视为失败（不会把网关状态 JSON 当成向量）。`task` 为 `retrieval.passage`（入库）或 `retrieval.query`（检索）。索引和查询必须用同一模型和维度，默认 512 维，改 `CPA_EMBED_DIMENSIONS` 后已有向量需要重建。401/400/429/502/504 会给出对应原因并降级为全文检索。网关 1.1.0 已提供该路由（2026-10-31 实测 `jina-embeddings-v3` 可用）。
 
 ## 开发与测试
 
@@ -444,7 +444,7 @@ npm run build     # 发布前检查打包文件集合
 
 已验证：
 
-- 288 项回归测试通过（含文件铁律、派活确认、会话轮换、任务控制面板与记忆枢纽），包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
+- 289 项回归测试通过（含文件铁律、派活确认、会话轮换、任务控制面板与记忆枢纽），包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
 - 使用桌面自带 CLI 在隔离 DSH_HOME 中启动真实宿主，能力协作团队预设已注册，诊断插件成功激活；这不是生产桌面进程重新加载后的会话验收；
 - 已安装包和已连接 Client 的 `capability-team-overview` 活动注册已核实，但此后源码修复仍需确认运行进程重新加载；
 - 独立浏览器访问 GUI 返回 401，尚未完成已认证页面的读取、勾选、保存、恢复操作验收；
@@ -459,7 +459,7 @@ npm run build     # 发布前检查打包文件集合
 - 真实故障下的容灾切换（需要实际制造失败请求，会产生付费调用）；
 - 聚合搜索网关的真实调用；
 - 派活确认卡片、任务控制面板与会话轮换在真实桌面会话中的交互（目前只有模拟 Hook 的组件测试）；
-- 记忆枢纽的向量检索：网关 `/v1/embeddings` 尚未部署（2026-10-31 实测返回路由列表），目前只用全文检索。
+- 记忆枢纽在真实 DSH 会话中的自动入库与召回（网关向量接口已实测可用，混合检索在本地用真实网关验证通过）。
 
 已知限制：
 

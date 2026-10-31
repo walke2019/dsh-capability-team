@@ -11,7 +11,21 @@ test('工具注册；检索权限来自能力配置', async () => {
   await assert.rejects(definitions[0].execute({ query: 'test' }, { agent: {} }), /未开启检索/);
   role = { capability: 'research', search: true };
   // Search permission passes; the gateway then fails on the missing key without any network call.
-  const saved = process.env.CPA_SEARCH_API_KEY; delete process.env.CPA_SEARCH_API_KEY;
+  // Without any key the call must fail locally; CPA_API_KEY/CPA_BASE_URL are the fallback, so clear them too.
+  const names = ['CPA_SEARCH_API_KEY', 'CPA_API_KEY', 'CPA_BASE_URL'];
+  const saved = Object.fromEntries(names.map(n => [n, process.env[n]])); for (const n of names) delete process.env[n];
   try { await assert.rejects(definitions[0].execute({ query: 'test' }, { agent: {} }), err => !/未开启检索/.test(err.message)); }
-  finally { if (saved !== undefined) process.env.CPA_SEARCH_API_KEY = saved; }
+  finally { for (const n of names) if (saved[n] !== undefined) process.env[n] = saved[n]; }
+});
+
+test('搜索网关默认使用 CPA_BASE_URL 的同源地址', async () => {
+  const { gatewayBase } = await import('../search.js');
+  const names = ['CPA_SEARCH_BASE_URL', 'CPA_BASE_URL'];
+  const saved = Object.fromEntries(names.map(n => [n, process.env[n]]));
+  try {
+    delete process.env.CPA_SEARCH_BASE_URL; process.env.CPA_BASE_URL = 'https://gw.example/gateway/v1';
+    assert.equal(gatewayBase(), 'https://gw.example');
+    process.env.CPA_SEARCH_BASE_URL = 'https://search.example';
+    assert.equal(gatewayBase(), 'https://search.example', '显式设置优先');
+  } finally { for (const n of names) if (saved[n] === undefined) delete process.env[n]; else process.env[n] = saved[n]; }
 });

@@ -23,14 +23,19 @@ export function requestBody(kind, args) {
   return body;
 }
 /** Gateway origin from the Host environment; only a credential-free https origin (optional path prefix) is accepted. */
-export function gatewayBase(raw = process.env.CPA_SEARCH_BASE_URL) {
+// Without CPA_SEARCH_BASE_URL the gateway is the origin of CPA_BASE_URL (…/provider-a/v1), which serves /v1/search too.
+function defaultBase() {
+  if (process.env.CPA_SEARCH_BASE_URL) return process.env.CPA_SEARCH_BASE_URL;
+  try { return process.env.CPA_BASE_URL ? new URL(process.env.CPA_BASE_URL).origin : undefined; } catch { return undefined; }
+}
+export function gatewayBase(raw = defaultBase()) {
   if (!raw) throw new Error('聚合搜索未配置 CPA_SEARCH_BASE_URL（网关地址，如 https://gateway.example.com）；请在 Host 环境设置并重启');
   let url;
   try { url = new URL(raw); } catch { throw new Error('CPA_SEARCH_BASE_URL 不是合法地址'); }
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('CPA_SEARCH_BASE_URL 必须是不含账号、查询参数的 https 地址');
   return url.href.replace(/\/+$/, '');
 }
-export async function gateway(kind, args, { fetcher = fetch, key = process.env.CPA_SEARCH_API_KEY, base = process.env.CPA_SEARCH_BASE_URL, signal } = {}) {
+export async function gateway(kind, args, { fetcher = fetch, key = process.env.CPA_SEARCH_API_KEY ?? process.env.CPA_API_KEY, base = defaultBase(), signal } = {}) {
   const body = requestBody(kind, args);
   if (!key) throw new Error('聚合搜索未配置 CPA_SEARCH_API_KEY；请在 Host 环境设置新密钥并重启');
   const origin = gatewayBase(base);

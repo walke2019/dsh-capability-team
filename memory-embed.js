@@ -2,7 +2,9 @@
 // (Jina jina-embeddings-v3 behind it). The gateway is the same one that serves /v1/search, so the base and
 // key default to the search settings. Any failure returns undefined: the hub then falls back to full-text
 // search and embeds missing vectors on a later write or search.
-export const EMBED_DEFAULTS = { model: 'jina-embeddings-v3', dimensions: 512, timeoutMs: 15000, batch: 32 };
+export const EMBED_DEFAULTS = { provider: 'jina', model: 'jina-embeddings-v3', dimensions: 512, timeoutMs: 15000, batch: 32 };
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const STATUS_HINT = { 400: '模型或参数不被接受', 401: 'CPA 客户端密钥无效', 404: '网关尚未提供 /v1/embeddings', 429: '限流，稍后重试', 502: '上游故障', 504: '上游超时' };
 export function embedConfig(env = process.env) {
   // The gateway origin also serves /v1/search; CPA_BASE_URL (…/provider-a/v1) shares that origin on a default setup.
   const raw = env.CPA_EMBED_BASE_URL ?? env.CPA_SEARCH_BASE_URL ?? env.CPA_BASE_URL;
@@ -31,16 +33,17 @@ export function createEmbedder({ config = embedConfig(), fetcher = fetch, timeou
         let response;
         try {
           response = await fetcher(config.endpoint, { method: 'POST', signal: AbortSignal.timeout(timeoutMs),
-            headers: { authorization: `Bearer ${config.key}`, 'content-type': 'application/json' },
-            body: JSON.stringify({ model: config.model, input, dimensions: config.dimensions, task, normalized: true }) });
+            // The gateway asks for a browser User-Agent to get past its WAF.
+            headers: { authorization: `Bearer ${config.key}`, 'content-type': 'application/json', 'user-agent': USER_AGENT },
+            body: JSON.stringify({ provider: EMBED_DEFAULTS.provider, model: config.model, input, dimensions: config.dimensions, task }) });
         } catch (error) { lastError = `嵌入请求失败：${error.message ?? error}`; return undefined; }
-        if (!response.ok) { lastError = `嵌入网关返回 ${response.status}${response.status === 404 ? '（网关尚未提供 /v1/embeddings）' : ''}`; return undefined; }
+        if (!response.ok) { lastError = `嵌入网关返回 ${response.status}${STATUS_HINT[response.status] ? `（${STATUS_HINT[response.status]}）` : ''}`; return undefined; }
         let body;
         try { body = await response.json(); } catch { lastError = '嵌入网关返回的不是 JSON'; return undefined; }
         // The gateway answers unknown paths with 200 and its route list; that means the route is not deployed yet.
         if (Array.isArray(body?.available_routes)) { lastError = `嵌入网关尚未提供 /v1/embeddings（现有路由：${body.available_routes.join(' ')}）`; return undefined; }
         const rows = Array.isArray(body?.data) ? [...body.data].sort((a, b) => (a.index ?? 0) - (b.index ?? 0)) : [];
-        if (rows.length !== input.length || rows.some(r => !Array.isArray(r.embedding))) { lastError = '嵌入网关返回的向量数量不对'; return undefined; }
+        if (rows.length !== input.length || rows.some(r => !Array.isArray(r.embedding) || !r.embedding.length)) { lastError = '嵌入网关没有返回与输入条数一致的非空向量'; return undefined; }
         vectors.push(...rows.map(r => normalize(r.embedding)));
       }
       lastError = null;
