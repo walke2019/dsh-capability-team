@@ -63,6 +63,7 @@
     "memory-embed.js",
     "memory-store.js",
     "memory-hub.js",
+    "integrations-config.js",
     "skills/project-role-theme/SKILL.md",
     "README.md",
     "LICENSE",

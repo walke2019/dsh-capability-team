@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cosine, createEmbedder, embedConfig, normalize } from '../memory-embed.js';
+import { cosine, createEmbedder, embedSettings, normalize, vectorKey } from '../memory-embed.js';
+import { INTEGRATION_DEFAULTS, resolveIntegrations, saveIntegrations } from '../integrations-config.js';
 import { createMemoryStore, rank, tokenize, visible } from '../memory-store.js';
 import { createMemoryHub } from '../memory-hub.js';
 
@@ -72,35 +73,50 @@ test('持久化：重新打开后还在；注入文本受字数上限约束', as
   assert.ok(s2.format(results, 500).length <= 500);
 });
 
-test('嵌入配置：默认复用搜索网关，只接受 https', () => {
-  assert.equal(embedConfig({}), undefined);
-  const c = embedConfig({ CPA_SEARCH_BASE_URL: 'https://gw.example/x', CPA_SEARCH_API_KEY: 'k' });
-  assert.equal(c.endpoint, 'https://gw.example/v1/embeddings');
-  assert.equal(c.model, 'jina-embeddings-v3');
-  assert.equal(c.dimensions, 512);
-  assert.equal(embedConfig({ CPA_EMBED_BASE_URL: 'http://gw.example', CPA_API_KEY: 'k' }), undefined);
-  assert.equal(embedConfig({ CPA_BASE_URL: 'https://gw.example/gateway/v1', CPA_API_KEY: 'k' }).endpoint, 'https://gw.example/v1/embeddings', '默认用 CPA_BASE_URL 的同源网关');
+test('嵌入配置：只来自集成配置与显式环境变量，不从 CPA_BASE_URL 猜测', async () => {
+  const root = await tmp();
+  const none = embedSettings(resolveIntegrations({ root, env: { CPA_BASE_URL: 'https://gw.example/gateway/v1', CPA_API_KEY: 'k' } }));
+  assert.equal(none.config.baseUrl, null);
+  assert.match(createEmbedder({ settings: none }).lastError, /embeddings\.baseUrl.*embeddings\.model.*CPA_EMBED_API_KEY/);
+  await saveIntegrations({ embeddings: { baseUrl: 'https://emb.example/', apiKeyEnv: 'MY_EMBED_KEY', model: 'my-model', dimensions: 256 } }, 0, { root });
+  const s = embedSettings(resolveIntegrations({ root, env: { MY_EMBED_KEY: 'secret', CPA_EMBED_MODEL: 'env-model' } }));
+  assert.equal(s.config.baseUrl, 'https://emb.example');
+  assert.equal(s.config.model, 'env-model', '环境变量覆盖文件');
+  assert.equal(s.key, 'secret');
+  assert.equal(vectorKey(s.config), 'env-model@256');
 });
 
-test('嵌入请求：成功返回归一化向量；404 时降级并说明原因', async () => {
-  const config = { endpoint: 'https://gw.example/v1/embeddings', key: 'k', model: 'jina-embeddings-v3', dimensions: 3 };
-  let sent;
-  const ok = createEmbedder({ config, fetcher: async (url, init) => { sent = JSON.parse(init.body); return new Response(JSON.stringify({ data: [{ index: 0, embedding: [3, 4, 0] }] })); } });
-  const out = await ok.embed(['你好'], 'retrieval.query');
-  assert.deepEqual(out.vectors[0], [0.6, 0.8, 0]);
-  assert.deepEqual(sent, { provider: 'jina', model: 'jina-embeddings-v3', input: ['你好'], dimensions: 3, task: 'retrieval.query' });
-  const empty = createEmbedder({ config, fetcher: async () => new Response(JSON.stringify({ data: [{ index: 0, embedding: [] }] })) });
-  assert.equal(await empty.embed(['x']), undefined, '空向量不算成功');
-  const limited = createEmbedder({ config, fetcher: async () => new Response('{}', { status: 429 }) });
+const settingsWith = extra => ({ config: { ...INTEGRATION_DEFAULTS.embeddings, baseUrl: 'https://gw.example', model: 'm', ...extra }, key: 'k', keyEnv: 'K' });
+test('嵌入请求：只发送配置了的可选字段，路径与请求头来自配置', async () => {
+  let sent, url, headers;
+  const fetcher = async (u, init) => { url = u; headers = init.headers; sent = JSON.parse(init.body); return new Response(JSON.stringify({ data: [{ index: 0, embedding: [3, 4, 0] }] })); };
+  const plain = await createEmbedder({ settings: settingsWith(), fetcher }).embed(['你好'], 'query');
+  assert.deepEqual(sent, { model: 'm', input: ['你好'] }, '没配置 provider/dimensions/task 就不发送');
+  assert.equal(url, 'https://gw.example/v1/embeddings');
+  assert.deepEqual(plain.vectors[0], [0.6, 0.8, 0]);
+  await createEmbedder({ settings: settingsWith({ path: '/api/embed', provider: 'jina', dimensions: 512, queryTask: 'retrieval.query', passageTask: 'retrieval.passage', headers: { 'User-Agent': 'X/1' } }), fetcher }).embed(['a'], 'query');
+  assert.equal(url, 'https://gw.example/api/embed');
+  assert.equal(headers['User-Agent'], 'X/1');
+  assert.deepEqual(sent, { model: 'm', input: ['a'], provider: 'jina', dimensions: 512, task: 'retrieval.query' });
+});
+
+test('嵌入失败：空向量、状态页、限流都降级并说明原因', async () => {
+  const s = settingsWith();
+  const empty = createEmbedder({ settings: s, fetcher: async () => new Response(JSON.stringify({ data: [{ index: 0, embedding: [] }] })) });
+  assert.equal(await empty.embed(['x']), undefined);
+  const statusPage = createEmbedder({ settings: s, fetcher: async () => new Response(JSON.stringify({ status: 'ok', available_routes: ['/v1/search'] })) });
+  assert.equal(await statusPage.embed(['x']), undefined);
+  assert.match(statusPage.lastError, /非空向量/);
+  const limited = createEmbedder({ settings: s, fetcher: async () => new Response('{}', { status: 429 }) });
   await limited.embed(['x']);
   assert.match(limited.lastError, /429（限流/);
-  const missing = createEmbedder({ config, fetcher: async () => new Response('{}', { status: 404 }) });
-  assert.equal(await missing.embed(['x']), undefined);
-  assert.match(missing.lastError, /尚未提供 \/v1\/embeddings/);
-  const routeList = createEmbedder({ config, fetcher: async () => new Response(JSON.stringify({ status: 'ok', available_routes: ['/provider-a/', '/v1/search'] })) });
-  assert.equal(await routeList.embed(['x']), undefined);
-  assert.match(routeList.lastError, /尚未提供 \/v1\/embeddings（现有路由：\/provider-a\/ \/v1\/search）/);
   assert.equal(cosine([1, 0], [1, 0]), 1);
+});
+
+test('不同模型的向量不混用', () => {
+  const now = Date.now();
+  const docs = [{ id: 'a', text: '甲', vector: [1, 0], model: 'old@2', updatedAt: now }, { id: 'b', text: '乙', vector: [1, 0], model: 'new@2', updatedAt: now }];
+  assert.deepEqual(rank(docs, 'zzz', [1, 0], { vectorModel: 'new@2' }).map(r => r.memory.id), ['b']);
 });
 
 function fakeCtx() {
@@ -117,7 +133,7 @@ function fakeCtx() {
 test('记忆枢纽：交接自动入库，接到任务时自动召回，队友最终汇报入库', async () => {
   const root = await tmp();
   const { ctx, fe, handlers, tools } = fakeCtx();
-  const hub = createMemoryHub(ctx, { root, pinned: () => P }, { embedder: createEmbedder({ config: null }) });
+  const hub = createMemoryHub(ctx, { root, pinned: () => P }, { embedder: createEmbedder({ settings: settingsWith({ baseUrl: null }) }) });
   hub.register();
   handlers['agent/created']({ agent: fe });
   await hub.ingestHandoff({ session: 'fe1', role: 'diao-chan', member: 'diao-chan', lead: 'lead', written: { done: '任务控制面板完成', remaining: '本地化分隔符', pitfalls: 'client.js 是生成文件，改 client/ 下的源文件' } });
@@ -131,7 +147,7 @@ test('记忆枢纽：交接自动入库，接到任务时自动召回，队友�
   await new Promise(resolve => setTimeout(resolve, 20));
   const found = JSON.parse(await tools.capability_memory_search.execute({ query: '最终结果', kinds: ['result'] }, { agent: fe }));
   assert.equal(found.mode, 'text');
-  assert.match(found.note, /未配置嵌入网关/);
+  assert.match(found.note, /未配置嵌入/);
   assert.equal(found.results.length, 1);
   await assert.rejects(tools.capability_memory_write.execute({ kind: 'note', text: '全局约定内容', scope: 'global' }, { agent: fe }), /只有主控/);
   const saved = JSON.parse(await tools.capability_memory_write.execute({ kind: 'pitfall', text: '测试前要先 build:client' }, { agent: fe }));

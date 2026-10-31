@@ -47,10 +47,11 @@ function bm25(docs, query) {
   return scores;
 }
 /** Hybrid rank: RRF over BM25 and cosine, times recency decay and a small boost for memories that helped before. */
-export function rank(docs, query, queryVector, { now = Date.now(), halfLifeDays = MEMORY_LIMITS.halfLifeDays } = {}) {
+export function rank(docs, query, queryVector, { now = Date.now(), halfLifeDays = MEMORY_LIMITS.halfLifeDays, vectorModel } = {}) {
   const text = bm25(docs, query);
   const byText = [...text.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
-  const byVec = queryVector ? docs.map(d => [d.id, cosine(d.vector, queryVector)]).filter(([, s]) => s !== undefined && s > 0.2).sort((a, b) => b[1] - a[1]).map(([id]) => id) : [];
+  // Vectors from another model or dimension count are not comparable, even when the lengths match.
+  const byVec = queryVector ? docs.filter(d => !vectorModel || d.model === vectorModel).map(d => [d.id, cosine(d.vector, queryVector)]).filter(([, s]) => s !== undefined && s > 0.2).sort((a, b) => b[1] - a[1]).map(([id]) => id) : [];
   const fused = new Map();
   byText.forEach((id, i) => fused.set(id, (fused.get(id) ?? 0) + 1 / (60 + i)));
   byVec.forEach((id, i) => fused.set(id, (fused.get(id) ?? 0) + 1 / (60 + i)));
@@ -105,7 +106,7 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
         if (!topic) return;
         for (const old of list.filter(m => same(m) && m.key === topic && m.id !== keeper.id)) { old.supersededBy = keeper.id; old.updatedAt = at; await persist(fk, old); }
       };
-      const dup = list.find(m => same(m) && (normText(m.text) === body || (vector && cosine(m.vector, vector) >= limits.duplicateCosine)));
+      const dup = list.find(m => same(m) && (normText(m.text) === body || (vector && m.model === model && cosine(m.vector, vector) >= limits.duplicateCosine)));
       if (dup) {
         Object.assign(dup, { text: body.length >= dup.text.length ? body : dup.text, tags: [...new Set([...dup.tags, ...tags])], updatedAt: at, merged: (dup.merged ?? 0) + 1, ...(topic ? { key: topic } : {}), ...(vector ? { vector, model } : {}) });
         await persist(fk, dup);
@@ -120,18 +121,18 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
       return { memory, merged: false };
     },
     /** Visible memories for a reader, ranked for `query`. */
-    async search({ project, role, session, query, vector, k = 6, kinds }) {
+    async search({ project, role, session, query, vector, vectorModel, k = 6, kinds }) {
       const pool = [...await load('global'), ...(project ? await load(fileKey(project)) : [])]
         .filter(m => visible(m, { project, role, session }) && (!kinds || kinds.includes(m.kind)));
-      return rank(pool, query, vector, { now: now(), halfLifeDays: limits.halfLifeDays }).slice(0, k);
+      return rank(pool, query, vector, { now: now(), halfLifeDays: limits.halfLifeDays, vectorModel }).slice(0, k);
     },
     async markUsed(memories) {
       const at = now();
       for (const m of memories) { m.hits = (m.hits ?? 0) + 1; m.lastUsedAt = at; await persist(keyOf(m.scope), m); }
     },
-    /** Memories still missing a vector (for backfill once embeddings work). */
-    async unembedded(project, limit = 64) {
-      return [...await load('global'), ...(project ? await load(fileKey(project)) : [])].filter(m => !m.vector && !m.supersededBy).slice(0, limit);
+    /** Memories without a vector of the current model (for backfill once embeddings work or after a model change). */
+    async unembedded(project, limit = 64, vectorModel = null) {
+      return [...await load('global'), ...(project ? await load(fileKey(project)) : [])].filter(m => !m.supersededBy && (!m.vector || (vectorModel && m.model !== vectorModel))).slice(0, limit);
     },
     async setVector(m, vector, model) { m.vector = vector; m.model = model; await persist(keyOf(m.scope), m); },
     /** Forget: drop superseded entries and unused old ones, keep the newest maxPerFile. */

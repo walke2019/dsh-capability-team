@@ -133,7 +133,7 @@
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, CatalogView, BudgetView, SearchView, ExportView, contextMetrics });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {

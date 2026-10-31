@@ -10,22 +10,21 @@ test('工具注册；检索权限来自能力配置', async () => {
   assert.equal(disposers.length, 3);
   await assert.rejects(definitions[0].execute({ query: 'test' }, { agent: {} }), /未开启检索/);
   role = { capability: 'research', search: true };
-  // Search permission passes; the gateway then fails on the missing key without any network call.
-  // Without any key the call must fail locally; CPA_API_KEY/CPA_BASE_URL are the fallback, so clear them too.
-  const names = ['CPA_SEARCH_API_KEY', 'CPA_API_KEY', 'CPA_BASE_URL'];
+  // Search permission passes; the gateway then fails on the missing configuration without any network call.
+  const names = ['CPA_SEARCH_API_KEY', 'CPA_SEARCH_BASE_URL', 'CAPABILITY_TEAM_HOME'];
   const saved = Object.fromEntries(names.map(n => [n, process.env[n]])); for (const n of names) delete process.env[n];
+  process.env.CAPABILITY_TEAM_HOME = (await import('node:fs')).mkdtempSync((await import('node:path')).join((await import('node:os')).tmpdir(), 'int-'));
   try { await assert.rejects(definitions[0].execute({ query: 'test' }, { agent: {} }), err => !/未开启检索/.test(err.message)); }
-  finally { for (const n of names) if (saved[n] !== undefined) process.env[n] = saved[n]; }
+  finally { for (const n of names) if (saved[n] === undefined) delete process.env[n]; else process.env[n] = saved[n]; }
 });
 
-test('搜索网关默认使用 CPA_BASE_URL 的同源地址', async () => {
-  const { gatewayBase } = await import('../search.js');
-  const names = ['CPA_SEARCH_BASE_URL', 'CPA_BASE_URL'];
-  const saved = Object.fromEntries(names.map(n => [n, process.env[n]]));
-  try {
-    delete process.env.CPA_SEARCH_BASE_URL; process.env.CPA_BASE_URL = 'https://gw.example/gateway/v1';
-    assert.equal(gatewayBase(), 'https://gw.example');
-    process.env.CPA_SEARCH_BASE_URL = 'https://search.example';
-    assert.equal(gatewayBase(), 'https://search.example', '显式设置优先');
-  } finally { for (const n of names) if (saved[n] === undefined) delete process.env[n]; else process.env[n] = saved[n]; }
+test('不从 CPA_BASE_URL 猜测搜索网关；CPA_SEARCH_BASE_URL 环境变量覆盖配置', async () => {
+  const { searchSettings } = await import('../search.js');
+  const { resolveIntegrations } = await import('../integrations-config.js');
+  const { mkdtempSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  const root = mkdtempSync(join(tmpdir(), 'int-'));
+  assert.equal(searchSettings(resolveIntegrations({ root, env: { CPA_BASE_URL: 'https://gw.example/gateway/v1', CPA_API_KEY: 'k' } })).config.baseUrl, null);
+  const s = searchSettings(resolveIntegrations({ root, env: { CPA_SEARCH_BASE_URL: 'https://search.example', CPA_SEARCH_API_KEY: 'k' } }));
+  assert.equal(s.config.baseUrl, 'https://search.example');
+  assert.equal(s.key, 'k');
 });

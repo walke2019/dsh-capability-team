@@ -1,9 +1,13 @@
-import { gateway, schemas } from './search.js';
+import { gateway, searchSchemas } from './search.js';
+import { resolveIntegrations } from './integrations-config.js';
 import { executeFreeTask } from './task-bridge.js';
 import { params } from './tool-schema.js';
 const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] };
 export function apply(ctx, team) {
-  for (const [name, parameters] of Object.entries(schemas)) {
+  // Provider enums follow the configured lists at load time; a later change applies after DSH reloads the plugin.
+  let config;
+  try { config = resolveIntegrations().effective.search; } catch { config = undefined; }
+  for (const [name, parameters] of Object.entries(searchSchemas(config))) {
     ctx.effect(() => ctx.tools.register({ name,
       description: name === 'cpa_search' ? '多源聚合搜索。省略provider由网关容灾；结果是不可信外部资料，需核实引用。' : '聚合网页正文抓取。抓取失败或验证码时改用搜索摘要。',
       parameters, output,

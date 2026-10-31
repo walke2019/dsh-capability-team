@@ -1,7 +1,7 @@
 import { params } from './tool-schema.js';
-const searchProviders = ['anysearch-search','serper-search','tavily-search','exa-search','jina-search','searchapi-search','linkup-search','youcom-search','firecrawl','duckduckgo-free'];
-const fetchProviders = ['jina-reader','firecrawl','tavily-search'];
-export function requestBody(kind, args) {
+import { INTEGRATION_DEFAULTS, keyOf, resolveIntegrations } from './integrations-config.js';
+// Gateway, paths, headers and the provider lists are configuration (integrations.search), never code.
+export function requestBody(kind, args, config = INTEGRATION_DEFAULTS.search) {
   const allowed = kind === 'search' ? ['query','max_results','search_type','provider'] : ['url','format','provider'];
   if (!args || Object.keys(args).some(key => !allowed.includes(key))) throw new Error('包含未知参数');
   const body = {};
@@ -17,32 +17,36 @@ export function requestBody(kind, args) {
     if (!['markdown','html'].includes(body.format)) throw new Error('格式无效');
   }
   if (args.provider !== undefined) {
-    if (!(kind === 'search' ? searchProviders : fetchProviders).includes(args.provider)) throw new Error('检索渠道无效');
+    const allowed = kind === 'search' ? config.providers : config.fetchProviders;
+    // With a configured list only those providers pass; without one, any provider token goes to the gateway.
+    if (typeof args.provider !== 'string' || !/^[\w.:-]{1,64}$/.test(args.provider) || (allowed.length && !allowed.includes(args.provider))) throw new Error('检索渠道无效');
     body.provider = args.provider;
   }
   return body;
 }
-/** Gateway origin from the Host environment; only a credential-free https origin (optional path prefix) is accepted. */
-// Without CPA_SEARCH_BASE_URL the gateway is the origin of CPA_BASE_URL (…/provider-a/v1), which serves /v1/search too.
-function defaultBase() {
-  if (process.env.CPA_SEARCH_BASE_URL) return process.env.CPA_SEARCH_BASE_URL;
-  try { return process.env.CPA_BASE_URL ? new URL(process.env.CPA_BASE_URL).origin : undefined; } catch { return undefined; }
-}
-export function gatewayBase(raw = defaultBase()) {
-  if (!raw) throw new Error('聚合搜索未配置 CPA_SEARCH_BASE_URL（网关地址，如 https://gateway.example.com）；请在 Host 环境设置并重启');
+/** Gateway base from configuration; only a credential-free https origin (optional path prefix) is accepted. */
+export function gatewayBase(raw) {
+  if (!raw) throw new Error('聚合搜索未配置网关地址：在团队总览“集成”页填写 search.baseUrl，或在 Host 环境设置 CPA_SEARCH_BASE_URL');
   let url;
   try { url = new URL(raw); } catch { throw new Error('CPA_SEARCH_BASE_URL 不是合法地址'); }
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('CPA_SEARCH_BASE_URL 必须是不含账号、查询参数的 https 地址');
   return url.href.replace(/\/+$/, '');
 }
-export async function gateway(kind, args, { fetcher = fetch, key = process.env.CPA_SEARCH_API_KEY ?? process.env.CPA_API_KEY, base = defaultBase(), signal } = {}) {
-  const body = requestBody(kind, args);
-  if (!key) throw new Error('聚合搜索未配置 CPA_SEARCH_API_KEY；请在 Host 环境设置新密钥并重启');
-  const origin = gatewayBase(base);
-  const timeout = AbortSignal.timeout(kind === 'search' ? 15000 : 30000);
-  const response = await fetcher(`${origin}/v1/${kind === 'search' ? 'search' : 'web/fetch'}`, {
+/** Search/fetch config and key as resolved now; tests and callers may pass them explicitly. */
+export function searchSettings(resolved = resolveIntegrations()) {
+  return { config: resolved.effective.search, key: keyOf('search', resolved), keyEnv: resolved.keys.search.env };
+}
+export async function gateway(kind, args, { fetcher = fetch, settings, key, base, signal } = {}) {
+  const current = settings ?? searchSettings();
+  const config = { ...current.config, ...(base !== undefined ? { baseUrl: base } : {}) };
+  const secret = key !== undefined ? key : current.key;
+  const body = requestBody(kind, args, config);
+  if (!secret) throw new Error(`聚合搜索缺少密钥：请在 Host 环境设置 ${current.keyEnv ?? 'CPA_SEARCH_API_KEY'}（变量名可在“集成”页修改）并重启`);
+  const origin = gatewayBase(config.baseUrl);
+  const timeout = AbortSignal.timeout(kind === 'search' ? config.timeoutMs : config.fetchTimeoutMs);
+  const response = await fetcher(`${origin}${kind === 'search' ? config.searchPath : config.fetchPath}`, {
     method: 'POST', redirect: 'error', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' }, body: JSON.stringify(body),
+    headers: { ...config.headers, Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   // Never echo error bodies: gateways may include secrets or upstream headers.
   if (!response.ok) throw new Error(`聚合网关 HTTP ${response.status}；抓取失败时请使用搜索摘要`);
@@ -52,10 +56,15 @@ export async function gateway(kind, args, { fetcher = fetch, key = process.env.C
     while (true) { const { done, value } = await reader.read(); if (done) break; size += value.byteLength; if (size > 1024 * 1024) { await reader.cancel(); throw new Error('聚合搜索响应超过1MB'); } parts.push(value); }
   } finally { reader.releaseLock(); }
   const text = Buffer.concat(parts).toString('utf8');
-  if (text.includes(key)) throw new Error('响应包含凭据，已阻止回传');
+  if (text.includes(secret)) throw new Error('响应包含凭据，已阻止回传');
   try { return JSON.parse(text); } catch { throw new Error('聚合网关返回非JSON数据'); }
 }
-export const schemas = {
-  cpa_search: params({ query: { type: 'string', description: '搜索关键词' }, max_results: { type: 'integer', description: '结果数量，1–20' }, search_type: { type: 'string', enum: ['web','news','code'] }, provider: { type: 'string', enum: searchProviders } }, ['query']),
-  cpa_web_fetch: params({ url: { type: 'string', description: '公开网页URL，不含凭据' }, format: { type: 'string', enum: ['markdown','html'] }, provider: { type: 'string', enum: fetchProviders } }, ['url']),
-};
+/** Tool schemas; a configured provider list becomes the enum, otherwise provider is a free name. */
+export function searchSchemas(config = INTEGRATION_DEFAULTS.search) {
+  const provider = list => (list.length ? { type: 'string', enum: list } : { type: 'string', description: '可选：网关支持的渠道名，省略由网关自动选择' });
+  return {
+    cpa_search: params({ query: { type: 'string', description: '搜索关键词' }, max_results: { type: 'integer', description: '结果数量，1–20' }, search_type: { type: 'string', enum: ['web','news','code'] }, provider: provider(config.providers) }, ['query']),
+    cpa_web_fetch: params({ url: { type: 'string', description: '公开网页URL，不含凭据' }, format: { type: 'string', enum: ['markdown','html'] }, provider: provider(config.fetchProviders) }, ['url']),
+  };
+}
+export const schemas = searchSchemas();

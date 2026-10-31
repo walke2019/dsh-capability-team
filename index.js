@@ -12,9 +12,12 @@ import { createTaskAudit } from './task-control-audit.js';
 import { createDispatchConfirm } from './dispatch-confirm.js';
 import { createRotation } from './session-rotation.js';
 import { createMemoryHub } from './memory-hub.js';
+import { setPluginIntegrations } from './integrations-config.js';
 export const inject = ['agents', 'agentTeams', 'systemPrompt', 'tools', 'workingDirectory', 'skills', 'llm', 'userQuestions'];
 export function apply(ctx, config = {}) {
   const team = createTeam(ctx, config); // Validates preset bindings up front.
+  // Endpoints/models for search and embeddings may come from the plugin config; the Overview file and env override it.
+  setPluginIntegrations(config.integrations);
   void team.refresh(); // First catalog match in the background; requests await it if still pending.
   const observability = createRuntimeObservability();
   const failover = createFailover({

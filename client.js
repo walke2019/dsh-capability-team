@@ -23,6 +23,12 @@ window.__ModuleLoader__.load({
       'workflow.mode': '执行模式', 'workflow.mode.enforce': '强制', 'workflow.mode.remind': '仅提醒', 'workflow.mode.off': '关闭', 'workflow.analysisBudget': '指派前只读分析', 'workflow.directBudget': '主控自行处理上限',
       'workflow.freeTools': '免费模型工具', 'workflow.freeModels': '免费模型顺序', 'workflow.analysisTools': '分析类工具', 'workflow.coordinationTools': '协调类工具', 'workflow.allFree': '目录中全部免费模型', 'workflow.times': '{n} 次',
       'workflow.fileLimits': '文件铁律', 'workflow.fileLimits.value': '源文件 ≤{source} 行 · 测试 ≤{test} 行 · 整读 ≤{read} 行 · 汇报 ≤{report} 字', 'workflow.fileLimits.off': '关闭',
+      'nav.integrations': '集成', 'int.help': '搜索网关与记忆枢纽嵌入接口的地址、路径、模型都是你自己的设置，保存后下一次调用起生效（工具里的渠道列表在 DSH 重载插件后更新）。密钥不在这里填写：只填存放密钥的环境变量名，并在 DSH 的 Host 环境里设置它。留空表示使用下一层（插件配置或默认值）。',
+      'int.search': '搜索与网页读取', 'int.search.hint': 'cpa_search / cpa_web_fetch 调用的聚合网关。', 'int.embeddings': '嵌入（记忆枢纽向量检索）', 'int.embeddings.hint': 'OpenAI 兼容的嵌入接口；provider、dimensions、task 只在填写后才会发送。改模型或维度后，旧向量会自动重算。',
+      'int.keySet': '密钥：已在环境变量 {name} 中设置', 'int.keyMissing': '密钥：环境变量 {name} 未设置', 'int.unset': '未设置',
+      'int.source.default': '默认值', 'int.source.plugin': '插件配置', 'int.source.file': '本页设置', 'int.source.env': '环境变量 {name}（只读）',
+      'int.field.baseUrl': '网关地址（https）', 'int.field.apiKeyEnv': '密钥环境变量名', 'int.field.searchPath': '搜索路径', 'int.field.fetchPath': '网页读取路径', 'int.field.path': '接口路径', 'int.field.headers': '附加请求头（每行 名称: 值）', 'int.field.providers': '搜索渠道（逗号分隔，留空不限）', 'int.field.fetchProviders': '读取渠道（逗号分隔，留空不限）', 'int.field.timeoutMs': '超时（毫秒）', 'int.field.fetchTimeoutMs': '读取超时（毫秒）', 'int.field.model': '模型', 'int.field.provider': '渠道 provider（可选）', 'int.field.dimensions': '维度（可选）', 'int.field.queryTask': '检索 task（可选）', 'int.field.passageTask': '入库 task（可选）', 'int.field.batch': '每批条数',
+      'int.save': '保存', 'int.reset': '撤销', 'int.saving': '正在保存…', 'int.saved': '已保存。', 'int.conflict': '配置已被别处修改，已刷新，请重新填写。', 'int.saveFailed': '保存失败：', 'int.invalid': '{field} 的格式不对', 'int.loading': '正在读取集成配置…', 'int.loadFailed': '读取集成配置失败。',
       'cards.memorySearch': '记忆检索', 'cards.memorySearch.summary': '“{q}” · {n} 条 · {mode}', 'cards.memory.mode.hybrid': '全文+向量', 'cards.memory.mode.text': '仅全文', 'cards.memoryWrite': '写入记忆', 'cards.memoryWrite.saved': '已保存', 'cards.memoryWrite.merged': '已合并到相同记忆', 'cards.memory.kind.handoff': '交接', 'cards.memory.kind.result': '结果', 'cards.memory.kind.pitfall': '踩坑', 'cards.memory.kind.decision': '决定', 'cards.memory.kind.note': '笔记',
       'usage.avgPrompt': '每步平均输入 {n}', 'usage.cacheShare': '缓存读取占 {p}%', 'usage.heavyContext': '每步上下文偏大，建议轮换会话', 'usage.contextHint': '每步平均输入 =（未缓存输入 + 缓存读取 + 缓存写入）÷ 步数。数值越大，每一步重发的上下文越多。',
       'cards.handoff': '交接', 'cards.handoff.summary': '{name} 已交接 · {n} 个未完成任务', 'cards.handoff.diff': '代码改动', 'cards.handoff.test': '最后一次测试', 'cards.rotate': '会话轮换', 'cards.rotate.summary': '{from} → {to}',
@@ -255,6 +261,12 @@ window.__ModuleLoader__.load({
       'workflow.mode': 'Mode', 'workflow.mode.enforce': 'Enforce', 'workflow.mode.remind': 'Remind only', 'workflow.mode.off': 'Off', 'workflow.analysisBudget': 'Read-only steps before dispatch', 'workflow.directBudget': 'Lead direct-action limit',
       'workflow.freeTools': 'Free-model tools', 'workflow.freeModels': 'Free-model order', 'workflow.analysisTools': 'Analysis tools', 'workflow.coordinationTools': 'Coordination tools', 'workflow.allFree': 'All free models in catalog', 'workflow.times': '{n}',
       'workflow.fileLimits': 'File rules', 'workflow.fileLimits.value': 'Source ≤{source} lines · tests ≤{test} · whole read ≤{read} · report ≤{report} chars', 'workflow.fileLimits.off': 'Off',
+      'nav.integrations': 'Integrations', 'int.help': 'The search gateway and the memory hub\'s embeddings endpoint are your own settings; changes apply from the next call (provider lists in the tools update after DSH reloads the plugin). Keys are not entered here: give the name of the environment variable that holds the key and set it in the DSH host environment. Leave a field empty to use the next layer (plugin config or default).',
+      'int.search': 'Search and page fetch', 'int.search.hint': 'The gateway behind cpa_search / cpa_web_fetch.', 'int.embeddings': 'Embeddings (memory hub vector search)', 'int.embeddings.hint': 'An OpenAI-compatible embeddings endpoint; provider, dimensions and task are sent only when filled in. Changing the model or dimensions re-embeds old vectors automatically.',
+      'int.keySet': 'Key: set in environment variable {name}', 'int.keyMissing': 'Key: environment variable {name} is not set', 'int.unset': 'not set',
+      'int.source.default': 'default', 'int.source.plugin': 'plugin config', 'int.source.file': 'this page', 'int.source.env': 'env {name} (read-only)',
+      'int.field.baseUrl': 'Gateway URL (https)', 'int.field.apiKeyEnv': 'Key environment variable', 'int.field.searchPath': 'Search path', 'int.field.fetchPath': 'Fetch path', 'int.field.path': 'Endpoint path', 'int.field.headers': 'Extra headers (one "Name: value" per line)', 'int.field.providers': 'Search providers (comma-separated, empty = any)', 'int.field.fetchProviders': 'Fetch providers (comma-separated, empty = any)', 'int.field.timeoutMs': 'Timeout (ms)', 'int.field.fetchTimeoutMs': 'Fetch timeout (ms)', 'int.field.model': 'Model', 'int.field.provider': 'Provider (optional)', 'int.field.dimensions': 'Dimensions (optional)', 'int.field.queryTask': 'Query task (optional)', 'int.field.passageTask': 'Passage task (optional)', 'int.field.batch': 'Batch size',
+      'int.save': 'Save', 'int.reset': 'Discard', 'int.saving': 'Saving…', 'int.saved': 'Saved.', 'int.conflict': 'Changed elsewhere; reloaded. Please re-enter your edits.', 'int.saveFailed': 'Could not save:', 'int.invalid': '{field} is not in the right format', 'int.loading': 'Loading integrations…', 'int.loadFailed': 'Could not load integrations.',
       'cards.memorySearch': 'Memory search', 'cards.memorySearch.summary': '"{q}" · {n} · {mode}', 'cards.memory.mode.hybrid': 'text + vector', 'cards.memory.mode.text': 'text only', 'cards.memoryWrite': 'Save memory', 'cards.memoryWrite.saved': 'Saved', 'cards.memoryWrite.merged': 'Merged into an existing memory', 'cards.memory.kind.handoff': 'Handoff', 'cards.memory.kind.result': 'Result', 'cards.memory.kind.pitfall': 'Pitfall', 'cards.memory.kind.decision': 'Decision', 'cards.memory.kind.note': 'Note',
       'usage.avgPrompt': 'Avg input per step {n}', 'usage.cacheShare': 'Cache reads {p}%', 'usage.heavyContext': 'Large context per step; consider rotating the session', 'usage.contextHint': 'Average input per step = (uncached input + cache reads + cache writes) ÷ steps. Higher means more context is resent every step.',
       'cards.handoff': 'Handoff', 'cards.handoff.summary': '{name} handed off · {n} open tasks', 'cards.handoff.diff': 'Code changes', 'cards.handoff.test': 'Last test run', 'cards.rotate': 'Session rotation', 'cards.rotate.summary': '{from} → {to}',
@@ -520,6 +532,12 @@ window.__ModuleLoader__.load({
 .ctm-mc-item{padding-left:8px;border-left:2px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.25))}
 .ctm-mc-results{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .ctm-mc-results li{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere}
+.ctm-int{display:flex;flex-direction:column;gap:12px}
+.ctm-int-section{border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.3));border-radius:10px;margin:0;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ctm-int-field{display:grid;grid-template-columns:minmax(0,1fr);gap:2px}
+.ctm-int-field input,.ctm-int-field textarea{font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.35));background:transparent;color:inherit;min-width:0}
+.ctm-int-field input:disabled,.ctm-int-field textarea:disabled{opacity:.6}
+.ctm-int-src{font-size:11px}
 @media (prefers-reduced-motion:reduce){.ctm-card .ctm-summary,.ctm-card .ctm-title{animation:none!important}}
 .ctm-wrap{display:flex;flex-direction:column}
 .ctm-body{display:flex;flex-direction:column;margin:4px 0 4px 4px;overflow:hidden;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size-secondary,13px)}
@@ -2745,6 +2763,7 @@ window.__ModuleLoader__.load({
         ['usage', usageTotal(usage) ? compact(usageTotal(usage)) : null],
         ['artifacts', null],
         ['report', null],
+        ['integrations', null],
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
@@ -2810,6 +2829,8 @@ window.__ModuleLoader__.load({
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'artifacts', hidden: tab !== 'artifacts' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:artifacts`, t },
               h(ArtifactsRack, { sessionId: effectiveSessionId, liveTeam, live, t }))) : null,
+          shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'integrations', hidden: tab !== 'integrations' },
+            h(ErrorBoundary, { key: `${effectiveSessionId}:integrations`, t }, tab === 'integrations' ? h(IntegrationsPanel, { t }) : null)) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'report', hidden: tab !== 'report' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:report`, t },
               h(BattleReportView, { sessionId: effectiveSessionId, liveTeam, live, t, runtimeState }))) : null,
@@ -2855,6 +2876,88 @@ window.__ModuleLoader__.load({
                   h('p', { className: 'ctm-sub ctm-ov-note' }, t('theme.templateDesc'))),
                 h('div', { className: 'ctm-ov-block' }, h('div', { className: 'ctm-label' }, t('overview.policy')), h(WorkflowList, { workflow: team.workflow, t })))
               : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null));
+    }
+
+    // ---------- integrations settings (search gateway, embeddings) ----------
+    // Every endpoint detail is the user's own setting. Keys are never shown or stored: the form names the
+    // environment variable that holds each key and only says whether it is set. Fields an environment
+    // variable overrides are read-only here.
+    const INTEGRATIONS_PATH = 'api/capability-team.integrations';
+    const INTEGRATION_FIELDS = {
+      search: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['searchPath', 'text'], ['fetchPath', 'text'], ['headers', 'headers'], ['providers', 'list'], ['fetchProviders', 'list'], ['timeoutMs', 'number'], ['fetchTimeoutMs', 'number']],
+      embeddings: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['path', 'text'], ['model', 'text'], ['provider', 'text'], ['dimensions', 'number'], ['queryTask', 'text'], ['passageTask', 'text'], ['headers', 'headers'], ['timeoutMs', 'number'], ['batch', 'number']],
+    };
+    const toInput = (kind, v) => (v === null || v === undefined ? '' : kind === 'list' ? v.join(', ') : kind === 'headers' ? Object.entries(v).map(([k, x]) => `${k}: ${x}`).join('\n') : String(v));
+    /** Form text → config value; empty means "clear this layer" (null). Returns undefined for invalid input. */
+    function fromInput(kind, text) {
+      const s = String(text ?? '').trim();
+      if (!s) return null;
+      if (kind === 'number') { const n = Number(s); return Number.isFinite(n) ? n : undefined; }
+      if (kind === 'list') return s.split(/[,，\s]+/).filter(Boolean);
+      if (kind === 'headers') {
+        const out = {};
+        for (const line of s.split('\n').map(l => l.trim()).filter(Boolean)) { const i = line.indexOf(':'); if (i < 1) return undefined; out[line.slice(0, i).trim()] = line.slice(i + 1).trim(); }
+        return out;
+      }
+      return s;
+    }
+    const sourceLabel = (t, src) => (src?.startsWith('env:') ? fmt(t('int.source.env'), { name: src.slice(4) }) : label(t, `int.source.${src}`, src ?? ''));
+    function IntegrationsPanel({ t }) {
+      const [data, setData] = React.useState(null);
+      const [draft, setDraft] = React.useState({});
+      const [status, setStatus] = React.useState(null);
+      const [reload, setReload] = React.useState(0);
+      React.useEffect(() => {
+        const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+        fetch(apiUrl(INTEGRATIONS_PATH), { signal: ctrl?.signal })
+          .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then(body => { setData(body); setDraft({}); })
+          .catch(e => { if (e?.name !== 'AbortError') setStatus({ tone: 'error', text: t('int.loadFailed') }); });
+        return () => ctrl?.abort();
+      }, [reload]);
+      if (!data) return h('div', { className: 'ctm-ov-block' }, h('p', { className: 'ctm-sub' }, status?.text ?? t('int.loading')));
+      const valueOf = (section, key, kind) => draft[section]?.[key] ?? toInput(kind, data.file?.[section]?.[key] ?? (data.sources[section][key] === 'file' ? data.effective[section][key] : undefined));
+      const set = (section, key, text) => setDraft(prev => ({ ...prev, [section]: { ...prev[section], [key]: text } }));
+      const save = async () => {
+        const patch = {};
+        for (const [section, fields] of Object.entries(draft)) for (const [key, text] of Object.entries(fields)) {
+          const kind = INTEGRATION_FIELDS[section].find(([k]) => k === key)[1];
+          const value = fromInput(kind, text);
+          if (value === undefined) { setStatus({ tone: 'error', text: fmt(t('int.invalid'), { field: `${section}.${key}` }) }); return; }
+          (patch[section] ??= {})[key] = value;
+        }
+        if (!Object.keys(patch).length) return;
+        setStatus({ text: t('int.saving') });
+        try {
+          const res = await fetch(apiUrl(INTEGRATIONS_PATH), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: data.revision, patch }) });
+          const body = await res.json().catch(() => ({}));
+          if (res.ok) { setStatus({ tone: 'success', text: t('int.saved') }); setReload(n => n + 1); return; }
+          if (res.status === 409) { setStatus({ tone: 'error', text: t('int.conflict') }); setReload(n => n + 1); return; }
+          setStatus({ tone: 'error', text: `${t('int.saveFailed')} ${String(body.message ?? '')}` });
+        } catch { setStatus({ tone: 'error', text: t('int.saveFailed') }); }
+      };
+      const section = name => h('fieldset', { key: name, className: 'ctm-int-section' },
+        h('legend', { className: 'ctm-label' }, t(`int.${name}`)),
+        h('p', { className: 'ctm-sub' }, t(`int.${name}.hint`)),
+        h('p', { className: `ctm-sub ${data.keys[name].present ? '' : 'ctm-warn'}` }, fmt(t(data.keys[name].present ? 'int.keySet' : 'int.keyMissing'), { name: data.keys[name].env })),
+        ...INTEGRATION_FIELDS[name].map(([key, kind]) => {
+          const src = data.sources[name][key];
+          const locked = src?.startsWith('env:');
+          const id = `ctm-int-${name}-${key}`;
+          const props = { id, value: locked ? toInput(kind, data.effective[name][key]) : valueOf(name, key, kind), disabled: locked,
+            placeholder: locked ? '' : toInput(kind, data.effective[name][key]) || t('int.unset'), onChange: e => set(name, key, e.target.value) };
+          return h('div', { key, className: 'ctm-int-field' },
+            h('label', { htmlFor: id, className: 'ctm-sub' }, t(`int.field.${key}`)),
+            kind === 'headers' ? h('textarea', { ...props, rows: 2 }) : h('input', { ...props, type: kind === 'number' ? 'number' : 'text', spellCheck: false }),
+            h('span', { className: 'ctm-sub ctm-int-src' }, sourceLabel(t, src)));
+        }));
+      return h('div', { className: 'ctm-ov-block ctm-int' },
+        h('p', { className: 'ctm-sub ctm-ov-help' }, t('int.help')),
+        section('search'), section('embeddings'),
+        status ? h('p', { className: `ctm-sub ${status.tone === 'error' ? 'ctm-warn' : ''}`, role: status.tone === 'error' ? 'alert' : 'status' }, status.text) : null,
+        h('div', { className: 'ctm-tc-row' },
+          h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: !Object.keys(draft).length, onClick: save }, t('int.save')),
+          h('button', { type: 'button', className: 'ctm-btn', disabled: !Object.keys(draft).length, onClick: () => setDraft({}) }, t('int.reset'))));
     }
 
     const BaseComponent = React.Component || class DummyComponent { constructor(props) { this.props = props; } };
@@ -2992,7 +3095,7 @@ window.__ModuleLoader__.load({
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, CatalogView, BudgetView, SearchView, ExportView, contextMetrics });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {

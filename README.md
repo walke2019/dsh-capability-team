@@ -36,6 +36,7 @@ DeepSeek Harness（DSH）的多智能体预设：一个主控加若干专业能�
 - [长上下文路由](#长上下文路由)
 - [搜索与免费通道](#搜索与免费通道)
 - [运行时细节](#运行时细节)
+- [集成配置](#集成配置)
 - [文件铁律](#文件铁律)
 - [派活确认](#派活确认)
 - [会话轮换与交接](#会话轮换与交接)
@@ -64,16 +65,15 @@ DeepSeek Harness（DSH）的多智能体预设：一个主控加若干专业能�
 
 | 变量 | 必需 | 作用 |
 |---|---|---|
-| `CPA_SEARCH_BASE_URL` | 否 | 聚合搜索网关地址，只接受不含账号和查询参数的 `https` 地址，例如 `https://gateway.example.com`；不设时使用 `CPA_BASE_URL` 的同源地址 |
-| `CPA_SEARCH_API_KEY` | 否 | 聚合搜索网关密钥，只从环境读取，不写入配置或日志；不设时使用 `CPA_API_KEY` |
-| `CPA_EMBED_BASE_URL` | 否 | 记忆枢纽的嵌入网关地址（`https`）。不设时依次用 `CPA_SEARCH_BASE_URL`、`CPA_BASE_URL` 的同源地址，请求 `<origin>/v1/embeddings` |
-| `CPA_EMBED_API_KEY` | 否 | 嵌入网关密钥；不设时依次用 `CPA_SEARCH_API_KEY`、`CPA_API_KEY` |
-| `CPA_EMBED_MODEL` / `CPA_EMBED_DIMENSIONS` | 否 | 嵌入模型与维度，默认 `jina-embeddings-v3` / `512` |
+| `CPA_SEARCH_BASE_URL` | 否 | 覆盖“集成”页的搜索网关地址（`https`，不含账号和查询参数） |
+| `CPA_SEARCH_API_KEY` | 使用搜索时 | 搜索网关密钥的默认环境变量；变量名可在“集成”页改成你自己的 |
+| `CPA_EMBED_BASE_URL` / `CPA_EMBED_MODEL` / `CPA_EMBED_DIMENSIONS` | 否 | 覆盖“集成”页的嵌入地址、模型、维度 |
+| `CPA_EMBED_API_KEY` | 使用向量检索时 | 嵌入接口密钥的默认环境变量；变量名同样可改 |
 | `CAPABILITY_TEAM_HOME` | 否 | 项目团队配置的存放目录，默认 `~/.dsh/capability-team-themes` |
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | 否 | 免费通道使用的 OpenCode 原生可执行文件；默认在 `PATH` 中查找（各平台通用） |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | 否 | OpenCode 模型目录文件；默认 `$XDG_CACHE_HOME/opencode/models.json`（未设置时为 `~/.cache/…`） |
 
-搜索、网页读取和记忆枢纽的嵌入默认都走 `CPA_BASE_URL` 所在网关、使用 `CPA_API_KEY`；网关不同的部署才需要单独设置。
+搜索网关和嵌入接口的地址、路径、模型等都在团队总览的“集成”页配置（见[集成配置](#集成配置)），插件里不写死任何网关。密钥只放在环境变量里，配置中只记录变量名。
 
 ## 默认能力与角色
 
@@ -265,7 +265,7 @@ DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时�
 
 ## 搜索与免费通道
 
-- **`cpa_search` / `cpa_web_fetch`**：调用 `CPA_SEARCH_BASE_URL` 指向的聚合搜索网关，网关需提供 `POST /v1/search` 和 `POST /v1/web/fetch`。
+- **`cpa_search` / `cpa_web_fetch`**：调用“集成”页 `search` 段配置的聚合网关（`baseUrl` + `searchPath` / `fetchPath`，默认 `/v1/search`、`/v1/web/fetch`）。
   - 只有能力的 `search` 为 `true` 的成员可用，默认是主控和检索。
   - 抓取只允许公开 HTTP(S) 网页，拒绝本机、私网、云元数据地址和带账号密码的地址。
   - 不跟随重定向；错误时不回显上游正文；响应中出现密钥时拒绝回传。
@@ -290,6 +290,22 @@ DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时�
 - **并发保护**：保存时使用版本号 CAS 和锁文件；锁的所属进程已退出，或锁超过 30 秒，会自动回收。
 - **旧格式迁移**：旧版 names/descriptions/routes 格式的文件读取时自动迁移，下次保存时写成新格式。
 - **工具参数**：所有工具参数都是标准 JSON Schema（根对象 `type: "object"`，必填项写在 `required` 数组中），并且只使用 DSH 支持的关键字子集。辅助函数见 [tool-schema.js](tool-schema.js)。Claude 等接口会严格校验工具定义，不合法的定义会让整轮请求返回 400。
+
+## 集成配置
+
+[integrations-config.js](integrations-config.js)：搜索网关与嵌入接口是每个人自己的设置，插件不预设任何地址、模型或厂商字段。生效值按以下顺序取（高优先在前），总览“集成”页会标出每个字段的来源：
+
+1. 环境变量（见上表，只覆盖少数字段；被覆盖的字段在页面上只读）；
+2. “集成”页保存的文件 `$CAPABILITY_TEAM_HOME/integrations.json`（带版本号，并发修改返回冲突）；
+3. 插件配置：在 profile 的 `cordis.patch.yml` 里给 `@local/dsh-capability-team/roles` 加 `integrations: { search: {...}, embeddings: {...} }`；
+4. 默认值：地址和模型为空（功能关闭），路径默认 `/v1/search`、`/v1/web/fetch`、`/v1/embeddings`。
+
+| 段 | 字段 |
+|---|---|
+| `search` | `baseUrl`、`apiKeyEnv`、`searchPath`、`fetchPath`、`headers`（附加请求头，例如网关要求的 User-Agent）、`providers` / `fetchProviders`（填写后成为工具的可选渠道，留空不限）、`timeoutMs`、`fetchTimeoutMs` |
+| `embeddings` | `baseUrl`、`apiKeyEnv`、`path`、`model`、`provider`、`dimensions`、`queryTask`、`passageTask`、`headers`、`timeoutMs`、`batch` |
+
+密钥永远不进配置：`apiKeyEnv` 只是环境变量名，`headers` 里不允许 `Authorization`、`Cookie` 等。
 
 ## 文件铁律
 
@@ -355,19 +371,19 @@ DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时�
 - **遗忘**：180 天未被使用的记忆和被替换的记忆在整理时删除，每个项目最多保留 2000 条；
 - 存储：`$CAPABILITY_TEAM_HOME/memory/<项目哈希>.jsonl` 与 `global.jsonl`，只追加写入，整理时原子替换。
 
-### 嵌入网关契约
+### 嵌入接口
 
-记忆枢纽按 OpenAI 兼容格式调用 `<网关>/v1/embeddings`，与 `/v1/search` 用同一个网关和密钥。网关需要把它转发到 Jina：
+记忆枢纽按 OpenAI 兼容格式请求 `<baseUrl><path>`（`path` 默认 `/v1/embeddings`）：
 
 ```http
-POST /v1/embeddings
-Authorization: Bearer <CPA 密钥>
+POST <baseUrl><path>
+Authorization: Bearer <apiKeyEnv 指向的环境变量>
 Content-Type: application/json
 
-{"model":"jina-embeddings-v3","input":["文本1","文本2"],"dimensions":512,"task":"retrieval.passage","normalized":true}
+{"model":"<model>","input":["文本1","文本2"]}
 ```
 
-请求体还带 `"provider":"jina"`。响应：`{"data":[{"index":0,"embedding":[...]}, ...]}`，插件要求 `data` 条数与 `input` 相同且每个向量非空，否则视为失败（不会把网关状态 JSON 当成向量）。`task` 为 `retrieval.passage`（入库）或 `retrieval.query`（检索）。索引和查询必须用同一模型和维度，默认 512 维，改 `CPA_EMBED_DIMENSIONS` 后已有向量需要重建。401/400/429/502/504 会给出对应原因并降级为全文检索。网关 1.1.0 已提供该路由（2026-10-31 实测 `jina-embeddings-v3` 可用）。
+`provider`、`dimensions`、`task`（入库用 `passageTask`、检索用 `queryTask`）只在“集成”页填写后才放进请求体，适配要求这些字段的网关（例如转发到 Jina 的网关可填 `provider=jina`、`queryTask=retrieval.query`、`passageTask=retrieval.passage`）。响应须为 `{"data":[{"index":0,"embedding":[...]}]}`，条数与输入一致且向量非空，否则视为失败并降级为全文检索（不会把网关状态页当成向量）。每条向量记录“模型@维度”，换模型或维度后旧向量不参与比较并在后台重算。
 
 ## 开发与测试
 
@@ -444,7 +460,7 @@ npm run build     # 发布前检查打包文件集合
 
 已验证：
 
-- 289 项回归测试通过（含文件铁律、派活确认、会话轮换、任务控制面板与记忆枢纽），包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
+- 298 项回归测试通过（含文件铁律、派活确认、会话轮换、任务控制面板与记忆枢纽），包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
 - 使用桌面自带 CLI 在隔离 DSH_HOME 中启动真实宿主，能力协作团队预设已注册，诊断插件成功激活；这不是生产桌面进程重新加载后的会话验收；
 - 已安装包和已连接 Client 的 `capability-team-overview` 活动注册已核实，但此后源码修复仍需确认运行进程重新加载；
 - 独立浏览器访问 GUI 返回 401，尚未完成已认证页面的读取、勾选、保存、恢复操作验收；

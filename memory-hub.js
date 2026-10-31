@@ -18,12 +18,12 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
     if (!m) return undefined;
     return { project: team.pinned(agent) ?? team.pinned(m.root ?? agent), role: m.role === 'lead' ? 'lead' : baseName(m.name), session: agent.id, lead: m.role === 'lead', leadId: (m.root ?? agent).id, name: m.name ?? 'lead' };
   };
-  const embedOne = async (text, task) => (await embedder.embed([text], task))?.vectors[0] ?? null;
+  const embedOne = async (text, purpose) => { const out = await embedder.embed([text], purpose); return out ? { vector: out.vectors[0], model: out.model } : null; };
   async function backfill(project) {
     if (!embedder.available) return;
-    const missing = await store.unembedded(project, 16);
+    const missing = await store.unembedded(project, 16, embedder.vectorKey);
     if (!missing.length) return;
-    const out = await embedder.embed(missing.map(m => m.text), 'retrieval.passage');
+    const out = await embedder.embed(missing.map(m => m.text), 'passage');
     if (out) for (let i = 0; i < missing.length; i++) await store.setVector(missing[i], out.vectors[i], out.model);
   }
   const hub = {
@@ -31,18 +31,18 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       if (!who?.project) throw new Error('当前会话不属于能力团队项目，不能写记忆');
       if (!SCOPES.includes(scope)) throw new Error(`scope 须为 ${SCOPES.join(' / ')}`);
       if (scope === 'global' && !who.lead) throw new Error('只有主控可以写全局记忆');
-      const vector = await embedOne(String(text ?? ''), 'retrieval.passage');
+      const embedded = await embedOne(String(text ?? ''), 'passage');
       const s = scope === 'global' ? { kind: 'global' } : scope === 'project' ? { kind: 'project', project: who.project }
         : scope === 'session' ? { kind: 'session', project: who.project, session: who.session } : { kind: 'role', project: who.project, role: who.role };
       return store.write({ scope: s, kind, text, tags: Array.isArray(tags) ? tags.map(String).slice(0, 10) : [], key: key ? String(key).slice(0, 120) : null,
-        vector, model: vector ? 'embed' : null, source: { member: who.name, session: who.session, lead: who.leadId, at: Date.now() } });
+        vector: embedded?.vector ?? null, model: embedded?.model ?? null, source: { member: who.name, session: who.session, lead: who.leadId, at: Date.now() } });
     },
     async search(who, { query, k = 6, kinds }) {
       const q = String(query ?? '').slice(0, 2000);
-      const vector = q ? await embedOne(q, 'retrieval.query') : null;
+      const embedded = q ? await embedOne(q, 'query') : null;
       void backfill(who.project).catch(() => {});
-      const results = await store.search({ project: who.project, role: who.lead ? undefined : who.role, session: who.session, query: q, vector, k: Math.min(Math.max(1, k), 20), kinds });
-      return { results, mode: vector ? 'hybrid' : 'text', embedError: vector ? null : embedder.lastError };
+      const results = await store.search({ project: who.project, role: who.lead ? undefined : who.role, session: who.session, query: q, vector: embedded?.vector, vectorModel: embedded?.model, k: Math.min(Math.max(1, k), 20), kinds });
+      return { results, mode: embedded ? 'hybrid' : 'text', embedError: embedded ? null : embedder.lastError };
     },
     /** Called by rotation after a member writes its handoff. */
     async ingestHandoff(h) {
