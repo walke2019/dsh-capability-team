@@ -42,6 +42,9 @@ This plugin builds on DSH's official agent team (`dsh-experimental-agent-team-pr
 - [File rules](#file-rules)
 - [Dispatch confirmation](#dispatch-confirmation)
 - [Session rotation and handoff](#session-rotation-and-handoff)
+- [Token rules](#token-rules)
+- [Board dispatch](#board-dispatch)
+- [Learned model preferences](#learned-model-preferences)
 - [Task control](#task-control)
 - [Memory hub](#memory-hub)
 - [Development and tests](#development-and-tests)
@@ -245,6 +248,8 @@ Only the lead is constrained; teammates use all tools as usual. The limits are p
 | `fileLimits` | see [File rules](#file-rules) | File size and read/write rules; `false` disables |
 | `confirmDispatch` | `on-change` | See [Dispatch confirmation](#dispatch-confirmation) |
 | `rotation` | see [Session rotation](#session-rotation-and-handoff) | Rotation thresholds; `false` disables |
+| `enforceWriteScopes` | `true` | Refuse edits outside the write scopes of held board tasks (see [Board dispatch](#board-dispatch)) |
+| `tokens` | see [Token rules](#token-rules) | Idle compaction and output trimming; `false` disables |
 
 Tools in neither list count as execution, including tools other plugins add.
 
@@ -255,7 +260,7 @@ Tools in neither list count as execution, including tools other plugins add.
 1. **DSH provider retries**: rate limits, 5xx, timeouts, network errors and empty responses, 5 times by default with backoff up to 10 seconds. Decided by the provider config; this plugin does not interfere.
 2. **Extra retries**: after DSH gives up, the same model is retried `retries` more times (default 2). Exponential backoff starts at 1 second, caps at 15 seconds, and honors the server's `Retry-After`. Quota or credential errors are not retried on the same provider.
 3. **Same-tier fallbacks**: switch in the order of the capability's `fallbacks`, skipping providers not registered in DSH and models in cooldown. Fallbacks must be the same tier and may be paid models; no cross-tier or downgrade. If all fail, each model's error is reported.
-4. **Cooldown**: a model switched away from cools down for `cooldownMs` (default 60 seconds, 5 seconds to 10 minutes); afterwards new requests return to the primary automatically.
+4. **Cooldown**: a model switched away from cools down for `cooldownMs` (default 60 seconds, 5 seconds to 10 minutes); afterwards new requests return to the primary automatically. If the same model fails again soon after its cooldown ends, the cooldown doubles each time (60 s, 2 min, 4 min… up to 30 min), so a dead provider is not retried every minute; after 10 cooldown lengths without a failure it starts over at 1×.
 
 Errors unrelated to availability, such as context overflow or content refusals, do not switch. Per the DSH source, the recovery hook only runs when a started stream ends in an error; if the adapter throws before sending (e.g. an unregistered provider), the hook never runs, so unregistered providers are skipped before routing. Switches are recorded in the session request header, and on the next step this plugin explicitly routes back to the intended model.
 
@@ -347,15 +352,54 @@ Every plugin tool that returns JSON has its own card (model catalog, budget, tem
 
 | Level | Default triggers (any) | Action |
 |---|---|---|
-| Soft | ≥2 compactions, context ≥60%, same file read ≥15 times | A reminder appears in the teammate's runtime context: finish the current item, then write a handoff |
-| Hard | ≥3 compactions, context ≥80%, ≥8 turns | The lead can no longer give it new work and must rotate it first |
+| Soft | ≥2 compactions, context ≥75%, same file read ≥15 times | Reminder only: read less, don't reread, start editing — **no handoff** |
+| Hard | ≥3 compactions, context ≥90%, ≥8 turns | The lead can no longer give it new work and must rotate it first |
+
+The hard level applies only to **sessions that made progress** (edited a file, or were compacted). A session that has only read code stays at the reminder level however full its context is, so a successor is not spawned just to read the same code again (we measured three successors in a row that never edited anything).
 
 - The teammate calls `capability_handoff` (done, remaining, pitfalls, open questions, how to verify); the plugin attaches `git diff --stat`, its open board tasks and its last test run;
-- The lead calls `capability_rotate_member` and gets the successor name `<role>-r<N>` (DSH team rosters never reuse names), the successor's first message, and the `interrupt_agent` / `spawn_teammate` / board calls to make in order;
+- The lead calls `capability_rotate_member` and gets the successor name `<role>-r<N>` (DSH team rosters never reuse names), the successor's first message, and the `interrupt_agent` / `spawn_teammate` calls to make; when the successor starts, the plugin reassigns the old member's open board tasks to it with DSH's reassign action;
 - The successor keeps the original role's model, permissions, budget and confirmed route; messages from the lead to the old member are blocked with a hint to message the successor;
 - When team slots (`maxMembers`, DSH default 8) run out, no rotation happens; it switches to a context-saving mode and suggests raising DSH's `maxMembers`.
 
 Thresholds can be changed in conversation via `workflow.rotation` (`false` disables).
+
+## Token rules
+
+[token-discipline.js](token-discipline.js) / [teammate-context.js](teammate-context.js). Measured here, prompt caching already works well (93–98% of prompt tokens are cache reads; DSH does this well), so cost comes from **how much context every step resends**: DSH compacts only at 80% of the window, so sessions ran at ~150k tokens per step; one frontend session resent ~200M tokens over 1358 steps. The rules aim for a small, stable prefix and a small working context:
+
+| Rule | How |
+|---|---|
+| Stable prefix (keep the cache) | Plugin rules and context change only on events, never with per-step counters; a session does not switch models casually (long-context routing has hysteresis, failover cooldowns double) |
+| Lean teammate prefix | Lead-only tools are installed on the lead only and teammate-only tools on teammates only; DSH's skill catalog is shortened for teammates to name + one line (326 skills: 56k → 26k characters), or set per capability with `skills`: `full` / `none` / a list |
+| Small working context | File rules limit whole-file reads; command, search and web output over 6000 characters is cut at once to its first 3000 and last 1500 characters, with the full text written to a temp file whose path is given (DSH's own pruner only acts at compaction time) |
+| Compact when idle | A team member that goes idle above 35% of its window is compacted. The provider cache expires after a few idle minutes anyway, so this costs almost no cache |
+| No wasted work | Do only the assigned task, no out-of-scope research, report once (≤1500 characters), the lead waits long and does not answer progress messages |
+
+Change thresholds in conversation via `workflow.tokens` (`idleCompactRatio`, `trimToolOutputChars`, `keepHeadChars`, `keepTailChars`; `false` disables).
+
+**Two settings the plugin cannot make for you, in your DSH config:**
+- **Mid-turn compaction threshold**: compaction during one long piece of work is decided only by DSH's `compaction-basic.thresholdRatio` (default 0.8), for every session. Around 0.5 cuts the per-step context a lot, at the cost of more summary requests.
+- **Gateway cache affinity**: we saw 60+ cache misses within 5 minutes with no local cause, most likely the gateway rotating upstream accounts. Pinning each session to one upstream raises the hit rate further.
+
+## Board dispatch
+
+[board-dispatch.js](board-dispatch.js): dispatch goes through the official DSH team's shared task board, following its rules (list → get → claim → work → complete):
+
+- Each role in `capability_dispatch_plan` can carry `tasks` that split its work into subtasks, each with a subject, description, `write_scopes` (project paths it will change) and `blocked_by` (keys of subtasks listed earlier in the plan, so no cycles). Without `tasks`, the whole assignment is one board task.
+- After you confirm, the plugin creates these tasks on the board. Existing teammates get their ready tasks at once; new teammates get theirs when they start; blocked tasks wait for their prerequisites.
+- Each teammate's runtime context lists its board tasks and their status and reminds it of the board workflow.
+- `workflow.enforceWriteScopes` (default `true`): when the tasks a teammate holds declare write scopes, edits outside them are refused (DSH itself only warns about overlaps). `false` makes it advisory again.
+- Before the final answer, the lead should check `team_task_list` for tasks still in progress.
+
+## Learned model preferences
+
+[model-prefs.js](model-prefs.js): every confirmed dispatch records, per capability, the primary and fallback order you chose (up to 20 per project).
+
+- **Preselect**: when a primary was chosen at least twice and in most of the last 10 choices, the next card preselects it with your latest fallback order, marked "your usual choice". The card still asks; nothing changes silently.
+- **Avoid failures**: models with recent failures recorded by the failover layer (cooling, or ≥2 consecutive failures) are never preselected and move to the end of the fallbacks, with the failure count shown.
+- **Suggest saving**: when the last 3 choices are identical, the card suggests saving them as the project default.
+- The lead can view or clear what was learned with `capability_model_prefs` (`read` / `clear`); data lives in `$CAPABILITY_TEAM_HOME/model-prefs/`.
 
 ## Task control
 
@@ -423,6 +467,9 @@ Tests use mocked ctx, model catalogs and question dialogs, and make no model, se
 | [file-limits.js](file-limits.js) | File rules (shared by the tool guard and lint) |
 | [dispatch-confirm.js](dispatch-confirm.js) | Dispatch confirmation: routes, validation, HTTP API and native dialog fallback |
 | [session-rotation.js](session-rotation.js) | Session rotation signals, handoffs and successors |
+| [board-dispatch.js](board-dispatch.js) | Board dispatch: subtasks, write scopes, dependencies, hand-out and reassignment |
+| [model-prefs.js](model-prefs.js) | Learned model preferences and failure avoidance |
+| [token-discipline.js](token-discipline.js) / [teammate-context.js](teammate-context.js) | Token rules: idle compaction, output trimming, lean teammate prefix |
 | [memory-hub.js](memory-hub.js) / [memory-store.js](memory-store.js) / [memory-embed.js](memory-embed.js) | Memory hub: ingestion, recall, hybrid search and embeddings |
 | [client/](client/) / [scripts/build-client.mjs](scripts/build-client.mjs) | Client sources and single-file build |
 
@@ -488,7 +535,7 @@ Known limitations:
 - Tiers are based on naming patterns and prices; new vendors (such as nvidia, stepfun, cohere) are currently listed as "unrecognized" and need a tier set manually.
 - Free variants (`:free`, `-free`) never take part in auto-matching or serve as fallbacks.
 - The native UI still shows teammates' internal ids; display names only apply in the model context.
-- A rotation successor (`<role>-rN`) does not start step counting automatically; start it in the task control area.
+- A rotation successor (`<role>-rN`) does not start step counting automatically (its predecessor used the dispatch's budget); start it in the task control area.
 - Routes confirmed as "this task only" are kept in memory and revert to the project config after DSH restarts.
 
 ## License

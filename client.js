@@ -9,7 +9,8 @@ window.__ModuleLoader__.load({
     const NS = 'capability-team';
 
     const zh = {
-      'nav.models': '模型管理', 'nav.roles': '角色与配置', 'nav.usage': '用量', 'nav.logs': '请求日志',
+      'nav.models': '模型', 'nav.roles': '角色', 'nav.usage': '用量', 'nav.logs': '日志',
+      'navfull.models': '模型管理', 'navfull.roles': '角色与配置', 'navfull.usage': '用量', 'navfull.logs': '请求日志', 'navfull.artifacts': '成果货架', 'navfull.report': '战报', 'navfull.integrations': '集成',
       'usage.hint': '预算计数 token（不含缓存读取）= 未缓存输入 + 缓存写入 + 输出，缓存读取单列且仍可能收费，不等于账单金额。总量与每步耗时由宿主实时推送；按模型拆分的 token 来自上次刷新。', 'usage.total': '团队合计 {n}', 'usage.billable': '预算计数 {n}', 'usage.cacheRead': '缓存读取 {n}', 'usage.budget': '预算 {used} / {max}', 'usage.over': '已达预算，请求被阻止', 'usage.none': '暂无用量记录', 'usage.io': '输入 {i} · 输出 {o}', 'usage.step': '{n} 步 · 平均 {s}s/步', 'usage.ttft': '首 token {s}s', 'usage.decode': '{n} token/s', 'usage.stepHint': 'DSH 会话统计：每步模型墙钟时间、首 token 延迟与解码速度', 'overview.live': '实时',
       'models.preview': '已保存策略下的请求候选（非实际调用）', 'models.blocked': '已阻止：无允许模型', 'models.unassigned': '尚未分配', 'models.refreshPreview': '策略已保存，请刷新状态获取新的候选预览。',
       'evidence.title': '本会话模型日志', 'evidence.hint': '只展示本会话非继承日志。请求配置不等于调用成功，响应记录也不等于任务完成。',
@@ -23,6 +24,9 @@ window.__ModuleLoader__.load({
       'workflow.mode': '执行模式', 'workflow.mode.enforce': '强制', 'workflow.mode.remind': '仅提醒', 'workflow.mode.off': '关闭', 'workflow.analysisBudget': '指派前只读分析', 'workflow.directBudget': '主控自行处理上限',
       'workflow.freeTools': '免费模型工具', 'workflow.freeModels': '免费模型顺序', 'workflow.analysisTools': '分析类工具', 'workflow.coordinationTools': '协调类工具', 'workflow.allFree': '目录中全部免费模型', 'workflow.times': '{n} 次',
       'workflow.fileLimits': '文件铁律', 'workflow.fileLimits.value': '源文件 ≤{source} 行 · 测试 ≤{test} 行 · 整读 ≤{read} 行 · 汇报 ≤{report} 字', 'workflow.fileLimits.off': '关闭',
+      'workflow.tokens': 'Token 规则', 'workflow.tokens.value': '空闲时上下文 ≥{ratio}% 自动压缩 · 命令/搜索输出超过 {chars} 字只留头尾',
+      'confirm.habit': '按你的习惯 {n}/{of}', 'confirm.failing': '最近失败 {n} 次', 'confirm.primaryFailing': '主模型 {route} 最近失败 {n} 次，建议换一个。', 'confirm.habitSettled': '最近 3 次你都这样选，可以改为“保存为项目默认”。', 'plan.boardScope': '写入范围 {list}', 'plan.boardAfter': '等待 {list}', 'workflow.enforceWriteScopes': '写入范围', 'workflow.enforceWriteScopes.on': '强制（范围外修改会被拒绝）', 'workflow.enforceWriteScopes.off': '仅提示', 'cards.prefs': '模型偏好', 'cards.prefs.summary': '已学到 {n} 个能力的偏好', 'cards.prefs.cleared': '已清空学到的偏好',
+      'confirm.expand': '展开', 'confirm.collapse': '收起', 'picker.search': '输入搜索模型…', 'picker.count': '{n} / {total} 个模型', 'picker.empty': '没有匹配的模型', 'picker.noProvider': '其他',
       'nav.integrations': '集成', 'int.help': '搜索网关与记忆枢纽嵌入接口的地址、路径、模型都是你自己的设置，保存后下一次调用起生效（工具里的渠道列表在 DSH 重载插件后更新）。密钥不在这里填写：只填存放密钥的环境变量名，并在 DSH 的 Host 环境里设置它。留空表示使用下一层（插件配置或默认值）。',
       'int.search': '搜索与网页读取', 'int.search.hint': 'cpa_search / cpa_web_fetch 调用的聚合网关。', 'int.embeddings': '嵌入（记忆枢纽向量检索）', 'int.embeddings.hint': 'OpenAI 兼容的嵌入接口；provider、dimensions、task 只在填写后才会发送。改模型或维度后，旧向量会自动重算。',
       'int.keySet': '密钥：已在环境变量 {name} 中设置', 'int.keyMissing': '密钥：环境变量 {name} 未设置', 'int.unset': '未设置',
@@ -94,6 +98,15 @@ window.__ModuleLoader__.load({
       'subagent.notice': '这是队友会话，团队视图请在主控会话查看',
       'subagent.currentMember': '当前成员: {name} ({role})',
       'subagent.openLead': '打开主控会话',
+      'roleview.viewOverview': '查看团队总览',
+      'roleview.backToRole': '返回角色视图',
+      'roleview.usage': '我的用量',
+      'roleview.artifacts': '我的交付物',
+      'roleview.logs': '我的日志',
+      'subtabs.team': '团队成员',
+      'subtabs.models': '模型分配',
+      'subtabs.runtime': '运行状态',
+      'runtime.noNotices': '暂无运行时提示',
       'subagent.unresolved': '无法确定主控会话，暂不显示团队视图',
       'error.tabCrashed': '该标签页渲染异常，已安全隔离',
       'theme.title': '团队主题',
@@ -150,7 +163,7 @@ window.__ModuleLoader__.load({
       'activity.parallel': '并行 {n} 个工具',
       'activity.unsettled': '历史未收尾',
       'activity.recent': '最近活动 ({n})',
-      'nav.artifacts': '成果货架',
+      'nav.artifacts': '成果',
       'artifacts.title': '交付物与成果',
       'artifacts.empty': '暂无成果交付物',
       'artifacts.allRoles': '全部角色',
@@ -247,7 +260,8 @@ window.__ModuleLoader__.load({
     };
 
     const en = {
-      'nav.models': 'Models', 'nav.roles': 'Roles & settings', 'nav.usage': 'Usage', 'nav.logs': 'Request records',
+      'nav.models': 'Models', 'nav.roles': 'Roles', 'nav.usage': 'Usage', 'nav.logs': 'Logs',
+      'navfull.models': 'Model management', 'navfull.roles': 'Roles & settings', 'navfull.usage': 'Usage', 'navfull.logs': 'Request records', 'navfull.artifacts': 'Artifacts', 'navfull.report': 'Battle report', 'navfull.integrations': 'Integrations',
       'usage.hint': 'Budget tokens (excl. cache reads) = uncached input + cache write + output; cache reads are listed apart and may still incur costs, not equal to final billing amount. Totals and step times are pushed live by the host; per-model token splits come from the last refresh.', 'usage.total': 'Team total {n}', 'usage.billable': 'Budget {n}', 'usage.cacheRead': 'Cache read {n}', 'usage.budget': 'Budget {used} / {max}', 'usage.over': 'Budget reached; requests blocked', 'usage.none': 'No usage recorded', 'usage.io': 'In {i} · out {o}', 'usage.step': '{n} steps · {s}s/step', 'usage.ttft': 'first token {s}s', 'usage.decode': '{n} tokens/s', 'usage.stepHint': 'DSH session stats: model wall time per step, time to first token, and decode speed', 'overview.live': 'Live',
       'models.preview': 'Candidates under saved policy (not actual calls)', 'models.blocked': 'Blocked: no allowed model', 'models.unassigned': 'Unassigned', 'models.refreshPreview': 'Policy saved. Refresh to load updated candidates.',
       'evidence.title': 'Session model records', 'evidence.hint': 'Only non-inherited session records. A request header does not prove success; an assistant response does not prove task completion.',
@@ -261,6 +275,9 @@ window.__ModuleLoader__.load({
       'workflow.mode': 'Mode', 'workflow.mode.enforce': 'Enforce', 'workflow.mode.remind': 'Remind only', 'workflow.mode.off': 'Off', 'workflow.analysisBudget': 'Read-only steps before dispatch', 'workflow.directBudget': 'Lead direct-action limit',
       'workflow.freeTools': 'Free-model tools', 'workflow.freeModels': 'Free-model order', 'workflow.analysisTools': 'Analysis tools', 'workflow.coordinationTools': 'Coordination tools', 'workflow.allFree': 'All free models in catalog', 'workflow.times': '{n}',
       'workflow.fileLimits': 'File rules', 'workflow.fileLimits.value': 'Source ≤{source} lines · tests ≤{test} · whole read ≤{read} · report ≤{report} chars', 'workflow.fileLimits.off': 'Off',
+      'workflow.tokens': 'Token rules', 'workflow.tokens.value': 'Compact idle members above {ratio}% · trim command/search output over {chars} chars',
+      'confirm.habit': 'Your usual choice {n}/{of}', 'confirm.failing': 'Failed {n}× recently', 'confirm.primaryFailing': 'Model {route} failed {n}× recently; consider another one.', 'confirm.habitSettled': 'You chose this the last 3 times; consider "Save as project default".', 'plan.boardScope': 'writes {list}', 'plan.boardAfter': 'after {list}', 'workflow.enforceWriteScopes': 'Write scopes', 'workflow.enforceWriteScopes.on': 'Enforced (edits outside are refused)', 'workflow.enforceWriteScopes.off': 'Advisory', 'cards.prefs': 'Model preferences', 'cards.prefs.summary': 'Learned preferences for {n} capabilities', 'cards.prefs.cleared': 'Learned preferences cleared',
+      'confirm.expand': 'Show more', 'confirm.collapse': 'Show less', 'picker.search': 'Type to search models…', 'picker.count': '{n} of {total} models', 'picker.empty': 'No matching models', 'picker.noProvider': 'Other',
       'nav.integrations': 'Integrations', 'int.help': 'The search gateway and the memory hub\'s embeddings endpoint are your own settings; changes apply from the next call (provider lists in the tools update after DSH reloads the plugin). Keys are not entered here: give the name of the environment variable that holds the key and set it in the DSH host environment. Leave a field empty to use the next layer (plugin config or default).',
       'int.search': 'Search and page fetch', 'int.search.hint': 'The gateway behind cpa_search / cpa_web_fetch.', 'int.embeddings': 'Embeddings (memory hub vector search)', 'int.embeddings.hint': 'An OpenAI-compatible embeddings endpoint; provider, dimensions and task are sent only when filled in. Changing the model or dimensions re-embeds old vectors automatically.',
       'int.keySet': 'Key: set in environment variable {name}', 'int.keyMissing': 'Key: environment variable {name} is not set', 'int.unset': 'not set',
@@ -332,6 +349,15 @@ window.__ModuleLoader__.load({
       'subagent.notice': 'This is a teammate session. Please view the full team view from the Lead session.',
       'subagent.currentMember': 'Current member: {name} ({role})',
       'subagent.openLead': 'Open Lead session',
+      'roleview.viewOverview': 'View team overview',
+      'roleview.backToRole': 'Back to role view',
+      'roleview.usage': 'My usage',
+      'roleview.artifacts': 'My artifacts',
+      'roleview.logs': 'My logs',
+      'subtabs.team': 'Team members',
+      'subtabs.models': 'Model allocation',
+      'subtabs.runtime': 'Runtime status',
+      'runtime.noNotices': 'No runtime notices',
       'subagent.unresolved': 'Could not resolve the Lead session; the team view is hidden.',
       'error.tabCrashed': 'This tab encountered a rendering error and was safely isolated.',
       'theme.title': 'Team Theme',
@@ -507,37 +533,76 @@ window.__ModuleLoader__.load({
 .ctm-warn{color:var(--dsw-alias-state-warn-primary)}
 .ctm-card[data-state=running] .ctm-summary,.ctm-card[data-state=preparing] .ctm-title{animation:ctm-pulse 1.4s ease-in-out infinite}
 @keyframes ctm-pulse{50%{opacity:.45}}
-.ctm-tc{margin-top:6px;border-top:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.2));padding-top:6px;font-size:12px}
+.ctm-tc{margin-top:6px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2));padding-top:6px;font-size:12px}
 .ctm-tc>summary{cursor:pointer;display:flex;gap:8px;align-items:baseline;list-style:none}
 .ctm-tc>summary::-webkit-details-marker{display:none}
 .ctm-tc-body,.ctm-tc-actions,.ctm-tc-confirm,.ctm-tc-audit{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .ctm-tc-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .ctm-tc-override{display:flex;flex-direction:column;gap:2px}
-.ctm-tc-reason,.ctm-tc select{font:inherit;padding:3px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.35));background:transparent;color:inherit;max-width:100%}
-.ctm-tc-confirm{padding:8px;border-radius:8px;border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.35))}
+.ctm-tc-reason,.ctm-tc select{font:inherit;padding:3px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35));background:transparent;color:inherit;max-width:100%}
+.ctm-tc-confirm{padding:8px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35))}
 .ctm-tc-audit ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:2px}
-.ctm-dc-wrap{display:flex;flex-direction:column;gap:6px}
-.ctm-dc{display:flex;flex-direction:column;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.35));font-size:12px}
-.ctm-dc-head{display:flex;flex-direction:column;gap:2px}
-.ctm-dc-role{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding-top:8px;border-top:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.2))}
-.ctm-dc-task{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ctm-dc-field{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.ctm-dc select{font:inherit;padding:3px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.35));background:transparent;color:inherit;max-width:100%}
-.ctm-dc-fallbacks{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
-.ctm-dc-fallbacks li{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
-.ctm-dc-mini{font:inherit;line-height:1;padding:2px 6px;border-radius:5px;border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.35));background:transparent;color:inherit;cursor:pointer}
-.ctm-dc-mini:disabled{opacity:.4;cursor:default}
-.ctm-dc-scope{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center}
 .ctm-mc-list{display:flex;flex-direction:column;gap:6px}
-.ctm-mc-item{padding-left:8px;border-left:2px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.25))}
+.ctm-mc-item{padding-left:8px;border-left:2px solid var(--dsw-alias-border-l1,rgba(127,127,127,.25))}
 .ctm-mc-results{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .ctm-mc-results li{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere}
 .ctm-int{display:flex;flex-direction:column;gap:12px}
-.ctm-int-section{border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.3));border-radius:10px;margin:0;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
-.ctm-int-field{display:grid;grid-template-columns:minmax(0,1fr);gap:2px}
-.ctm-int-field input,.ctm-int-field textarea{font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-subtle,rgba(127,127,127,.35));background:transparent;color:inherit;min-width:0}
-.ctm-int-field input:disabled,.ctm-int-field textarea:disabled{opacity:.6}
+.ctm-int-section{border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.3));border-radius:10px;margin:0 0 12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0;background:var(--dsw-alias-bg-layer-1)}
+.ctm-int-grid{display:grid;grid-template-columns:120px minmax(0,1fr);column-gap:12px;row-gap:8px;align-items:start}
+.ctm-int-key{padding-top:6px}
+.ctm-int-val{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ctm-int-val input,.ctm-int-val textarea{font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35));background:transparent;color:inherit;min-width:0}
+.ctm-int-val input:disabled,.ctm-int-val textarea:disabled{opacity:.6}
 .ctm-int-src{font-size:11px}
+@container ctm-ov (max-width:420px){.ctm-int-grid{grid-template-columns:minmax(0,1fr)}.ctm-int-key{padding-top:0}}
+.ctm-dc{display:flex;flex-direction:column;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.3));font-size:12px;line-height:1.5}
+.ctm-dc-head{display:flex;flex-direction:column;gap:2px}
+.ctm-dc-title{font-size:13px}
+.ctm-dc-roles{display:flex;flex-direction:column;gap:10px}
+.ctm-dc-role{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:10px;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06))}
+.ctm-dc-role-head{display:flex;align-items:center;gap:10px;min-width:0}
+.ctm-dc-avatar{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:600;background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.18))}
+.ctm-dc-who{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ctm-dc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary,inherit);font-size:11px}
+.ctm-dc-meta code{font-size:11px}
+.ctm-dc-task{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.ctm-dc-task p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.ctm-dc-task p[data-clamped]{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ctm-dc-link{font:inherit;font-size:11px;padding:0;border:0;background:none;color:var(--dsw-alias-link);cursor:pointer}
+.ctm-dc-grid{display:grid;grid-template-columns:76px minmax(0,1fr);gap:8px 10px;align-items:start}
+.ctm-dc-key{padding-top:6px;display:flex;gap:4px;align-items:baseline}
+.ctm-dc-count{font-weight:400;font-variant-numeric:tabular-nums;opacity:.7}
+.ctm-dc-fallbacks{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ctm-dc-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.ctm-dc-item{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:6px;padding:3px 4px 3px 6px;border-radius:7px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.25))}
+.ctm-dc-index{font-variant-numeric:tabular-nums;opacity:.6;text-align:center}
+.ctm-dc-route{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctm-dc-actions{display:flex;gap:2px}
+.ctm-dc-icon{font:inherit;line-height:1;width:22px;height:22px;border-radius:5px;border:0;background:transparent;color:inherit;cursor:pointer}
+.ctm-dc-icon:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.15))}
+.ctm-dc-icon:disabled{opacity:.3;cursor:default}
+.ctm-dc-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2))}
+.ctm-dc-scope{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.ctm-dc-seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
+.ctm-dc-segbtn{font:inherit;font-size:12px;padding:3px 10px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer}
+.ctm-dc-segbtn[aria-checked=true]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent);font-weight:600}
+.ctm-dc-buttons{display:flex;gap:8px;margin-left:auto}
+.ctm-dc-wrap{display:flex;flex-direction:column;gap:6px}
+.ctm-mp{position:relative;min-width:0}
+.ctm-mp-input{box-sizing:border-box;width:100%;font:inherit;font-size:12px;padding:5px 26px 5px 8px;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
+.ctm-mp-input:focus{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color);outline-offset:-1px}
+.ctm-mp-caret{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.6}
+.ctm-mp-pop{position:absolute;z-index:1100;left:0;right:0;top:calc(100% + 4px);border-radius:var(--dsw-radius-lg,10px);background-color:var(--dsw-alias-bg-base);background-image:linear-gradient(var(--dsw-specific-menu),var(--dsw-specific-menu));box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);overflow:hidden}
+.ctm-mp-count{padding:5px 8px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2))}
+.ctm-mp-list{list-style:none;margin:0;padding:4px 0;max-height:240px;overflow:auto}
+.ctm-mp-group{padding:6px 10px 2px;font-size:11px;font-weight:600;opacity:.65;text-transform:none}
+.ctm-mp-option{display:flex;justify-content:space-between;gap:8px;padding:5px 10px 5px 16px;cursor:pointer}
+.ctm-mp-option[data-active]{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.15))}
+.ctm-mp-option[aria-selected=true]{font-weight:600}
+.ctm-mp-model{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctm-mp-empty{padding:10px}
+@media (max-width:420px){.ctm-dc-grid{grid-template-columns:minmax(0,1fr)}.ctm-dc-key{padding-top:0}}
+.ctm-plan-board{margin:6px 0 0;padding-left:16px;display:flex;flex-direction:column;gap:2px;font-size:12px}
 @media (prefers-reduced-motion:reduce){.ctm-card .ctm-summary,.ctm-card .ctm-title{animation:none!important}}
 .ctm-wrap{display:flex;flex-direction:column}
 .ctm-body{display:flex;flex-direction:column;margin:4px 0 4px 4px;overflow:hidden;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size-secondary,13px)}
@@ -574,7 +639,7 @@ window.__ModuleLoader__.load({
 .ctm-btn:focus-visible,.ctm-ov-tab:focus-visible,.ctm-switch:focus-visible,.ctm-ov-group>summary:focus-visible{outline:1px solid var(--ctm-accent);outline-offset:1px}
 .ctm-card,.ctm-ov{--ctm-accent:var(--dsw-alias-state-business-primary,var(--dsw-alias-link,#4d6bfe))}
 .ctm-ov .ctm-badge[data-tone=brand]{color:var(--ctm-accent)}
-.ctm-ov{background:var(--dsw-alias-bg-base);display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box;color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size-secondary,13px)}
+.ctm-ov{container:ctm-ov/inline-size;background:var(--dsw-alias-bg-base);display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box;color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size-secondary,13px)}
 .ctm-ov-head{flex:none;display:flex;flex-direction:column;gap:2px;padding:12px 16px 10px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
 .ctm-ov-titlerow{display:flex;align-items:center;gap:8px;min-width:0}
 .ctm-ov-title{margin:0;font-size:15px;font-weight:600;line-height:24px}
@@ -593,25 +658,31 @@ window.__ModuleLoader__.load({
 .ctm-ov-callout[data-tone=warn]{color:var(--dsw-alias-state-warn-primary)}
 .ctm-ov-callout[data-tone=error]{color:var(--dsw-alias-state-error-primary)}
 .ctm-ov-callout .ctm-text{color:var(--dsw-alias-label-primary)}
-.ctm-ov-tabs{position:sticky;top:-12px;z-index:2;display:flex;gap:2px;padding:3px;margin:0 -2px;border-radius:8px;background:var(--dsw-alias-bg-layer-2)}
-.ctm-ov-tab{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;padding:4px 8px;border:none;border-radius:6px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;white-space:nowrap;cursor:pointer}
+.ctm-ov-tabs{position:sticky;top:-12px;z-index:2;display:flex;flex-wrap:wrap;gap:2px;padding:3px;margin:0 -2px;border-radius:8px;background:var(--dsw-alias-bg-layer-2)}
+.ctm-ov-tab{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:none;border-radius:6px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;white-space:nowrap;cursor:pointer}
 .ctm-ov-tab:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .ctm-ov-tab[aria-pressed=true]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-weight:500;box-shadow:0 0 0 .5px var(--dsw-alias-border-l1)}
-.ctm-ov-count{padding:0 5px;border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary)}
+.ctm-ov-count{padding:0 5px;border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);flex:none}
+@container ctm-ov (min-width:480px){.ctm-ov-tab{flex:1 1 0;min-width:0}}
+.ctm-ov-subtabs{display:flex;flex-wrap:wrap;gap:2px;padding:3px;margin:0 0 8px;border-radius:8px;background:var(--dsw-alias-bg-layer-2)}
+.ctm-ov-subtab{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:none;border-radius:6px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;white-space:nowrap;cursor:pointer}
+.ctm-ov-subtab:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
+.ctm-ov-subtab[aria-pressed=true]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-weight:500;box-shadow:0 0 0 .5px var(--dsw-alias-border-l1)}
+@container ctm-ov (min-width:420px){.ctm-ov-subtab{flex:1 1 0;min-width:0}}
 .ctm-ov-panel{display:flex;flex-direction:column;gap:12px;min-width:0}
 .ctm-ov-panel[hidden]{display:none}
 .ctm-ov-block{display:flex;flex-direction:column;gap:6px;min-width:0}
 .ctm-ov-help{margin:0;line-height:1.5}
 .ctm-ov-note{font-size:12px}
 .ctm-ov-editor{display:flex;flex-direction:column;gap:12px;min-width:0}
-.ctm-ov-toolbar{position:sticky;top:26px;z-index:1;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 0;background:var(--dsw-alias-bg-base)}
+.ctm-ov-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 0;background:var(--dsw-alias-bg-base)}
 .ctm-ov-search{box-sizing:border-box;width:100%;padding:5px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px}
 .ctm-ov-search:focus{outline:1px solid var(--ctm-accent);outline-offset:-1px}
 .ctm-ov-allocs{display:flex;flex-direction:column;border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
 .ctm-ov-alloc{display:grid;grid-template-columns:minmax(56px,max-content) minmax(0,1fr);column-gap:10px;padding:6px 10px;align-items:baseline}
 .ctm-ov-alloc+.ctm-ov-alloc{border-top:.5px solid var(--dsw-alias-border-l2)}
 .ctm-ov-chain{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0}
-.ctm-ov-hop{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 7px;border:.5px solid var(--dsw-alias-border-l1);border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-family:var(--dsw-font-mono,ui-monospace,monospace);font-size:11px;line-height:17px;color:var(--dsw-alias-label-secondary)}
+.ctm-ov-hop{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 7px;border:.5px solid var(--dsw-alias-border-l1);border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:11px;line-height:17px;color:var(--dsw-alias-label-secondary)}
 .ctm-ov-hop[data-primary]{border-color:var(--ctm-accent);background:none;color:var(--ctm-accent)}
 .ctm-ov-arrow{color:var(--dsw-alias-label-tertiary,var(--dsw-alias-label-secondary));font-size:13px;line-height:1}
 .ctm-ov-tiers{display:flex;flex-wrap:wrap;gap:6px}
@@ -624,14 +695,14 @@ window.__ModuleLoader__.load({
 .ctm-ov-offdot{position:absolute;top:1px;right:1px;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-state-warn-primary)}
 .ctm-ov-list-flat{border-top:none}
 .ctm-ov-rule-input{display:flex;gap:6px}
-.ctm-ov-rule-input .ctm-ov-search{flex:1 1 auto;min-width:0;font-family:var(--dsw-font-mono,ui-monospace,monospace)}
-.ctm-ov-rule{align-items:center;font-family:var(--dsw-font-mono,ui-monospace,monospace);border:.5px solid var(--dsw-alias-state-warn-primary)}
+.ctm-ov-rule-input .ctm-ov-search{flex:1 1 auto;min-width:0;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace)}
+.ctm-ov-rule{align-items:center;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);border:.5px solid var(--dsw-alias-state-warn-primary)}
 .ctm-ov-rule-x{margin-left:2px;padding:0 4px;border:none;border-radius:4px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;line-height:18px;cursor:pointer}
 .ctm-ov-rule-x:hover:not(:disabled){color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .ctm-ov-panel{container-type:inline-size}
 .ctm-ov-split{display:flex;flex-direction:column;gap:16px;min-width:0}
 .ctm-ov-split>*{flex-shrink:0;min-width:0}
-@container (min-width:720px){.ctm-ov-split{display:grid;grid-template-columns:minmax(300px,2fr) minmax(0,3fr);align-items:start}.ctm-bd{position:sticky;top:30px}}
+@container (min-width:720px){.ctm-ov-split{display:grid;grid-template-columns:minmax(300px,2fr) minmax(0,3fr);align-items:start}}
 .ctm-bd{display:flex;flex-direction:column;gap:8px;min-width:0}
 .ctm-bd-head{display:flex;align-items:center;gap:8px}
 .ctm-bd-head .ctm-badge{margin-left:0}
@@ -687,7 +758,7 @@ window.__ModuleLoader__.load({
 .ctm-bd-card[data-status=running] .ctm-bd-bar,.ctm-bd-card[data-status=provisioning] .ctm-bd-bar{opacity:1;background:linear-gradient(90deg,transparent,var(--ctm-accent),transparent) 0 0/40% 100% no-repeat,color-mix(in srgb,var(--ctm-accent) 12%,transparent);animation:ctm-scan 1.4s ease-in-out infinite}
 @keyframes ctm-scan{0%{background-position:-40% 0,0 0}100%{background-position:140% 0,0 0}}
 @media (prefers-reduced-motion:reduce){.ctm-bd *,.ctm-bd *::before,.ctm-bd *::after,.ctm-bd-mates::after,.ctm-bd-card{animation:none!important}}
-.ctm-ov-route{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-mono,ui-monospace,monospace);font-size:12px}
+.ctm-ov-route{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:12px}
 .ctm-ov-group{border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}
 .ctm-ov-group>summary{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;list-style:none;user-select:none}
 .ctm-ov-group>summary::-webkit-details-marker{display:none}
@@ -719,7 +790,7 @@ window.__ModuleLoader__.load({
 .ctm-ov-logs{display:flex;flex-direction:column;border-top:.5px solid var(--dsw-alias-border-l2)}
 .ctm-us-meter{height:4px;border-radius:2px;background:var(--dsw-alias-bg-layer-2);overflow:hidden}
 .ctm-us-meter>i{display:block;height:100%;background:var(--ctm-accent)}
-.ctm-us-meter[data-tone=warn]>i{background:var(--dsw-alias-state-warning-primary,#d97706)}
+.ctm-us-meter[data-tone=warn]>i{background:var(--dsw-alias-state-warn-primary,#d97706)}
 .ctm-us-meter[data-tone=error]>i{background:var(--dsw-alias-state-error-primary)}
 .ctm-us-num{font-variant-numeric:tabular-nums}
 .ctm-ov-log{display:flex;align-items:center;gap:6px;min-width:0;padding:5px 10px}
@@ -732,7 +803,7 @@ window.__ModuleLoader__.load({
 .ctm-bd-open-btn:hover{background:var(--ctm-accent);color:#fff}
 .ctm-bd-card:hover .ctm-bd-open-btn,.ctm-bd-card:focus-within .ctm-bd-open-btn,.ctm-bd-open-btn:focus{opacity:1;pointer-events:auto}
 @media (hover: none){.ctm-bd-open-btn{opacity:1;pointer-events:auto}}
-.ctm-model-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--dsw-font-mono,ui-monospace,monospace);font-size:11px;line-height:16px;padding:1px 6px;border-radius:999px;border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctm-model-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:11px;line-height:16px;padding:1px 6px;border-radius:999px;border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-model-badge[data-grade=legendary]{color:#d97706;border-color:color-mix(in srgb,#f59e0b 50%,transparent);background:color-mix(in srgb,#f59e0b 12%,transparent)}
 .ctm-model-badge[data-grade=epic]{color:#9333ea;border-color:color-mix(in srgb,#a855f7 50%,transparent);background:color-mix(in srgb,#a855f7 12%,transparent)}
 .ctm-model-badge[data-grade=rare]{color:#2563eb;border-color:color-mix(in srgb,#3b82f6 50%,transparent);background:color-mix(in srgb,#3b82f6 12%,transparent)}
@@ -769,11 +840,11 @@ window.__ModuleLoader__.load({
 .ctm-art-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
 .ctm-art-card{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:8px;border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
 .ctm-art-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
-.ctm-art-path{font-family:var(--dsw-font-mono,monospace);font-size:11px;word-break:break-all;color:var(--dsw-alias-label-primary)}
+.ctm-art-path{font-family:var(--dsw-font-markdown-code-font-family,monospace);font-size:11px;word-break:break-all;color:var(--dsw-alias-label-primary)}
 .ctm-art-changes{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2)}
 .ctm-chg-item{border:.5px solid var(--dsw-alias-border-l1);border-radius:6px;background:var(--dsw-alias-bg-layer-1);padding:6px 8px}
 .ctm-chg-item>summary{cursor:pointer;font-size:12px;font-weight:500;color:var(--dsw-alias-label-primary)}
-.ctm-chg-diff{margin-top:6px;padding:6px;background:var(--dsw-alias-bg-layer-2);border-radius:4px;overflow-x:auto;font-family:var(--dsw-font-mono,monospace);font-size:11px}
+.ctm-chg-diff{margin-top:6px;padding:6px;background:var(--dsw-alias-bg-layer-2);border-radius:4px;overflow-x:auto;font-family:var(--dsw-font-markdown-code-font-family,monospace);font-size:11px}
 .ctm-rpt-shelf{display:flex;flex-direction:column;gap:12px}
 .ctm-rpt-section{display:flex;flex-direction:column;gap:8px}
 .ctm-rpt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
@@ -882,12 +953,17 @@ window.__ModuleLoader__.load({
       else if (s.state === 'ok' && !s.data) sections.push(rawBody(s, t));
       else {
         if (plan.analysis) sections.push(section(t('plan.analysis'), h('div', { className: 'ctm-text' }, plan.analysis)));
+        if (plan.boardError) sections.push(section(null, h('p', { className: 'ctm-sub ctm-warn' }, plan.boardError)));
         if (plan.reason) sections.push(section(t('plan.reason'), h('div', { className: 'ctm-text' }, plan.reason)));
         if (assignments.length) sections.push(section(t('plan.assignments'), h('div', { className: 'ctm-grid' }, ...assignments.flatMap((a, i) => [
           h('div', { className: 'ctm-who', key: `w${i}` }, h('span', { className: 'ctm-name' }, a.displayName ?? a.role),
             h('span', { className: 'ctm-sub' }, [a.displayName ? a.role : null, a.capability, a.model].filter(Boolean).join(' · ')),
             Array.isArray(a.fallbacks) && a.fallbacks.length ? h('span', { className: 'ctm-sub' }, fmt(t('plan.fallbacks'), { list: a.fallbacks.join(t('common.listSep')) })) : null),
-          h('div', { className: 'ctm-text', key: `t${i}` }, a.task),
+          h('div', { className: 'ctm-text', key: `t${i}` }, a.task,
+            Array.isArray(a.boardTasks) && a.boardTasks.length ? h('ul', { className: 'ctm-plan-board' }, ...a.boardTasks.map(bt => h('li', { key: bt.id },
+              h('code', null, bt.id), ' ', bt.subject,
+              bt.writeScopes?.length ? h('span', { className: 'ctm-sub' }, ' · ', fmt(t('plan.boardScope'), { list: bt.writeScopes.join(t('common.listSep')) })) : null,
+              bt.blockedBy?.length ? h('span', { className: 'ctm-sub' }, ' · ', fmt(t('plan.boardAfter'), { list: bt.blockedBy.join(t('common.listSep')) })) : null))) : null),
         ]))));
         const facts = [];
         if (plan.freeTools) facts.push(chip(t('free.tools'), t(`tools.${plan.freeTools}`), 'tools'));
@@ -982,6 +1058,7 @@ window.__ModuleLoader__.load({
       const [error, setError] = React.useState(null);
       const [sent, setSent] = React.useState(null);
       const [reload, setReload] = React.useState(0);
+      const [expanded, setExpanded] = React.useState({}); // role → task text shown in full
       React.useEffect(() => {
         if (!sessionId || !callId) return undefined;
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
@@ -1023,39 +1100,60 @@ window.__ModuleLoader__.load({
       const changedCaps = view.routes.filter(r => { const c = current(r); return c.primary !== rkey(r.primary) || c.fallbacks.join() !== r.fallbacks.map(rkey).join(); }).map(r => r.capability);
       const row = r => {
         const c = current(r);
-        const options = r.candidates.map(rkey);
+        const options = [...new Set([c.primary, ...r.candidates.map(rkey)])].filter(Boolean);
         const spare = options.filter(k => k !== c.primary && !c.fallbacks.includes(k));
-        return h('div', { key: r.role, className: 'ctm-dc-role' },
-          h('div', { className: 'ctm-who' }, h('span', { className: 'ctm-name' }, r.displayName ?? r.role),
-            h('span', { className: 'ctm-sub' }, [r.role, r.capability, label(t, `tier.${r.tier}`, r.tier)].join(' · '))),
-          r.task ? h('div', { className: 'ctm-sub ctm-dc-task', title: r.task }, firstLine(r.task)) : null,
-          h('label', { className: 'ctm-dc-field' }, h('span', { className: 'ctm-label' }, t('confirm.primary')),
-            h('select', { value: c.primary, disabled: busy, 'aria-label': `${r.displayName ?? r.role} ${t('confirm.primary')}`,
-              onChange: e => update(r, { primary: e.target.value, fallbacks: c.fallbacks.filter(f => f !== e.target.value) }) },
-              ...[...new Set([c.primary, ...options])].filter(Boolean).map(k => h('option', { key: k, value: k }, k)))),
-          h('div', { className: 'ctm-dc-field' }, h('span', { className: 'ctm-label' }, `${t('confirm.fallbacks')} (${c.fallbacks.length}/${max})`),
-            c.fallbacks.length ? h('ol', { className: 'ctm-dc-fallbacks' }, ...c.fallbacks.map((f, i) => h('li', { key: f },
-              h('span', { className: 'ctm-chip' }, f),
-              h('button', { type: 'button', className: 'ctm-dc-mini', disabled: busy || i === 0, 'aria-label': `${t('confirm.up')} ${f}`, onClick: () => update(r, { fallbacks: move(c.fallbacks, i, -1) }) }, '↑'),
-              h('button', { type: 'button', className: 'ctm-dc-mini', disabled: busy || i === c.fallbacks.length - 1, 'aria-label': `${t('confirm.down')} ${f}`, onClick: () => update(r, { fallbacks: move(c.fallbacks, i, 1) }) }, '↓'),
-              h('button', { type: 'button', className: 'ctm-dc-mini', disabled: busy, 'aria-label': `${t('confirm.remove')} ${f}`, onClick: () => update(r, { fallbacks: c.fallbacks.filter(x => x !== f) }) }, '×'))))
-              : h('span', { className: 'ctm-sub' }, t('confirm.noFallbacks')),
-            c.fallbacks.length < max && spare.length ? h('select', { value: '', disabled: busy, 'aria-label': t('confirm.addFallback'),
-              onChange: e => e.target.value && update(r, { fallbacks: [...c.fallbacks, e.target.value] }) },
-              h('option', { value: '' }, t('confirm.addFallback')), ...spare.map(k => h('option', { key: k, value: k }, k)))
-              : c.fallbacks.length >= max ? h('span', { className: 'ctm-sub' }, fmt(t('confirm.max'), { n: max })) : null));
+        const who = r.displayName ?? r.role;
+        const long = r.task && (r.task.length > 120 || r.task.includes('\n'));
+        const iconButton = (glyph, labelKey, f, disabledWhen, onClick) => h('button', { type: 'button', className: 'ctm-dc-icon', disabled: busy || disabledWhen,
+          'aria-label': `${t(labelKey)} ${f}`, title: t(labelKey), onClick }, glyph);
+        return h('section', { key: r.role, className: 'ctm-dc-role', 'aria-label': who },
+          h('header', { className: 'ctm-dc-role-head' },
+            h('span', { className: 'ctm-dc-avatar', 'aria-hidden': true }, Array.from(who)[0] ?? '?'),
+            h('div', { className: 'ctm-dc-who' },
+              h('span', { className: 'ctm-name' }, who),
+              h('span', { className: 'ctm-dc-meta' },
+                h('code', null, r.role), h('span', null, r.capability), badge(label(t, `tier.${r.tier}`, r.tier), 'brand', 'tier'),
+                r.learned?.habit ? badge(fmt(t('confirm.habit'), { n: r.learned.habit.count, of: r.learned.habit.of }), 'success', 'habit') : null))),
+          r.task ? h('div', { className: 'ctm-dc-task' },
+            h('p', { className: 'ctm-text', 'data-clamped': expanded[r.role] ? undefined : '' }, r.task),
+            long ? h('button', { type: 'button', className: 'ctm-dc-link', onClick: () => setExpanded(prev => ({ ...prev, [r.role]: !prev[r.role] })) },
+              t(expanded[r.role] ? 'confirm.collapse' : 'confirm.expand')) : null) : null,
+          h('div', { className: 'ctm-dc-grid' },
+            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.primary')),
+            h(ModelPicker, { value: c.primary, options, disabled: busy, t, label: `${who} ${t('confirm.primary')}`, placeholder: t('picker.search'),
+              onChange: k => update(r, { primary: k, fallbacks: c.fallbacks.filter(f => f !== k) }) }),
+            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.fallbacks'), h('span', { className: 'ctm-dc-count' }, `${c.fallbacks.length}/${max}`)),
+            h('div', { className: 'ctm-dc-fallbacks' },
+              c.fallbacks.length ? h('ol', { className: 'ctm-dc-list' }, ...c.fallbacks.map((f, i) => h('li', { key: f, className: 'ctm-dc-item' },
+                h('span', { className: 'ctm-dc-index', 'aria-hidden': true }, String(i + 1)),
+                h('span', { className: 'ctm-dc-route', title: f }, f, r.learned?.unhealthy?.[f] ? badge(fmt(t('confirm.failing'), { n: r.learned.unhealthy[f] }), 'warn', 'bad') : null),
+                h('span', { className: 'ctm-dc-actions' },
+                  iconButton('↑', 'confirm.up', f, i === 0, () => update(r, { fallbacks: move(c.fallbacks, i, -1) })),
+                  iconButton('↓', 'confirm.down', f, i === c.fallbacks.length - 1, () => update(r, { fallbacks: move(c.fallbacks, i, 1) })),
+                  iconButton('×', 'confirm.remove', f, false, () => update(r, { fallbacks: c.fallbacks.filter(x => x !== f) }))))))
+                : h('span', { className: 'ctm-sub' }, t('confirm.noFallbacks')),
+              c.fallbacks.length < max && spare.length
+                ? h(ModelPicker, { value: '', options: spare, disabled: busy, t, label: t('confirm.addFallback'), placeholder: t('confirm.addFallback'),
+                  onChange: k => update(r, { fallbacks: [...c.fallbacks, k] }) })
+                : c.fallbacks.length >= max ? h('span', { className: 'ctm-sub' }, fmt(t('confirm.max'), { n: max })) : null)),
+          r.learned?.unhealthy?.[c.primary] ? h('p', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.primaryFailing'), { route: c.primary, n: r.learned.unhealthy[c.primary] })) : null,
+          r.learned?.habit?.settled && scope === 'task' ? h('p', { className: 'ctm-sub' }, t('confirm.habitSettled')) : null);
       };
       return h('div', { className: 'ctm-dc', role: 'group', 'aria-label': t('confirm.title') },
-        h('div', { className: 'ctm-dc-head' }, h('strong', null, t('confirm.title')), h('span', { className: 'ctm-sub' }, t('confirm.hint'))),
-        ...view.routes.map(row),
-        h('fieldset', { className: 'ctm-dc-scope' },
-          h('legend', { className: 'ctm-label' }, t('confirm.scope')),
-          ...['task', 'project'].map(s => h('label', { key: s }, h('input', { type: 'radio', name: `ctm-dc-scope-${callId}`, value: s, checked: scope === s, disabled: busy, onChange: () => setScope(s) }), t(`confirm.scope.${s}`))),
-          scope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
-        error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
-        h('div', { className: 'ctm-tc-row' },
-          h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: busy, onClick: () => submit('confirm') }, t('confirm.ok')),
-          h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('confirm.cancel'))));
+        h('div', { className: 'ctm-dc-head' },
+          h('strong', { className: 'ctm-dc-title' }, t('confirm.title')),
+          h('span', { className: 'ctm-sub' }, t('confirm.hint'))),
+        h('div', { className: 'ctm-dc-roles' }, ...view.routes.map(row)),
+        h('div', { className: 'ctm-dc-foot' },
+          h('div', { className: 'ctm-dc-scope', role: 'radiogroup', 'aria-label': t('confirm.scope') },
+            h('span', { className: 'ctm-label' }, t('confirm.scope')),
+            h('div', { className: 'ctm-dc-seg' }, ...['task', 'project'].map(s => h('button', { key: s, type: 'button', role: 'radio', 'aria-checked': scope === s,
+              className: 'ctm-dc-segbtn', disabled: busy, onClick: () => setScope(s) }, t(`confirm.scope.${s}`)))),
+            scope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
+          error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
+          h('div', { className: 'ctm-dc-buttons' },
+            h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('confirm.cancel')),
+            h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: busy, onClick: () => submit('confirm') }, t('confirm.ok')))));
     }
 
     // ---------- cards for the remaining JSON tools ----------
@@ -1133,6 +1231,63 @@ window.__ModuleLoader__.load({
     const MemoryWriteView = dataCard('capability_memory_write', ICONS.plan, 'cards.memoryWrite',
       (d, t, args) => `${label(t, `cards.memory.kind.${d.kind}`, d.kind)} · ${d.merged ? t('cards.memoryWrite.merged') : t('cards.memoryWrite.saved')}${firstLine(args.text) ? ` · ${firstLine(args.text)}` : ''}`,
       () => null);
+    const PrefsView = dataCard('capability_model_prefs', ICONS.plan, 'cards.prefs',
+      (d, t) => (d.cleared ? t('cards.prefs.cleared') : fmt(t('cards.prefs.summary'), { n: Object.keys(d.habits ?? {}).length })),
+      (d, t) => (d.habits ? section(null, valueView(Object.fromEntries(Object.entries(d.habits).map(([cap, hb]) => [cap, `${hb.primary}${hb.fallbacks?.length ? ` → ${hb.fallbacks.join(' → ')}` : ''} · ${hb.count}/${hb.of}`])))) : null));
+
+    // ---------- searchable model picker ----------
+    // A combobox over "provider/model" routes: type to filter (every space-separated word must match),
+    // arrow keys to move, Enter to pick, Escape to close. Options are grouped by provider.
+    const splitKey = key => { const i = key.indexOf('/'); return i > 0 ? [key.slice(0, i), key.slice(i + 1)] : ['', key]; };
+    /** Routes whose "provider/model" contains every word of the query (case-insensitive). */
+    function filterRoutes(options, query) {
+      const words = String(query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+      return words.length ? options.filter(k => words.every(w => k.toLowerCase().includes(w))) : options;
+    }
+    let pickerSeq = 0;
+    function ModelPicker({ value, options, onChange, placeholder, label: aria, disabled, t }) {
+      const [open, setOpen] = React.useState(false);
+      const [query, setQuery] = React.useState('');
+      const [active, setActive] = React.useState(0);
+      const idRef = React.useRef(null);
+      if (!idRef.current) idRef.current = `ctm-mp-${++pickerSeq}`;
+      const id = idRef.current;
+      const shown = filterRoutes(options, query);
+      const close = () => { setOpen(false); setQuery(''); setActive(0); };
+      const pick = key => { if (key) onChange(key); close(); };
+      const onKeyDown = event => {
+        if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setActive(i => Math.min(i + 1, shown.length - 1)); }
+        else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(i => Math.max(i - 1, 0)); }
+        else if (event.key === 'Enter') { event.preventDefault(); if (open) pick(shown[active]); else setOpen(true); }
+        else if (event.key === 'Escape') { if (open) { event.preventDefault(); close(); } }
+        else if (event.key === 'Tab') close();
+      };
+      const groups = [];
+      shown.forEach((key, index) => {
+        const [provider] = splitKey(key);
+        if (!groups.length || groups[groups.length - 1].provider !== provider) groups.push({ provider, items: [] });
+        groups[groups.length - 1].items.push({ key, index });
+      });
+      return h('div', { className: 'ctm-mp', 'data-open': open ? '' : undefined },
+        h('input', { type: 'text', className: 'ctm-mp-input', role: 'combobox', 'aria-label': aria, 'aria-expanded': open, 'aria-controls': `${id}-list`,
+          'aria-autocomplete': 'list', 'aria-activedescendant': open && shown[active] ? `${id}-${active}` : undefined, disabled, spellCheck: false,
+          value: open ? query : value ?? '', placeholder: open ? (value || placeholder) : placeholder,
+          onFocus: () => setOpen(true), onClick: () => setOpen(true), onBlur: close,
+          onChange: e => { setQuery(e.target.value); setActive(0); setOpen(true); }, onKeyDown }),
+        h('span', { className: 'ctm-mp-caret', 'aria-hidden': true }, '▾'),
+        open ? h('div', { className: 'ctm-mp-pop' },
+          h('div', { className: 'ctm-mp-count ctm-sub' }, fmt(t('picker.count'), { n: shown.length, total: options.length })),
+          shown.length
+            ? h('ul', { id: `${id}-list`, role: 'listbox', className: 'ctm-mp-list' }, ...groups.flatMap(g => [
+              h('li', { key: `g:${g.provider}`, role: 'presentation', className: 'ctm-mp-group' }, g.provider || t('picker.noProvider')),
+              ...g.items.map(({ key, index }) => h('li', { key, id: `${id}-${index}`, role: 'option', 'aria-selected': key === value,
+                className: 'ctm-mp-option', 'data-active': index === active ? '' : undefined,
+                // mousedown keeps focus in the input, so blur does not close the list before the click lands
+                onMouseDown: e => { e.preventDefault(); pick(key); }, onMouseEnter: () => setActive(index) },
+                h('span', { className: 'ctm-mp-model' }, splitKey(key)[1]), key === value ? h('span', { className: 'ctm-mp-check', 'aria-hidden': true }, '✓') : null)),
+            ]))
+            : h('div', { className: 'ctm-mp-empty ctm-sub' }, t('picker.empty'))) : null);
+    }
 
     // ---------- right sidebar: team overview ----------
     const TIER_ORDER = ['high', 'upper', 'medium', 'low'];
@@ -1335,6 +1490,8 @@ window.__ModuleLoader__.load({
         if (key === 'freeTools') return label(t, `tools.${v}`, String(v));
         if (key === 'analysisBudget' || key === 'directBudget') return fmt(t('workflow.times'), { n: v });
         if (key === 'freeModels' && Array.isArray(v) && !v.length) return t('workflow.allFree');
+        if (key === 'tokens') return v ? fmt(t('workflow.tokens.value'), { ratio: Math.round(v.idleCompactRatio * 100), chars: v.trimToolOutputChars }) : t('workflow.fileLimits.off');
+        if (key === 'enforceWriteScopes') return t(v ? 'workflow.enforceWriteScopes.on' : 'workflow.enforceWriteScopes.off');
         if (key === 'confirmDispatch') return label(t, `workflow.confirmDispatch.${v}`, String(v));
         if (key === 'rotation') return v ? fmt(t('workflow.rotation.value'), { soft: v.softCompactions, hard: v.hardCompactions, ratio: Math.round(v.hardRatio * 100), turns: v.hardTurns }) : t('workflow.fileLimits.off');
         if (key === 'fileLimits') return v ? fmt(t('workflow.fileLimits.value'), { source: v.sourceMax, test: v.testMax, read: v.readMax, report: v.reportMax }) : t('workflow.fileLimits.off');
@@ -2542,9 +2699,52 @@ window.__ModuleLoader__.load({
         depsView);
     }
 
+    // ---------- role view (teammate session): own role card + own usage/logs/artifacts, no team canvas ----------
+    /** Teammate sessions see only themselves: no PolicyEditor, no other members' usage/logs/artifacts. */
+    function RoleView({ sessionId, role, liveByRole, usage, d, liveTeam, live, runtimeState, t }) {
+      const ownUsage = usage.filter(row => row.id === sessionId || row.name === role?.displayName || row.name === role?.id);
+      const ownEvidence = { ...d, memberEvidence: (d?.memberEvidence ?? []).filter(m => m.sessionId === sessionId) };
+      const ownLiveTeam = liveTeam ? { ...liveTeam, members: (liveTeam.members ?? []).filter(m => m.id === sessionId) } : liveTeam;
+      const control = runtimeState?.data?.taskControl;
+      return h('div', { className: 'ctm-ov-block ctm-rv' },
+        role ? h(RoleCards, { roles: [role], live: liveByRole, t }) : null,
+        control && role ? h(TaskControl, { leadSessionId: live?.parentSessionId?.(sessionId) ?? sessionId, roleId: role.id, name: role.displayName ?? role.id, configured: role.provider ? `${role.provider}/${role.model}` : null, control, t }) : null,
+        h('div', { className: 'ctm-ov-block' },
+          h('div', { className: 'ctm-label' }, t('roleview.usage')),
+          h(UsageGroups, { rows: ownUsage, roles: role ? [role] : [], t })),
+        h('div', { className: 'ctm-ov-block' },
+          h('div', { className: 'ctm-label' }, t('roleview.artifacts')),
+          h(ArtifactsRack, { sessionId, liveTeam: ownLiveTeam, live, t })),
+        h('div', { className: 'ctm-ov-block' },
+          h('div', { className: 'ctm-label' }, t('roleview.logs')),
+          d ? h(EvidenceGroups, { d: ownEvidence, sessionId, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData'))));
+    }
+
+    // ---------- models panel sub-tabs: team members / model allocation / runtime status ----------
+    const MODEL_SUBTABS = ['team', 'models', 'runtime'];
+    /**
+     * Splits the former single "models" panel into three sub-tabs so each stays scannable on its own. The
+     * caller builds the three subtrees with h(...) itself and passes them as ordinary React children (team,
+     * then models, then runtime) — exactly like the old flat panel did — so a test walking the raw element
+     * tree without invoking this component (as the existing board/editor tests do) still finds the TeamBoard
+     * and PolicyEditor nodes exactly where they always lived. This component only toggles which one is visible.
+     */
+    function ModelSubTabs({ t, children }) {
+      const [sub, setSub] = React.useState(MODEL_SUBTABS[0]);
+      const [teamNode, modelsNode, runtimeNode] = Array.isArray(children) ? children : [children];
+      return h('div', { className: 'ctm-ov-block' },
+        h('nav', { className: 'ctm-ov-subtabs', 'aria-label': t('subtabs.team') },
+          ...MODEL_SUBTABS.map(id => h('button', { key: id, type: 'button', className: 'ctm-ov-subtab', 'aria-pressed': sub === id, onClick: () => setSub(id) },
+            t('subtabs.' + id)))),
+        h('div', { hidden: sub !== 'team' }, teamNode),
+        h('div', { hidden: sub !== 'models' }, modelsNode),
+        h('div', { hidden: sub !== 'runtime' }, runtimeNode));
+    }
+
     function Overview({ sessionId, t: injectedT, hostT, load, save, live, cache, openMember }) {
       const [state, setState] = React.useState({ pending: false });
       const [tab, setTab] = React.useState('models');
+      const [showOverview, setShowOverview] = React.useState(false);
       const ticket = React.useRef(0);
       const [, redraw] = React.useState(0);
       const [children, setChildren] = React.useState(null);
@@ -2767,6 +2967,7 @@ window.__ModuleLoader__.load({
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
+      const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name) : null;
       const subagentNoticeNode = isTeammateSession ? h('div', { className: 'ctm-ov-callout', 'data-tone': 'brand', style: { marginBottom: '12px' } },
         h('p', { style: { fontWeight: 600 } }, t('subagent.notice')),
         currentMember ? h('p', { className: 'ctm-sub' }, fmt(t('subagent.currentMember'), { name: currentMember.name, role: currentMember.role ?? currentMember.id })) : null,
@@ -2783,6 +2984,8 @@ window.__ModuleLoader__.load({
             liveTeam ? badge(t('overview.live'), 'success', 'live') : null,
             h('button', { type: 'button', className: 'ctm-btn ctm-ov-refresh', disabled: current.pending, onClick: refresh, 'aria-busy': !!current.pending },
               t(current.pending ? 'overview.loading' : 'overview.refresh')),
+            isTeammateSession ? h('button', { type: 'button', className: 'ctm-btn ctm-ov-roleview-toggle', onClick: () => setShowOverview(v => !v) },
+              t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview')) : null,
             h('button', {
               type: 'button',
               className: 'ctm-btn ctm-lang-toggle',
@@ -2807,9 +3010,11 @@ window.__ModuleLoader__.load({
             ? h('details', { className: 'ctm-ov-group ctm-ov-diag' }, h('summary', null, h('span', { className: 'ctm-name' }, t('overview.details'))), h('div', { className: 'ctm-ov-block' }, ...diagnostics))
             : h('div', { className: 'ctm-ov-callout', 'data-tone': health.tone }, ...diagnostics)) : null,
           ...(team?.catalogErrors ?? []).map(error => h('p', { key: error.provider, role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, `${error.provider}: ${error.error}`)),
+          (isTeammateSession && !showOverview) ? h(ErrorBoundary, { key: `${effectiveSessionId}:roleview`, t },
+            h(RoleView, { sessionId, role: myRole, liveByRole, usage, d, liveTeam, live, runtimeState, t })) : h(React.Fragment, null,
           shown ? h('nav', { className: 'ctm-ov-tabs', 'aria-label': t('overview.title') },
-            ...tabs.map(([id, count]) => h('button', { key: id, type: 'button', className: 'ctm-ov-tab', 'aria-pressed': tab === id, onClick: () => setTab(id) },
-              t('nav.' + id), count ? h('span', { className: 'ctm-ov-count' }, String(count)) : null))) : null,
+            ...tabs.map(([id, count]) => h('button', { key: id, type: 'button', className: 'ctm-ov-tab', 'aria-pressed': tab === id, title: t('navfull.' + id) + (count ? ` · ${count}` : ''), onClick: () => setTab(id) },
+              t('nav.' + id), count ? h('span', { className: 'ctm-ov-count' }, typeof count === 'number' && count > 99 ? '99+' : String(count)) : null))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'usage', hidden: tab !== 'usage' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:usage`, t }, h(UsageGroups, { rows: usage, roles: team?.roles ?? [], t }))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'logs', hidden: tab !== 'logs' },
@@ -2818,14 +3023,16 @@ window.__ModuleLoader__.load({
               d ? h(EvidenceGroups, { d, sessionId: effectiveSessionId, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'models', hidden: tab !== 'models' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:models`, t },
-              runtimeState.restarted ? h('p', { className: 'ctm-ov-callout', 'data-tone': 'warn' }, t('runtime.restarted')) : null,
-              runtimeState.lag ? h('p', { className: 'ctm-sub ctm-warn' }, t('runtime.snapshotLag')) : null,
-              runtimeState.unavailable ? h('p', { className: 'ctm-sub ctm-warn' }, t('runtime.unavailable')) : null,
-              h('div', { className: 'ctm-ov-split' },
+              h(ModelSubTabs, { t },
                 // Root cause fix: this used to pass the raw (possibly teammate) sessionId as the "parent" argument to
                 // openMember, so opening a member from inside a subagent session targeted the wrong parent.
                 team || liveTeam ? h(TeamBoard, { roles: boardRoles, activity: roster, allocations: policy?.allocations, since, t, open: openMember && (id => openMember(effectiveSessionId, id)), live, usage, runtimeState, currentMemberId: isTeammateSession ? sessionId : null, leadSessionId: effectiveSessionId }) : null,
-                policy ? h(PolicyEditor, { key: `${effectiveSessionId}:${policy.revision}`, sessionId: effectiveSessionId, policy, save, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData'))))) : null,
+                policy ? h(PolicyEditor, { key: `${effectiveSessionId}:${policy.revision}`, sessionId: effectiveSessionId, policy, save, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData')),
+                h('div', { className: 'ctm-ov-block' },
+                  runtimeState.restarted ? h('p', { className: 'ctm-ov-callout', 'data-tone': 'warn' }, t('runtime.restarted')) : null,
+                  runtimeState.lag ? h('p', { className: 'ctm-sub ctm-warn' }, t('runtime.snapshotLag')) : null,
+                  runtimeState.unavailable ? h('p', { className: 'ctm-sub ctm-warn' }, t('runtime.unavailable')) : null,
+                  !runtimeState.restarted && !runtimeState.lag && !runtimeState.unavailable ? h('p', { className: 'ctm-sub' }, t('runtime.noNotices')) : null)))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'artifacts', hidden: tab !== 'artifacts' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:artifacts`, t },
               h(ArtifactsRack, { sessionId: effectiveSessionId, liveTeam, live, t }))) : null,
@@ -2875,7 +3082,7 @@ window.__ModuleLoader__.load({
                   h('p', { className: 'ctm-sub', style: { marginTop: '8px' } }, t('theme.templateInstruction')),
                   h('p', { className: 'ctm-sub ctm-ov-note' }, t('theme.templateDesc'))),
                 h('div', { className: 'ctm-ov-block' }, h('div', { className: 'ctm-label' }, t('overview.policy')), h(WorkflowList, { workflow: team.workflow, t })))
-              : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null));
+              : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null)));
     }
 
     // ---------- integrations settings (search gateway, embeddings) ----------
@@ -2936,28 +3143,33 @@ window.__ModuleLoader__.load({
           setStatus({ tone: 'error', text: `${t('int.saveFailed')} ${String(body.message ?? '')}` });
         } catch { setStatus({ tone: 'error', text: t('int.saveFailed') }); }
       };
+      // Each section is its own card with a label/input grid and its own save/reset buttons; saving still
+      // submits the whole draft (every section's pending changes) so the revision/409 path above stays single.
+      const sectionDirty = name => Object.keys(draft[name] ?? {}).length > 0;
       const section = name => h('fieldset', { key: name, className: 'ctm-int-section' },
         h('legend', { className: 'ctm-label' }, t(`int.${name}`)),
         h('p', { className: 'ctm-sub' }, t(`int.${name}.hint`)),
         h('p', { className: `ctm-sub ${data.keys[name].present ? '' : 'ctm-warn'}` }, fmt(t(data.keys[name].present ? 'int.keySet' : 'int.keyMissing'), { name: data.keys[name].env })),
-        ...INTEGRATION_FIELDS[name].map(([key, kind]) => {
-          const src = data.sources[name][key];
-          const locked = src?.startsWith('env:');
-          const id = `ctm-int-${name}-${key}`;
-          const props = { id, value: locked ? toInput(kind, data.effective[name][key]) : valueOf(name, key, kind), disabled: locked,
-            placeholder: locked ? '' : toInput(kind, data.effective[name][key]) || t('int.unset'), onChange: e => set(name, key, e.target.value) };
-          return h('div', { key, className: 'ctm-int-field' },
-            h('label', { htmlFor: id, className: 'ctm-sub' }, t(`int.field.${key}`)),
-            kind === 'headers' ? h('textarea', { ...props, rows: 2 }) : h('input', { ...props, type: kind === 'number' ? 'number' : 'text', spellCheck: false }),
-            h('span', { className: 'ctm-sub ctm-int-src' }, sourceLabel(t, src)));
-        }));
+        h('div', { className: 'ctm-int-grid' },
+          ...INTEGRATION_FIELDS[name].map(([key, kind]) => {
+            const src = data.sources[name][key];
+            const locked = src?.startsWith('env:');
+            const id = `ctm-int-${name}-${key}`;
+            const props = { id, value: locked ? toInput(kind, data.effective[name][key]) : valueOf(name, key, kind), disabled: locked,
+              placeholder: locked ? '' : toInput(kind, data.effective[name][key]) || t('int.unset'), onChange: e => set(name, key, e.target.value) };
+            return h(React.Fragment, { key },
+              h('label', { htmlFor: id, className: 'ctm-sub ctm-int-key' }, t(`int.field.${key}`)),
+              h('div', { className: 'ctm-int-val' },
+                kind === 'headers' ? h('textarea', { ...props, rows: 2 }) : h('input', { ...props, type: kind === 'number' ? 'number' : 'text', spellCheck: false }),
+                h('span', { className: 'ctm-sub ctm-int-src' }, sourceLabel(t, src))));
+          })),
+        h('div', { className: 'ctm-tc-row' },
+          h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: !sectionDirty(name), onClick: save }, t('int.save')),
+          h('button', { type: 'button', className: 'ctm-btn', disabled: !sectionDirty(name), onClick: () => setDraft(prev => { const n = { ...prev }; delete n[name]; return n; }) }, t('int.reset'))));
       return h('div', { className: 'ctm-ov-block ctm-int' },
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('int.help')),
         section('search'), section('embeddings'),
-        status ? h('p', { className: `ctm-sub ${status.tone === 'error' ? 'ctm-warn' : ''}`, role: status.tone === 'error' ? 'alert' : 'status' }, status.text) : null,
-        h('div', { className: 'ctm-tc-row' },
-          h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: !Object.keys(draft).length, onClick: save }, t('int.save')),
-          h('button', { type: 'button', className: 'ctm-btn', disabled: !Object.keys(draft).length, onClick: () => setDraft({}) }, t('int.reset'))));
+        status ? h('p', { className: `ctm-sub ${status.tone === 'error' ? 'ctm-warn' : ''}`, role: status.tone === 'error' ? 'alert' : 'status' }, status.text) : null);
     }
 
     const BaseComponent = React.Component || class DummyComponent { constructor(props) { this.props = props; } };
@@ -3092,10 +3304,11 @@ window.__ModuleLoader__.load({
       capability_rotate_member: RotateView,
       capability_memory_search: MemorySearchView,
       capability_memory_write: MemoryWriteView,
+      capability_model_prefs: PrefsView,
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput, RoleView, ModelSubTabs });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {

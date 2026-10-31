@@ -2,6 +2,7 @@
 // headers, model, provider and optional request fields all come from configuration, and nothing assumes a
 // particular gateway. Keys are never stored: the config names the environment variable that holds the key.
 // Layers, highest first: environment variables › profile file (edited in the Overview) › plugin config › defaults.
+import { crossSiteRequest } from './http-guard.js';
 import { readFileSync } from 'node:fs';
 import { mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -145,7 +146,7 @@ export async function handleIntegrations(request, { root = defaultRoot(), env = 
     const url = new URL(request.url);
     if (request.method === 'GET') return Response.json(describeIntegrations(resolveIntegrations({ root, env })), { headers: { 'cache-control': 'no-store' } });
     if (request.method !== 'POST') return fail(400, 'BAD_REQUEST', 'Method not allowed');
-    if (request.headers.get('origin') !== url.origin || request.headers.get('sec-fetch-site') === 'cross-site') return fail(403, 'FORBIDDEN', 'Same-origin required');
+    if (crossSiteRequest(request)) return fail(403, 'FORBIDDEN', 'Same-origin required');
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') ?? '')) return fail(400, 'BAD_REQUEST', 'JSON required');
     const text = await request.text();
     if (text.length > 32768) return fail(400, 'BAD_REQUEST', 'Body too large');

@@ -25,16 +25,30 @@ test('事件折叠：压缩、轮数、重复读取、最后一次测试', () =>
   assert.deepEqual(m.lastTest, { command: 'npm test', isError: false, summary: 'ℹ pass 270\nℹ fail 0', at: 5 });
 });
 
-test('阈值：软线提醒，硬线要求轮换', () => {
+test('阈值：软线只提醒；硬线要有进展（改过文件或被压缩过）才要求轮换', () => {
   const base = { ...emptyMetrics() };
+  const worked = { ...base, edits: 2 };
   assert.equal(rotationLevel(base, 0.3, ROTATION).level, 'ok');
+  assert.equal(rotationLevel(base, 0.65, ROTATION).level, 'ok', '60% 不再触发');
+  assert.equal(rotationLevel(base, 0.78, ROTATION).level, 'soft');
   assert.equal(rotationLevel({ ...base, compactions: 2 }, undefined, ROTATION).level, 'soft');
-  assert.equal(rotationLevel({ ...base, compactions: 3 }, undefined, ROTATION).level, 'hard');
-  assert.equal(rotationLevel(base, 0.65, ROTATION).level, 'soft');
-  assert.equal(rotationLevel(base, 0.85, ROTATION).level, 'hard');
-  assert.equal(rotationLevel({ ...base, turns: 8 }, undefined, ROTATION).level, 'hard');
+  assert.equal(rotationLevel({ ...base, compactions: 3 }, undefined, ROTATION).level, 'hard', '压缩过本身就是进展');
+  assert.equal(rotationLevel(worked, 0.92, ROTATION).level, 'hard');
+  assert.equal(rotationLevel({ ...worked, turns: 8 }, undefined, ROTATION).level, 'hard');
   assert.equal(rotationLevel({ ...base, maxRepeat: 15 }, undefined, ROTATION).level, 'soft');
   assert.equal(rotationLevel({ ...base, compactions: 9 }, undefined, false).level, 'ok', '关闭后不触发');
+});
+
+test('只读调研、还没改任何文件的会话不会被轮换（避免接替者重读一遍）', () => {
+  const stalled = rotationLevel({ ...emptyMetrics() }, 0.95, ROTATION);
+  assert.equal(stalled.level, 'soft');
+  assert.equal(stalled.stalled, true);
+  const m = emptyMetrics();
+  foldEvent(m, { type: 'tool/call', data: { name: 'str_replace_editor', arguments: '{"command":"view","path":"a.js"}' } });
+  assert.equal(m.edits, 0, '查看不算改动');
+  foldEvent(m, { type: 'tool/call', data: { name: 'edit', arguments: '{"file_path":"a.js"}' } });
+  assert.equal(m.edits, 1);
+  assert.equal(rotationLevel(m, 0.95, ROTATION).level, 'hard');
 });
 
 test('rotation 配置校验', () => {
@@ -112,4 +126,21 @@ test('硬线时主控不能再给该队友派新活', () => {
   r.register();
   for (let i = 0; i < 3; i++) ctx.onEvent(agents.get('m1').session = { id: 'm1' }, { type: 'compaction/end', data: {} });
   assert.match(r.guard({ agent: lead, name: 'send_message', arguments: { target: 'diao-chan' } }), /已到轮换线.*capability_rotate_member/);
+});
+
+test('接替者沿用用户为该角色确认的路由', async () => {
+  const { createTeam } = await import('../team.js');
+  const { answerPending, createDispatchConfirm, forgetLead, pendingView } = await import('../dispatch-confirm.js');
+  assert.equal(typeof createTeam, 'function');
+  const effective = effectiveConfig({ tiers: { medium: ['m1', 'm2'] }, capabilities: { frontend: { provider: 'provider-a', model: 'm1', tier: 'medium', fallbacks: [] } }, roles: { 'diao-chan': { displayName: '貂蝉', capability: 'frontend', description: 'x' } } });
+  const llm = { listProviders: () => [{ id: 'provider-a', name: 'c' }], listModels: async () => [{ id: 'm1' }, { id: 'm2' }] };
+  forgetLead('LR');
+  const confirm = createDispatchConfirm({ llm }, { pin: async () => '/p' }, { graceMs: 1000 });
+  const p = confirm.confirm({ agent: { id: 'LR' }, callId: 'c' }, { mode: 'delegate', assignments: [{ role: 'diao-chan', capability: 'frontend', task: 't' }] }, effective, { disabledRoutes: [] }, 'always');
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(pendingView('LR', 'c').status, 'pending');
+  answerPending('LR', 'c', { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m2' }] });
+  await p;
+  const { confirmedRoute } = await import('../dispatch-confirm.js');
+  assert.equal(confirmedRoute('LR', baseName('diao-chan-r3')).primary.model, 'm2');
 });

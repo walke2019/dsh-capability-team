@@ -1,3 +1,4 @@
+import { crossSiteRequest } from './http-guard.js';
 import { taskControlBinding, taskError } from './member-task-control.js';
 export const TASK_CONTROL_PATH='/api/capability-team.task-control';
 export const CANDIDATES_PATH='/api/capability-team.override-candidates';
@@ -15,8 +16,8 @@ export async function handleTaskControl(ctx,request,candidate=false){
     }
     if(candidate||request.method!=='POST')throw taskError('BAD_REQUEST','Method not allowed',400);
     // Auth is supplied by Connection's owner-only route fence. Mutations also
-    // require an explicit same-origin browser Origin (missing/null is rejected).
-    if(request.headers.get('origin')!==url.origin||request.headers.get('sec-fetch-site')==='cross-site')throw taskError('FORBIDDEN','Same-origin required',403);
+    // refuse another site's Origin; the desktop app strips Origin when forwarding, so absence is allowed.
+    if(crossSiteRequest(request))throw taskError('FORBIDDEN','Same-origin required',403);
     if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')??''))throw taskError('BAD_REQUEST','JSON required',400);
     if(Number(request.headers.get('content-length')??0)>16384)throw taskError('BAD_REQUEST','Body too large',400);
     const reader=request.body?.getReader();let bytes=0,text='';const decoder=new TextDecoder();

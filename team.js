@@ -1,5 +1,6 @@
 // Shared runtime: pins each Team member to one project and resolves its effective role.
 import { confirmedRoute, withConfirmedRoute } from './dispatch-confirm.js';
+import { baseName } from './session-rotation.js';
 import { resolveRole, baseConfig, withAutoRoutes } from './config.js';
 import { projectRoot, loadProject, loadProjectSync, defaultRoot } from './theme.js';
 import { autoMatch } from './defaults.js';
@@ -80,7 +81,8 @@ export function createTeam(ctx, config = {}, { root = defaultRoot() } = {}) {
       const { effective, policy } = await this.load(agent);
       const membership = ctx.agentTeams.membership(agent);
       const role = resolveRole(membership, effective);
-      const confirmed = membership?.role === 'teammate' && membership.root ? confirmedRoute(membership.root.id, membership.name) : undefined;
+      // Routes are confirmed per role, so a rotation successor (<role>-rN) keeps the route the user chose.
+      const confirmed = membership?.role === 'teammate' && membership.root ? confirmedRoute(membership.root.id, baseName(membership.name)) : undefined;
       return applyModelPolicy(withConfirmedRoute(role, confirmed), policy.disabledRoutes);
     },
     // After a save, the saving Lead moves to the configured root if it was a different directory.

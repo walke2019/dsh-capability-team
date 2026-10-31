@@ -7,11 +7,15 @@ import { assertToolSchema } from '../tool-schema.js';
 // draft 2020-12 JSON Schema (HTTP 400 "tools.N.custom.input_schema"), failing every turn.
 test('每个注册的工具参数都是合法的对象根 JSON Schema，且只用 DSH 支持的关键字', () => {
   const tools = {};
-  const ctx = { effect: f => f(), on: () => {}, systemPrompt: { section: () => () => {} },
+  const created = [];
+  const ctx = { effect: f => f(), on: (name, fn) => { if (name === 'agent/created') created.push(fn); }, systemPrompt: { section: () => () => {} },
     tools: { register: t => { tools[t.name] = t; return () => {}; }, guard: () => () => {} }, skills: { register: () => () => {} },
-    agents: { list: () => [] }, agentTeams: { membership: () => ({ role: 'lead' }) }, workingDirectory: {}, userQuestions: {},
+    agents: { list: () => [] }, agentTeams: { membership: () => ({ role: 'lead' }), tryMembership: () => undefined }, workingDirectory: {}, userQuestions: {},
     llm: { listProviders: () => [], listModels: async () => [] } };
   apply(ctx, {});
+  // Lead-only and teammate-only tools are installed per agent; collect them by creating one of each.
+  const agentCtx = { tools: { register: t => { tools[t.name] = t; return () => {}; } }, systemPrompt: { context: () => () => {} } };
+  for (const fn of created) { try { fn({ agent: { id: 'lead', ctx: agentCtx, session: { header: {} } } }); fn({ agent: { id: 'mate', ctx: agentCtx, session: { header: { parentSession: 'lead' } } } }); } catch { /* listeners that need a real team */ } }
   const names = Object.keys(tools);
   assert.ok(names.length >= 6, names.join(','));
   for (const name of names) {

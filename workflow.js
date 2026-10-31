@@ -2,7 +2,9 @@
 // registered roles or justifies handling it alone. A tool guard enforces the declared plan, so the
 // Lead cannot silently do specialist work itself. All limits are project data (config.workflow).
 import { fileLimitRules } from './file-limits.js';
+import { tokenRuleText } from './token-discipline.js';
 import { baseName } from './session-rotation.js';
+import { arrayArg, planTasks } from './board-dispatch.js';
 import { params } from './tool-schema.js';
 import { accessSummary } from './access.js';
 
@@ -20,7 +22,7 @@ const DECISION = { delegate: '指派队友', free: '交给免费模型', direct:
 export function toolClass(name, workflow) {
   if (name === FREE_TOOL) return 'free';
   // The team's own planning tools always coordinate, whatever a project lists.
-  if (['capability_dispatch_plan', 'capability_submit_plan', 'capability_review_plan', 'capability_task_budget', 'capability_member_override', 'capability_handoff', 'capability_rotate_member', 'capability_memory_search', 'capability_memory_write'].includes(name) || workflow.coordinationTools.includes(name)) return 'coordination';
+  if (['capability_dispatch_plan', 'capability_submit_plan', 'capability_review_plan', 'capability_task_budget', 'capability_member_override', 'capability_handoff', 'capability_rotate_member', 'capability_memory_search', 'capability_memory_write', 'capability_model_prefs'].includes(name) || workflow.coordinationTools.includes(name)) return 'coordination';
   if (workflow.analysisTools.includes(name)) return 'analysis';
   return 'execution';
 }
@@ -77,7 +79,7 @@ export function validatePlan(args, effective) {
   };
   const analysis = text(args.analysis, 4000, '需求分析');
   if (!['direct', 'delegate', 'free'].includes(args.mode)) throw new Error('mode 须为 delegate（指派队友）、free（长篇纯文本交给免费模型）或 direct（主控自行处理）');
-  const assignments = args.assignments ?? [];
+  const assignments = arrayArg(args.assignments) ?? [];
   if (!Array.isArray(assignments) || assignments.length > 20) throw new Error('assignments 须为不超过20项的数组');
   if (args.mode !== 'delegate') {
     if (assignments.length) throw new Error(`${args.mode} 模式不能同时指派队友；需要队友时使用 delegate`);
@@ -98,7 +100,7 @@ export function validatePlan(args, effective) {
   return { mode: 'delegate', analysis, ...(args.reason ? { reason: text(args.reason, 500, '理由') } : {}), assignments: list };
 }
 
-export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchConfirm, rotation } = {}) {
+export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchConfirm, rotation, board } = {}) {
   const states = new WeakMap();
   const state = agent => {
     if (!states.has(agent)) states.set(agent, { plan: undefined, analysisUsed: 0, directUsed: 0 });
@@ -162,12 +164,22 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
             role: { type: 'string', description: '团队名册中的内部id，不用显示名' },
             complexity: { type: 'string', enum: ['simple','medium','complex'], description: '任务复杂度，默认medium：15/40/80步' },
             task: { type: 'string', description: '交给该角色的具体任务、交付物与验收标准' },
+            tasks: { type: 'array', description: '可选：把这个角色的工作拆成看板子任务（会直接建在 DSH 团队看板上）。不填则整项作为一个看板任务', items: params({
+              key: { type: 'string', description: '本计划内唯一的短标识，供 blocked_by 引用' },
+              subject: { type: 'string', description: '子任务标题' },
+              description: { type: 'string', description: '子任务说明与验收标准' },
+              write_scopes: { type: 'array', items: { type: 'string' }, description: '会修改的项目内相对路径（文件或目录）；并行任务的写入范围不要重叠' },
+              blocked_by: { type: 'array', items: { type: 'string' }, description: '必须先完成的子任务 key（只能引用计划中排在前面的子任务）' },
+            }, ['subject']) },
           }, ['role', 'task']) },
         }, ['analysis', 'mode']),
         async execute(args, exec) {
           if (!isLead(exec.agent)) throw new Error('只有主控制定指派计划；子角色完成自己的任务并向 lead 汇报');
           const { effective, policy } = await team.load(exec.agent);
           const plan = validatePlan(args, effective);
+          // Board subtasks are validated before the user is asked, so a malformed split never reaches the card.
+          const rawTasks = plan.mode === 'delegate' ? Object.fromEntries((arrayArg(args.assignments) ?? []).filter(a => a?.tasks !== undefined).map(a => [String(a.role).trim(), a.tasks])) : {};
+          if (plan.mode === 'delegate') planTasks(plan.assignments, rawTasks);
           // The user confirms roles and models first; a cancel throws, so no plan exists and nobody is dispatched.
           const confirmation = plan.mode === 'delegate' && dispatchConfirm
             ? await dispatchConfirm.confirm(exec, plan, effective, policy, effective.workflow.confirmDispatch) : null;
@@ -195,7 +207,16 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
             });
             result.next = '已存在的队友用 send_message 派发，不存在的用 spawn_teammate（name 用内部id）创建；可并行的同时派发，每项任务在看板建一条即可。派发时要求队友完成后只汇报一次最终结果、不发进度通报。之后用 wait_agent（timeoutMs=600000）等待，醒来只处理最终结果、阻塞或决策请求；主控只协调与验收，不亲自执行。';
           }
-          if (plan.mode !== 'free' && effective.workflow.fileLimits) result.fileRules = fileLimitRules(effective.workflow.fileLimits);
+          if (plan.mode !== 'free' && (effective.workflow.fileLimits || effective.workflow.tokens)) result.fileRules = [fileLimitRules(effective.workflow.fileLimits), tokenRuleText(effective.workflow.tokens)].filter(Boolean).join('\n');
+          if (plan.mode === 'delegate' && board) {
+            try {
+              const byRole = await board.create(exec.agent, plan, rawTasks);
+              if (byRole) {
+                for (const a of result.assignments) a.boardTasks = byRole[a.role] ?? [];
+                result.next = '已按计划在 DSH 团队看板上建好任务（见各角色的 boardTasks）。已存在的队友已自动分到可开始的任务，用 send_message 通知它；不存在的用 spawn_teammate（name 用内部id）创建，开工时插件会把它的任务自动分给它。消息里写明任务编号，并要求按看板流程：认领 → 执行 → complete，只改写入范围内的文件，完成后只汇报一次最终结果。之后用 wait_agent（timeoutMs=600000）等待；收尾前用 team_task_list 确认没有进行中的任务。';
+              }
+            } catch (error) { result.boardError = `看板任务创建失败：${error.message}；请改用 team_task_create 手动建任务`; }
+          }
           if (confirmation?.asked) result.confirmed = { by: 'user', scope: confirmation.scope, changed: confirmation.routes.filter(r => r.changed).map(r => r.role) };
           return JSON.stringify(result);
         },

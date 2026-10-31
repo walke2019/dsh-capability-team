@@ -9,7 +9,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { params } from './tool-schema.js';
 import { promptTokens } from './long-context.js';
-export const ROTATION = { softCompactions: 2, hardCompactions: 3, softRatio: 0.6, hardRatio: 0.8, softRepeatReads: 15, hardTurns: 8, maxMembers: 8 };
+export const ROTATION = { softCompactions: 2, hardCompactions: 3, softRatio: 0.75, hardRatio: 0.9, softRepeatReads: 15, hardTurns: 8, maxMembers: 8 };
 const KEYS = Object.keys(ROTATION);
 const SUFFIX = /-r(\d+)$/;
 export const baseName = name => String(name ?? '').replace(SUFFIX, '');
@@ -38,6 +38,10 @@ export function rotationLevel(m, ratio, limits) {
   else if (ratio !== undefined && ratio >= limits.softRatio) soft.push(`上下文占用 ${Math.round(ratio * 100)}%`);
   if (m.turns >= limits.hardTurns) hard.push(`已跑 ${m.turns} 轮`);
   if (m.maxRepeat >= limits.softRepeatReads) soft.push(`同一文件读了 ${m.maxRepeat} 次`);
+  // Rotating a session that has produced nothing only makes the successor read everything again, so a
+  // stalled session stays at the reminder level until it edits a file or the host compacts it.
+  const progressed = (m.edits ?? 0) > 0 || m.compactions > 0;
+  if (hard.length && !progressed) return { level: 'soft', reasons: [...hard, ...soft], stalled: true };
   return hard.length ? { level: 'hard', reasons: [...hard, ...soft] } : soft.length ? { level: 'soft', reasons: soft } : { level: 'ok', reasons: [] };
 }
 const TEST_CMD = /\b(npm (run )?test|node --test|pnpm test|yarn test|pytest|go test|cargo test|vitest|jest)\b/;
@@ -51,6 +55,7 @@ export function foldEvent(m, event) {
     if (d.name === 'read' && typeof args.file_path === 'string') {
       const n = (m.reads.get(args.file_path) ?? 0) + 1; m.reads.set(args.file_path, n); m.maxRepeat = Math.max(m.maxRepeat, n);
     }
+    if (['write', 'edit', 'str_replace_editor', 'apply_patch'].includes(d.name) && !(d.name === 'str_replace_editor' && args.command === 'view')) m.edits++;
     if (d.name === 'bash' && TEST_CMD.test(String(args.command ?? ''))) m.pendingTest = { callId: d.callId, command: String(args.command).slice(0, 300) };
   } else if (event?.type === 'tool/result' && m.pendingTest && d.message?.toolCallId === m.pendingTest.callId) {
     const text = (d.message.content ?? []).map(c => c.text ?? '').join('\n');
@@ -60,7 +65,7 @@ export function foldEvent(m, event) {
   }
   return m;
 }
-export const emptyMetrics = () => ({ compactions: 0, turns: 0, reads: new Map(), maxRepeat: 0, lastTest: null, pendingTest: null });
+export const emptyMetrics = () => ({ compactions: 0, turns: 0, edits: 0, reads: new Map(), maxRepeat: 0, lastTest: null, pendingTest: null });
 const gitStat = cwd => new Promise(resolve => execFile('git', ['diff', '--stat'], { cwd, timeout: 5000, maxBuffer: 1 << 20 }, (error, stdout) =>
   resolve(error ? null : stdout.trim().split('\n').slice(-40).join('\n'))));
 export function createRotation(ctx, team, { root = team.root, diffStat = gitStat, now = Date.now, onHandoff } = {}) {
@@ -101,6 +106,8 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
     },
     /** Whether `name` is a successor this Lead asked for via capability_rotate_member. */
     plannedSuccessor: (leadId, name) => planned.has(`${leadId}:${name}`),
+    /** The member a planned successor replaces, if any. */
+    predecessorOf: (leadId, name) => planned.get(`${leadId}:${name}`)?.from,
     async writeHandoff(agent, args) {
       const membership = ctx.agentTeams.tryMembership(agent);
       if (membership?.role !== 'teammate') throw new Error('只有队友写交接；主控用 capability_rotate_member 发起轮换');
@@ -157,7 +164,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
       retired.set(`${lead.id}:${current.name}`, successor);
       return { rotated: true, from: current.name, to: successor, handoff: handoff ? 'member' : 'facts-only',
         next: [`1. interrupt_agent target=${current.name}`, `2. spawn_teammate name=${successor} context=fresh，description 用原角色职责，prompt 用下面的 prompt 原文`,
-          facts.openTasks?.length ? `3. 把看板任务 ${facts.openTasks.map(t => t.id).join('、')} 转给 ${successor}` : null].filter(Boolean).join('\n'), prompt };
+          facts.openTasks?.length ? `3. 看板任务 ${facts.openTasks.map(t => t.id).join('、')} 会在 ${successor} 开工时由插件自动改派给它` : null].filter(Boolean).join('\n'), prompt };
     },
     register() {
       try { ctx.on('session/event', (session, event) => { if (session?.id && ctx.agentTeams.tryMembership?.(ctx.agents.get(session.id))?.role === 'teammate') foldEvent(counters(session.id), event); }); } catch { /* host without session observers */ }
@@ -171,7 +178,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
           if (s.level === 'ok') return '';
           return s.level === 'hard'
             ? `【会话轮换】本会话${s.reasons.join('、')}，已到轮换线。立即停止开始新的工作：做完正在进行的这一步，调用 capability_handoff 写交接，然后只回复 lead“已交接”。`
-            : `【会话轮换提醒】本会话${s.reasons.join('、')}。做完手上这一项就停，调用 capability_handoff 写交接，不要再开始新任务。`;
+            : `【上下文提醒】本会话${s.reasons.join('、')}。继续完成当前任务，不需要交接：只读需要的行段（先 grep 定位再按 offset/limit 读），读过的内容不要重读，尽快开始修改${s.stalled ? '；目前还没有任何改动，先把调研结论落到代码上' : ''}。`;
         } });
       });
       ctx.effect(() => ctx.tools.guard(exec => api.guard(exec)));

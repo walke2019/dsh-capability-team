@@ -12,6 +12,7 @@
       const [error, setError] = React.useState(null);
       const [sent, setSent] = React.useState(null);
       const [reload, setReload] = React.useState(0);
+      const [expanded, setExpanded] = React.useState({}); // role → task text shown in full
       React.useEffect(() => {
         if (!sessionId || !callId) return undefined;
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
@@ -53,37 +54,58 @@
       const changedCaps = view.routes.filter(r => { const c = current(r); return c.primary !== rkey(r.primary) || c.fallbacks.join() !== r.fallbacks.map(rkey).join(); }).map(r => r.capability);
       const row = r => {
         const c = current(r);
-        const options = r.candidates.map(rkey);
+        const options = [...new Set([c.primary, ...r.candidates.map(rkey)])].filter(Boolean);
         const spare = options.filter(k => k !== c.primary && !c.fallbacks.includes(k));
-        return h('div', { key: r.role, className: 'ctm-dc-role' },
-          h('div', { className: 'ctm-who' }, h('span', { className: 'ctm-name' }, r.displayName ?? r.role),
-            h('span', { className: 'ctm-sub' }, [r.role, r.capability, label(t, `tier.${r.tier}`, r.tier)].join(' · '))),
-          r.task ? h('div', { className: 'ctm-sub ctm-dc-task', title: r.task }, firstLine(r.task)) : null,
-          h('label', { className: 'ctm-dc-field' }, h('span', { className: 'ctm-label' }, t('confirm.primary')),
-            h('select', { value: c.primary, disabled: busy, 'aria-label': `${r.displayName ?? r.role} ${t('confirm.primary')}`,
-              onChange: e => update(r, { primary: e.target.value, fallbacks: c.fallbacks.filter(f => f !== e.target.value) }) },
-              ...[...new Set([c.primary, ...options])].filter(Boolean).map(k => h('option', { key: k, value: k }, k)))),
-          h('div', { className: 'ctm-dc-field' }, h('span', { className: 'ctm-label' }, `${t('confirm.fallbacks')} (${c.fallbacks.length}/${max})`),
-            c.fallbacks.length ? h('ol', { className: 'ctm-dc-fallbacks' }, ...c.fallbacks.map((f, i) => h('li', { key: f },
-              h('span', { className: 'ctm-chip' }, f),
-              h('button', { type: 'button', className: 'ctm-dc-mini', disabled: busy || i === 0, 'aria-label': `${t('confirm.up')} ${f}`, onClick: () => update(r, { fallbacks: move(c.fallbacks, i, -1) }) }, '↑'),
-              h('button', { type: 'button', className: 'ctm-dc-mini', disabled: busy || i === c.fallbacks.length - 1, 'aria-label': `${t('confirm.down')} ${f}`, onClick: () => update(r, { fallbacks: move(c.fallbacks, i, 1) }) }, '↓'),
-              h('button', { type: 'button', className: 'ctm-dc-mini', disabled: busy, 'aria-label': `${t('confirm.remove')} ${f}`, onClick: () => update(r, { fallbacks: c.fallbacks.filter(x => x !== f) }) }, '×'))))
-              : h('span', { className: 'ctm-sub' }, t('confirm.noFallbacks')),
-            c.fallbacks.length < max && spare.length ? h('select', { value: '', disabled: busy, 'aria-label': t('confirm.addFallback'),
-              onChange: e => e.target.value && update(r, { fallbacks: [...c.fallbacks, e.target.value] }) },
-              h('option', { value: '' }, t('confirm.addFallback')), ...spare.map(k => h('option', { key: k, value: k }, k)))
-              : c.fallbacks.length >= max ? h('span', { className: 'ctm-sub' }, fmt(t('confirm.max'), { n: max })) : null));
+        const who = r.displayName ?? r.role;
+        const long = r.task && (r.task.length > 120 || r.task.includes('\n'));
+        const iconButton = (glyph, labelKey, f, disabledWhen, onClick) => h('button', { type: 'button', className: 'ctm-dc-icon', disabled: busy || disabledWhen,
+          'aria-label': `${t(labelKey)} ${f}`, title: t(labelKey), onClick }, glyph);
+        return h('section', { key: r.role, className: 'ctm-dc-role', 'aria-label': who },
+          h('header', { className: 'ctm-dc-role-head' },
+            h('span', { className: 'ctm-dc-avatar', 'aria-hidden': true }, Array.from(who)[0] ?? '?'),
+            h('div', { className: 'ctm-dc-who' },
+              h('span', { className: 'ctm-name' }, who),
+              h('span', { className: 'ctm-dc-meta' },
+                h('code', null, r.role), h('span', null, r.capability), badge(label(t, `tier.${r.tier}`, r.tier), 'brand', 'tier'),
+                r.learned?.habit ? badge(fmt(t('confirm.habit'), { n: r.learned.habit.count, of: r.learned.habit.of }), 'success', 'habit') : null))),
+          r.task ? h('div', { className: 'ctm-dc-task' },
+            h('p', { className: 'ctm-text', 'data-clamped': expanded[r.role] ? undefined : '' }, r.task),
+            long ? h('button', { type: 'button', className: 'ctm-dc-link', onClick: () => setExpanded(prev => ({ ...prev, [r.role]: !prev[r.role] })) },
+              t(expanded[r.role] ? 'confirm.collapse' : 'confirm.expand')) : null) : null,
+          h('div', { className: 'ctm-dc-grid' },
+            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.primary')),
+            h(ModelPicker, { value: c.primary, options, disabled: busy, t, label: `${who} ${t('confirm.primary')}`, placeholder: t('picker.search'),
+              onChange: k => update(r, { primary: k, fallbacks: c.fallbacks.filter(f => f !== k) }) }),
+            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.fallbacks'), h('span', { className: 'ctm-dc-count' }, `${c.fallbacks.length}/${max}`)),
+            h('div', { className: 'ctm-dc-fallbacks' },
+              c.fallbacks.length ? h('ol', { className: 'ctm-dc-list' }, ...c.fallbacks.map((f, i) => h('li', { key: f, className: 'ctm-dc-item' },
+                h('span', { className: 'ctm-dc-index', 'aria-hidden': true }, String(i + 1)),
+                h('span', { className: 'ctm-dc-route', title: f }, f, r.learned?.unhealthy?.[f] ? badge(fmt(t('confirm.failing'), { n: r.learned.unhealthy[f] }), 'warn', 'bad') : null),
+                h('span', { className: 'ctm-dc-actions' },
+                  iconButton('↑', 'confirm.up', f, i === 0, () => update(r, { fallbacks: move(c.fallbacks, i, -1) })),
+                  iconButton('↓', 'confirm.down', f, i === c.fallbacks.length - 1, () => update(r, { fallbacks: move(c.fallbacks, i, 1) })),
+                  iconButton('×', 'confirm.remove', f, false, () => update(r, { fallbacks: c.fallbacks.filter(x => x !== f) }))))))
+                : h('span', { className: 'ctm-sub' }, t('confirm.noFallbacks')),
+              c.fallbacks.length < max && spare.length
+                ? h(ModelPicker, { value: '', options: spare, disabled: busy, t, label: t('confirm.addFallback'), placeholder: t('confirm.addFallback'),
+                  onChange: k => update(r, { fallbacks: [...c.fallbacks, k] }) })
+                : c.fallbacks.length >= max ? h('span', { className: 'ctm-sub' }, fmt(t('confirm.max'), { n: max })) : null)),
+          r.learned?.unhealthy?.[c.primary] ? h('p', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.primaryFailing'), { route: c.primary, n: r.learned.unhealthy[c.primary] })) : null,
+          r.learned?.habit?.settled && scope === 'task' ? h('p', { className: 'ctm-sub' }, t('confirm.habitSettled')) : null);
       };
       return h('div', { className: 'ctm-dc', role: 'group', 'aria-label': t('confirm.title') },
-        h('div', { className: 'ctm-dc-head' }, h('strong', null, t('confirm.title')), h('span', { className: 'ctm-sub' }, t('confirm.hint'))),
-        ...view.routes.map(row),
-        h('fieldset', { className: 'ctm-dc-scope' },
-          h('legend', { className: 'ctm-label' }, t('confirm.scope')),
-          ...['task', 'project'].map(s => h('label', { key: s }, h('input', { type: 'radio', name: `ctm-dc-scope-${callId}`, value: s, checked: scope === s, disabled: busy, onChange: () => setScope(s) }), t(`confirm.scope.${s}`))),
-          scope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
-        error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
-        h('div', { className: 'ctm-tc-row' },
-          h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: busy, onClick: () => submit('confirm') }, t('confirm.ok')),
-          h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('confirm.cancel'))));
+        h('div', { className: 'ctm-dc-head' },
+          h('strong', { className: 'ctm-dc-title' }, t('confirm.title')),
+          h('span', { className: 'ctm-sub' }, t('confirm.hint'))),
+        h('div', { className: 'ctm-dc-roles' }, ...view.routes.map(row)),
+        h('div', { className: 'ctm-dc-foot' },
+          h('div', { className: 'ctm-dc-scope', role: 'radiogroup', 'aria-label': t('confirm.scope') },
+            h('span', { className: 'ctm-label' }, t('confirm.scope')),
+            h('div', { className: 'ctm-dc-seg' }, ...['task', 'project'].map(s => h('button', { key: s, type: 'button', role: 'radio', 'aria-checked': scope === s,
+              className: 'ctm-dc-segbtn', disabled: busy, onClick: () => setScope(s) }, t(`confirm.scope.${s}`)))),
+            scope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
+          error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
+          h('div', { className: 'ctm-dc-buttons' },
+            h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('confirm.cancel')),
+            h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: busy, onClick: () => submit('confirm') }, t('confirm.ok')))));
     }

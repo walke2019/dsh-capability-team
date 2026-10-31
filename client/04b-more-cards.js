@@ -73,3 +73,6 @@
     const MemoryWriteView = dataCard('capability_memory_write', ICONS.plan, 'cards.memoryWrite',
       (d, t, args) => `${label(t, `cards.memory.kind.${d.kind}`, d.kind)} · ${d.merged ? t('cards.memoryWrite.merged') : t('cards.memoryWrite.saved')}${firstLine(args.text) ? ` · ${firstLine(args.text)}` : ''}`,
       () => null);
+    const PrefsView = dataCard('capability_model_prefs', ICONS.plan, 'cards.prefs',
+      (d, t) => (d.cleared ? t('cards.prefs.cleared') : fmt(t('cards.prefs.summary'), { n: Object.keys(d.habits ?? {}).length })),
+      (d, t) => (d.habits ? section(null, valueView(Object.fromEntries(Object.entries(d.habits).map(([cap, hb]) => [cap, `${hb.primary}${hb.fallbacks?.length ? ` → ${hb.fallbacks.join(' → ')}` : ''} · ${hb.count}/${hb.of}`])))) : null));

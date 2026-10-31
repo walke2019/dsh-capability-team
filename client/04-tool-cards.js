@@ -13,12 +13,17 @@
       else if (s.state === 'ok' && !s.data) sections.push(rawBody(s, t));
       else {
         if (plan.analysis) sections.push(section(t('plan.analysis'), h('div', { className: 'ctm-text' }, plan.analysis)));
+        if (plan.boardError) sections.push(section(null, h('p', { className: 'ctm-sub ctm-warn' }, plan.boardError)));
         if (plan.reason) sections.push(section(t('plan.reason'), h('div', { className: 'ctm-text' }, plan.reason)));
         if (assignments.length) sections.push(section(t('plan.assignments'), h('div', { className: 'ctm-grid' }, ...assignments.flatMap((a, i) => [
           h('div', { className: 'ctm-who', key: `w${i}` }, h('span', { className: 'ctm-name' }, a.displayName ?? a.role),
             h('span', { className: 'ctm-sub' }, [a.displayName ? a.role : null, a.capability, a.model].filter(Boolean).join(' · ')),
             Array.isArray(a.fallbacks) && a.fallbacks.length ? h('span', { className: 'ctm-sub' }, fmt(t('plan.fallbacks'), { list: a.fallbacks.join(t('common.listSep')) })) : null),
-          h('div', { className: 'ctm-text', key: `t${i}` }, a.task),
+          h('div', { className: 'ctm-text', key: `t${i}` }, a.task,
+            Array.isArray(a.boardTasks) && a.boardTasks.length ? h('ul', { className: 'ctm-plan-board' }, ...a.boardTasks.map(bt => h('li', { key: bt.id },
+              h('code', null, bt.id), ' ', bt.subject,
+              bt.writeScopes?.length ? h('span', { className: 'ctm-sub' }, ' · ', fmt(t('plan.boardScope'), { list: bt.writeScopes.join(t('common.listSep')) })) : null,
+              bt.blockedBy?.length ? h('span', { className: 'ctm-sub' }, ' · ', fmt(t('plan.boardAfter'), { list: bt.blockedBy.join(t('common.listSep')) })) : null))) : null),
         ]))));
         const facts = [];
         if (plan.freeTools) facts.push(chip(t('free.tools'), t(`tools.${plan.freeTools}`), 'tools'));

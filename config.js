@@ -3,16 +3,18 @@
 // conversational save tool; nothing here is consulted by name.
 import { validateFileLimits } from './file-limits.js';
 import { validateRotation } from './session-rotation.js';
+import { validateSkillsPolicy } from './teammate-context.js';
+import { validateTokenRules } from './token-discipline.js';
 const ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const LINE_CONTROL = /[\x00-\x1f\x7f]/;
 const TEXT_CONTROL = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 const SECTIONS = ['tiers', 'capabilities', 'roles'];
-const CAPABILITY_KEYS = ['job', 'whenToUse', 'provider', 'model', 'tier', 'search', 'fallbacks', 'prefer', 'access', 'maxTokens', 'longContext', 'planFirst'];
+const CAPABILITY_KEYS = ['job', 'whenToUse', 'provider', 'model', 'tier', 'search', 'fallbacks', 'prefer', 'access', 'maxTokens', 'longContext', 'planFirst', 'skills'];
 const ACCESS_KEYS = ['deny', 'editPaths', 'shell', 'preset'];
 const FAILOVER_KEYS = ['retries', 'initialDelayMs', 'maxDelayMs', 'cooldownMs', 'retryCodes', 'failoverCodes', 'failoverStatuses'];
 const MAX_FALLBACKS = 3;
 const ROLE_KEYS = ['displayName', 'capability', 'description'];
-const WORKFLOW_KEYS = ['mode', 'analysisBudget', 'directBudget', 'freeTools', 'freeModels', 'analysisTools', 'coordinationTools', 'fileLimits', 'confirmDispatch', 'rotation'];
+const WORKFLOW_KEYS = ['mode', 'analysisBudget', 'directBudget', 'freeTools', 'freeModels', 'analysisTools', 'coordinationTools', 'fileLimits', 'confirmDispatch', 'rotation', 'enforceWriteScopes', 'tokens'];
 const FREE_TOOL_LEVELS = ['none', 'read', 'write'];
 const WORKFLOW_MODES = ['enforce', 'remind', 'off'];
 export const CONFIRM_MODES = ['always', 'on-change', 'never'];
@@ -27,7 +29,7 @@ export const seed = deepFreeze({
   failover: {
     retries: 2, initialDelayMs: 1000, maxDelayMs: 15000, cooldownMs: 60000,
     retryCodes: ['RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'EMPTY_RESPONSE', 'UNKNOWN'],
-    failoverCodes: ['RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'EMPTY_RESPONSE', 'UNKNOWN', 'QUOTA', 'ACCOUNT_QUOTA', 'INVALID_CREDENTIAL', 'MISSING_CREDENTIAL', 'NO_ADAPTER'],
+    failoverCodes: ['RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'EMPTY_RESPONSE', 'UNKNOWN', 'QUOTA', 'ACCOUNT_QUOTA', 'AUTH', 'INVALID_CREDENTIAL', 'MISSING_CREDENTIAL', 'NO_ADAPTER'],
     failoverStatuses: [401, 403, 404, 408, 429, 500, 502, 503, 504],
   },
   // Lead dispatch workflow: every new user request is analysed and assigned before execution.
@@ -43,6 +45,8 @@ export const seed = deepFreeze({
     // Show the user each assigned role's model and fallbacks before a delegate plan takes effect:
     // always / on-change (the first plan of a session, then only when a route changes) / never.
     confirmDispatch: 'on-change',
+    // Edits outside the write scopes of the board tasks a teammate holds are refused (DSH itself only warns).
+    enforceWriteScopes: true,
     // Optional order of free models; empty = every free model in OpenCode's catalog, newest first.
     // Entries are re-checked against the catalog at run time, so a paid model can never be listed in.
     freeModels: [],
@@ -117,6 +121,8 @@ export function validateConfig(config) {
       ...(c.whenToUse === undefined || c.whenToUse === null ? {} : { whenToUse: text(c.whenToUse, 500, `能力 ${id} 的适用场景`) }), tier: c.tier, search: c.search === true, prefer: (c.prefer ?? []).map(v => text(v, 40, `能力 ${id} 的厂商偏好`)),
       ...(c.access === undefined || c.access === null ? {} : { access: validateAccess(c.access, `能力 ${id} 的权限`) }),
       ...(c.planFirst === true ? { planFirst: true } : {}),
+      // How much of DSH's skill catalog a teammate with this capability sees (teammate-context.js); compact by default.
+      ...(c.skills === undefined || c.skills === null ? {} : { skills: validateSkillsPolicy(c.skills, `能力 ${id}`) }),
       // Per-session budget of billable tokens (uncached input + cache write + output) for each member with this capability.
       ...(c.maxTokens === undefined || c.maxTokens === null ? {} : { maxTokens: count(c.maxTokens, 1000, 1e10, `能力 ${id} 的 maxTokens`) }) };
     // A capability may stay unassigned when the user's catalog has nothing usable; its role then keeps the session model.
@@ -199,6 +205,8 @@ function validateWorkflow(w) {
     fileLimits: validateFileLimits(merged.fileLimits),
     confirmDispatch: oneOf(merged.confirmDispatch, CONFIRM_MODES, '分派确认方式'),
     rotation: validateRotation(merged.rotation),
+    tokens: validateTokenRules(merged.tokens),
+    enforceWriteScopes: (() => { if (typeof merged.enforceWriteScopes !== 'boolean') throw new Error('enforceWriteScopes 须为 true 或 false'); return merged.enforceWriteScopes; })(),
   };
   const both = out.analysisTools.filter(n => out.coordinationTools.includes(n));
   if (both.length) throw new Error(`工具 ${both.join(', ')} 不能同时属于分析类和协调类`);

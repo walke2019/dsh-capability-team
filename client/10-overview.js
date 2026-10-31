@@ -1,6 +1,7 @@
     function Overview({ sessionId, t: injectedT, hostT, load, save, live, cache, openMember }) {
       const [state, setState] = React.useState({ pending: false });
       const [tab, setTab] = React.useState('models');
+      const [showOverview, setShowOverview] = React.useState(false);
       const ticket = React.useRef(0);
       const [, redraw] = React.useState(0);
       const [children, setChildren] = React.useState(null);
@@ -223,6 +224,7 @@
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
+      const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name) : null;
       const subagentNoticeNode = isTeammateSession ? h('div', { className: 'ctm-ov-callout', 'data-tone': 'brand', style: { marginBottom: '12px' } },
         h('p', { style: { fontWeight: 600 } }, t('subagent.notice')),
         currentMember ? h('p', { className: 'ctm-sub' }, fmt(t('subagent.currentMember'), { name: currentMember.name, role: currentMember.role ?? currentMember.id })) : null,
@@ -239,6 +241,8 @@
             liveTeam ? badge(t('overview.live'), 'success', 'live') : null,
             h('button', { type: 'button', className: 'ctm-btn ctm-ov-refresh', disabled: current.pending, onClick: refresh, 'aria-busy': !!current.pending },
               t(current.pending ? 'overview.loading' : 'overview.refresh')),
+            isTeammateSession ? h('button', { type: 'button', className: 'ctm-btn ctm-ov-roleview-toggle', onClick: () => setShowOverview(v => !v) },
+              t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview')) : null,
             h('button', {
               type: 'button',
               className: 'ctm-btn ctm-lang-toggle',
@@ -263,9 +267,11 @@
             ? h('details', { className: 'ctm-ov-group ctm-ov-diag' }, h('summary', null, h('span', { className: 'ctm-name' }, t('overview.details'))), h('div', { className: 'ctm-ov-block' }, ...diagnostics))
             : h('div', { className: 'ctm-ov-callout', 'data-tone': health.tone }, ...diagnostics)) : null,
           ...(team?.catalogErrors ?? []).map(error => h('p', { key: error.provider, role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, `${error.provider}: ${error.error}`)),
+          (isTeammateSession && !showOverview) ? h(ErrorBoundary, { key: `${effectiveSessionId}:roleview`, t },
+            h(RoleView, { sessionId, role: myRole, liveByRole, usage, d, liveTeam, live, runtimeState, t })) : h(React.Fragment, null,
           shown ? h('nav', { className: 'ctm-ov-tabs', 'aria-label': t('overview.title') },
-            ...tabs.map(([id, count]) => h('button', { key: id, type: 'button', className: 'ctm-ov-tab', 'aria-pressed': tab === id, onClick: () => setTab(id) },
-              t('nav.' + id), count ? h('span', { className: 'ctm-ov-count' }, String(count)) : null))) : null,
+            ...tabs.map(([id, count]) => h('button', { key: id, type: 'button', className: 'ctm-ov-tab', 'aria-pressed': tab === id, title: t('navfull.' + id) + (count ? ` · ${count}` : ''), onClick: () => setTab(id) },
+              t('nav.' + id), count ? h('span', { className: 'ctm-ov-count' }, typeof count === 'number' && count > 99 ? '99+' : String(count)) : null))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'usage', hidden: tab !== 'usage' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:usage`, t }, h(UsageGroups, { rows: usage, roles: team?.roles ?? [], t }))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'logs', hidden: tab !== 'logs' },
@@ -274,14 +280,16 @@
               d ? h(EvidenceGroups, { d, sessionId: effectiveSessionId, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'models', hidden: tab !== 'models' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:models`, t },
-              runtimeState.restarted ? h('p', { className: 'ctm-ov-callout', 'data-tone': 'warn' }, t('runtime.restarted')) : null,
-              runtimeState.lag ? h('p', { className: 'ctm-sub ctm-warn' }, t('runtime.snapshotLag')) : null,
-              runtimeState.unavailable ? h('p', { className: 'ctm-sub ctm-warn' }, t('runtime.unavailable')) : null,
-              h('div', { className: 'ctm-ov-split' },
+              h(ModelSubTabs, { t },
                 // Root cause fix: this used to pass the raw (possibly teammate) sessionId as the "parent" argument to
                 // openMember, so opening a member from inside a subagent session targeted the wrong parent.
                 team || liveTeam ? h(TeamBoard, { roles: boardRoles, activity: roster, allocations: policy?.allocations, since, t, open: openMember && (id => openMember(effectiveSessionId, id)), live, usage, runtimeState, currentMemberId: isTeammateSession ? sessionId : null, leadSessionId: effectiveSessionId }) : null,
-                policy ? h(PolicyEditor, { key: `${effectiveSessionId}:${policy.revision}`, sessionId: effectiveSessionId, policy, save, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData'))))) : null,
+                policy ? h(PolicyEditor, { key: `${effectiveSessionId}:${policy.revision}`, sessionId: effectiveSessionId, policy, save, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData')),
+                h('div', { className: 'ctm-ov-block' },
+                  runtimeState.restarted ? h('p', { className: 'ctm-ov-callout', 'data-tone': 'warn' }, t('runtime.restarted')) : null,
+                  runtimeState.lag ? h('p', { className: 'ctm-sub ctm-warn' }, t('runtime.snapshotLag')) : null,
+                  runtimeState.unavailable ? h('p', { className: 'ctm-sub ctm-warn' }, t('runtime.unavailable')) : null,
+                  !runtimeState.restarted && !runtimeState.lag && !runtimeState.unavailable ? h('p', { className: 'ctm-sub' }, t('runtime.noNotices')) : null)))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'artifacts', hidden: tab !== 'artifacts' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:artifacts`, t },
               h(ArtifactsRack, { sessionId: effectiveSessionId, liveTeam, live, t }))) : null,
@@ -331,5 +339,5 @@
                   h('p', { className: 'ctm-sub', style: { marginTop: '8px' } }, t('theme.templateInstruction')),
                   h('p', { className: 'ctm-sub ctm-ov-note' }, t('theme.templateDesc'))),
                 h('div', { className: 'ctm-ov-block' }, h('div', { className: 'ctm-label' }, t('overview.policy')), h(WorkflowList, { workflow: team.workflow, t })))
-              : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null));
+              : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null)));
     }

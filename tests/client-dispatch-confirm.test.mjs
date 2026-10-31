@@ -40,10 +40,14 @@ test('显示角色、主模型与回退；确认按钮发送编辑后的路由',
   let tree = h.render(props);
   assert.ok(text(tree).includes('貂蝉'));
   assert.equal(h.calls[0].url, 'api/capability-team.dispatch-confirm?sessionId=lead-1&callId=c1');
-  const selects = findAll(tree, n => n.type === 'select');
-  selects[0].props.onChange({ target: { value: 'provider-a/m3' } });
+  const pickers = findAll(tree, n => n.type === h.exposed.ModelPicker);
+  assert.equal(pickers[0].props.value, 'provider-a/m1', '主模型选择器显示当前主模型');
+  assert.ok(pickers[0].props.options.includes('provider-a/m5'), '候选包含同档模型');
+  pickers[0].props.onChange('provider-a/m3');
   tree = h.render(props);
-  find(tree, n => n.type === 'select' && String(n.props['aria-label']).startsWith('confirm.addFallback')).props.onChange({ target: { value: 'provider-a/m4' } });
+  const add = find(tree, n => n.type === h.exposed.ModelPicker && String(n.props.label).startsWith('confirm.addFallback'));
+  assert.ok(!add.props.options.includes('provider-a/m3') && !add.props.options.includes('provider-a/m2'), '添加回退时不再列出已选的模型');
+  add.props.onChange('provider-a/m4');
   tree = h.render(props);
   find(tree, n => n.type === 'button' && text(n).startsWith('confirm.ok')).props.onClick();
   await flush();
@@ -58,7 +62,7 @@ test('回退模型满 3 个后不再提供添加', async () => {
   const h = load(async () => json(200, full));
   h.render(props); await flush();
   const tree = h.render(props);
-  assert.equal(find(tree, n => n.type === 'select' && String(n.props['aria-label']).startsWith('confirm.addFallback')), undefined);
+  assert.equal(find(tree, n => n.type === h.exposed.ModelPicker && String(n.props.label).startsWith('confirm.addFallback')), undefined);
   assert.ok(text(tree).includes('confirm.max[3|]'));
 });
 
@@ -93,4 +97,56 @@ test('派活计划卡片在等待确认时附带确认卡片', () => {
   const tree = h.exposed.DispatchPlanView({ t, phase: 'start', block, callId: 'c1', sessionId: 'lead-1' });
   assert.equal(tree.props.className, 'ctm-dc-wrap');
   assert.equal(tree.children[1].props.callId, 'c1');
+});
+
+test('模型选择器：多词搜索、按渠道分组、键盘选择', async () => {
+  const h = load(async () => json(200, pending));
+  const { filterRoutes } = h.exposed;
+  const options = ['provider-a/gpt-6.1-sol', 'provider-a/claude-sonnet-5-5', 'deepseek-official/deepseek-v4-pro', 'provider-a/grok/grok-4.7'];
+  assert.deepEqual(filterRoutes(options, 'SONNET'), ['provider-a/claude-sonnet-5-5']);
+  assert.deepEqual(filterRoutes(options, 'provider-a grok'), ['provider-a/grok/grok-4.7'], '每个词都要匹配');
+  assert.deepEqual(filterRoutes(options, '  '), options);
+  // Render the picker with a tiny hook state of its own.
+  let cursor = 0; const states = [];
+  const React = { createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat() }),
+    useState(i) { const n = cursor++; if (!(n in states)) states[n] = i; return [states[n], v => { states[n] = typeof v === 'function' ? v(states[n]) : v; }]; },
+    useRef(v) { const n = cursor++; return states[n] ??= { current: v }; }, useEffect() {}, useMemo: f => f() };
+  let picker;
+  new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => spec.factory(() => React) }, __ctmTestHook: x => { picker = x.ModelPicker; } } });
+  let chosen;
+  const t = k => `${k}[{n}/{total}]`;
+  const render = () => { cursor = 0; return picker({ value: 'provider-a/gpt-6.1-sol', options, onChange: k => { chosen = k; }, label: 'model', placeholder: 'search', t }); };
+  let tree = render();
+  const input = () => find(tree, n => n.type === 'input');
+  input().props.onFocus();
+  tree = render();
+  assert.equal(input().props['aria-expanded'], true);
+  assert.deepEqual(findAll(tree, n => n.props?.role === 'presentation').map(text), ['provider-a', 'deepseek-official', 'provider-a'], '按渠道分组');
+  input().props.onChange({ target: { value: 'deep' } });
+  tree = render();
+  assert.ok(text(tree).includes('picker.count[1/4]'));
+  input().props.onKeyDown({ key: 'Enter', preventDefault() {} });
+  assert.equal(chosen, 'deepseek-official/deepseek-v4-pro');
+  tree = render();
+  assert.equal(input().props['aria-expanded'], false, '选择后收起');
+  input().props.onFocus(); tree = render();
+  input().props.onChange({ target: { value: 'zzz' } }); tree = render();
+  assert.ok(text(tree).includes('picker.empty'));
+});
+
+test('卡片标出“按你的习惯”与最近失败的模型；计划卡片列出看板任务', async () => {
+  const learned = { ...pending, routes: [{ ...pending.routes[0], fallbacks: [{ provider: 'provider-a', model: 'm2' }],
+    learned: { habit: { count: 3, of: 4, settled: true }, unhealthy: { 'provider-a/m2': 2, 'provider-a/m1': 1 } } }] };
+  const h = load(async () => json(200, learned));
+  h.render(props); await flush();
+  const shown = text(h.render(props));
+  assert.ok(shown.includes('confirm.habit'), '习惯标记');
+  assert.ok(shown.includes('confirm.failing'), '回退里的故障标记');
+  assert.ok(shown.includes('confirm.primaryFailing'), '主模型故障提示');
+  assert.ok(shown.includes('confirm.habitSettled'), '建议保存为默认');
+  const t = k => k;
+  const output = { mode: 'delegate', analysis: 'a', assignments: [{ role: 'diao-chan', task: 'x', boardTasks: [{ id: 'task-2', subject: '接页面', writeScopes: ['client'], blockedBy: ['task-1'] }] }] };
+  const card = h.exposed.DispatchPlanView({ t, phase: 'result', block: { kind: 'tool-result', call: { argsRaw: '{}' }, content: [{ type: 'text', text: JSON.stringify(output) }] } });
+  const body = card.props.body.map(text).join('');
+  assert.ok(body.includes('task-2') && body.includes('plan.boardScope') && body.includes('plan.boardAfter'));
 });

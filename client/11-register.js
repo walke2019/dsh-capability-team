@@ -130,10 +130,11 @@
       capability_rotate_member: RotateView,
       capability_memory_search: MemorySearchView,
       capability_memory_write: MemoryWriteView,
+      capability_model_prefs: PrefsView,
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput, RoleView, ModelSubTabs });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {

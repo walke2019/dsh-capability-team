@@ -56,26 +56,31 @@
           setStatus({ tone: 'error', text: `${t('int.saveFailed')} ${String(body.message ?? '')}` });
         } catch { setStatus({ tone: 'error', text: t('int.saveFailed') }); }
       };
+      // Each section is its own card with a label/input grid and its own save/reset buttons; saving still
+      // submits the whole draft (every section's pending changes) so the revision/409 path above stays single.
+      const sectionDirty = name => Object.keys(draft[name] ?? {}).length > 0;
       const section = name => h('fieldset', { key: name, className: 'ctm-int-section' },
         h('legend', { className: 'ctm-label' }, t(`int.${name}`)),
         h('p', { className: 'ctm-sub' }, t(`int.${name}.hint`)),
         h('p', { className: `ctm-sub ${data.keys[name].present ? '' : 'ctm-warn'}` }, fmt(t(data.keys[name].present ? 'int.keySet' : 'int.keyMissing'), { name: data.keys[name].env })),
-        ...INTEGRATION_FIELDS[name].map(([key, kind]) => {
-          const src = data.sources[name][key];
-          const locked = src?.startsWith('env:');
-          const id = `ctm-int-${name}-${key}`;
-          const props = { id, value: locked ? toInput(kind, data.effective[name][key]) : valueOf(name, key, kind), disabled: locked,
-            placeholder: locked ? '' : toInput(kind, data.effective[name][key]) || t('int.unset'), onChange: e => set(name, key, e.target.value) };
-          return h('div', { key, className: 'ctm-int-field' },
-            h('label', { htmlFor: id, className: 'ctm-sub' }, t(`int.field.${key}`)),
-            kind === 'headers' ? h('textarea', { ...props, rows: 2 }) : h('input', { ...props, type: kind === 'number' ? 'number' : 'text', spellCheck: false }),
-            h('span', { className: 'ctm-sub ctm-int-src' }, sourceLabel(t, src)));
-        }));
+        h('div', { className: 'ctm-int-grid' },
+          ...INTEGRATION_FIELDS[name].map(([key, kind]) => {
+            const src = data.sources[name][key];
+            const locked = src?.startsWith('env:');
+            const id = `ctm-int-${name}-${key}`;
+            const props = { id, value: locked ? toInput(kind, data.effective[name][key]) : valueOf(name, key, kind), disabled: locked,
+              placeholder: locked ? '' : toInput(kind, data.effective[name][key]) || t('int.unset'), onChange: e => set(name, key, e.target.value) };
+            return h(React.Fragment, { key },
+              h('label', { htmlFor: id, className: 'ctm-sub ctm-int-key' }, t(`int.field.${key}`)),
+              h('div', { className: 'ctm-int-val' },
+                kind === 'headers' ? h('textarea', { ...props, rows: 2 }) : h('input', { ...props, type: kind === 'number' ? 'number' : 'text', spellCheck: false }),
+                h('span', { className: 'ctm-sub ctm-int-src' }, sourceLabel(t, src))));
+          })),
+        h('div', { className: 'ctm-tc-row' },
+          h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: !sectionDirty(name), onClick: save }, t('int.save')),
+          h('button', { type: 'button', className: 'ctm-btn', disabled: !sectionDirty(name), onClick: () => setDraft(prev => { const n = { ...prev }; delete n[name]; return n; }) }, t('int.reset'))));
       return h('div', { className: 'ctm-ov-block ctm-int' },
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('int.help')),
         section('search'), section('embeddings'),
-        status ? h('p', { className: `ctm-sub ${status.tone === 'error' ? 'ctm-warn' : ''}`, role: status.tone === 'error' ? 'alert' : 'status' }, status.text) : null,
-        h('div', { className: 'ctm-tc-row' },
-          h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: !Object.keys(draft).length, onClick: save }, t('int.save')),
-          h('button', { type: 'button', className: 'ctm-btn', disabled: !Object.keys(draft).length, onClick: () => setDraft({}) }, t('int.reset'))));
+        status ? h('p', { className: `ctm-sub ${status.tone === 'error' ? 'ctm-warn' : ''}`, role: status.tone === 'error' ? 'alert' : 'status' }, status.text) : null);
     }

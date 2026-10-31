@@ -199,6 +199,8 @@
         if (key === 'freeTools') return label(t, `tools.${v}`, String(v));
         if (key === 'analysisBudget' || key === 'directBudget') return fmt(t('workflow.times'), { n: v });
         if (key === 'freeModels' && Array.isArray(v) && !v.length) return t('workflow.allFree');
+        if (key === 'tokens') return v ? fmt(t('workflow.tokens.value'), { ratio: Math.round(v.idleCompactRatio * 100), chars: v.trimToolOutputChars }) : t('workflow.fileLimits.off');
+        if (key === 'enforceWriteScopes') return t(v ? 'workflow.enforceWriteScopes.on' : 'workflow.enforceWriteScopes.off');
         if (key === 'confirmDispatch') return label(t, `workflow.confirmDispatch.${v}`, String(v));
         if (key === 'rotation') return v ? fmt(t('workflow.rotation.value'), { soft: v.softCompactions, hard: v.hardCompactions, ratio: Math.round(v.hardRatio * 100), turns: v.hardTurns }) : t('workflow.fileLimits.off');
         if (key === 'fileLimits') return v ? fmt(t('workflow.fileLimits.value'), { source: v.sourceMax, test: v.testMax, read: v.readMax, report: v.reportMax }) : t('workflow.fileLimits.off');

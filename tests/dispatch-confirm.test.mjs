@@ -103,8 +103,10 @@ test('HTTP：GET 读取等待中的请求，POST 需要同源与 JSON', async ()
   const post = (headers, body) => handleDispatchConfirm(ctx, new Request(base, { method: 'POST', headers, body: JSON.stringify(body) }));
   assert.equal((await post({ 'content-type': 'application/json', origin: 'http://evil.test' }, { sessionId: 'L5', callId: 'h1', decision: 'confirm' })).status, 403);
   assert.equal((await post({ origin: 'http://dsh.test' }, { sessionId: 'L5', callId: 'h1', decision: 'confirm' })).status, 400);
+  assert.equal((await post({ 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' }, { sessionId: 'L5', callId: 'h1', decision: 'confirm' })).status, 403);
   assert.equal((await post({ 'content-type': 'application/json', origin: 'http://dsh.test' }, { sessionId: 'nobody', callId: 'h1', decision: 'confirm' })).status, 404);
-  const ok = await post({ 'content-type': 'application/json', origin: 'http://dsh.test' }, { sessionId: 'L5', callId: 'h1', decision: 'confirm', catalogVersion: got.catalogVersion });
+  // As forwarded by the desktop app: no Origin header at all.
+  const ok = await post({ 'content-type': 'application/json' }, { sessionId: 'L5', callId: 'h1', decision: 'confirm', catalogVersion: got.catalogVersion });
   assert.equal(ok.status, 200);
   assert.equal((await p).asked, true);
 });

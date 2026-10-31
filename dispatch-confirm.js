@@ -3,10 +3,12 @@
 // default. The Web card answers over api/capability-team.dispatch-confirm; hosts without the card fall back
 // to DSH's native question box. Confirmed per-task routes live in memory per Lead and are applied by
 // team.resolve before the global model policy, so disabled models stay disabled.
+import { crossSiteRequest } from './http-guard.js';
 import { createHash } from 'node:crypto';
 import { modelCatalog, verifyRoutes } from './allocation.js';
 import { routeKey, routeMatcher } from './model-policy.js';
 import { saveProject } from './theme.js';
+import { applyPreferences, unhealthyRoutes } from './model-prefs.js';
 export const DISPATCH_CONFIRM_PATH = '/api/capability-team.dispatch-confirm';
 export { CONFIRM_MODES } from './config.js';
 export const MAX_ROUTE_FALLBACKS = 3;
@@ -50,7 +52,7 @@ export function validateAnswer(offered, answer) {
   const given = new Map((Array.isArray(answer.routes) ? answer.routes : []).map(r => [r?.role, r]));
   const routes = offered.map(o => {
     const r = given.get(o.role);
-    if (!r) return { role: o.role, capability: o.capability, primary: o.primary, fallbacks: o.fallbacks, changed: false };
+    if (!r) { const ref = o.base ?? o; return { role: o.role, capability: o.capability, primary: o.primary, fallbacks: o.fallbacks, changed: keyOf(o) !== keyOf(ref) }; }
     const allowed = route => o.candidates.some(c => sameRoute(c, route)) || sameRoute(route, o.primary) || o.fallbacks.some(f => sameRoute(f, route));
     const primary = typeof r.primary === 'string' ? parseRoute(r.primary) : r.primary;
     if (!primary?.provider || !primary?.model || !allowed(primary)) throw new Error(`${o.displayName ?? o.role} 的主模型 ${primary ? routeKey(primary) : String(r.primary)} 不在同档可用模型中`);
@@ -62,7 +64,9 @@ export function validateAnswer(offered, answer) {
       if (seen.has(routeKey(f))) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${routeKey(f)} 与主模型或其他回退重复`);
       seen.add(routeKey(f));
     }
-    const changed = !sameRoute(primary, o.primary) || keyOf({ primary, fallbacks: list }) !== keyOf(o);
+    // Compared with the configured route, so a preselected habit still counts as a change when saved as default.
+    const ref = o.base ?? o;
+    const changed = !sameRoute(primary, ref.primary) || keyOf({ primary, fallbacks: list }) !== keyOf(ref);
     return { role: o.role, capability: o.capability, primary, fallbacks: list, changed };
   });
   if (scope === 'project') {
@@ -113,7 +117,7 @@ async function askNative(userQuestions, exec, offered) {
   });
   return { decision: 'confirm', scope: choice === '保存为项目默认' ? 'project' : 'task', routes };
 }
-export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS } = {}) {
+export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, prefs, health = () => ({}) } = {}) {
   async function saveDefaults(exec, routes) {
     const changed = routes.filter(r => r.changed);
     if (!changed.length) return null;
@@ -133,9 +137,16 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS } = {
       const leadId = exec.agent.id;
       const state = stateOf(leadId);
       const catalog = await modelCatalog(ctx.llm, effective.tiers);
+      // Learned habits and recent failures shape what the card preselects; a route the user already confirmed in
+      // this session wins over both. `base` keeps the configured route, which "save as default" compares against.
+      const project = prefs ? await team.pin(exec.agent) : undefined;
+      const habits = project ? await prefs.habits(project).catch(() => ({})) : {};
+      const unhealthy = unhealthyRoutes(health());
       const offered = planRoutes(plan, effective, policy.disabledRoutes, catalog).map(r => {
+        const base = { primary: r.primary, fallbacks: r.fallbacks };
         const prior = state.routes.get(r.role);
-        return prior ? { ...r, primary: prior.primary, fallbacks: prior.fallbacks } : r;
+        const shaped = prior ? { ...r, primary: prior.primary, fallbacks: prior.fallbacks, learned: { unhealthy: {} } } : applyPreferences(r, habits[r.capability], unhealthy);
+        return { ...shaped, base };
       });
       const unchanged = offered.every(r => state.confirmed.get(r.role) === keyOf(r));
       if (mode === 'never' || (mode === 'on-change' && unchanged)) return { asked: false, routes: offered };
@@ -159,6 +170,7 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS } = {
       } finally { state.pending.delete(callId); }
       if (result.decision === 'cancel') throw new Error('用户取消了这次分派，未创建或通知任何队友。请询问用户要如何调整。');
       if (result.scope === 'project') await saveDefaults(exec, result.routes);
+      if (project) void prefs.record(project, result.routes).catch(() => {});
       for (const r of result.routes) {
         if (result.scope === 'task' && r.changed) state.routes.set(r.role, { primary: r.primary, fallbacks: r.fallbacks });
         if (result.scope === 'project') state.routes.delete(r.role);
@@ -183,7 +195,7 @@ export async function handleDispatchConfirm(ctx, request) {
       return Response.json(pendingView(agent.id, url.searchParams.get('callId') ?? ''), { headers: { 'cache-control': 'no-store' } });
     }
     if (request.method !== 'POST') return fail(400, 'BAD_REQUEST', 'Method not allowed');
-    if (request.headers.get('origin') !== url.origin || request.headers.get('sec-fetch-site') === 'cross-site') return fail(403, 'FORBIDDEN', 'Same-origin required');
+    if (crossSiteRequest(request)) return fail(403, 'FORBIDDEN', 'Same-origin required');
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') ?? '')) return fail(400, 'BAD_REQUEST', 'JSON required');
     const text = await request.text();
     if (text.length > 16384) return fail(400, 'BAD_REQUEST', 'Body too large');
