@@ -79,7 +79,7 @@
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('usage.hint')),
         members.length ? h('span', { className: 'ctm-label' }, fmt(t('usage.total'), { n: usageTotal(members) == null ? t('usage.unknown') : compact(usageTotal(members)) })) : null,
         ...(members.length ? members.map((m, index) => {
-          const role = byId.get(m.name);
+          const role = byId.get(m.name) ?? byId.get(baseName(m.name));
           const hasTotals = m.totals && typeof m.totals === 'object';
           const used = hasTotals ? billable(m.totals) : null;
           const max = role?.maxTokens;
@@ -122,10 +122,16 @@
       if (!list.length) return null;
       return h('div', { className: 'ctm-ov-block' },
         h('span', { className: 'ctm-label' }, t('logs.live')),
-        h('div', { className: 'ctm-ov-logs' }, ...list.map(row => h('div', { key: row.id, className: 'ctm-ov-log' },
-          h('span', { className: 'ctm-name' }, row.name),
-          row.model ? h('span', { className: 'ctm-ov-route', title: row.model }, row.model) : null,
-          row.stats?.steps ? h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('logs.steps'), { n: row.stats.steps })) : null))));
+        h(CollapsibleList, {
+          items: list,
+          limit: 5,
+          className: 'ctm-ov-logs',
+          t,
+          renderItem: row => h('div', { key: row.id, className: 'ctm-ov-log' },
+            h('span', { className: 'ctm-name' }, row.name),
+            row.model ? h('span', { className: 'ctm-ov-route', title: row.model }, row.model) : null,
+            row.stats?.steps ? h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('logs.steps'), { n: row.stats.steps })) : null),
+        }));
     }
 
     function EvidenceGroups({ d, sessionId, t }) {
@@ -141,12 +147,18 @@
               self && member.name ? badge(t('logs.thisSession'), 'brand', 'self') : null,
               h('span', { className: 'ctm-sub' }, fmt(t('logs.count'), { n: records.length }))),
             member.unavailable ? h('p', { className: 'ctm-ov-note ctm-warn' }, member.unavailable) : null,
-            records.length ? h('div', { className: 'ctm-ov-logs' }, ...records.map(record => h('div', { key: record.seq, className: 'ctm-ov-log' },
-              h('span', { className: 'ctm-sub ctm-ov-seq' }, `#${record.seq}`),
-              h('span', { className: 'ctm-ov-route', title: `${record.provider}/${record.model}` }, `${record.provider}/${record.model}`),
-              badge(t('evidence.short.' + record.evidence), record.evidence === 'assistant-message' ? 'success' : undefined, 'kind'),
-              record.interrupted ? badge(t('logs.interrupted'), 'warn', 'int') : null,
-              h('span', { className: 'ctm-sub ctm-ov-time', title: t('evidence.' + record.evidence) }, when(record.time)))))
+            records.length ? h(CollapsibleList, {
+              items: records,
+              limit: 5,
+              className: 'ctm-ov-logs',
+              t,
+              renderItem: record => h('div', { key: record.seq, className: 'ctm-ov-log' },
+                h('span', { className: 'ctm-sub ctm-ov-seq' }, `#${record.seq}`),
+                h('span', { className: 'ctm-ov-route', title: `${record.provider}/${record.model}` }, `${record.provider}/${record.model}`),
+                badge(t('evidence.short.' + record.evidence), record.evidence === 'assistant-message' ? 'success' : undefined, 'kind'),
+                record.interrupted ? badge(t('logs.interrupted'), 'warn', 'int') : null,
+                h('span', { className: 'ctm-sub ctm-ov-time', title: t('evidence.' + record.evidence) }, when(record.time))),
+            })
               : h('p', { className: 'ctm-sub' }, t('evidence.empty')));
         }));
     }
@@ -175,7 +187,7 @@
           ...children.filter(c => c.kind === 'child').map(c => ({ ...(known.get(c.id) ?? { name: c.label ?? c.id, role: 'teammate', diagnostics: [] }), id: c.id, resident: c.activity === 'running' }))]
         : snapshot.members ?? [];
       const members = rows.map(m => {
-        const push = live?.status(m.id);
+        const push = live?.status?.(m.id);
         const status = memberStatus(m, push, fresh);
         return { ...m, status, since: push?.running ? push.since : undefined,
           diagnostics: push?.error && !push.running ? [push.error, ...(m.diagnostics ?? [])] : m.diagnostics ?? [] };

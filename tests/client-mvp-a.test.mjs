@@ -370,6 +370,57 @@ test('MVP-A 5: 状态气泡在空闲时显示静态三国台词，有任务时�
   assert.ok(JSON.stringify(leadBubble).includes('live.quote.lead'));
 });
 
+test('卡片无任务且 phase 为 model 时状态气泡文案不重复，且使用 live.busyNoTask', () => {
+  const state = {
+    byId: { m1: { running: true } },
+    projectionsBySession: {
+      s_lead: {
+        values: {
+          agentTeam: {
+            members: [
+              { id: 's_lead', name: 'lead', role: 'lead' },
+              { id: 'm1', name: 'diao-chan', role: 'frontend' },
+            ],
+            tasks: [], // 无任务
+          },
+        },
+      },
+      m1: {
+        values: {
+          capabilityTeamActivity: {
+            schemaVersion: 1,
+            phase: 'model',
+            activeCount: 0,
+          },
+        },
+      },
+    },
+  };
+  const sessions = { list: { getSnapshot: () => state, subscribe: () => () => {} }, refreshProjections: async () => {} };
+  const h = createHarness({ commands: {} }, sessions);
+  const element = h.view({ sessionId: 's_lead', t: key => key });
+  const tree = h.render(element.type, element.props);
+  const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
+  const boardTree = board.type(board.props);
+  const card = h.find(boardTree, n => n.props?.['data-card'] === 'diao-chan');
+  assert.ok(card, 'diao-chan 卡片应存在');
+
+  const bubble = h.find(card, n => n.props?.className === 'ctm-bd-bubble');
+  assert.ok(bubble, '气泡应存在');
+
+  // 验证 head 包含 activity.processing，body 包含 live.busyNoTask，且两者绝不相同（避免“正在处理”重复出现）
+  const bubbleHead = h.find(bubble, n => n.props?.className === 'ctm-bd-bubble-head');
+  const bubbleBody = h.find(bubble, n => n.props?.className?.includes('ctm-bd-bubble-body'));
+  assert.ok(bubbleHead);
+  assert.ok(bubbleBody);
+
+  const headJson = JSON.stringify(bubbleHead);
+  const bodyJson = JSON.stringify(bubbleBody);
+  assert.ok(headJson.includes('activity.processing'), '气泡头部标签应为 activity.processing');
+  assert.ok(bodyJson.includes('live.busyNoTask'), '气泡正文无任务时应使用 live.busyNoTask');
+  assert.equal(bodyJson.includes('activity.processing'), false, '气泡正文绝不重复 activity.processing');
+});
+
 test('MVP-A 6 (item 1 regression): 宿主 tokenUsage 伪造的用量必须被忽略，渲染为未知而非假数字', () => {
   const state = {
     byId: {},

@@ -59,7 +59,7 @@
       const est = lease?.estimatedSteps ?? 0;
       const ratio = est > 0 ? Math.min(1, used / est) : 0;
       const tone = stepTone(lease?.judgment);
-      const audit = (Array.isArray(control?.auditTail) ? control.auditTail : []).filter(r => r.roleId === roleId).slice(0, 5);
+      const audit = (Array.isArray(control?.auditTail) ? control.auditTail : []).filter(r => r.roleId === roleId);
       const errorText = error ? `${label(t, `control.error.${error}`, t('control.error.unknown'))}${error === 'conflict' ? ` ${t('control.error.reconfirm')}` : ''}` : null;
       const summary = lease
         ? (lease.status === 'ended' ? t('control.lease.ended') : fmt(t('control.steps.label'), { used, est }))
@@ -113,6 +113,14 @@
         h('div', { className: 'ctm-tc-audit' },
           h('span', { className: 'ctm-sub' }, t('control.audit.title')),
           audit.length
-            ? h('ul', null, ...audit.map(r => h('li', { key: r.eventId }, `${timeOfDay(r.at)} · ${String(r.action ?? '')}${r.to ? ` → ${routeOf(r.to)}` : ''}${r.reason ? ` · ${String(r.reason)}` : ''}`)))
+            ? (audit.length <= 5
+                ? h('ul', null, ...audit.map(r => h('li', { key: r.eventId }, `${timeOfDay(r.at)} · ${String(r.action ?? '')}${r.to ? ` → ${routeOf(r.to)}` : ''}${r.reason ? ` · ${String(r.reason)}` : ''}`)))
+                : h(CollapsibleList, {
+                    items: audit,
+                    limit: 5,
+                    as: 'ul',
+                    t,
+                    renderItem: r => h('li', { key: r.eventId }, `${timeOfDay(r.at)} · ${String(r.action ?? '')}${r.to ? ` → ${routeOf(r.to)}` : ''}${r.reason ? ` · ${String(r.reason)}` : ''}`),
+                  }))
             : h('span', { className: 'ctm-sub' }, t('control.audit.empty'))));
     }

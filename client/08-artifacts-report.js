@@ -70,7 +70,7 @@
       const filteredItems = filterRole === 'all' ? shelfItems : shelfItems.filter(item => item.roleId === filterRole);
 
       // 本会话变更
-      const changesList = Array.from(changesMap.values()).sort((a, b) => (b.at ?? 0) - (a.at ?? 0)).slice(0, 20);
+      const changesList = Array.from(changesMap.values()).sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 
       const handleOpenPresent = async item => {
         setOpenError(null);
@@ -162,20 +162,40 @@
         h('div', { className: 'ctm-art-changes' },
           h('span', { className: 'ctm-label' }, t('artifacts.changes')),
           !changesList.length ? h('p', { className: 'ctm-sub' }, t('artifacts.noChanges'))
-            : changesList.map(chg => {
-                const cKey = `${chg.memberSessionId}:${chg.seq}`;
-                const diffEntry = diffState[cKey];
-                return h('details', { key: cKey, className: 'ctm-chg-item', onToggle: e => { if (e.target.open && !diffEntry) handleToggleChange(chg); } },
-                  h('summary', null, `${chg.roleId} · Turn ${chg.turn ?? '?'} · Seq ${chg.seq}`),
-                  diffEntry?.loading ? h('p', { className: 'ctm-sub' }, t('overview.loading'))
-                    : diffEntry?.error ? h('p', { className: 'ctm-warn' }, diffEntry.error)
-                    : diffEntry?.files ? h('div', { className: 'ctm-chg-diff' },
-                        ...diffEntry.files.map((f, fi) => h('div', { key: fi },
-                          h('strong', null, f.path),
-                          f.error ? h('p', { className: 'ctm-warn' }, f.error)
-                            : h('pre', { className: 'ctm-pre' }, JSON.stringify(f.diff?.hunks ?? f.diff ?? t('artifacts.diffEmpty'), null, 2)))))
-                    : null);
-              })));
+            : (changesList.length <= 5
+                ? changesList.map(chg => {
+                    const cKey = `${chg.memberSessionId}:${chg.seq}`;
+                    const diffEntry = diffState[cKey];
+                    return h('details', { key: cKey, className: 'ctm-chg-item', onToggle: e => { if (e.target.open && !diffEntry) handleToggleChange(chg); } },
+                      h('summary', null, `${chg.roleId} · Turn ${chg.turn ?? '?'} · Seq ${chg.seq}`),
+                      diffEntry?.loading ? h('p', { className: 'ctm-sub' }, t('overview.loading'))
+                        : diffEntry?.error ? h('p', { className: 'ctm-warn' }, diffEntry.error)
+                        : diffEntry?.files ? h('div', { className: 'ctm-chg-diff' },
+                            ...diffEntry.files.map((f, fi) => h('div', { key: fi },
+                              h('strong', null, f.path),
+                              f.error ? h('p', { className: 'ctm-warn' }, f.error)
+                                : h('pre', { className: 'ctm-pre' }, JSON.stringify(f.diff?.hunks ?? f.diff ?? t('artifacts.diffEmpty'), null, 2)))))
+                        : null);
+                  })
+                : h(CollapsibleList, {
+                    items: changesList,
+                    limit: 5,
+                    t,
+                    renderItem: chg => {
+                      const cKey = `${chg.memberSessionId}:${chg.seq}`;
+                      const diffEntry = diffState[cKey];
+                      return h('details', { key: cKey, className: 'ctm-chg-item', onToggle: e => { if (e.target.open && !diffEntry) handleToggleChange(chg); } },
+                        h('summary', null, `${chg.roleId} · Turn ${chg.turn ?? '?'} · Seq ${chg.seq}`),
+                        diffEntry?.loading ? h('p', { className: 'ctm-sub' }, t('overview.loading'))
+                          : diffEntry?.error ? h('p', { className: 'ctm-warn' }, diffEntry.error)
+                          : diffEntry?.files ? h('div', { className: 'ctm-chg-diff' },
+                              ...diffEntry.files.map((f, fi) => h('div', { key: fi },
+                                h('strong', null, f.path),
+                                f.error ? h('p', { className: 'ctm-warn' }, f.error)
+                                  : h('pre', { className: 'ctm-pre' }, JSON.stringify(f.diff?.hunks ?? f.diff ?? t('artifacts.diffEmpty'), null, 2)))))
+                          : null);
+                    },
+                  }))));
     }
 
     /** Battle report view (MVP-B). */

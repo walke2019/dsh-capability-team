@@ -134,7 +134,7 @@
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput, RoleView, ModelSubTabs });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput, RoleView, ModelSubTabs, CollapsibleList });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {
@@ -172,10 +172,16 @@
           // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
           // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.
           // `hostT` is only a fallback for any key missing from the plugin's own zh/en dictionaries.
-          hostT: bound, load, save, live, cache: snapshotCache,
-          // Same navigation as DSH's own Team panel: open the teammate's continuable session.
+          hostT: bound, load: props.load ?? load, save: props.save ?? save, live: props.live ?? live, cache: props.cache ?? snapshotCache,
+          // Same navigation as DSH's own Team panel: open normal session for Lead or continuable subagent address for teammate.
           openMember: typeof ctx.uiWorkspace?.openSession === 'function'
-            ? (parentSessionId, childSessionId) => ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' }) : undefined })));
+            ? (parentSessionId, childSessionId) => {
+              if (!childSessionId || childSessionId === parentSessionId) {
+                ctx.uiWorkspace.openSession(parentSessionId);
+              } else {
+                ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' });
+              }
+            } : undefined })));
         // Each view receives `t`; fall back to the bound translator when the slot does not inject one.
         const withT = View => function CapabilityToolView(props) { return h(View, { ...props, t: props.t ?? bound }); };
         for (const [key, View] of Object.entries(VIEWS)) {

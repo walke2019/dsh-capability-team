@@ -2,17 +2,32 @@
       const members = activity?.members ?? [];
       const tasks = activity?.tasks ?? [];
       const primary = new Map((allocations ?? []).map(a => [a.id, a.primary]));
+      const allocNames = new Map((allocations ?? []).map(a => [a.id, a.displayName]).filter(([_, name]) => Boolean(name)));
       const used = new Set();
       const cards = roles.map(role => {
         const lead = role.id === 'lead' || role.capability === 'orchestrator';
-        const member = members.find(m => !used.has(m) && (lead ? m.role === 'lead' : m.name === role.id));
+        const member = members.find(m => !used.has(m) && (lead ? (m.role === 'lead' || baseName(m.name) === 'lead') : (m.name === role.id || baseName(m.name) === role.id)));
         if (member) used.add(member);
-        return { id: role.id, name: role.displayName ?? role.id, lead, member, role };
+        const resolvedName = (role.displayName && role.displayName !== role.id)
+          ? role.displayName
+          : (allocNames.get(role.id) ?? role.displayName ?? role.id);
+        return { id: role.id, name: resolvedName, lead, member, role };
       });
-      for (const member of members) if (!used.has(member)) cards.push({ id: member.name, name: member.name, lead: member.role === 'lead', member, role: null });
+      for (const member of members) {
+        if (!used.has(member)) {
+          const lead = member.role === 'lead';
+          const bName = lead ? 'lead' : baseName(member.name);
+          const matchedRole = roles.find(r => r.id === bName || (lead && (r.id === 'lead' || r.capability === 'orchestrator')));
+          const resolvedName = (matchedRole?.displayName && matchedRole.displayName !== matchedRole.id)
+            ? matchedRole.displayName
+            : (allocNames.get(bName) ?? matchedRole?.displayName ?? member.name);
+          cards.push({ id: matchedRole?.id ?? member.name, name: resolvedName, lead, member, role: matchedRole ?? null });
+        }
+      }
       return cards.map(card => {
         const owner = card.member?.name ?? card.id;
-        const mine = tasks.filter(task => task.ownerName === owner && task.status !== 'completed');
+        const bId = card.id ? baseName(card.id) : '';
+        const mine = tasks.filter(task => (task.ownerName === owner || task.ownerName === card.id || (task.ownerName && baseName(task.ownerName) === bId)) && task.status !== 'completed');
         const status = card.member?.status ?? 'inactive';
         const task = mine.find(task => task.status === 'in_progress') ?? mine[0];
         // Item 9: "configured" (role.provider/role.model, or this role's primary allocation) is distinct from
@@ -153,7 +168,7 @@
         const cur = act.current;
         const activeCount = typeof act.activeCount === 'number' ? act.activeCount : 0;
         const isHistoryUnsettled = !isRunning && cur && cur.status === 'running';
-        const recentList = Array.isArray(act.recent) ? act.recent.slice(0, 8) : [];
+        const recentList = Array.isArray(act.recent) ? act.recent : [];
 
         let headBadge = null;
         let bodyContent = null;
@@ -166,10 +181,10 @@
             activeCount > 1 ? fmt(t('activity.parallel'), { n: activeCount }) : (cur?.tool ? fmt(t('activity.tool'), { tool: cur.tool }) : t('live.bubbleRunning')));
           const summaryText = cur?.summary ?? '';
           const targetText = cur?.target ? ` ${cur.target}` : '';
-          bodyContent = summaryText || targetText ? `${summaryText}${targetText}` : t('activity.processing');
+          bodyContent = summaryText || targetText ? `${summaryText}${targetText}` : (task?.subject ?? t('live.busyNoTask'));
         } else if (phase === 'model' && activeCount === 0) {
           headBadge = h('span', { className: 'ctm-badge', 'data-tone': 'brand' }, t('activity.processing'));
-          bodyContent = task?.subject ?? t('activity.processing');
+          bodyContent = task?.subject ?? t('live.busyNoTask');
         } else if (phase === 'idle') {
           const idleText = label(t, `live.${card.status}`, card.status);
           headBadge = h('span', { className: 'ctm-sub' }, idleText);
@@ -186,10 +201,15 @@
             h('div', { className: 'ctm-bd-bubble-body ctm-bd-subject' }, bodyContent),
             recentList.length ? h('details', { className: 'ctm-act-recent' },
               h('summary', null, fmt(t('activity.recent'), { n: recentList.length })),
-              h('div', { className: 'ctm-act-list' }, ...recentList.map((item, idx) =>
-                h('div', { key: item.id ?? item.callId ?? idx, className: 'ctm-act-row' },
-                  h('span', { title: item.target ?? '' }, `${item.tool ? item.tool + ': ' : ''}${item.summary ?? ''}${item.target ? ' ' + item.target : ''}`),
-                  h('span', { className: 'ctm-badge', 'data-tone': item.status === 'succeeded' ? 'success' : item.status === 'failed' ? 'error' : undefined }, item.status))))) : null);
+              h('div', { className: 'ctm-act-list' },
+                h(CollapsibleList, {
+                  items: recentList,
+                  limit: 5,
+                  t,
+                  renderItem: (item, idx) => h('div', { key: item.id ?? item.callId ?? idx, className: 'ctm-act-row' },
+                    h('span', { title: item.target ?? '' }, `${item.tool ? item.tool + ': ' : ''}${item.summary ?? ''}${item.target ? ' ' + item.target : ''}`),
+                    h('span', { className: 'ctm-badge', 'data-tone': item.status === 'succeeded' ? 'success' : item.status === 'failed' ? 'error' : undefined }, item.status)),
+                }))) : null);
         }
       }
 

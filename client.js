@@ -100,9 +100,18 @@ window.__ModuleLoader__.load({
       'subagent.openLead': '打开主控会话',
       'roleview.viewOverview': '查看团队总览',
       'roleview.backToRole': '返回角色视图',
+      'roleview.myTasks': '我的任务',
+      'roleview.noTasks': '暂无分配给我的任务',
+      'roleview.activity': '当前活动',
+      'roleview.noActivity': '当前暂无活动记录',
+      'roleview.modelAndPerms': '模型与权限',
+      'roleview.taskControl': '任务控制',
       'roleview.usage': '我的用量',
+      'roleview.noUsage': '暂无用量记录',
       'roleview.artifacts': '我的交付物',
+      'roleview.noArtifacts': '暂无交付物',
       'roleview.logs': '我的日志',
+      'roleview.noLogs': '暂无日志记录',
       'subtabs.team': '团队成员',
       'subtabs.models': '模型分配',
       'subtabs.runtime': '运行状态',
@@ -257,6 +266,8 @@ window.__ModuleLoader__.load({
       'control.error.network': '网络请求失败',
       'control.error.reconfirm': '请重新查看最新状态后再确认一次。',
       'control.pending': '处理中…',
+      'list.more': '更多（剩余 {n} 条）',
+      'list.collapse': '收起',
     };
 
     const en = {
@@ -351,9 +362,18 @@ window.__ModuleLoader__.load({
       'subagent.openLead': 'Open Lead session',
       'roleview.viewOverview': 'View team overview',
       'roleview.backToRole': 'Back to role view',
+      'roleview.myTasks': 'My Tasks',
+      'roleview.noTasks': 'No tasks assigned to me',
+      'roleview.activity': 'Current Activity',
+      'roleview.noActivity': 'No activity recorded yet',
+      'roleview.modelAndPerms': 'Model & Permissions',
+      'roleview.taskControl': 'Task Control',
       'roleview.usage': 'My usage',
+      'roleview.noUsage': 'No usage recorded yet',
       'roleview.artifacts': 'My artifacts',
+      'roleview.noArtifacts': 'No artifacts yet',
       'roleview.logs': 'My logs',
+      'roleview.noLogs': 'No logs recorded yet',
       'subtabs.team': 'Team members',
       'subtabs.models': 'Model allocation',
       'subtabs.runtime': 'Runtime status',
@@ -508,6 +528,8 @@ window.__ModuleLoader__.load({
       'control.error.network': 'The network request failed',
       'control.error.reconfirm': 'Please review the latest state and confirm again.',
       'control.pending': 'Working…',
+      'list.more': 'More ({n} remaining)',
+      'list.collapse': 'Collapse',
     };
 
     const CSS = `
@@ -640,9 +662,10 @@ window.__ModuleLoader__.load({
 .ctm-card,.ctm-ov{--ctm-accent:var(--dsw-alias-state-business-primary,var(--dsw-alias-link,#4d6bfe))}
 .ctm-ov .ctm-badge[data-tone=brand]{color:var(--ctm-accent)}
 .ctm-ov{container:ctm-ov/inline-size;background:var(--dsw-alias-bg-base);display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box;color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size-secondary,13px)}
-.ctm-ov-head{flex:none;display:flex;flex-direction:column;gap:2px;padding:12px 16px 10px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
-.ctm-ov-titlerow{display:flex;align-items:center;gap:8px;min-width:0}
-.ctm-ov-title{margin:0;font-size:15px;font-weight:600;line-height:24px}
+.ctm-ov-head{flex:none;display:flex;flex-direction:column;gap:1px;padding:8px 16px 6px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
+.ctm-ov-titlerow{display:flex;align-items:center;gap:6px;min-width:0}
+.ctm-ov-title{margin:0;font-size:14px;font-weight:600;line-height:20px}
+.ctm-ov-subrow{margin:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-ov-titlerow .ctm-badge{margin-left:0}
 .ctm-ov-refresh{margin-left:auto}
 .ctm-ov-scroll{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:12px 16px 24px}
@@ -812,6 +835,7 @@ window.__ModuleLoader__.load({
 .ctm-badge-alias{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-bd-bubble{position:relative;display:flex;flex-direction:column;gap:3px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);border:.5px solid var(--dsw-alias-border-l2);font-size:12px;line-height:1.45;color:var(--dsw-alias-label-primary)}
 .ctm-bd-bubble-head{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ctm-bd-bubble-head .ctm-badge{margin-left:0}
 .ctm-bd-bubble-body{word-break:break-word;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .ctm-bd-quote{font-style:italic;color:var(--dsw-alias-label-secondary);font-size:11px}
 .ctm-bd-meters{display:flex;flex-direction:column;gap:5px;margin-top:2px}
@@ -853,6 +877,19 @@ window.__ModuleLoader__.load({
 .ctm-rpt-defs{margin-top:8px}
 .ctm-rpt-defs>summary{cursor:pointer;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .ctm-rpt-defs-list{display:flex;flex-direction:column;gap:6px;margin-top:6px;padding:8px;background:var(--dsw-alias-bg-layer-1);border-radius:6px;font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.5}
+.ctm-collapse-wrap{display:contents}
+.ctm-list-toggle{align-self:flex-start;margin-top:4px;font-size:11px;padding:2px 8px;border-radius:4px}
+.ctm-teammate-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;margin-bottom:12px;background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l1);border-radius:8px}
+.ctm-tm-info{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.ctm-tm-avatar{width:32px;height:32px;border-radius:50%;background:var(--ctm-accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex:none}
+.ctm-tm-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ctm-tm-names{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ctm-tm-sub{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dsw-alias-label-secondary);flex-wrap:wrap}
+.ctm-tm-actions{display:flex;align-items:center;gap:8px;flex:none}
+.ctm-rv-empty{margin:4px 0 8px;font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.ctm-rv-tasks{display:flex;flex-direction:column;gap:6px}
+.ctm-rv-task{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l2);border-radius:6px;font-size:12px}
+.ctm-rv-task-title{display:flex;align-items:center;gap:6px;min-width:0;color:var(--dsw-alias-label-primary)}
 @media (prefers-reduced-motion:reduce){.ctm-switch,.ctm-switch::after,.ctm-ov-group>summary::before,.ctm-bd-open-btn{transition:none!important}}
 `;
 
@@ -878,6 +915,7 @@ window.__ModuleLoader__.load({
       return parts.length ? `${cleanPath}?${parts.join('&')}` : cleanPath;
     };
     const fmt = (text, values) => String(text).replace(/\{(\w+)\}/g, (_, k) => (values[k] ?? ''));
+    const baseName = name => String(name ?? '').replace(/-r\d+$/, '');
     const firstLine = text => { const s = String(text ?? '').trim(); const i = s.indexOf('\n'); return i === -1 ? s : s.slice(0, i); };
     const parse = raw => { if (typeof raw !== 'string' || !raw) return undefined; try { const v = JSON.parse(raw); return v && typeof v === 'object' ? v : undefined; } catch { return undefined; } };
     const cleanError = text => String(text ?? '').replace(/^(?:Error|错误)[:：]\s*/, '');
@@ -937,6 +975,41 @@ window.__ModuleLoader__.load({
     const errorBody = (s, t) => s.state === 'error' && s.output ? section(null, h('pre', { className: 'ctm-pre ctm-error' }, cleanError(s.output))) : null;
     /** Results that are not the expected JSON (older sessions, other versions) stay readable as text. */
     const rawBody = (s, t) => s.state === 'ok' && s.output && !s.data ? section(t('output'), h('pre', { className: 'ctm-pre' }, s.output)) : null;
+
+    // ---------- 03b-collapsible-list.js: 共享可折叠列表组件 ----------
+    /**
+     * CollapsibleList:
+     * 默认展示前 limit (默认 5) 条；超过时底部提供“更多（剩余 N 条）”/“收起”切换按钮。
+     * 当 items <= limit 时不显示切换按钮。
+     */
+    function CollapsibleList({ items = [], limit = 5, renderItem, as = 'div', className, t, expandText, collapseText }) {
+      const [expanded, setExpanded] = React.useState(false);
+      const total = items.length;
+      if (!total) return null;
+
+      const visibleItems = (expanded || total <= limit) ? items : items.slice(0, limit);
+      const remaining = total - limit;
+
+      const moreLabel = expandText
+        ? (typeof expandText === 'function' ? expandText(remaining) : expandText)
+        : (typeof t === 'function' && t('list.more') ? fmt(t('list.more'), { n: remaining }) : `更多（剩余 ${remaining} 条）`);
+
+      const collapseLabel = collapseText
+        ? collapseText
+        : (typeof t === 'function' && t('list.collapse') ? t('list.collapse') : '收起');
+
+      const renderedChildren = visibleItems.map((item, index) => renderItem(item, index));
+      if (total > limit) {
+        renderedChildren.push(h('button', {
+          key: 'ctm-toggle-btn',
+          type: 'button',
+          className: 'ctm-btn ctm-list-toggle',
+          onClick: () => setExpanded(prev => !prev),
+          'aria-expanded': expanded,
+        }, expanded ? collapseLabel : moreLabel));
+      }
+      return h(as, { className }, ...renderedChildren);
+    }
 
     // ---------- capability_dispatch_plan ----------
     function DispatchPlanView(props) {
@@ -1596,7 +1669,7 @@ window.__ModuleLoader__.load({
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('usage.hint')),
         members.length ? h('span', { className: 'ctm-label' }, fmt(t('usage.total'), { n: usageTotal(members) == null ? t('usage.unknown') : compact(usageTotal(members)) })) : null,
         ...(members.length ? members.map((m, index) => {
-          const role = byId.get(m.name);
+          const role = byId.get(m.name) ?? byId.get(baseName(m.name));
           const hasTotals = m.totals && typeof m.totals === 'object';
           const used = hasTotals ? billable(m.totals) : null;
           const max = role?.maxTokens;
@@ -1639,10 +1712,16 @@ window.__ModuleLoader__.load({
       if (!list.length) return null;
       return h('div', { className: 'ctm-ov-block' },
         h('span', { className: 'ctm-label' }, t('logs.live')),
-        h('div', { className: 'ctm-ov-logs' }, ...list.map(row => h('div', { key: row.id, className: 'ctm-ov-log' },
-          h('span', { className: 'ctm-name' }, row.name),
-          row.model ? h('span', { className: 'ctm-ov-route', title: row.model }, row.model) : null,
-          row.stats?.steps ? h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('logs.steps'), { n: row.stats.steps })) : null))));
+        h(CollapsibleList, {
+          items: list,
+          limit: 5,
+          className: 'ctm-ov-logs',
+          t,
+          renderItem: row => h('div', { key: row.id, className: 'ctm-ov-log' },
+            h('span', { className: 'ctm-name' }, row.name),
+            row.model ? h('span', { className: 'ctm-ov-route', title: row.model }, row.model) : null,
+            row.stats?.steps ? h('span', { className: 'ctm-sub ctm-us-num' }, fmt(t('logs.steps'), { n: row.stats.steps })) : null),
+        }));
     }
 
     function EvidenceGroups({ d, sessionId, t }) {
@@ -1658,12 +1737,18 @@ window.__ModuleLoader__.load({
               self && member.name ? badge(t('logs.thisSession'), 'brand', 'self') : null,
               h('span', { className: 'ctm-sub' }, fmt(t('logs.count'), { n: records.length }))),
             member.unavailable ? h('p', { className: 'ctm-ov-note ctm-warn' }, member.unavailable) : null,
-            records.length ? h('div', { className: 'ctm-ov-logs' }, ...records.map(record => h('div', { key: record.seq, className: 'ctm-ov-log' },
-              h('span', { className: 'ctm-sub ctm-ov-seq' }, `#${record.seq}`),
-              h('span', { className: 'ctm-ov-route', title: `${record.provider}/${record.model}` }, `${record.provider}/${record.model}`),
-              badge(t('evidence.short.' + record.evidence), record.evidence === 'assistant-message' ? 'success' : undefined, 'kind'),
-              record.interrupted ? badge(t('logs.interrupted'), 'warn', 'int') : null,
-              h('span', { className: 'ctm-sub ctm-ov-time', title: t('evidence.' + record.evidence) }, when(record.time)))))
+            records.length ? h(CollapsibleList, {
+              items: records,
+              limit: 5,
+              className: 'ctm-ov-logs',
+              t,
+              renderItem: record => h('div', { key: record.seq, className: 'ctm-ov-log' },
+                h('span', { className: 'ctm-sub ctm-ov-seq' }, `#${record.seq}`),
+                h('span', { className: 'ctm-ov-route', title: `${record.provider}/${record.model}` }, `${record.provider}/${record.model}`),
+                badge(t('evidence.short.' + record.evidence), record.evidence === 'assistant-message' ? 'success' : undefined, 'kind'),
+                record.interrupted ? badge(t('logs.interrupted'), 'warn', 'int') : null,
+                h('span', { className: 'ctm-sub ctm-ov-time', title: t('evidence.' + record.evidence) }, when(record.time))),
+            })
               : h('p', { className: 'ctm-sub' }, t('evidence.empty')));
         }));
     }
@@ -1692,7 +1777,7 @@ window.__ModuleLoader__.load({
           ...children.filter(c => c.kind === 'child').map(c => ({ ...(known.get(c.id) ?? { name: c.label ?? c.id, role: 'teammate', diagnostics: [] }), id: c.id, resident: c.activity === 'running' }))]
         : snapshot.members ?? [];
       const members = rows.map(m => {
-        const push = live?.status(m.id);
+        const push = live?.status?.(m.id);
         const status = memberStatus(m, push, fresh);
         return { ...m, status, since: push?.running ? push.since : undefined,
           diagnostics: push?.error && !push.running ? [push.error, ...(m.diagnostics ?? [])] : m.diagnostics ?? [] };
@@ -1707,17 +1792,32 @@ window.__ModuleLoader__.load({
       const members = activity?.members ?? [];
       const tasks = activity?.tasks ?? [];
       const primary = new Map((allocations ?? []).map(a => [a.id, a.primary]));
+      const allocNames = new Map((allocations ?? []).map(a => [a.id, a.displayName]).filter(([_, name]) => Boolean(name)));
       const used = new Set();
       const cards = roles.map(role => {
         const lead = role.id === 'lead' || role.capability === 'orchestrator';
-        const member = members.find(m => !used.has(m) && (lead ? m.role === 'lead' : m.name === role.id));
+        const member = members.find(m => !used.has(m) && (lead ? (m.role === 'lead' || baseName(m.name) === 'lead') : (m.name === role.id || baseName(m.name) === role.id)));
         if (member) used.add(member);
-        return { id: role.id, name: role.displayName ?? role.id, lead, member, role };
+        const resolvedName = (role.displayName && role.displayName !== role.id)
+          ? role.displayName
+          : (allocNames.get(role.id) ?? role.displayName ?? role.id);
+        return { id: role.id, name: resolvedName, lead, member, role };
       });
-      for (const member of members) if (!used.has(member)) cards.push({ id: member.name, name: member.name, lead: member.role === 'lead', member, role: null });
+      for (const member of members) {
+        if (!used.has(member)) {
+          const lead = member.role === 'lead';
+          const bName = lead ? 'lead' : baseName(member.name);
+          const matchedRole = roles.find(r => r.id === bName || (lead && (r.id === 'lead' || r.capability === 'orchestrator')));
+          const resolvedName = (matchedRole?.displayName && matchedRole.displayName !== matchedRole.id)
+            ? matchedRole.displayName
+            : (allocNames.get(bName) ?? matchedRole?.displayName ?? member.name);
+          cards.push({ id: matchedRole?.id ?? member.name, name: resolvedName, lead, member, role: matchedRole ?? null });
+        }
+      }
       return cards.map(card => {
         const owner = card.member?.name ?? card.id;
-        const mine = tasks.filter(task => task.ownerName === owner && task.status !== 'completed');
+        const bId = card.id ? baseName(card.id) : '';
+        const mine = tasks.filter(task => (task.ownerName === owner || task.ownerName === card.id || (task.ownerName && baseName(task.ownerName) === bId)) && task.status !== 'completed');
         const status = card.member?.status ?? 'inactive';
         const task = mine.find(task => task.status === 'in_progress') ?? mine[0];
         // Item 9: "configured" (role.provider/role.model, or this role's primary allocation) is distinct from
@@ -1858,7 +1958,7 @@ window.__ModuleLoader__.load({
         const cur = act.current;
         const activeCount = typeof act.activeCount === 'number' ? act.activeCount : 0;
         const isHistoryUnsettled = !isRunning && cur && cur.status === 'running';
-        const recentList = Array.isArray(act.recent) ? act.recent.slice(0, 8) : [];
+        const recentList = Array.isArray(act.recent) ? act.recent : [];
 
         let headBadge = null;
         let bodyContent = null;
@@ -1871,10 +1971,10 @@ window.__ModuleLoader__.load({
             activeCount > 1 ? fmt(t('activity.parallel'), { n: activeCount }) : (cur?.tool ? fmt(t('activity.tool'), { tool: cur.tool }) : t('live.bubbleRunning')));
           const summaryText = cur?.summary ?? '';
           const targetText = cur?.target ? ` ${cur.target}` : '';
-          bodyContent = summaryText || targetText ? `${summaryText}${targetText}` : t('activity.processing');
+          bodyContent = summaryText || targetText ? `${summaryText}${targetText}` : (task?.subject ?? t('live.busyNoTask'));
         } else if (phase === 'model' && activeCount === 0) {
           headBadge = h('span', { className: 'ctm-badge', 'data-tone': 'brand' }, t('activity.processing'));
-          bodyContent = task?.subject ?? t('activity.processing');
+          bodyContent = task?.subject ?? t('live.busyNoTask');
         } else if (phase === 'idle') {
           const idleText = label(t, `live.${card.status}`, card.status);
           headBadge = h('span', { className: 'ctm-sub' }, idleText);
@@ -1891,10 +1991,15 @@ window.__ModuleLoader__.load({
             h('div', { className: 'ctm-bd-bubble-body ctm-bd-subject' }, bodyContent),
             recentList.length ? h('details', { className: 'ctm-act-recent' },
               h('summary', null, fmt(t('activity.recent'), { n: recentList.length })),
-              h('div', { className: 'ctm-act-list' }, ...recentList.map((item, idx) =>
-                h('div', { key: item.id ?? item.callId ?? idx, className: 'ctm-act-row' },
-                  h('span', { title: item.target ?? '' }, `${item.tool ? item.tool + ': ' : ''}${item.summary ?? ''}${item.target ? ' ' + item.target : ''}`),
-                  h('span', { className: 'ctm-badge', 'data-tone': item.status === 'succeeded' ? 'success' : item.status === 'failed' ? 'error' : undefined }, item.status))))) : null);
+              h('div', { className: 'ctm-act-list' },
+                h(CollapsibleList, {
+                  items: recentList,
+                  limit: 5,
+                  t,
+                  renderItem: (item, idx) => h('div', { key: item.id ?? item.callId ?? idx, className: 'ctm-act-row' },
+                    h('span', { title: item.target ?? '' }, `${item.tool ? item.tool + ': ' : ''}${item.summary ?? ''}${item.target ? ' ' + item.target : ''}`),
+                    h('span', { className: 'ctm-badge', 'data-tone': item.status === 'succeeded' ? 'success' : item.status === 'failed' ? 'error' : undefined }, item.status)),
+                }))) : null);
         }
       }
 
@@ -2137,7 +2242,7 @@ window.__ModuleLoader__.load({
       const filteredItems = filterRole === 'all' ? shelfItems : shelfItems.filter(item => item.roleId === filterRole);
 
       // 本会话变更
-      const changesList = Array.from(changesMap.values()).sort((a, b) => (b.at ?? 0) - (a.at ?? 0)).slice(0, 20);
+      const changesList = Array.from(changesMap.values()).sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 
       const handleOpenPresent = async item => {
         setOpenError(null);
@@ -2229,20 +2334,40 @@ window.__ModuleLoader__.load({
         h('div', { className: 'ctm-art-changes' },
           h('span', { className: 'ctm-label' }, t('artifacts.changes')),
           !changesList.length ? h('p', { className: 'ctm-sub' }, t('artifacts.noChanges'))
-            : changesList.map(chg => {
-                const cKey = `${chg.memberSessionId}:${chg.seq}`;
-                const diffEntry = diffState[cKey];
-                return h('details', { key: cKey, className: 'ctm-chg-item', onToggle: e => { if (e.target.open && !diffEntry) handleToggleChange(chg); } },
-                  h('summary', null, `${chg.roleId} · Turn ${chg.turn ?? '?'} · Seq ${chg.seq}`),
-                  diffEntry?.loading ? h('p', { className: 'ctm-sub' }, t('overview.loading'))
-                    : diffEntry?.error ? h('p', { className: 'ctm-warn' }, diffEntry.error)
-                    : diffEntry?.files ? h('div', { className: 'ctm-chg-diff' },
-                        ...diffEntry.files.map((f, fi) => h('div', { key: fi },
-                          h('strong', null, f.path),
-                          f.error ? h('p', { className: 'ctm-warn' }, f.error)
-                            : h('pre', { className: 'ctm-pre' }, JSON.stringify(f.diff?.hunks ?? f.diff ?? t('artifacts.diffEmpty'), null, 2)))))
-                    : null);
-              })));
+            : (changesList.length <= 5
+                ? changesList.map(chg => {
+                    const cKey = `${chg.memberSessionId}:${chg.seq}`;
+                    const diffEntry = diffState[cKey];
+                    return h('details', { key: cKey, className: 'ctm-chg-item', onToggle: e => { if (e.target.open && !diffEntry) handleToggleChange(chg); } },
+                      h('summary', null, `${chg.roleId} · Turn ${chg.turn ?? '?'} · Seq ${chg.seq}`),
+                      diffEntry?.loading ? h('p', { className: 'ctm-sub' }, t('overview.loading'))
+                        : diffEntry?.error ? h('p', { className: 'ctm-warn' }, diffEntry.error)
+                        : diffEntry?.files ? h('div', { className: 'ctm-chg-diff' },
+                            ...diffEntry.files.map((f, fi) => h('div', { key: fi },
+                              h('strong', null, f.path),
+                              f.error ? h('p', { className: 'ctm-warn' }, f.error)
+                                : h('pre', { className: 'ctm-pre' }, JSON.stringify(f.diff?.hunks ?? f.diff ?? t('artifacts.diffEmpty'), null, 2)))))
+                        : null);
+                  })
+                : h(CollapsibleList, {
+                    items: changesList,
+                    limit: 5,
+                    t,
+                    renderItem: chg => {
+                      const cKey = `${chg.memberSessionId}:${chg.seq}`;
+                      const diffEntry = diffState[cKey];
+                      return h('details', { key: cKey, className: 'ctm-chg-item', onToggle: e => { if (e.target.open && !diffEntry) handleToggleChange(chg); } },
+                        h('summary', null, `${chg.roleId} · Turn ${chg.turn ?? '?'} · Seq ${chg.seq}`),
+                        diffEntry?.loading ? h('p', { className: 'ctm-sub' }, t('overview.loading'))
+                          : diffEntry?.error ? h('p', { className: 'ctm-warn' }, diffEntry.error)
+                          : diffEntry?.files ? h('div', { className: 'ctm-chg-diff' },
+                              ...diffEntry.files.map((f, fi) => h('div', { key: fi },
+                                h('strong', null, f.path),
+                                f.error ? h('p', { className: 'ctm-warn' }, f.error)
+                                  : h('pre', { className: 'ctm-pre' }, JSON.stringify(f.diff?.hunks ?? f.diff ?? t('artifacts.diffEmpty'), null, 2)))))
+                          : null);
+                    },
+                  }))));
     }
 
     /** Battle report view (MVP-B). */
@@ -2481,7 +2606,7 @@ window.__ModuleLoader__.load({
       const est = lease?.estimatedSteps ?? 0;
       const ratio = est > 0 ? Math.min(1, used / est) : 0;
       const tone = stepTone(lease?.judgment);
-      const audit = (Array.isArray(control?.auditTail) ? control.auditTail : []).filter(r => r.roleId === roleId).slice(0, 5);
+      const audit = (Array.isArray(control?.auditTail) ? control.auditTail : []).filter(r => r.roleId === roleId);
       const errorText = error ? `${label(t, `control.error.${error}`, t('control.error.unknown'))}${error === 'conflict' ? ` ${t('control.error.reconfirm')}` : ''}` : null;
       const summary = lease
         ? (lease.status === 'ended' ? t('control.lease.ended') : fmt(t('control.steps.label'), { used, est }))
@@ -2535,7 +2660,15 @@ window.__ModuleLoader__.load({
         h('div', { className: 'ctm-tc-audit' },
           h('span', { className: 'ctm-sub' }, t('control.audit.title')),
           audit.length
-            ? h('ul', null, ...audit.map(r => h('li', { key: r.eventId }, `${timeOfDay(r.at)} · ${String(r.action ?? '')}${r.to ? ` → ${routeOf(r.to)}` : ''}${r.reason ? ` · ${String(r.reason)}` : ''}`)))
+            ? (audit.length <= 5
+                ? h('ul', null, ...audit.map(r => h('li', { key: r.eventId }, `${timeOfDay(r.at)} · ${String(r.action ?? '')}${r.to ? ` → ${routeOf(r.to)}` : ''}${r.reason ? ` · ${String(r.reason)}` : ''}`)))
+                : h(CollapsibleList, {
+                    items: audit,
+                    limit: 5,
+                    as: 'ul',
+                    t,
+                    renderItem: r => h('li', { key: r.eventId }, `${timeOfDay(r.at)} · ${String(r.action ?? '')}${r.to ? ` → ${routeOf(r.to)}` : ''}${r.reason ? ` · ${String(r.reason)}` : ''}`),
+                  }))
             : h('span', { className: 'ctm-sub' }, t('control.audit.empty'))));
     }
 
@@ -2546,7 +2679,7 @@ window.__ModuleLoader__.load({
       const running = cards.filter(c => c.status === 'running').length;
       const canvas = React.useRef(null);
       const links = useBoardLinks(canvas, cards);
-      const openable = c => open && !c.lead && c.member?.id;
+      const openable = c => Boolean(open && !c.lead && c.member?.id && (!currentMemberId || c.member.id !== currentMemberId) && c.status !== 'provisioning' && c.status !== 'failed');
       const tasks = activity?.tasks ?? [];
       const taskRevSig = tasks.map(tk => {
         const b = Array.isArray(tk.blockedBy) ? tk.blockedBy.join(',') : (tk.blockedBy ?? '');
@@ -2711,24 +2844,99 @@ window.__ModuleLoader__.load({
     }
 
     // ---------- role view (teammate session): own role card + own usage/logs/artifacts, no team canvas ----------
-    /** Teammate sessions see only themselves: no PolicyEditor, no other members' usage/logs/artifacts. */
+    /**
+     * Teammate sessions see only themselves:
+     * 1. My Tasks (tasks where baseName(task.ownerName) === myRoleId, sorted: in_progress -> pending -> completed)
+     * 2. Current Activity & Recent Activities
+     * 3. Model & Permissions (RoleCards)
+     * 4. Task Control (TaskControl)
+     * 5. Usage (UsageGroups)
+     * 6. Artifacts (ArtifactsRack)
+     * 7. Logs (EvidenceGroups)
+     */
     function RoleView({ sessionId, role, liveByRole, usage, d, liveTeam, live, runtimeState, t }) {
-      const ownUsage = usage.filter(row => row.id === sessionId || row.name === role?.displayName || row.name === role?.id);
+      const myRoleId = role?.id;
+      const ownUsage = usage.filter(row => row.id === sessionId || row.name === role?.displayName || row.name === role?.id || baseName(row.name) === role?.id);
       const ownEvidence = { ...d, memberEvidence: (d?.memberEvidence ?? []).filter(m => m.sessionId === sessionId) };
       const ownLiveTeam = liveTeam ? { ...liveTeam, members: (liveTeam.members ?? []).filter(m => m.id === sessionId) } : liveTeam;
       const control = runtimeState?.data?.taskControl;
+
+      // 1. My Tasks
+      const allTasks = Array.isArray(liveTeam?.tasks) ? liveTeam.tasks : [];
+      const myTasks = allTasks.filter(task => {
+        const owner = task.ownerName ?? task.owner;
+        return owner && (owner === sessionId || owner === myRoleId || baseName(owner) === myRoleId);
+      });
+      const taskWeight = { in_progress: 1, pending: 2, completed: 3 };
+      const sortedTasks = [...myTasks].sort((a, b) => (taskWeight[a.status] ?? 9) - (taskWeight[b.status] ?? 9));
+
+      // 2. Current Activity & Recent
+      const act = live?.projections?.(sessionId)?.activity;
+      const cur = act?.current;
+      const recent = Array.isArray(act?.recent) ? act.recent : [];
+
       return h('div', { className: 'ctm-ov-block ctm-rv' },
-        role ? h(RoleCards, { roles: [role], live: liveByRole, t }) : null,
-        control && role ? h(TaskControl, { leadSessionId: live?.parentSessionId?.(sessionId) ?? sessionId, roleId: role.id, name: role.displayName ?? role.id, configured: role.provider ? `${role.provider}/${role.model}` : null, control, t }) : null,
-        h('div', { className: 'ctm-ov-block' },
+        // Section 1: My Tasks
+        h('div', { className: 'ctm-ov-block', 'data-section': 'my-tasks' },
+          h('div', { className: 'ctm-label' }, t('roleview.myTasks')),
+          sortedTasks.length
+            ? h('div', { className: 'ctm-rv-tasks' },
+                ...sortedTasks.map(task => h('div', { key: task.id, className: 'ctm-rv-task' },
+                  h('div', { className: 'ctm-rv-task-title' },
+                    h('span', { className: 'ctm-sub' }, `#${task.id}`),
+                    h('span', { style: { fontWeight: 500 } }, task.subject)),
+                  badge(label(t, `board.taskStatus.${task.status}`, task.status), task.status === 'in_progress' ? 'brand' : task.status === 'completed' ? 'success' : undefined, 'status'))))
+            : h('p', { className: 'ctm-rv-empty' }, t('roleview.noTasks'))),
+
+        // Section 2: Current Activity & Recent Activities
+        h('div', { className: 'ctm-ov-block', 'data-section': 'activity' },
+          h('div', { className: 'ctm-label' }, t('roleview.activity')),
+          cur || recent.length
+            ? h('div', { className: 'ctm-act-wrap' },
+                cur ? h('div', { className: 'ctm-bd-bubble', style: { margin: '4px 0' } },
+                  h('div', { className: 'ctm-bd-bubble-head' },
+                    badge(act.phase === 'tool' ? (cur.tool ? fmt(t('activity.tool'), { tool: cur.tool }) : t('live.bubbleRunning')) : t('activity.processing'), 'brand', 'cur')),
+                  h('div', { className: 'ctm-bd-bubble-body' }, [cur.summary, cur.target ? ` (${cur.target})` : null].filter(Boolean).join(''))) : null,
+                recent.length
+                  ? h(CollapsibleList, {
+                      items: recent,
+                      limit: 5,
+                      t,
+                      renderItem: (item, idx) => h('div', { key: item.id ?? item.callId ?? idx, className: 'ctm-act-row' },
+                        h('span', { title: item.target ?? '' }, `${item.tool ? item.tool + ': ' : ''}${item.summary ?? ''}${item.target ? ' ' + item.target : ''}`),
+                        h('span', { className: 'ctm-badge', 'data-tone': item.status === 'succeeded' ? 'success' : item.status === 'failed' ? 'error' : undefined }, item.status)),
+                    })
+                  : null)
+            : h('p', { className: 'ctm-rv-empty' }, t('roleview.noActivity'))),
+
+        // Section 3: Model & Permissions
+        h('div', { className: 'ctm-ov-block', 'data-section': 'model-perms' },
+          h('div', { className: 'ctm-label' }, t('roleview.modelAndPerms')),
+          role ? h(RoleCards, { roles: [role], live: liveByRole, t }) : null),
+
+        // Section 4: Task Control
+        control && role
+          ? h('div', { className: 'ctm-ov-block', 'data-section': 'task-control' },
+              h('div', { className: 'ctm-label' }, t('roleview.taskControl')),
+              h(TaskControl, { leadSessionId: live?.parentSessionId?.(sessionId) ?? sessionId, roleId: role.id, name: role.displayName ?? role.id, configured: role.provider ? `${role.provider}/${role.model}` : null, control, t }))
+          : null,
+
+        // Section 5: Usage
+        h('div', { className: 'ctm-ov-block', 'data-section': 'usage' },
           h('div', { className: 'ctm-label' }, t('roleview.usage')),
-          h(UsageGroups, { rows: ownUsage, roles: role ? [role] : [], t })),
-        h('div', { className: 'ctm-ov-block' },
+          ownUsage.length
+            ? h(UsageGroups, { rows: ownUsage, roles: role ? [role] : [], t })
+            : h('p', { className: 'ctm-rv-empty' }, t('roleview.noUsage'))),
+
+        // Section 6: Artifacts
+        h('div', { className: 'ctm-ov-block', 'data-section': 'artifacts' },
           h('div', { className: 'ctm-label' }, t('roleview.artifacts')),
           h(ArtifactsRack, { sessionId, liveTeam: ownLiveTeam, live, t })),
-        h('div', { className: 'ctm-ov-block' },
+
+        // Section 7: Logs
+        h('div', { className: 'ctm-ov-block', 'data-section': 'logs' },
           h('div', { className: 'ctm-label' }, t('roleview.logs')),
-          d ? h(EvidenceGroups, { d: ownEvidence, sessionId, t }) : h('p', { className: 'ctm-sub' }, t('overview.noData'))));
+          d ? h(EvidenceGroups, { d: ownEvidence, sessionId, t }) : h('p', { className: 'ctm-rv-empty' }, t('roleview.noLogs'))));
     }
 
     // ---------- models panel sub-tabs: team members / model allocation / runtime status ----------
@@ -2759,32 +2967,25 @@ window.__ModuleLoader__.load({
       const ticket = React.useRef(0);
       const [, redraw] = React.useState(0);
       const [children, setChildren] = React.useState(null);
-      // Own locale state (item 3): independent of the host's locale/`t`. Reads localStorage once on mount and
-      // defaults to English when nothing is stored — it must never silently follow the host's Chinese locale by
-      // string-sniffing a host-translated string. setState below triggers a normal re-render; this toggle never
-      // calls window.location.reload.
-      const [locale, setLocale] = React.useState(() => {
-        try { return window.localStorage?.getItem('dsh-capability-team-locale') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; }
-      });
+      const readStoredLocale = () => {
+        try {
+          const val = window.localStorage?.getItem('dsh-capability-team-locale');
+          if (val === 'zh' || val === 'en') return val;
+        } catch {}
+        return null;
+      };
+      const [locale, setLocale] = React.useState(readStoredLocale());
+      const hostProbe = (typeof injectedT === 'function' ? injectedT('overview.hint') : '') || (typeof hostT === 'function' ? hostT('overview.hint') : '');
+      const hostIsZh = /[\u4e00-\u9fa5]/.test(hostProbe);
+      const isZh = (locale ?? (hostIsZh ? 'zh' : 'en')) === 'zh';
       const toggleLocale = () => {
-        // Use the functional updater so two toggles fired before a re-render (e.g. a test harness calling the
-        // handler twice in a row, or a user double-click) each flip from the true latest value instead of both
-        // reading the same stale render-time `locale` closure and landing on the same next value twice.
         setLocale(prev => {
-          const next = prev === 'zh' ? 'en' : 'zh';
+          const current = prev ?? (hostIsZh ? 'zh' : 'en');
+          const next = current === 'zh' ? 'en' : 'zh';
           try { window.localStorage?.setItem('dsh-capability-team-locale', next); } catch { /* storage unavailable */ }
           return next;
         });
       };
-      const isZh = locale === 'zh';
-      // Item 3 (true bilingual rendering): the plugin's own zh/en dictionaries are now the source of truth for
-      // every t() call inside Overview, keyed off this component's own `locale` state — not the host's. A test
-      // harness that injects its own `props.t` (the ~40+ existing `t: key => key` sites) keeps getting that exact
-      // function verbatim, so none of those raw-key-echo assertions change. In production, where the host passes
-      // its own translator as `hostT` (see the registration site) and does not inject `props.t`, this looks the
-      // key up in the plugin's own dictionary for the current `locale` first, interpolates {vars} with fmt, and
-      // only falls back to the host's translator (then the bare key) when the plugin has no entry for that key —
-      // so the host's locale can never override the plugin's own toggle once this component owns a word for it.
       const dict = isZh ? zh : en;
       const ownTranslator = (key, vals) => {
         const template = dict[key] ?? en[key];
@@ -2792,7 +2993,7 @@ window.__ModuleLoader__.load({
         if (typeof hostT === 'function') return hostT(key, vals);
         return key;
       };
-      const t = injectedT ?? ownTranslator;
+      const t = locale ? ownTranslator : (injectedT ?? ownTranslator);
       // Root cause of the subagent canvas/roster mismatch (see item 5): a teammate session's own id is not the
       // team's root. Every roster/projection/runtime/open-session call below must use the resolved Lead session
       // id (parentSessionId when this is a subagent, else its own id), never the raw `sessionId` alone.
@@ -2819,7 +3020,7 @@ window.__ModuleLoader__.load({
       React.useEffect(() => () => { ticket.current++; }, [effectiveSessionId]);
       // Host-pushed status changes and the read-only subagent catalog never touch the session log.
       React.useEffect(() => live?.subscribe(() => redraw(n => n + 1)), [live]);
-      const rosterVersion = live?.rosterVersion() ?? 0;
+      const rosterVersion = live?.rosterVersion?.() ?? 0;
       React.useEffect(() => {
         if (!live) return undefined;
         let stopped = false;
@@ -2978,23 +3179,48 @@ window.__ModuleLoader__.load({
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
-      const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name) : null;
-      const subagentNoticeNode = isTeammateSession ? h('div', { className: 'ctm-ov-callout', 'data-tone': 'brand', style: { marginBottom: '12px' } },
-        h('p', { style: { fontWeight: 600 } }, t('subagent.notice')),
-        currentMember ? h('p', { className: 'ctm-sub' }, fmt(t('subagent.currentMember'), { name: currentMember.name, role: currentMember.role ?? currentMember.id })) : null,
-        // The "open Lead session" shortcut only appears when the host actually exposes an open-session API
-        // (same capability that backs `openMember`); otherwise there is nothing useful for the button to do.
-        openMember ? h('button', { type: 'button', className: 'ctm-btn', onClick: () => openMember(effectiveSessionId, effectiveSessionId) }, t('subagent.openLead')) : null)
+      const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name || r.id === baseName(currentMember.name) || (currentMember.role === 'lead' && (r.id === 'lead' || r.capability === 'orchestrator'))) : null;
+      const currentMemberDisplayName = myRole?.displayName ?? currentMember?.name;
+      const currentMemberModel = myRole?.provider ? `${myRole.provider}/${myRole.model}` : null;
+      const currentMemberLive = liveByRole.get(myRole?.id ?? sessionId);
+      const currentMemberStatus = currentMemberLive?.status ?? (currentMember ? (live?.running?.(sessionId) ? 'running' : 'idle') : null);
+
+      const subagentNoticeNode = isTeammateSession ? h('div', { className: 'ctm-teammate-bar' },
+        h('div', { className: 'ctm-tm-info' },
+          h('span', { className: 'ctm-tm-avatar', 'aria-hidden': true }, Array.from(currentMemberDisplayName ?? '?')[0] ?? '?'),
+          h('div', { className: 'ctm-tm-meta' },
+            h('div', { className: 'ctm-tm-names' },
+              h('strong', { style: { fontSize: '13px' } }, currentMemberDisplayName),
+              h('span', { className: 'ctm-sub' }, [myRole?.id, myRole?.capability].filter(Boolean).join(' · ')),
+              currentMemberStatus ? badge(label(t, `live.${currentMemberStatus}`, currentMemberStatus), LIVE[currentMemberStatus], 'st') : null),
+            h('div', { className: 'ctm-tm-sub' },
+              currentMemberModel ? h('span', { className: 'ctm-ov-route', title: currentMemberModel }, currentMemberModel) : null,
+              h('span', { className: 'ctm-sub', style: { display: 'none' } }, t('subagent.notice')),
+              currentMember ? h('span', { className: 'ctm-sub', style: { display: 'none' } }, fmt(t('subagent.currentMember'), { name: currentMemberDisplayName, role: currentMember.role ?? currentMember.id })) : null))),
+        h('div', { className: 'ctm-tm-actions' },
+          openMember ? h('button', { type: 'button', className: 'ctm-btn', onClick: () => openMember(effectiveSessionId) }, t('subagent.openLead')) : null,
+          h('button', { type: 'button', className: 'ctm-btn ctm-ov-roleview-toggle', onClick: () => setShowOverview(v => !v) },
+            t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview'))))
         : isOrphanSubagent ? h('div', { className: 'ctm-ov-callout', 'data-tone': 'warn', style: { marginBottom: '12px' } },
           h('p', { style: { fontWeight: 600 } }, t('subagent.unresolved'))) : null;
+      const subRowText = [
+        team ? [team.name, fmt(t('overview.revision'), { rev: team.revision })].filter(Boolean).join(' · ') : t('overview.hint'),
+        current.at ? fmt(t('overview.updated'), { time: when(current.at) }) : '',
+      ].filter(Boolean).join(' · ');
       return h('section', { className: 'ctm-ov' },
         h('header', { className: 'ctm-ov-head' },
           h('div', { className: 'ctm-ov-titlerow' },
             h('h2', { className: 'ctm-ov-title' }, t('overview.title')),
-            health ? badge(health.text, health.tone, 'health') : null,
-            liveTeam ? badge(t('overview.live'), 'success', 'live') : null,
-            h('button', { type: 'button', className: 'ctm-btn ctm-ov-refresh', disabled: current.pending, onClick: refresh, 'aria-busy': !!current.pending },
-              t(current.pending ? 'overview.loading' : 'overview.refresh')),
+            health && (!isTeammateSession || showOverview) ? badge(health.text, health.tone, 'health') : null,
+            liveTeam && (!isTeammateSession || showOverview) ? badge(t('overview.live'), 'success', 'live') : null,
+            h('button', {
+              type: 'button',
+              className: 'ctm-btn ctm-ov-refresh',
+              disabled: current.pending,
+              onClick: refresh,
+              'aria-busy': !!current.pending,
+              title: t('overview.logNote'),
+            }, t(current.pending ? 'overview.loading' : 'overview.refresh')),
             isTeammateSession ? h('button', { type: 'button', className: 'ctm-btn ctm-ov-roleview-toggle', onClick: () => setShowOverview(v => !v) },
               t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview')) : null,
             h('button', {
@@ -3003,24 +3229,22 @@ window.__ModuleLoader__.load({
               title: t('lang.title'),
               onClick: toggleLocale,
             }, t('lang.toggle'))),
-          h('p', { className: 'ctm-sub' }, team ? [team.name, fmt(t('overview.revision'), { rev: team.revision })].filter(Boolean).join(' · ') : t('overview.hint'),
-            current.at ? ` · ${fmt(t('overview.updated'), { time: when(current.at) })}` : ''),
-          h('p', { className: 'ctm-sub ctm-ov-lognote' }, t('overview.logNote'))),
+          h('p', { className: 'ctm-sub ctm-ov-subrow', title: subRowText }, subRowText)),
         h('div', { className: 'ctm-ov-scroll' },
           subagentNoticeNode,
           current.error ? h('p', { role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, current.error) : null,
           !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(current.pending ? 'overview.loading' : 'overview.empty')),
             current.pending ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
-          d && team ? h('div', { className: 'ctm-ov-stats' },
+          (!isTeammateSession || showOverview) && d && team ? h('div', { className: 'ctm-ov-stats' },
             stat(team.roles?.length ?? 0, t('overview.statRoles'), undefined, 'r'),
             stat(working, t('overview.statWorking'), working ? 'brand' : undefined, 'w'),
             stat(policy?.rows?.length ?? 0, t('overview.statModels'), undefined, 'm'),
             stat(disabledCount, t('overview.statDisabled'), disabledCount ? 'warn' : undefined, 'd'),
             stat(blocked, t('overview.statBlocked'), blocked ? 'error' : undefined, 'b')) : null,
-          d ? (d.ready
+          (!isTeammateSession || showOverview) && d ? (d.ready
             ? h('details', { className: 'ctm-ov-group ctm-ov-diag' }, h('summary', null, h('span', { className: 'ctm-name' }, t('overview.details'))), h('div', { className: 'ctm-ov-block' }, ...diagnostics))
             : h('div', { className: 'ctm-ov-callout', 'data-tone': health.tone }, ...diagnostics)) : null,
-          ...(team?.catalogErrors ?? []).map(error => h('p', { key: error.provider, role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, `${error.provider}: ${error.error}`)),
+          ...((!isTeammateSession || showOverview) ? (team?.catalogErrors ?? []).map(error => h('p', { key: error.provider, role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, `${error.provider}: ${error.error}`)) : []),
           (isTeammateSession && !showOverview) ? h(ErrorBoundary, { key: `${effectiveSessionId}:roleview`, t },
             h(RoleView, { sessionId, role: myRole, liveByRole, usage, d, liveTeam, live, runtimeState, t })) : h(React.Fragment, null,
           shown ? h('nav', { className: 'ctm-ov-tabs', 'aria-label': t('overview.title') },
@@ -3321,7 +3545,7 @@ window.__ModuleLoader__.load({
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput, RoleView, ModelSubTabs });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput, RoleView, ModelSubTabs, CollapsibleList });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {
@@ -3359,10 +3583,16 @@ window.__ModuleLoader__.load({
           // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
           // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.
           // `hostT` is only a fallback for any key missing from the plugin's own zh/en dictionaries.
-          hostT: bound, load, save, live, cache: snapshotCache,
-          // Same navigation as DSH's own Team panel: open the teammate's continuable session.
+          hostT: bound, load: props.load ?? load, save: props.save ?? save, live: props.live ?? live, cache: props.cache ?? snapshotCache,
+          // Same navigation as DSH's own Team panel: open normal session for Lead or continuable subagent address for teammate.
           openMember: typeof ctx.uiWorkspace?.openSession === 'function'
-            ? (parentSessionId, childSessionId) => ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' }) : undefined })));
+            ? (parentSessionId, childSessionId) => {
+              if (!childSessionId || childSessionId === parentSessionId) {
+                ctx.uiWorkspace.openSession(parentSessionId);
+              } else {
+                ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' });
+              }
+            } : undefined })));
         // Each view receives `t`; fall back to the bound translator when the slot does not inject one.
         const withT = View => function CapabilityToolView(props) { return h(View, { ...props, t: props.t ?? bound }); };
         for (const [key, View] of Object.entries(VIEWS)) {

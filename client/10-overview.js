@@ -5,32 +5,25 @@
       const ticket = React.useRef(0);
       const [, redraw] = React.useState(0);
       const [children, setChildren] = React.useState(null);
-      // Own locale state (item 3): independent of the host's locale/`t`. Reads localStorage once on mount and
-      // defaults to English when nothing is stored — it must never silently follow the host's Chinese locale by
-      // string-sniffing a host-translated string. setState below triggers a normal re-render; this toggle never
-      // calls window.location.reload.
-      const [locale, setLocale] = React.useState(() => {
-        try { return window.localStorage?.getItem('dsh-capability-team-locale') === 'zh' ? 'zh' : 'en'; } catch { return 'en'; }
-      });
+      const readStoredLocale = () => {
+        try {
+          const val = window.localStorage?.getItem('dsh-capability-team-locale');
+          if (val === 'zh' || val === 'en') return val;
+        } catch {}
+        return null;
+      };
+      const [locale, setLocale] = React.useState(readStoredLocale());
+      const hostProbe = (typeof injectedT === 'function' ? injectedT('overview.hint') : '') || (typeof hostT === 'function' ? hostT('overview.hint') : '');
+      const hostIsZh = /[\u4e00-\u9fa5]/.test(hostProbe);
+      const isZh = (locale ?? (hostIsZh ? 'zh' : 'en')) === 'zh';
       const toggleLocale = () => {
-        // Use the functional updater so two toggles fired before a re-render (e.g. a test harness calling the
-        // handler twice in a row, or a user double-click) each flip from the true latest value instead of both
-        // reading the same stale render-time `locale` closure and landing on the same next value twice.
         setLocale(prev => {
-          const next = prev === 'zh' ? 'en' : 'zh';
+          const current = prev ?? (hostIsZh ? 'zh' : 'en');
+          const next = current === 'zh' ? 'en' : 'zh';
           try { window.localStorage?.setItem('dsh-capability-team-locale', next); } catch { /* storage unavailable */ }
           return next;
         });
       };
-      const isZh = locale === 'zh';
-      // Item 3 (true bilingual rendering): the plugin's own zh/en dictionaries are now the source of truth for
-      // every t() call inside Overview, keyed off this component's own `locale` state — not the host's. A test
-      // harness that injects its own `props.t` (the ~40+ existing `t: key => key` sites) keeps getting that exact
-      // function verbatim, so none of those raw-key-echo assertions change. In production, where the host passes
-      // its own translator as `hostT` (see the registration site) and does not inject `props.t`, this looks the
-      // key up in the plugin's own dictionary for the current `locale` first, interpolates {vars} with fmt, and
-      // only falls back to the host's translator (then the bare key) when the plugin has no entry for that key —
-      // so the host's locale can never override the plugin's own toggle once this component owns a word for it.
       const dict = isZh ? zh : en;
       const ownTranslator = (key, vals) => {
         const template = dict[key] ?? en[key];
@@ -38,7 +31,7 @@
         if (typeof hostT === 'function') return hostT(key, vals);
         return key;
       };
-      const t = injectedT ?? ownTranslator;
+      const t = locale ? ownTranslator : (injectedT ?? ownTranslator);
       // Root cause of the subagent canvas/roster mismatch (see item 5): a teammate session's own id is not the
       // team's root. Every roster/projection/runtime/open-session call below must use the resolved Lead session
       // id (parentSessionId when this is a subagent, else its own id), never the raw `sessionId` alone.
@@ -65,7 +58,7 @@
       React.useEffect(() => () => { ticket.current++; }, [effectiveSessionId]);
       // Host-pushed status changes and the read-only subagent catalog never touch the session log.
       React.useEffect(() => live?.subscribe(() => redraw(n => n + 1)), [live]);
-      const rosterVersion = live?.rosterVersion() ?? 0;
+      const rosterVersion = live?.rosterVersion?.() ?? 0;
       React.useEffect(() => {
         if (!live) return undefined;
         let stopped = false;
@@ -224,23 +217,48 @@
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
-      const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name) : null;
-      const subagentNoticeNode = isTeammateSession ? h('div', { className: 'ctm-ov-callout', 'data-tone': 'brand', style: { marginBottom: '12px' } },
-        h('p', { style: { fontWeight: 600 } }, t('subagent.notice')),
-        currentMember ? h('p', { className: 'ctm-sub' }, fmt(t('subagent.currentMember'), { name: currentMember.name, role: currentMember.role ?? currentMember.id })) : null,
-        // The "open Lead session" shortcut only appears when the host actually exposes an open-session API
-        // (same capability that backs `openMember`); otherwise there is nothing useful for the button to do.
-        openMember ? h('button', { type: 'button', className: 'ctm-btn', onClick: () => openMember(effectiveSessionId, effectiveSessionId) }, t('subagent.openLead')) : null)
+      const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name || r.id === baseName(currentMember.name) || (currentMember.role === 'lead' && (r.id === 'lead' || r.capability === 'orchestrator'))) : null;
+      const currentMemberDisplayName = myRole?.displayName ?? currentMember?.name;
+      const currentMemberModel = myRole?.provider ? `${myRole.provider}/${myRole.model}` : null;
+      const currentMemberLive = liveByRole.get(myRole?.id ?? sessionId);
+      const currentMemberStatus = currentMemberLive?.status ?? (currentMember ? (live?.running?.(sessionId) ? 'running' : 'idle') : null);
+
+      const subagentNoticeNode = isTeammateSession ? h('div', { className: 'ctm-teammate-bar' },
+        h('div', { className: 'ctm-tm-info' },
+          h('span', { className: 'ctm-tm-avatar', 'aria-hidden': true }, Array.from(currentMemberDisplayName ?? '?')[0] ?? '?'),
+          h('div', { className: 'ctm-tm-meta' },
+            h('div', { className: 'ctm-tm-names' },
+              h('strong', { style: { fontSize: '13px' } }, currentMemberDisplayName),
+              h('span', { className: 'ctm-sub' }, [myRole?.id, myRole?.capability].filter(Boolean).join(' · ')),
+              currentMemberStatus ? badge(label(t, `live.${currentMemberStatus}`, currentMemberStatus), LIVE[currentMemberStatus], 'st') : null),
+            h('div', { className: 'ctm-tm-sub' },
+              currentMemberModel ? h('span', { className: 'ctm-ov-route', title: currentMemberModel }, currentMemberModel) : null,
+              h('span', { className: 'ctm-sub', style: { display: 'none' } }, t('subagent.notice')),
+              currentMember ? h('span', { className: 'ctm-sub', style: { display: 'none' } }, fmt(t('subagent.currentMember'), { name: currentMemberDisplayName, role: currentMember.role ?? currentMember.id })) : null))),
+        h('div', { className: 'ctm-tm-actions' },
+          openMember ? h('button', { type: 'button', className: 'ctm-btn', onClick: () => openMember(effectiveSessionId) }, t('subagent.openLead')) : null,
+          h('button', { type: 'button', className: 'ctm-btn ctm-ov-roleview-toggle', onClick: () => setShowOverview(v => !v) },
+            t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview'))))
         : isOrphanSubagent ? h('div', { className: 'ctm-ov-callout', 'data-tone': 'warn', style: { marginBottom: '12px' } },
           h('p', { style: { fontWeight: 600 } }, t('subagent.unresolved'))) : null;
+      const subRowText = [
+        team ? [team.name, fmt(t('overview.revision'), { rev: team.revision })].filter(Boolean).join(' · ') : t('overview.hint'),
+        current.at ? fmt(t('overview.updated'), { time: when(current.at) }) : '',
+      ].filter(Boolean).join(' · ');
       return h('section', { className: 'ctm-ov' },
         h('header', { className: 'ctm-ov-head' },
           h('div', { className: 'ctm-ov-titlerow' },
             h('h2', { className: 'ctm-ov-title' }, t('overview.title')),
-            health ? badge(health.text, health.tone, 'health') : null,
-            liveTeam ? badge(t('overview.live'), 'success', 'live') : null,
-            h('button', { type: 'button', className: 'ctm-btn ctm-ov-refresh', disabled: current.pending, onClick: refresh, 'aria-busy': !!current.pending },
-              t(current.pending ? 'overview.loading' : 'overview.refresh')),
+            health && (!isTeammateSession || showOverview) ? badge(health.text, health.tone, 'health') : null,
+            liveTeam && (!isTeammateSession || showOverview) ? badge(t('overview.live'), 'success', 'live') : null,
+            h('button', {
+              type: 'button',
+              className: 'ctm-btn ctm-ov-refresh',
+              disabled: current.pending,
+              onClick: refresh,
+              'aria-busy': !!current.pending,
+              title: t('overview.logNote'),
+            }, t(current.pending ? 'overview.loading' : 'overview.refresh')),
             isTeammateSession ? h('button', { type: 'button', className: 'ctm-btn ctm-ov-roleview-toggle', onClick: () => setShowOverview(v => !v) },
               t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview')) : null,
             h('button', {
@@ -249,24 +267,22 @@
               title: t('lang.title'),
               onClick: toggleLocale,
             }, t('lang.toggle'))),
-          h('p', { className: 'ctm-sub' }, team ? [team.name, fmt(t('overview.revision'), { rev: team.revision })].filter(Boolean).join(' · ') : t('overview.hint'),
-            current.at ? ` · ${fmt(t('overview.updated'), { time: when(current.at) })}` : ''),
-          h('p', { className: 'ctm-sub ctm-ov-lognote' }, t('overview.logNote'))),
+          h('p', { className: 'ctm-sub ctm-ov-subrow', title: subRowText }, subRowText)),
         h('div', { className: 'ctm-ov-scroll' },
           subagentNoticeNode,
           current.error ? h('p', { role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, current.error) : null,
           !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(current.pending ? 'overview.loading' : 'overview.empty')),
             current.pending ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
-          d && team ? h('div', { className: 'ctm-ov-stats' },
+          (!isTeammateSession || showOverview) && d && team ? h('div', { className: 'ctm-ov-stats' },
             stat(team.roles?.length ?? 0, t('overview.statRoles'), undefined, 'r'),
             stat(working, t('overview.statWorking'), working ? 'brand' : undefined, 'w'),
             stat(policy?.rows?.length ?? 0, t('overview.statModels'), undefined, 'm'),
             stat(disabledCount, t('overview.statDisabled'), disabledCount ? 'warn' : undefined, 'd'),
             stat(blocked, t('overview.statBlocked'), blocked ? 'error' : undefined, 'b')) : null,
-          d ? (d.ready
+          (!isTeammateSession || showOverview) && d ? (d.ready
             ? h('details', { className: 'ctm-ov-group ctm-ov-diag' }, h('summary', null, h('span', { className: 'ctm-name' }, t('overview.details'))), h('div', { className: 'ctm-ov-block' }, ...diagnostics))
             : h('div', { className: 'ctm-ov-callout', 'data-tone': health.tone }, ...diagnostics)) : null,
-          ...(team?.catalogErrors ?? []).map(error => h('p', { key: error.provider, role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, `${error.provider}: ${error.error}`)),
+          ...((!isTeammateSession || showOverview) ? (team?.catalogErrors ?? []).map(error => h('p', { key: error.provider, role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, `${error.provider}: ${error.error}`)) : []),
           (isTeammateSession && !showOverview) ? h(ErrorBoundary, { key: `${effectiveSessionId}:roleview`, t },
             h(RoleView, { sessionId, role: myRole, liveByRole, usage, d, liveTeam, live, runtimeState, t })) : h(React.Fragment, null,
           shown ? h('nav', { className: 'ctm-ov-tabs', 'aria-label': t('overview.title') },

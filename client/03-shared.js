@@ -20,6 +20,7 @@
       return parts.length ? `${cleanPath}?${parts.join('&')}` : cleanPath;
     };
     const fmt = (text, values) => String(text).replace(/\{(\w+)\}/g, (_, k) => (values[k] ?? ''));
+    const baseName = name => String(name ?? '').replace(/-r\d+$/, '');
     const firstLine = text => { const s = String(text ?? '').trim(); const i = s.indexOf('\n'); return i === -1 ? s : s.slice(0, i); };
     const parse = raw => { if (typeof raw !== 'string' || !raw) return undefined; try { const v = JSON.parse(raw); return v && typeof v === 'object' ? v : undefined; } catch { return undefined; } };
     const cleanError = text => String(text ?? '').replace(/^(?:Error|错误)[:：]\s*/, '');

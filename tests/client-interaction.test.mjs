@@ -310,3 +310,77 @@ test('配置自动读取：组队后读取一次，之后只在配置保存计�
   await draw();
   assert.equal(lines.length, 2, '同一计数只自动读取一次');
 });
+
+test('轮换后的成员与快照缺失时：看板卡片与头像首字显示中文显示名', () => {
+  // 1. 模拟快照缺失（roles 快照未加载），但 allocations / policy 中带有 displayName
+  const stateMissingSnapshot = {
+    byId: {},
+    projectionsBySession: {
+      s_lead: {
+        values: {
+          agentTeam: {
+            members: [
+              { id: 's_lead', name: 'lead', role: 'lead', phase: 'active' },
+              { id: 's_dc', name: 'diao-chan-r2', role: 'teammate', phase: 'active' }, // 轮换后的成员名
+            ],
+            tasks: [{ id: 'tk-1', subject: '修复缺陷', ownerName: 'diao-chan-r2', status: 'in_progress' }],
+          },
+        },
+      },
+    },
+  };
+  const sessions = { list: { getSnapshot: () => stateMissingSnapshot, subscribe: () => () => {} }, refreshProjections: async () => {} };
+  const h = harness({ commands: {} }, sessions);
+
+  // 模拟没有 roles 快照，但通过 allocations 提供了 displayName
+  const allocations = [
+    { id: 'lead', displayName: '孙权', primary: 'p/lead-model' },
+    { id: 'diao-chan', displayName: '貂蝉', primary: 'p/dc-model' },
+  ];
+  const element = h.view({ sessionId: 's_lead', t: key => key });
+  const tree = h.render(element.type, { ...element.props });
+  const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
+  assert.ok(board, 'TeamBoard 必须挂载');
+
+  // 直接使用 TeamBoard 测试两种场景：
+  // 场景 A: roles 快照缺失，靠 allocations 解析
+  const viewMissingSnapshot = board.type({
+    ...board.props,
+    roles: [
+      { id: 'lead', displayName: 'lead' },
+      { id: 'diao-chan', displayName: 'diao-chan' },
+    ],
+    allocations,
+  });
+
+  const dcCardA = h.find(viewMissingSnapshot, n => n.props?.['data-card'] === 'diao-chan');
+  assert.ok(dcCardA, '轮换成员 diao-chan-r2 必须匹配到 diao-chan 卡片');
+  const avatarA = h.find(dcCardA, n => n.props?.className === 'ctm-bd-avatar');
+  const nameA = h.find(dcCardA, n => n.props?.className === 'ctm-name');
+  assert.equal(nameA.children[0], '貂蝉', '快照缺失时应从 allocations 取中文显示名“貂蝉”');
+  assert.equal(avatarA.children[0], '貂', '头像首字必须是“貂”');
+
+  const leadCardA = h.find(viewMissingSnapshot, n => n.props?.['data-card'] === 'lead');
+  assert.ok(leadCardA, '主控卡片应存在');
+  const leadAvatarA = h.find(leadCardA, n => n.props?.className === 'ctm-bd-avatar');
+  const leadNameA = h.find(leadCardA, n => n.props?.className === 'ctm-name');
+  assert.equal(leadNameA.children[0], '孙权', '主控显示名应为“孙权”');
+  assert.equal(leadAvatarA.children[0], '孙', '主控头像首字必须是“孙”');
+
+  // 场景 B: roles 快照已正常加载，成员发生轮换 (diao-chan-r2)，卡片依然匹配并显示中文
+  const viewRotated = board.type({
+    ...board.props,
+    roles: [
+      { id: 'lead', displayName: '孙权', capability: 'orchestrator' },
+      { id: 'diao-chan', displayName: '貂蝉', capability: 'frontend' },
+    ],
+    allocations,
+  });
+
+  const dcCardB = h.find(viewRotated, n => n.props?.['data-card'] === 'diao-chan');
+  assert.ok(dcCardB);
+  const avatarB = h.find(dcCardB, n => n.props?.className === 'ctm-bd-avatar');
+  const nameB = h.find(dcCardB, n => n.props?.className === 'ctm-name');
+  assert.equal(nameB.children[0], '貂蝉', '轮换后卡片角色名必须为“貂蝉”');
+  assert.equal(avatarB.children[0], '貂', '轮换后头像首字必须为“貂”');
+});

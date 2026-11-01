@@ -19,10 +19,20 @@ const FREE_TOOL_TEXT = {
   write: '本项目免费模型可读取、新建和编辑项目文件，不能执行命令、联网或访问项目外路径',
 };
 const DECISION = { delegate: '指派队友', free: '交给免费模型', direct: '主控自行处理' };
+const OWN_TOOLS = ['capability_dispatch_plan', 'capability_submit_plan', 'capability_review_plan', 'capability_task_budget', 'capability_member_override', 'capability_handoff', 'capability_rotate_member', 'capability_memory_search', 'capability_memory_write', 'capability_model_prefs'];
+/** Hosts may expose tools as `mcp__<server>__<word>_<name>` (e.g. `brisk_spawn_teammate`); match on `<name>`. */
+export function canonicalTool(name, workflow) {
+  const raw = String(name ?? '').replace(/^mcp__.+?__/, '');
+  const known = [FREE_TOOL, ...OWN_TOOLS, ...workflow.coordinationTools, ...workflow.analysisTools];
+  if (known.includes(raw)) return raw;
+  const tail = raw.slice(raw.indexOf('_') + 1);
+  return raw.includes('_') && known.includes(tail) ? tail : raw;
+}
 export function toolClass(name, workflow) {
+  name = canonicalTool(name, workflow);
   if (name === FREE_TOOL) return 'free';
   // The team's own planning tools always coordinate, whatever a project lists.
-  if (['capability_dispatch_plan', 'capability_submit_plan', 'capability_review_plan', 'capability_task_budget', 'capability_member_override', 'capability_handoff', 'capability_rotate_member', 'capability_memory_search', 'capability_memory_write', 'capability_model_prefs'].includes(name) || workflow.coordinationTools.includes(name)) return 'coordination';
+  if (OWN_TOOLS.includes(name) || workflow.coordinationTools.includes(name)) return 'coordination';
   if (workflow.analysisTools.includes(name)) return 'analysis';
   return 'execution';
 }
@@ -36,7 +46,7 @@ export function decide(state, exec, workflow) {
   const plan = state.plan;
   const replan = '重新调用 capability_dispatch_plan';
   if (kind === 'coordination') {
-    if (exec.name !== 'spawn_teammate') return undefined;
+    if (canonicalTool(exec.name, workflow) !== 'spawn_teammate') return undefined;
     const name = exec.arguments?.name;
     if (!plan) return `创建队友前先调用 capability_dispatch_plan：分析本次需求，指派合适的已登记角色（角色与适用场景见团队上下文的名册）。`;
     if (plan.mode !== 'delegate' || !plan.assignments.some(a => a.role === name)) {
@@ -129,7 +139,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
       if (workflow.mode !== 'enforce') return undefined;
       // A successor planned by capability_rotate_member stands in for its assigned role.
       const name = exec.arguments?.name;
-      if (exec.name === 'spawn_teammate' && rotation?.plannedSuccessor(exec.agent.id, name)) {
+      if (canonicalTool(exec.name, workflow) === 'spawn_teammate' && rotation?.plannedSuccessor(exec.agent.id, name)) {
         const plan = state(exec.agent).plan;
         if (plan?.mode === 'delegate' && plan.assignments.some(a => a.role === baseName(name))) return undefined;
       }

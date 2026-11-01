@@ -5,7 +5,7 @@
       const running = cards.filter(c => c.status === 'running').length;
       const canvas = React.useRef(null);
       const links = useBoardLinks(canvas, cards);
-      const openable = c => open && !c.lead && c.member?.id;
+      const openable = c => Boolean(open && !c.lead && c.member?.id && (!currentMemberId || c.member.id !== currentMemberId) && c.status !== 'provisioning' && c.status !== 'failed');
       const tasks = activity?.tasks ?? [];
       const taskRevSig = tasks.map(tk => {
         const b = Array.isArray(tk.blockedBy) ? tk.blockedBy.join(',') : (tk.blockedBy ?? '');

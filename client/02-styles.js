@@ -128,9 +128,10 @@
 .ctm-card,.ctm-ov{--ctm-accent:var(--dsw-alias-state-business-primary,var(--dsw-alias-link,#4d6bfe))}
 .ctm-ov .ctm-badge[data-tone=brand]{color:var(--ctm-accent)}
 .ctm-ov{container:ctm-ov/inline-size;background:var(--dsw-alias-bg-base);display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box;color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size-secondary,13px)}
-.ctm-ov-head{flex:none;display:flex;flex-direction:column;gap:2px;padding:12px 16px 10px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
-.ctm-ov-titlerow{display:flex;align-items:center;gap:8px;min-width:0}
-.ctm-ov-title{margin:0;font-size:15px;font-weight:600;line-height:24px}
+.ctm-ov-head{flex:none;display:flex;flex-direction:column;gap:1px;padding:8px 16px 6px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
+.ctm-ov-titlerow{display:flex;align-items:center;gap:6px;min-width:0}
+.ctm-ov-title{margin:0;font-size:14px;font-weight:600;line-height:20px}
+.ctm-ov-subrow{margin:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-ov-titlerow .ctm-badge{margin-left:0}
 .ctm-ov-refresh{margin-left:auto}
 .ctm-ov-scroll{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:12px 16px 24px}
@@ -300,6 +301,7 @@
 .ctm-badge-alias{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-bd-bubble{position:relative;display:flex;flex-direction:column;gap:3px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);border:.5px solid var(--dsw-alias-border-l2);font-size:12px;line-height:1.45;color:var(--dsw-alias-label-primary)}
 .ctm-bd-bubble-head{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ctm-bd-bubble-head .ctm-badge{margin-left:0}
 .ctm-bd-bubble-body{word-break:break-word;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .ctm-bd-quote{font-style:italic;color:var(--dsw-alias-label-secondary);font-size:11px}
 .ctm-bd-meters{display:flex;flex-direction:column;gap:5px;margin-top:2px}
@@ -341,5 +343,18 @@
 .ctm-rpt-defs{margin-top:8px}
 .ctm-rpt-defs>summary{cursor:pointer;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .ctm-rpt-defs-list{display:flex;flex-direction:column;gap:6px;margin-top:6px;padding:8px;background:var(--dsw-alias-bg-layer-1);border-radius:6px;font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.5}
+.ctm-collapse-wrap{display:contents}
+.ctm-list-toggle{align-self:flex-start;margin-top:4px;font-size:11px;padding:2px 8px;border-radius:4px}
+.ctm-teammate-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;margin-bottom:12px;background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l1);border-radius:8px}
+.ctm-tm-info{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.ctm-tm-avatar{width:32px;height:32px;border-radius:50%;background:var(--ctm-accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex:none}
+.ctm-tm-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ctm-tm-names{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ctm-tm-sub{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dsw-alias-label-secondary);flex-wrap:wrap}
+.ctm-tm-actions{display:flex;align-items:center;gap:8px;flex:none}
+.ctm-rv-empty{margin:4px 0 8px;font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.ctm-rv-tasks{display:flex;flex-direction:column;gap:6px}
+.ctm-rv-task{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l2);border-radius:6px;font-size:12px}
+.ctm-rv-task-title{display:flex;align-items:center;gap:6px;min-width:0;color:var(--dsw-alias-label-primary)}
 @media (prefers-reduced-motion:reduce){.ctm-switch,.ctm-switch::after,.ctm-ov-group>summary::before,.ctm-bd-open-btn{transition:none!important}}
 `;
