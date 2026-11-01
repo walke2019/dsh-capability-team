@@ -3,7 +3,7 @@ import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 const base = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const out = resolve(base, 'packages/cpa-tools/shared');
+const out = resolve(base, 'packages/omni-search/shared');
 export async function buildShared(check = false) {
   const manifest = {};
   async function visit(name) {

@@ -49,8 +49,8 @@ A configurable, capability-routed multi-agent team preset that extends DSH’s n
 - No integrations page or settings UI; integration configuration is read-only.
 
 ### Independent tools and memory
-- `packages/cpa-tools` provides search, web fetch, search-provider listing, and transcription to all sessions without a UI.
-- `packages/global-memory` reads embedding and OpenViking settings; the team plugin's memory hub reads the same configuration.
+- `packages/omni-search` (`@local/dsh-omni-search`) provides vendor-neutral multi-engine search (Tavily, Brave, SearXNG, or a custom gateway, with failover), web fetch (keyless via Jina Reader by default), and transcription to all sessions without a UI: `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe`, `omni_transcribe_status`.
+- `packages/global-memory` works fully locally with zero configuration; optional OpenAI-compatible embeddings and a pluggable shared backend (`local` by default, or `openviking`). The team plugin's memory hub reads the same configuration.
 - See [configuration reference](docs/configuration.md) and each package README for setup and schema.
 
 ## Quick Start
@@ -69,22 +69,35 @@ A configurable, capability-routed multi-agent team preset that extends DSH’s n
 
 ### Minimal setup
 
-Register providers and models in DSH first. The preset derives assignments from that catalog. There is no integrations page; configuration is read-only and is supplied through a file, host environment variables, or the DSH credential store. Install and enable `packages/cpa-tools` and `packages/global-memory` (or their corresponding `.tgz` packages) in DSH’s plugin manager, then restart DSH. See each package README for details.
+Register providers and models in DSH first. The preset derives assignments from that catalog. There is no integrations page; configuration is read-only and is supplied through a file, host environment variables, or the DSH credential store. Install and enable `packages/omni-search` and `packages/global-memory` (or their corresponding `.tgz` packages) in DSH’s plugin manager, then restart DSH. See each package README for details.
 
 The configuration file is `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`; `CAPABILITY_TEAM_HOME` can override its directory. Example:
 
 ```json
 {
   "integrations": {
-    "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_SEARCH_API_KEY" },
-    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_AUDIO_API_KEY" },
-    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_EMBED_API_KEY", "model": "<model>" },
-    "openviking": { "url": "https://gateway.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
+    "search": { "engines": ["tavily", "searxng"], "fetchEngines": ["jina"], "searxngUrl": "http://127.0.0.1:8888" },
+    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "OMNI_AUDIO_API_KEY" },
+    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "EMBEDDING_API_KEY", "model": "<model>" },
+    "memory": { "backend": "openviking", "url": "https://memory.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
   }
 }
 ```
 
-Alternatively set `CPA_SEARCH_BASE_URL`, `CPA_AUDIO_BASE_URL`, `CPA_EMBED_BASE_URL`, and `OPENVIKING_URL`. Keep secrets in the DSH credential store or named environment variables, never as literal config values. `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` and `CAPABILITY_TEAM_OPENCODE_MODELS` configure the optional free-text task channel.
+Zero configuration: `omni_fetch` works without any key (Jina Reader), memory is fully local, and `omni_search` needs just one of `TAVILY_API_KEY`, `BRAVE_API_KEY`, or `SEARXNG_URL`. Other environment variables: `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` (custom gateway), `JINA_API_KEY` (optional), `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY`, `EMBEDDING_BASE_URL` / `EMBEDDING_API_KEY` / `EMBEDDING_MODEL` / `EMBEDDING_DIMENSIONS`, and `OPENVIKING_URL`. Keep secrets in the DSH credential store or named environment variables, never as literal config values. `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` and `CAPABILITY_TEAM_OPENCODE_MODELS` configure the optional free-text task channel.
+
+### Migration from cpa-tools
+
+Breaking change: old names are no longer recognized.
+
+| Old | New |
+|---|---|
+| `packages/cpa-tools` | `packages/omni-search` (`@local/dsh-omni-search`, patch id `omni-search`) |
+| `cpa_search`, `cpa_fetch`, `cpa_search_providers` | `omni_search`, `omni_fetch`, `omni_search_providers` |
+| `cpa_transcribe`, `cpa_transcribe_status` | `omni_transcribe`, `omni_transcribe_status` |
+| `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` (the `custom` engine) |
+| `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |
+| `CPA_EMBED_*` | `EMBEDDING_*` (legacy names still read when the new one is unset) |
 
 Start a new team session and ask: “Read the team configuration.” The lead can report the current role and model-matching summary.
 
@@ -104,7 +117,7 @@ See the [configuration reference](docs/configuration.md) for all options.
 - **Team services:** DSH `ctx.agentTeams` API and native task-board tools.
 - **Workbench:** JavaScript sources in `client/`, bundled into `client.js`.
 - **Tests:** Node.js built-in `node:test` runner.
-- **Optional integrations:** configured search/embedding HTTP services and OpenViking memory.
+- **Optional integrations:** search engines (Tavily, Brave, SearXNG, custom gateway), Jina Reader fetch, OpenAI-compatible embeddings, and pluggable shared memory backends (OpenViking).
 
 ## Project Structure
 

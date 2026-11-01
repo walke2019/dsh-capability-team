@@ -16,7 +16,7 @@ import { createTokenMetrics, usageSample } from './token-metrics.js';
 export const TOKEN_RULES = { idleCompactRatio: 0.35, trimToolOutputChars: 6000, keepHeadChars: 3000, keepTailChars: 1500 };
 const KEYS = Object.keys(TOKEN_RULES);
 /** Tools whose output is a log or listing rather than content the model must read whole. */
-export const TRIMMED_TOOLS = new Set(['bash', 'pwsh', 'grep', 'glob', 'job_output', 'web_fetch', 'web_search', 'cpa_web_fetch', 'cpa_search', 'session_search', 'session_event_search']);
+export const TRIMMED_TOOLS = new Set(['bash', 'pwsh', 'grep', 'glob', 'job_output', 'web_fetch', 'web_search', 'omni_fetch', 'omni_search', 'session_search', 'session_event_search']);
 export function validateTokenRules(value) {
   if (value === undefined || value === null) return { ...TOKEN_RULES };
   if (value === false) return false;

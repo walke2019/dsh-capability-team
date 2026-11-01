@@ -17,7 +17,7 @@ Tool-schema tests verify the registered tool JSON schemas. Integration behavior 
 
 ## Verification status and known limitations
 
-The documented baseline is 372 passing tests with zero failures. Unit tests use mocked host APIs and do not replace interactive browser/Desktop acceptance. Optional gateways, audio, and shared memory require user-supplied endpoints and credentials; their availability is environment-dependent. Read the latest task/CI results rather than treating this baseline as a claim that every integration is live-verified.
+The documented baseline is 399 root + 23 omni-search + 25 global-memory passing tests with zero failures (`npm test` runs all three suites). Unit tests use mocked host APIs and do not replace interactive browser/Desktop acceptance. Optional gateways, audio, and shared memory require user-supplied endpoints and credentials; their availability is environment-dependent. Read the latest task/CI results rather than treating this baseline as a claim that every integration is live-verified.
 
 ## File and context rules: summary
 

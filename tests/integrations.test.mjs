@@ -14,13 +14,14 @@ test('工具注册；检索权限来自能力配置', async () => {
   assert.equal(disposers.length, 1);
 });
 
-test('不从 CPA_BASE_URL 猜测搜索网关；CPA_SEARCH_BASE_URL 环境变量覆盖配置', async () => {
+test('不从 CPA_BASE_URL 猜测搜索网关；OMNI_SEARCH_BASE_URL 环境变量覆盖配置', async () => {
   const { searchSettings } = await import('../search.js');
   const { resolveIntegrations } = await import('../integrations-config.js');
   const { mkdtempSync } = await import('node:fs'); const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
   const root = mkdtempSync(join(tmpdir(), 'int-'));
   assert.equal(searchSettings(resolveIntegrations({ root, env: { CPA_BASE_URL: 'https://gw.example/gateway/v1', CPA_API_KEY: 'k' } })).config.baseUrl, null);
-  const s = searchSettings(resolveIntegrations({ root, env: { CPA_SEARCH_BASE_URL: 'https://search.example', CPA_SEARCH_API_KEY: 'k' } }));
+  const s = searchSettings(resolveIntegrations({ root, env: { OMNI_SEARCH_BASE_URL: 'https://search.example', OMNI_SEARCH_API_KEY: 'k', BRAVE_API_KEY: 'b' } }));
   assert.equal(s.config.baseUrl, 'https://search.example');
   assert.equal(s.key, 'k');
+  assert.equal(s.keys.custom, 'k'); assert.equal(s.keys.brave, 'b'); assert.equal(s.keys.tavily, undefined);
 });

@@ -22,7 +22,7 @@ test('密钥先取 DSH 凭据库，再取环境变量；状态只报有无', asy
   assert.equal(presence.search.present, true);
   assert.ok(!JSON.stringify(presence).includes('from-store'));
   // An explicit env object (tests, previews) never sees the store.
-  assert.equal(keyOf('search', resolveIntegrations({ root, env: { CPA_SEARCH_API_KEY: 'env' } })), 'env');
+  assert.equal(keyOf('search', resolveIntegrations({ root, env: { OMNI_SEARCH_API_KEY: 'env' } })), 'env');
 });
 
 test('HTTP 200 也要校验真实结果；错误按状态码给出处理提示，不回显正文', async () => {
@@ -44,8 +44,8 @@ test('渠道列表用 GET，路径来自配置；未配置时不注册该工具'
   assert.equal(seen.init.method, 'GET'); assert.equal(seen.init.body, undefined);
   assert.equal(seen.init.headers.Authorization, 'Bearer K');
   assert.equal(out.data[0].id, 'serper-search');
-  assert.ok('cpa_search_providers' in searchSchemas(config));
-  assert.ok(!('cpa_search_providers' in searchSchemas({ ...config, providersPath: null })));
+  assert.ok('omni_search_providers' in searchSchemas({ ...config, engines: null }));
+  assert.ok(!('omni_search_providers' in searchSchemas({ ...config, providersPath: null })));
   assert.deepEqual(validateIntegrations({ search: { fetchPath: '/v1/crawl', timeoutMs: 120000 } }).search, { fetchPath: '/v1/crawl', timeoutMs: 120000 });
 });
 
@@ -71,7 +71,7 @@ test('语音：授权前不读文件，超限不读；multipart 上传真实字�
   assert.equal(sent.init.body.get('model'), 'whisper-large-v3-turbo');
   assert.ok(![...sent.init.body.values()].some(v => v === 'K'));
   await assert.rejects(transcribe({ bytes, name: 'clip.wav' }, { settings, fetcher: async () => reply(200, { text: '' }) }), /没有转写文本/);
-  await assert.rejects(transcribe({ bytes, name: 'clip.wav' }, { settings, fetcher: async () => reply(413, {}) }), /413（内容超过网关上限）/);
+  await assert.rejects(transcribe({ bytes, name: 'clip.wav' }, { settings, fetcher: async () => reply(413, {}) }), /413（内容超过服务上限）/);
   const status = await audioStatus({ settings, fetcher: async () => reply(200, { mode: 'direct' }) });
   assert.match(status.note, /不代表上游/);
 });

@@ -5,9 +5,9 @@ import { join, dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { temporaryArchive } from '../../scripts/pack-package.mjs';
 import { pathToFileURL } from 'node:url';
-test('actual CPA archive has standalone import closure and no client/config writer', async t => {
-  const temp = await mkdtemp(join(tmpdir(), 'cpa-pack-')); t.after(() => rm(temp, { recursive: true, force: true }));
-  const archive = await temporaryArchive(t, 'packages/cpa-tools');
+test('actual omni-search archive has standalone import closure and no client/config writer', async t => {
+  const temp = await mkdtemp(join(tmpdir(), 'omni-pack-')); t.after(() => rm(temp, { recursive: true, force: true }));
+  const archive = await temporaryArchive(t, 'packages/omni-search');
   for (let pos = 0; pos + 512 <= archive.length;) {
     const header = archive.subarray(pos, pos + 512); if (header.every(b => b === 0)) break;
     const name = header.subarray(0, 100).toString().replace(/\0.*$/, '');

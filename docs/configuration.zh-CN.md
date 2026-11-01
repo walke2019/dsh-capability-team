@@ -8,12 +8,17 @@
 
 | 变量 | 用途 |
 |---|---|
-| `CPA_SEARCH_BASE_URL` | 可选搜索端点，示例：`https://gateway.example.com`。 |
-| `CPA_SEARCH_API_KEY` | 搜索凭据的默认环境变量名。 |
-| `CPA_EMBED_BASE_URL` | 可选嵌入接口地址。 |
-| `CPA_EMBED_MODEL` | 可选嵌入模型。 |
-| `CPA_EMBED_DIMENSIONS` | 可选向量维度。 |
-| `CPA_EMBED_API_KEY` | 嵌入凭据的默认环境变量名。 |
+| `TAVILY_API_KEY` | `tavily` 搜索引擎密钥（`tavily` 抓取引擎同用）。 |
+| `BRAVE_API_KEY` | `brave` 搜索引擎密钥。 |
+| `SEARXNG_URL` | `searxng` 引擎的 SearXNG 实例地址；须 https，仅 127.0.0.1 / localhost / [::1] 可用 http。可选密钥 `SEARXNG_API_KEY`。 |
+| `JINA_API_KEY` | 默认 `jina` 抓取引擎的可选密钥（不设也能抓取）。 |
+| `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` | `custom` 搜索/抓取网关地址与密钥，示例：`https://gateway.example.com`。 |
+| `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` | 语音转写接口地址与密钥。 |
+| `EMBEDDING_BASE_URL` | 可选 OpenAI 兼容嵌入接口地址（旧名回退 `CPA_EMBED_BASE_URL`）。 |
+| `EMBEDDING_MODEL` | 可选嵌入模型（旧名回退 `CPA_EMBED_MODEL`）。 |
+| `EMBEDDING_DIMENSIONS` | 可选向量维度（旧名回退 `CPA_EMBED_DIMENSIONS`）。 |
+| `EMBEDDING_API_KEY` | 嵌入凭据的默认名称（旧名回退 `CPA_EMBED_API_KEY`）。 |
+| `OPENVIKING_URL` / `OPENVIKING_API_KEY` | `openviking` 记忆后端地址与可选密钥。 |
 | `CAPABILITY_TEAM_HOME` | 团队配置存储目录，默认 `~/.dsh/capability-team-themes`。 |
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | 可选 OpenCode 可执行文件路径；未设置时从 `PATH` 查找。 |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | 可选 OpenCode 模型目录路径。 |
@@ -101,24 +106,40 @@
 
 ## 独立工具与集成配置
 
-右侧面板没有集成页或设置界面，配置为只读。通过 `integrations.json`、Host 环境变量或 DSH 凭据库提供配置。在 DSH 插件管理器安装并启用 `packages/cpa-tools` 与 `packages/global-memory` 目录（或对应 `.tgz` 包），然后重启 DSH。团队插件的记忆枢纽也读取 `global-memory` 使用的同一份配置。
+右侧面板没有集成页或设置界面，配置为只读。通过 `integrations.json`、Host 环境变量或 DSH 凭据库提供配置。在 DSH 插件管理器安装并启用 `packages/omni-search` 与 `packages/global-memory` 目录（或对应 `.tgz` 包），然后重启 DSH。团队插件的记忆枢纽也读取 `global-memory` 使用的同一份配置。
 
-`cpa-tools` 无界面，向所有会话提供聚合搜索、网页抓取、搜索渠道列表和语音转写工具；团队插件中 `search: false` 的角色不能调用这五个工具。插件/工具未安装或未启用时，应如实报告。`global-memory` 读取嵌入和 OpenViking 配置。
+`omni-search`（`@local/dsh-omni-search`）无界面，向所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status`，名称刻意区别于 DSH 内置的 `web_search` / `web_fetch`；团队插件中 `search: false` 的角色不能调用这五个工具。插件/工具未安装或未启用时，应如实报告。`global-memory` 读取嵌入和记忆后端配置。
+
+### 搜索与抓取引擎
+
+`search.engines` 为有序列表，取值 `tavily`、`brave`、`searxng`、`custom`；省略时（auto）按此顺序使用所有已配置引擎。可用性故障（超时、网络错误、HTTP 401/403/404、429、5xx 或 200 无结果）切换到下一引擎；输入无效（HTTP 400/413/422）不切换。`search.fetchEngines` 为有序列表，取值 `jina`、`tavily`、`custom`，默认 `["jina"]`（免密钥）。直连引擎使用 `engineTimeoutMs`（默认 30 秒）；自定义网关沿用 `timeoutMs` / `fetchTimeoutMs`（默认 120 秒）。密钥名可用 `tavilyKeyEnv`、`braveKeyEnv`、`searxngKeyEnv`、`jinaKeyEnv` 与 `apiKeyEnv`（custom）改名。`custom` 引擎保留通用网关协议（`baseUrl`、`searchPath`、`fetchPath`、`providersPath`、`headers`、`providers`、`fetchProviders`）；仅在启用 `custom` 时工具才有 `provider` 参数。零配置：抓取无需密钥；搜索需要一个引擎密钥或 SearXNG 地址。各引擎详表见 [packages/omni-search/README.md](../packages/omni-search/README.md)。
 
 配置文件为 `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`，可用 `CAPABILITY_TEAM_HOME` 覆盖目录。示例：
 
 ```json
 {
   "integrations": {
-    "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_SEARCH_API_KEY" },
-    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_AUDIO_API_KEY" },
-    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_EMBED_API_KEY", "model": "<model>" },
-    "openviking": { "url": "https://gateway.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
+    "search": { "engines": ["tavily", "searxng", "custom"], "fetchEngines": ["jina", "custom"], "searxngUrl": "http://127.0.0.1:8888", "baseUrl": "https://gateway.example.com", "apiKeyEnv": "OMNI_SEARCH_API_KEY" },
+    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "OMNI_AUDIO_API_KEY" },
+    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "EMBEDDING_API_KEY", "model": "<model>" },
+    "memory": { "backend": "openviking", "url": "https://memory.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
   }
 }
 ```
 
-也可在 DSH Host 环境设置 `CPA_SEARCH_BASE_URL`、`CPA_AUDIO_BASE_URL`、`CPA_EMBED_BASE_URL` 与 `OPENVIKING_URL`。密钥仅保存在 DSH 凭据库或对应环境变量中，不要写入配置文件。字段详情见两个独立插件的 README。
+也可在 DSH Host 环境设置上表中的变量（`OMNI_SEARCH_BASE_URL`、`SEARXNG_URL`、`OMNI_AUDIO_BASE_URL`、`EMBEDDING_BASE_URL`、`OPENVIKING_URL` 等），环境变量优先于文件。密钥仅保存在 DSH 凭据库或对应环境变量中，不要写入配置文件；每个密钥名先查 DSH 凭据库，再查环境变量。字段详情见两个独立插件的 README。
+
+### 从 cpa-tools 迁移
+
+破坏性变更：旧名称不再识别。
+
+| 旧 | 新 |
+|---|---|
+| `packages/cpa-tools` | `packages/omni-search`（`@local/dsh-omni-search`，patch id `omni-search`） |
+| `cpa_search`、`cpa_fetch`、`cpa_search_providers`、`cpa_transcribe`、`cpa_transcribe_status` | `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status` |
+| `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY`（`custom` 引擎） |
+| `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |
+| `CPA_EMBED_*` | `EMBEDDING_*`（新名未设置时仍读取旧名） |
 
 ## 会话轮换与交接
 
@@ -130,11 +151,11 @@
 
 工作台任务控制显示已用/估算步数、临时模型租约和最近操作。临时模型来自后端目录并需确认；租约可恢复或结束。冲突更新不会自动重试。用量还显示每步平均输入与缓存读取占比，并可提示过长上下文轮换。
 
-## 记忆枢纽与 OpenViking
+## 记忆枢纽与共享后端
 
 本地记忆枢纽按项目保存笔记、决定、踩坑和交接。新任务会自动召回，`capability_memory_search` 可按需检索。排序结合 BM25 与可选向量相似度，并按时间和使用情况加权；无嵌入时退回全文检索。保存前会清除凭据，过期或被替代的记录会在整理时移除。
 
-可选 OpenViking 集成共享非会话记忆。远程端点必须使用 HTTPS；仅同机地址允许 HTTP。服务不可用时排队待写，仍可使用本地搜索。`OPENVIKING_API_KEY` 只作为凭据变量名，不要把实际密钥写入配置。
+本地存储始终是唯一事实来源。`integrations.memory.backend` 选择可插拔共享后端（`memory-backends.js`）：`local`（默认）仅保存在本机；`openviking` 将非会话记忆同步到 OpenViking 服务（`memory.url` / `OPENVIKING_URL`，可选 `account`、`user`）。远程端点必须使用 HTTPS；仅同机地址允许 HTTP。服务不可用时持久排队待写，仍可使用本地搜索。`OPENVIKING_API_KEY` 只作为凭据变量名，不要把实际密钥写入配置。新增后端只需一个 `memory-<id>.js` 文件、`MEMORY_BACKEND_REGISTRY` 中一行，以及在 `MEMORY_BACKENDS` 中加入 id，详见 [packages/global-memory/README.md](../packages/global-memory/README.md)。
 
 ### 嵌入接口格式
 

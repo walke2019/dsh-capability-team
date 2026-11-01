@@ -17,7 +17,7 @@ async function walk(dir) {
   return result;
 }
 // The standalone Host bundle has a separate publication closure.
-for (const bundle of ['global-memory', 'cpa-tools']) {
+for (const bundle of ['global-memory', 'omni-search']) {
 const globalRoot = join(root, 'packages', bundle);
   await stat(join(globalRoot, 'package.json'));
   const check = spawnSync(process.execPath, [join(globalRoot, 'scripts/build-shared.mjs'), '--check'], { encoding: 'utf8', windowsHide: true });

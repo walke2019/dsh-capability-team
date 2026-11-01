@@ -15,12 +15,16 @@ const MAX_BATCH = 40;
 export function memorySettings(resolved = resolveIntegrations()) {
   return { config: resolved.effective.memory, key: keyOf('memory', resolved) };
 }
-export function createOpenViking({ settings, queuePath, warn = () => {}, fetcher = fetch, now = Date.now, schedule = (fn, ms) => { const t = setTimeout(fn, ms); t.unref?.(); return t; } } = {}) {
+// `label` names the caller (e.g. '能力团队' for the team plugin, '全局记忆' for global-memory) at the start of
+// every message sent upstream; the default is neutral (no caller name).
+export function createOpenViking({ settings, queuePath, label = '', warn = () => {}, fetcher = fetch, now = Date.now, schedule = (fn, ms) => { const t = setTimeout(fn, ms); t.unref?.(); return t; } } = {}) {
   const current = () => settings ?? memorySettings();
+  const prefix = String(label ?? '').replace(/[【】\r\n]/g, '').trim().slice(0, 40);
   const queue = createSyncQueue(queuePath ?? (settings ? null : join(defaultRoot(), 'memory', 'openviking-queue.json')), { max: MAX_QUEUE, warn });
   let timer = null;
   let flushing = null;
   const api = {
+    name: 'openviking',
     lastError: null,
     get enabled() { const { config } = current(); return config.backend === 'openviking' && !!config.url; },
     async request(method, path, body, timeoutMs) {
@@ -40,7 +44,7 @@ export function createOpenViking({ settings, queuePath, warn = () => {}, fetcher
     enqueue(memory, who) {
       if (!api.enabled) return false;
       const where = [who?.project ? `项目 ${who.project}` : null, memory.scope?.kind === 'role' ? `角色 ${memory.scope.role}` : null].filter(Boolean).join(' · ');
-      queue.push({ role: 'user', content: `【能力团队${memory.kind === 'pitfall' ? '踩坑' : memory.kind === 'decision' ? '决定' : '记忆'}${where ? ` · ${where}` : ''}】${memory.text}` });
+      queue.push({ role: 'user', content: `【${prefix}${memory.kind === 'pitfall' ? '踩坑' : memory.kind === 'decision' ? '决定' : '记忆'}${where ? ` · ${where}` : ''}】${memory.text}` });
       api.lastError = null;
       if (!timer) timer = schedule(() => { timer = null; void api.flush().catch(() => {}); }, FLUSH_MS);
       return true;

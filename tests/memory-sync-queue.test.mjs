@@ -9,7 +9,7 @@ import { createMemoryHub } from '../memory-hub.js';
 import { createMemoryStore } from '../memory-store.js';
 test('hub search budget and replaced decisions produce revocation', async () => {
   const root = await mkdtemp(join(tmpdir(), 'hub-budget-')), revoked = [];
-  const hub = createMemoryHub({}, { root }, { store: createMemoryStore(root), embedder: { embed: async () => null }, viking: {
+  const hub = createMemoryHub({}, { root }, { store: createMemoryStore(root), embedder: { embed: async () => null }, backend: {
     enabled: true, lastError: null, enqueue() {}, revoke: rows => revoked.push(...rows),
     recall: async () => Array.from({ length: 20 }, (_, i) => ({ memory: { id: String(i), kind: 'note', scope: { kind: 'openviking' }, text: String(i) + 'x'.repeat(1100) } })),
   } });

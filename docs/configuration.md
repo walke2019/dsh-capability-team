@@ -8,12 +8,17 @@ Set variables in the DSH host process environment. Restart DSH after changing th
 
 | Variable | Purpose |
 |---|---|
-| `CPA_SEARCH_BASE_URL` | Optional search endpoint. Example: `https://gateway.example.com`. |
-| `CPA_SEARCH_API_KEY` | Default environment variable name for search credentials. |
-| `CPA_EMBED_BASE_URL` | Optional embeddings endpoint. |
-| `CPA_EMBED_MODEL` | Optional embeddings model. |
-| `CPA_EMBED_DIMENSIONS` | Optional vector dimensions. |
-| `CPA_EMBED_API_KEY` | Default environment variable name for embeddings credentials. |
+| `TAVILY_API_KEY` | Key for the `tavily` search engine (also used by the `tavily` fetch engine). |
+| `BRAVE_API_KEY` | Key for the `brave` search engine. |
+| `SEARXNG_URL` | SearXNG instance for the `searxng` engine; https, or plain http only on 127.0.0.1 / localhost / [::1]. Optional key `SEARXNG_API_KEY`. |
+| `JINA_API_KEY` | Optional key for the default `jina` fetch engine (fetch works without it). |
+| `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` | Address and key of a `custom` search/fetch gateway. Example: `https://gateway.example.com`. |
+| `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` | Transcription endpoint address and key. |
+| `EMBEDDING_BASE_URL` | Optional OpenAI-compatible embeddings endpoint (legacy fallback `CPA_EMBED_BASE_URL`). |
+| `EMBEDDING_MODEL` | Optional embeddings model (legacy fallback `CPA_EMBED_MODEL`). |
+| `EMBEDDING_DIMENSIONS` | Optional vector dimensions (legacy fallback `CPA_EMBED_DIMENSIONS`). |
+| `EMBEDDING_API_KEY` | Default credential name for embeddings (legacy fallback `CPA_EMBED_API_KEY`). |
+| `OPENVIKING_URL` / `OPENVIKING_API_KEY` | Address and optional key for the `openviking` memory backend. |
 | `CAPABILITY_TEAM_HOME` | Team configuration storage; defaults to `~/.dsh/capability-team-themes`. |
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | Optional OpenCode executable path; otherwise discovered from `PATH`. |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | Optional OpenCode model catalog path. |
@@ -101,24 +106,40 @@ Search and web-fetch tools are available only to capabilities with `search: true
 
 ## Independent tools and integrations
 
-There is no integrations page or settings UI. Configuration is read-only and can be supplied through `integrations.json`, host environment variables, or the DSH credential store. Install and enable the independent plugins `packages/cpa-tools` and `packages/global-memory` in the DSH plugin manager (or install their corresponding `.tgz` packages), then restart DSH. The team plugin's memory hub reads the same configuration as `global-memory`.
+There is no integrations page or settings UI. Configuration is read-only and can be supplied through `integrations.json`, host environment variables, or the DSH credential store. Install and enable the independent plugins `packages/omni-search` and `packages/global-memory` in the DSH plugin manager (or install their corresponding `.tgz` packages), then restart DSH. The team plugin's memory hub reads the same configuration as `global-memory`.
 
-`cpa-tools` provides search, web fetch, search-provider listing, and transcription tools to all sessions without a UI. Team-plugin roles with `search: false` cannot call these five tools. If a tool/plugin is unavailable or disabled, report that truthfully. `global-memory` reads embedding and OpenViking settings.
+`omni-search` (`@local/dsh-omni-search`) provides `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe`, and `omni_transcribe_status` to all sessions without a UI. The names deliberately differ from DSH's built-in `web_search` / `web_fetch`. Team-plugin roles with `search: false` cannot call these five tools. If a tool/plugin is unavailable or disabled, report that truthfully. `global-memory` reads embedding and memory-backend settings.
+
+### Search and fetch engines
+
+`search.engines` is an ordered list from `tavily`, `brave`, `searxng`, `custom`; when omitted (auto), every configured engine is used in that order. Availability failures (timeout, network error, HTTP 401/403/404, 429, 5xx, or an empty 200) fall over to the next engine; invalid input (HTTP 400/413/422) does not. `search.fetchEngines` is an ordered list from `jina`, `tavily`, `custom`, default `["jina"]` (keyless). Direct engines use `engineTimeoutMs` (default 30 s); the custom gateway keeps `timeoutMs` / `fetchTimeoutMs` (default 120 s). Key names can be renamed with `tavilyKeyEnv`, `braveKeyEnv`, `searxngKeyEnv`, `jinaKeyEnv`, and `apiKeyEnv` (custom). The `custom` engine keeps the generic gateway protocol (`baseUrl`, `searchPath`, `fetchPath`, `providersPath`, `headers`, `providers`, `fetchProviders`); the `provider` tool argument exists only when `custom` is active. Zero configuration: fetch works without a key; search needs one engine key or a SearXNG URL. See [packages/omni-search/README.md](../packages/omni-search/README.md) for the per-engine table.
 
 The file is `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`; `CAPABILITY_TEAM_HOME` can override the directory. Example:
 
 ```json
 {
   "integrations": {
-    "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_SEARCH_API_KEY" },
-    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_AUDIO_API_KEY" },
-    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_EMBED_API_KEY", "model": "<model>" },
-    "openviking": { "url": "https://gateway.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
+    "search": { "engines": ["tavily", "searxng", "custom"], "fetchEngines": ["jina", "custom"], "searxngUrl": "http://127.0.0.1:8888", "baseUrl": "https://gateway.example.com", "apiKeyEnv": "OMNI_SEARCH_API_KEY" },
+    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "OMNI_AUDIO_API_KEY" },
+    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "EMBEDDING_API_KEY", "model": "<model>" },
+    "memory": { "backend": "openviking", "url": "https://memory.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
   }
 }
 ```
 
-Alternatively set `CPA_SEARCH_BASE_URL`, `CPA_AUDIO_BASE_URL`, `CPA_EMBED_BASE_URL`, and `OPENVIKING_URL` in the DSH host environment. Secrets belong in the DSH credential store or named environment variables, never as literal configuration values. See the plugin READMEs for schemas and details.
+Alternatively set the environment variables listed above (`OMNI_SEARCH_BASE_URL`, `SEARXNG_URL`, `OMNI_AUDIO_BASE_URL`, `EMBEDDING_BASE_URL`, `OPENVIKING_URL`, ...) in the DSH host environment; environment values override the file. Secrets belong in the DSH credential store or named environment variables, never as literal configuration values. Every key name is looked up in the DSH credential store first, then the environment. See the plugin READMEs for schemas and details.
+
+### Migration from cpa-tools
+
+Breaking change: the old names are no longer recognized.
+
+| Old | New |
+|---|---|
+| `packages/cpa-tools` | `packages/omni-search` (`@local/dsh-omni-search`, patch id `omni-search`) |
+| `cpa_search`, `cpa_fetch`, `cpa_search_providers`, `cpa_transcribe`, `cpa_transcribe_status` | `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe`, `omni_transcribe_status` |
+| `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` (the `custom` engine) |
+| `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |
+| `CPA_EMBED_*` | `EMBEDDING_*` (legacy names still read when the new one is unset) |
 
 ## Session rotation and handoff
 
@@ -130,11 +151,11 @@ Confirmed dispatch choices are remembered per capability. Repeated choices can b
 
 The workbench’s Task control shows estimated/used steps, temporary model leases and recent actions. Temporary models come from the backend catalog and require confirmation; leases can be restored or ended. Conflicting updates are not retried automatically. Usage also reports average input per step and cache-read share, and may suggest rotation for very large contexts.
 
-## Memory hub and OpenViking
+## Memory hub and shared backends
 
 The local memory hub stores project-scoped notes, decisions, pitfalls and handoffs. New tasks trigger recall; `capability_memory_search` searches on demand. Ranking combines BM25 and optional vector similarity with recency/use weighting. Without embeddings it falls back to full-text search. Credentials are redacted before storage; stale and superseded records are removed during compaction.
 
-Optional OpenViking integration shares non-session memories. Remote endpoints must use HTTPS; local HTTP is permitted only on the same machine. Pending writes queue during outages and local search remains available. Use `OPENVIKING_API_KEY` as a credential variable name, never as a literal value in configuration.
+The local store is always the source of truth. `integrations.memory.backend` selects a pluggable shared backend (`memory-backends.js`): `local` (default) keeps memories on this machine only; `openviking` mirrors non-session memories to an OpenViking server (`memory.url` / `OPENVIKING_URL`, optional `account`, `user`). Remote endpoints must use HTTPS; local HTTP is permitted only on the same machine. Pending writes queue durably during outages and local search remains available. Use `OPENVIKING_API_KEY` as a credential variable name, never as a literal value in configuration. A new backend is one `memory-<id>.js` file plus one line in `MEMORY_BACKEND_REGISTRY` and the id in `MEMORY_BACKENDS`; see [packages/global-memory/README.md](../packages/global-memory/README.md).
 
 ### Embeddings API shape
 

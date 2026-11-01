@@ -46,7 +46,7 @@ for (const [label, preset, member, child] of [
   assert.equal(await f.events['agent/request-error']({ agent: f.agent }, async () => original), original);
   applyAccess(f.ctx, team);
   assert.equal(f.guards[0]({ agent: f.agent, name: 'write' }), undefined);
-  const hub = createMemoryHub(f.ctx, team, { store: {}, embedder: {}, viking: {} });
+  const hub = createMemoryHub(f.ctx, team, { store: {}, embedder: {}, backend: {} });
   hub.register();
   f.events['agent/created']({ agent: f.agent });
   f.events['agent/inbox/claimed']({ agent: f.agent, message: { text: 'foreign task must not trigger recall' } });

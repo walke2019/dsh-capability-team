@@ -9,9 +9,9 @@
   "scripts": {
     "build:client": "node scripts/build-client.mjs",
     "pretest": "node scripts/build-client.mjs",
-    "test": "node --test tests/*.test.mjs && node --test tests/global-memory/*.test.mjs && node --test tests/cpa-tools/*.test.mjs",
+    "test": "node --test tests/*.test.mjs && node --test tests/global-memory/*.test.mjs && node --test tests/omni-search/*.test.mjs",
     "build:global-memory": "node packages/global-memory/scripts/build-shared.mjs",
-    "build:cpa-tools": "node packages/cpa-tools/scripts/build-shared.mjs",
+    "build:omni-search": "node packages/omni-search/scripts/build-shared.mjs",
     "lint": "node scripts/check.mjs syntax",
     "build": "node scripts/check.mjs package"
   },
@@ -32,6 +32,7 @@
     "free-worker.mjs",
     "integrations.js",
     "search.js",
+    "search-engines.js",
     "transcribe.js",
     "task-bridge.js",
     "theme.js",
@@ -68,6 +69,7 @@
     "memory-store.js",
     "memory-hub.js",
     "memory-openviking.js",
+    "memory-backends.js",
     "preset-guard.js",
     "token-metrics.js",
     "memory-sync-queue.js",

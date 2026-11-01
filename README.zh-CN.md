@@ -49,8 +49,8 @@
 - 不再提供集成页或设置界面；集成配置只读。
 
 ### 独立工具与记忆
-- `packages/cpa-tools` 无界面，向所有会话提供聚合搜索、网页抓取、搜索渠道列表和语音转写。
-- `packages/global-memory` 读取嵌入与 OpenViking 配置；团队插件的记忆枢纽读取同一份配置。
+- `packages/omni-search`（`@local/dsh-omni-search`）无界面，向所有会话提供厂商中立的多引擎搜索（Tavily、Brave、SearXNG 或自定义网关，自动故障切换）、网页抓取（默认经 Jina Reader 免密钥）和语音转写：`omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status`。
+- `packages/global-memory` 零配置即可纯本地运行；可选 OpenAI 兼容嵌入与可插拔共享后端（默认 `local`，可选 `openviking`）。团队插件的记忆枢纽读取同一份配置。
 - 安装步骤和配置格式见[配置参考](docs/configuration.zh-CN.md)及各插件 README。
 
 ## 快速开始
@@ -69,22 +69,35 @@
 
 ### 最小配置
 
-先在 DSH 注册渠道与模型，预设会据此匹配。右侧面板没有集成页，配置只读，可通过配置文件、Host 环境变量或 DSH 凭据库提供。在 DSH 插件管理器安装并启用 `packages/cpa-tools`、`packages/global-memory` 目录或对应 `.tgz` 包，然后重启 DSH。`cpa-tools` 和 `global-memory` 的细节见对应 README。
+先在 DSH 注册渠道与模型，预设会据此匹配。右侧面板没有集成页，配置只读，可通过配置文件、Host 环境变量或 DSH 凭据库提供。在 DSH 插件管理器安装并启用 `packages/omni-search`、`packages/global-memory` 目录或对应 `.tgz` 包，然后重启 DSH。`omni-search` 和 `global-memory` 的细节见对应 README。
 
 配置文件位置为 `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`，可用 `CAPABILITY_TEAM_HOME` 覆盖目录。示例：
 
 ```json
 {
   "integrations": {
-    "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_SEARCH_API_KEY" },
-    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_AUDIO_API_KEY" },
-    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_EMBED_API_KEY", "model": "<model>" },
-    "openviking": { "url": "https://gateway.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
+    "search": { "engines": ["tavily", "searxng"], "fetchEngines": ["jina"], "searxngUrl": "http://127.0.0.1:8888" },
+    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "OMNI_AUDIO_API_KEY" },
+    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "EMBEDDING_API_KEY", "model": "<model>" },
+    "memory": { "backend": "openviking", "url": "https://memory.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
   }
 }
 ```
 
-也可设置 `CPA_SEARCH_BASE_URL`、`CPA_AUDIO_BASE_URL`、`CPA_EMBED_BASE_URL`、`OPENVIKING_URL`。密钥只放在 DSH 凭据库或对应环境变量中；勿写入配置。`CAPABILITY_TEAM_OPENCODE_EXECUTABLE` 和 `CAPABILITY_TEAM_OPENCODE_MODELS` 仍可配置免费文本任务通道。
+零配置：`omni_fetch` 无需任何密钥（Jina Reader），记忆完全本地，`omni_search` 只需设置 `TAVILY_API_KEY`、`BRAVE_API_KEY` 或 `SEARXNG_URL` 之一。其他环境变量：`OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY`（自定义网关）、`JINA_API_KEY`（可选）、`OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY`、`EMBEDDING_BASE_URL` / `EMBEDDING_API_KEY` / `EMBEDDING_MODEL` / `EMBEDDING_DIMENSIONS`、`OPENVIKING_URL`。密钥只放在 DSH 凭据库或对应环境变量中；勿写入配置。`CAPABILITY_TEAM_OPENCODE_EXECUTABLE` 和 `CAPABILITY_TEAM_OPENCODE_MODELS` 仍可配置免费文本任务通道。
+
+### 从 cpa-tools 迁移
+
+破坏性变更：旧名称不再识别。
+
+| 旧 | 新 |
+|---|---|
+| `packages/cpa-tools` | `packages/omni-search`（`@local/dsh-omni-search`，patch id `omni-search`） |
+| `cpa_search`、`cpa_fetch`、`cpa_search_providers` | `omni_search`、`omni_fetch`、`omni_search_providers` |
+| `cpa_transcribe`、`cpa_transcribe_status` | `omni_transcribe`、`omni_transcribe_status` |
+| `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY`（`custom` 引擎） |
+| `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |
+| `CPA_EMBED_*` | `EMBEDDING_*`（新名未设置时仍读取旧名） |
 
 新建团队会话后，可以说：“读取团队配置。”主控会给出当前角色和模型匹配概览。
 
@@ -104,7 +117,7 @@
 - **团队服务：** DSH `ctx.agentTeams` API 与原生任务看板工具。
 - **工作台：** `client/` 中的 JavaScript 源码构建为 `client.js`。
 - **测试：** Node.js 内置 `node:test` 测试运行器。
-- **可选集成：** 可配置的搜索/嵌入 HTTP 服务与 OpenViking 记忆。
+- **可选集成：** 搜索引擎（Tavily、Brave、SearXNG、自定义网关）、Jina Reader 抓取、OpenAI 兼容嵌入，以及可插拔共享记忆后端（OpenViking）。
 
 ## 项目结构
 

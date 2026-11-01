@@ -1,9 +1,9 @@
 {
-  "name": "@local/dsh-cpa-tools", "version": "0.1.0", "private": true, "type": "module",
+  "name": "@local/dsh-omni-search", "version": "0.1.0", "private": true, "type": "module",
   "engines": { "node": ">=22" },
   "description": "Profile-wide search, web fetch and user-approved audio transcription for DSH",
   "exports": { ".": "./index.js", "./locale/*.json": "./locale/*.json", "./icon": "./icon.svg" },
   "files": ["index.js", "shared/**", "cordis.patch.yml", "locale/*.json", "icon.svg", "README.md"],
-  "scripts": { "build": "node scripts/build-shared.mjs", "test": "node --test ../../tests/cpa-tools/*.test.mjs" },
+  "scripts": { "build": "node scripts/build-shared.mjs", "test": "node --test ../../tests/omni-search/*.test.mjs" },
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
 }

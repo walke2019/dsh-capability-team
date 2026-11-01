@@ -8,6 +8,7 @@ import { keyOf, refreshCredentials, resolveIntegrations } from './integrations-c
 import { gatewayBase, httpError } from './search.js';
 import { params } from './tool-schema.js';
 export const AUDIO_TYPES = { '.mp3': 'audio/mpeg', '.mp4': 'audio/mp4', '.m4a': 'audio/mp4', '.mpeg': 'audio/mpeg', '.mpga': 'audio/mpeg', '.wav': 'audio/wav', '.webm': 'audio/webm', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.flac': 'audio/flac' };
+const AUDIO_BASE = { what: '语音转写', field: 'audio.baseUrl', envName: 'OMNI_AUDIO_BASE_URL' };
 const extOf = path => (/\.[^.\\/]+$/.exec(path)?.[0] ?? '').toLowerCase();
 export function audioSettings(resolved = resolveIntegrations()) {
   return { config: resolved.effective.audio, key: keyOf('audio', resolved), keyEnv: resolved.keys.audio.env };
@@ -34,7 +35,7 @@ export async function transcribe({ bytes, name, language, prompt }, { settings, 
   if (!settings) await refreshCredentials();
   const { config, key, keyEnv } = settings ?? audioSettings();
   if (!key) throw new Error(`语音转写缺少密钥：在 DSH 设置中保存凭据 ${keyEnv}，或在 Host 环境设置同名变量`);
-  const origin = gatewayBase(config.baseUrl);
+  const origin = gatewayBase(config.baseUrl, AUDIO_BASE);
   const form = new FormData();
   form.append('file', new Blob([bytes], { type: AUDIO_TYPES[extOf(name)] ?? 'application/octet-stream' }), name);
   if (config.model) form.append('model', config.model);
@@ -56,7 +57,7 @@ export async function audioStatus({ settings, fetcher = fetch, signal } = {}) {
   if (!config.statusPath) throw new Error('未配置语音状态路径 audio.statusPath');
   if (!key) throw new Error(`语音状态查询缺少密钥 ${keyEnv}`);
   const timeout = AbortSignal.timeout(30000);
-  const response = await fetcher(`${gatewayBase(config.baseUrl)}${config.statusPath}`, { method: 'GET', redirect: 'error',
+  const response = await fetcher(`${gatewayBase(config.baseUrl, AUDIO_BASE)}${config.statusPath}`, { method: 'GET', redirect: 'error',
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout, headers: { ...config.headers, Authorization: `Bearer ${key}` } });
   if (!response.ok) throw httpError('语音状态', response.status);
   return { note: '仅代表网关本地服务健康，不代表上游一定成功', status: await response.json() };
@@ -73,7 +74,7 @@ async function approve(ctx, exec, path, size) {
 }
 const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] };
 export function applyTranscribe(ctx) {
-  ctx.effect(() => ctx.tools.register({ name: 'cpa_transcribe', output,
+  ctx.effect(() => ctx.tools.register({ name: 'omni_transcribe', output,
     description: '语音转文字：上传一个本地音频文件到配置的转写网关。每个文件都需用户在确认框中授权；未授权不读取。',
     parameters: params({ file_path: { type: 'string', description: '本地音频文件路径（相对路径按工作目录解析）' }, language: { type: 'string', description: '可选：语言代码，如 zh、en' }, prompt: { type: 'string', description: '可选：术语提示，不得含凭据' } }, ['file_path']),
     async execute(args, exec) {
@@ -85,7 +86,7 @@ export function applyTranscribe(ctx) {
       return JSON.stringify(result);
     },
   }));
-  ctx.effect(() => ctx.tools.register({ name: 'cpa_transcribe_status', output, parameters: params({}, []),
+  ctx.effect(() => ctx.tools.register({ name: 'omni_transcribe_status', output, parameters: params({}, []),
     description: '查询语音转写网关的本地健康状态（不代表上游一定成功）。',
     async execute(_args, exec) { return JSON.stringify(await audioStatus({ signal: exec.signal })); },
   }));

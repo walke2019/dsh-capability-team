@@ -4,7 +4,7 @@
 // Recall is capped (MEMORY_LIMITS.injectChars) and only changes when the task changes, so it costs little
 // context and does not resend the runtime snapshot every step.
 import { createEmbedder } from './memory-embed.js';
-import { createOpenViking } from './memory-openviking.js';
+import { createMemoryBackend } from './memory-backends.js';
 import { redactSecrets } from './memory-redact.js';
 import { MEMORY_KINDS, MEMORY_LIMITS, createMemoryStore } from './memory-store.js';
 import { baseName } from './session-rotation.js';
@@ -13,7 +13,7 @@ import { ownsCapabilityTeam } from './preset-guard.js';
 const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] };
 const SCOPES = ['project', 'role', 'session', 'global'];
 const messageText = message => (Array.isArray(message?.content) ? message.content.map(c => c?.text ?? '').join('\n') : String(message?.text ?? message?.content ?? '')).trim();
-export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root), embedder = createEmbedder(), viking = createOpenViking(), secrets = () => [] } = {}) {
+export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root), embedder = createEmbedder(), backend = createMemoryBackend({ label: '能力团队' }), secrets = () => [] } = {}) {
   const recall = new Map(); // agent id → { query, block }
   const reports = new Map(); // `${session}:${callId}` → text of a pending teammate report
   const identity = agent => {
@@ -44,8 +44,8 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       // Session-scoped notes stay local; everything else also becomes shared long-term memory.
       if (scope !== 'session') {
         try {
-          if (saved.superseded?.length) viking.revoke?.(saved.superseded);
-          if (!saved.merged || saved.superseded?.length) viking.enqueue(saved.memory, who);
+          if (saved.superseded?.length) backend.revoke?.(saved.superseded);
+          if (!saved.merged || saved.superseded?.length) backend.enqueue(saved.memory, who);
         } catch (error) { saved.syncError = error.message; }
       }
       return saved;
@@ -53,7 +53,7 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
     async search(who, { query, k = 6, kinds }) {
       const q = String(query ?? '').slice(0, 2000);
       const limit = Math.min(Math.max(1, k), 20);
-      const [embedded, shared] = await Promise.all([q ? embedOne(q, 'query') : null, kinds ? [] : viking.recall(q)]);
+      const [embedded, shared] = await Promise.all([q ? embedOne(q, 'query') : null, kinds ? [] : backend.recall(q)]);
       void backfill(who.project).catch(() => {});
       const local = await store.search({ project: who.project, role: who.lead ? undefined : who.role, session: who.session, query: q, vector: embedded?.vector, vectorModel: embedded?.model, k: limit, kinds });
       // Team memories first (scoped to this project/role), then shared long-term ones not already covered.
@@ -64,9 +64,9 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
         if (results.length >= limit || chars + size > 12000) continue;
         results.push(row); chars += size;
       }
-      return { results, mode: embedded ? 'hybrid' : 'text', embedError: embedded ? null : embedder.lastError, ...(viking.enabled ? { shared: { count: shared.length, error: viking.lastError } } : {}) };
+      return { results, mode: embedded ? 'hybrid' : 'text', embedError: embedded ? null : embedder.lastError, ...(backend.enabled ? { shared: { backend: backend.name, count: shared.length, error: backend.lastError } } : {}) };
     },
-    viking,
+    backend,
     /** Called by rotation after a member writes its handoff. */
     async ingestHandoff(h) {
       const who = { project: team.pinned(ctx.agents.get(h.session)) ?? undefined, role: h.role, session: h.session, lead: false, leadId: h.lead, name: h.member };
@@ -84,7 +84,7 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       const { results } = await hub.search(who, { query, k: 8 });
       const block = store.format(results, MEMORY_LIMITS.injectChars);
       recall.set(agent.id, { query, block, ids: results.map(r => r.memory.id) });
-      const local = results.filter(r => r.memory.scope.kind !== 'openviking');
+      const local = results.filter(r => SCOPES.includes(r.memory.scope.kind)); // backend hits are not in the store
       if (local.length) await store.markUsed(local.map(r => r.memory));
     },
     recallText(agent) {
@@ -127,7 +127,7 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
           if (!who) throw new Error('只有能力团队成员可以检索记忆');
           const { results, mode, embedError, shared } = await hub.search(who, args);
           return JSON.stringify({ mode, ...(embedError ? { note: `向量检索暂不可用：${embedError}` } : {}),
-            ...(shared ? { shared: shared.error ? `共享长期记忆（OpenViking）暂不可用：${shared.error}` : `含 ${shared.count} 条共享长期记忆（OpenViking）` } : {}),
+            ...(shared ? { shared: shared.error ? `共享长期记忆（${shared.backend}）暂不可用：${shared.error}` : `含 ${shared.count} 条共享长期记忆（${shared.backend}）` } : {}),
             results: results.map(r => ({ id: r.memory.id, kind: r.memory.kind, scope: r.memory.scope.kind, text: r.memory.text, via: r.via, updatedAt: r.memory.updatedAt })) });
         },
       }));
@@ -141,7 +141,7 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
         },
       }));
       // Plugin reload or shutdown: send what is still queued for the shared long-term memory.
-      ctx.effect(() => () => { void viking.flush().catch(() => {}); });
+      ctx.effect(() => () => { void backend.flush().catch(() => {}); });
     },
   };
   return hub;

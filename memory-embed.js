@@ -1,6 +1,8 @@
 // Embeddings for the memory hub over an OpenAI-compatible embeddings endpoint. Everything about the
 // endpoint is configuration (integrations.embeddings): base URL, path, extra headers, model, and the optional
 // provider / dimensions / task fields some gateways (e.g. a Jina-backed one) accept. Nothing is assumed.
+// Environment: EMBEDDING_BASE_URL / EMBEDDING_API_KEY / EMBEDDING_MODEL / EMBEDDING_DIMENSIONS (legacy
+// CPA_EMBED_* names are still read when the standard ones are unset; see integrations-config.js).
 // Any failure returns undefined: the hub then uses full-text search and embeds missing vectors later.
 import { keyOf, refreshCredentials, resolveIntegrations } from './integrations-config.js';
 const STATUS_HINT = { 400: '模型或参数不被接受', 401: '客户端鉴权失败，检查密钥', 403: '被拒绝（检查密钥或网关要求的请求头）', 404: '网关没有这个路径', 429: '限流，稍后重试', 502: '上游失败', 504: '上游超时' };

@@ -72,8 +72,8 @@ test('QA current filter skips shared calls; session skips all remote paths; none
   const count = { embed: 0, recall: 0, enqueue: 0, revoke: 0 }, written = [];
   const store = { search: async () => [], write: async m => { written.push(m); return { memory: { ...m, id: 'safe' }, superseded: [{ text: 'old' }] }; } };
   const embedder = { embed: async () => { count.embed++; throw Error('private-error'); } };
-  const viking = { enabled: true, recall: async () => { count.recall++; throw Error('private-error'); }, enqueue: () => { count.enqueue++; return true; }, revoke: () => { count.revoke++; } };
-  const s = memoryService({ store, embedder, viking, config: configuration(), secrets: () => ['qa-secret-value'] });
+  const backend = { enabled: true, recall: async () => { count.recall++; throw Error('private-error'); }, enqueue: () => { count.enqueue++; return true; }, revoke: () => { count.revoke++; } };
+  const s = memoryService({ store, embedder, backend, config: configuration(), secrets: () => ['qa-secret-value'] });
   const who = { project: 'example', session: 'qa', role: 'global-memory' };
   await s.write(who, { kind: 'note', scope: 'session', text: 'qa-secret-value private note' });
   await s.search(who, { query: 'session query', scope: 'session' });

@@ -6,9 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { REDACTED, redactSecrets } from '../memory-redact.js';
 import { createOpenViking, OV_SESSION_PREFIX } from '../memory-openviking.js';
-import { validateIntegrations } from '../integrations-config.js';
+import { MEMORY_BACKENDS, validateIntegrations } from '../integrations-config.js';
 import { createMemoryStore } from '../memory-store.js';
 import { createMemoryHub } from '../memory-hub.js';
+import { createMemoryBackend, MEMORY_BACKEND_REGISTRY } from '../memory-backends.js';
 
 const tmp = () => mkdtemp(join(tmpdir(), 'memsh-'));
 process.env.CAPABILITY_TEAM_HOME = await tmp(); // isolated from the user's real integrations
@@ -64,7 +65,7 @@ test('OpenViking：未启用时不排队也不请求', async () => {
 test('OpenViking：批量提交为一个会话，带密钥头；失败保留队列下次重试', async () => {
   const down = fakeServer({ fail: true });
   let fetcher = down.fetcher;
-  const ov = createOpenViking({ settings: settings({ account: 'team', user: 'me' }), fetcher: (...a) => fetcher(...a), now: () => 42, schedule: noTimer });
+  const ov = createOpenViking({ settings: settings({ account: 'team', user: 'me' }), label: '能力团队', fetcher: (...a) => fetcher(...a), now: () => 42, schedule: noTimer });
   ov.enqueue({ kind: 'pitfall', scope: { kind: 'role', role: 'backend' }, text: '别整文件覆盖' }, { project: 'demo' });
   ov.enqueue({ kind: 'decision', scope: { kind: 'project' }, text: '嵌入走网关' }, { project: 'demo' });
   await assert.rejects(ov.flush(), /ECONNREFUSED/);
@@ -97,8 +98,8 @@ test('OpenViking：召回映射成记忆结果；服务器不可用时返回空�
 test('记忆枢纽：写入前脱敏，项目记忆同步到共享记忆，会话记忆不外发；检索合并共享结果', async () => {
   const store = createMemoryStore(await tmp());
   const queued = [];
-  const viking = {
-    enabled: true,
+  const backend = {
+    name: 'openviking', enabled: true,
     enqueue: (memory, who) => queued.push({ memory, who }),
     recall: async () => [{ score: 0.8, via: ['openviking'], memory: { id: 'viking://m/1', kind: 'note', scope: { kind: 'openviking' }, text: '共享：Windows 上跳过 chmod 断言', uri: 'viking://m/1' } }],
     flush: async () => ({ sent: 0 }), lastError: null,
@@ -106,7 +107,7 @@ test('记忆枢纽：写入前脱敏，项目记忆同步到共享记忆，会�
   const ctx = { agentTeams: { tryMembership: () => null } };
   const team = { root: await tmp(), pinned: () => P };
   const embedder = { available: false, lastError: null, embed: async () => null };
-  const hub = createMemoryHub(ctx, team, { store, embedder, viking, secrets: () => ['cred-value-abcdef123'] });
+  const hub = createMemoryHub(ctx, team, { store, embedder, backend, secrets: () => ['cred-value-abcdef123'] });
   const who = { project: P, role: 'backend', name: 'backend', lead: false };
   const { memory } = await hub.write(who, { kind: 'pitfall', scope: 'project', text: '部署时 cred-value-abcdef123 别写进日志，Bearer abcdefghijklmnop1234 也是' });
   assert.ok(!memory.text.includes('cred-value-abcdef123') && !memory.text.includes('abcdefghijklmnop1234'));
@@ -116,9 +117,41 @@ test('记忆枢纽：写入前脱敏，项目记忆同步到共享记忆，会�
   await hub.write(who, { kind: 'note', scope: 'session', text: '只在本会话有用的笔记内容' });
   assert.equal(queued.length, 1, '会话记忆不外发');
   const { results, shared } = await hub.search(who, { query: '部署 日志' });
-  assert.deepEqual(shared, { count: 1, error: null });
+  assert.deepEqual(shared, { backend: 'openviking', count: 1, error: null });
   assert.equal(results[0].memory.scope.kind, 'project', '本地结果在前');
   assert.ok(results.some(r => r.memory.uri === 'viking://m/1'), '共享结果被合并');
+});
+
+test('后端工厂：local 为空实现，openviking 走现有实现；未知 id 回落 local；标签由调用方给出', async () => {
+  const local = createMemoryBackend({ settings: settings({ backend: 'local' }), schedule: noTimer });
+  assert.equal(local.name, 'local');
+  assert.equal(local.enabled, false);
+  assert.equal(local.enqueue({ kind: 'note', scope: { kind: 'project' }, text: 'x' }, {}), false);
+  assert.deepEqual(await local.recall('x'), []);
+  assert.deepEqual(await local.flush(), { sent: 0 });
+  assert.deepEqual(await local.status(), { enabled: false });
+  assert.equal(local.pending(), 0);
+  local.revoke([{ text: 'x' }]);
+  assert.equal(createMemoryBackend({ settings: settings({ backend: 'mem0-not-installed' }), schedule: noTimer }).name, 'local');
+  assert.deepEqual(Object.keys(MEMORY_BACKEND_REGISTRY).sort(), [...MEMORY_BACKENDS].sort(), '注册表与配置校验列表一致');
+  const srv = fakeServer();
+  const paths = [];
+  const ov = createMemoryBackend({ settings: settings(), fetcher: srv.fetcher, now: () => 7, schedule: noTimer, queuePath: name => { paths.push(name); return null; } });
+  assert.equal(ov.name, 'openviking');
+  assert.equal(ov.enabled, true);
+  assert.deepEqual(paths, ['openviking'], '队列路径按后端 id 区分');
+  assert.equal(ov.enqueue({ kind: 'note', scope: { kind: 'project' }, text: '中性前缀' }, { project: 'demo' }), true);
+  await ov.flush();
+  assert.equal(srv.calls[1].body.content, '【记忆 · 项目 demo】中性前缀', '默认不带调用方名称');
+  const lazy = createMemoryBackend({ lazy: true, settings: settings(), schedule: noTimer, queuePath: name => { paths.push(`lazy:${name}`); return null; } });
+  assert.equal(paths.length, 1, 'lazy 时不提前创建');
+  assert.equal(lazy.pending(), 0);
+  assert.deepEqual(paths.slice(1), ['lazy:openviking']);
+  const g = fakeServer();
+  const gm = createOpenViking({ settings: settings(), label: '全局记忆', fetcher: g.fetcher, schedule: noTimer });
+  gm.enqueue({ kind: 'decision', scope: { kind: 'global' }, text: '统一用 path.join' }, {});
+  await gm.flush();
+  assert.equal(g.calls[1].body.content, '【全局记忆决定】统一用 path.join');
 });
 
 test('存储：另一进程追加的记忆会被重新读入，清理时不丢失', async () => {

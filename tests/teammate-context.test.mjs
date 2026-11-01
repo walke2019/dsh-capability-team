@@ -7,8 +7,8 @@ test('主控专用工具只装给主控，队友专用工具只装给队友，�
   const global = [], handlers = {};
   const host = { agentPresets: { composedPreset: () => 'capability-team' }, tools: { register: d => { global.push(d.name); return () => {}; }, guard: () => {} }, on: (n, fn) => { handlers[n] = fn; } };
   const { ctx } = scopeTools(host);
-  for (const name of ['capability_dispatch_plan', 'capability_team_save', 'capability_handoff', 'capability_team_read', 'cpa_search']) ctx.tools.register({ name });
-  assert.deepEqual(global, ['capability_team_read', 'cpa_search']);
+  for (const name of ['capability_dispatch_plan', 'capability_team_save', 'capability_handoff', 'capability_team_read', 'omni_search']) ctx.tools.register({ name });
+  assert.deepEqual(global, ['capability_team_read', 'omni_search']);
   const install = parentSession => { const got = []; handlers['agent/created']({ agent: { ctx: { tools: { register: d => got.push(d.name) } }, session: { header: parentSession ? { parentSession } : {} } } }); return got; };
   assert.deepEqual(install(undefined), ['capability_dispatch_plan', 'capability_team_save']);
   assert.deepEqual(install('lead'), ['capability_handoff']);

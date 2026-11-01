@@ -19,6 +19,6 @@ test('prefixed host tool names classify like their canonical names', () => {
 test('unknown or multi-word prefixes stay execution', () => {
   assert.equal(toolClass('trumpet_pwsh', wf), 'execution');
   assert.equal(toolClass('polar_write', wf), 'execution');
-  assert.equal(toolClass('pact_cpa_search', wf), 'execution');
+  assert.equal(toolClass('pact_omni_search', wf), 'execution');
   assert.equal(toolClass('a_b_grep', wf), 'execution');
 });

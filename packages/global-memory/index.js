@@ -4,7 +4,7 @@ import { createRuntime } from './runtime.js';
 import { memoryService } from './tools.js';
 import { createMemoryStore } from './shared/memory-store.js';
 import { createEmbedder } from './shared/memory-embed.js';
-import { createOpenViking } from './shared/memory-openviking.js';
+import { createMemoryBackend } from './shared/memory-backends.js';
 import { defaultRoot } from './shared/theme.js';
 import { setCredentialResolver, knownSecretValues, refreshCredentials } from './shared/integrations-config.js';
 export { Config } from './config.js';
@@ -33,11 +33,9 @@ export function apply(ctx, input = {}) {
     const timer = setTimeout(() => { timers.delete(timer); if (!stopped) fn(); }, ms);
     timer.unref?.(); timers.add(timer); return timer;
   };
-  const getBackend = () => backend ??= createOpenViking({ queuePath: join(defaultRoot(), 'memory', 'global-memory-openviking-queue.json'), schedule });
-  const viking = {
-    get enabled() { return getBackend().enabled; }, get lastError() { return backend?.lastError; },
-    recall: (...args) => getBackend().recall(...args), enqueue: (...args) => getBackend().enqueue(...args), revoke: (...args) => getBackend().revoke(...args),
-  };
+  // The selected backend is created on first use; each backend keeps its own queue file for this package.
+  backend = createMemoryBackend({ lazy: true, label: '全局记忆', schedule,
+    queuePath: name => join(defaultRoot(), 'memory', `global-memory-${name}-queue.json`) });
   const secrets = async () => { await refreshCredentials().catch(() => {}); return knownSecretValues(); };
-  return createRuntime(ctx, config, memoryService({ store, embedder, viking, secrets, config }), store);
+  return createRuntime(ctx, config, memoryService({ store, embedder, backend, secrets, config }), store);
 }

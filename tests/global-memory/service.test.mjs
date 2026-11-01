@@ -14,10 +14,10 @@ async function fixture(t, config = {}) {
   const root = await mkdtemp(join(tmpdir(), 'gm-test-')); t.after(() => rm(root, { recursive: true, force: true }));
   const store = createMemoryStore(root);
   const counts = { embed: 0, recall: 0, enqueue: 0, revoke: 0 };
-  const viking = { enabled: true, enqueue: () => { counts.enqueue++; return true; }, revoke: () => { counts.revoke++; }, recall: async () => { counts.recall++; return []; } };
+  const backend = { enabled: true, enqueue: () => { counts.enqueue++; return true; }, revoke: () => { counts.revoke++; }, recall: async () => { counts.recall++; return []; } };
   const embedder = { embed: async () => { counts.embed++; return null; } };
-  const service = memoryService({ store, embedder, viking, config: configuration(config), secrets: () => ['private-test-secret'] });
-  return { root, store, service, counts, viking, embedder };
+  const service = memoryService({ store, embedder, backend, config: configuration(config), secrets: () => ['private-test-secret'] });
+  return { root, store, service, counts, backend, embedder };
 }
 test('4 identity pins first cwd and missing cwd retains session/global only; schema parity', async () => {
   let cwd = '/example/project';
@@ -53,7 +53,7 @@ test('6 strict scopes exclude role, respect k/JSON budget and explicit none', as
   }
   const local = await f.service.search(who, { query: 'common lesson', k: 1 });
   assert.equal(local.results.length, 1); assert.equal(local.shared.degraded, 'project-filter-unavailable'); assert.equal(f.counts.recall, 0);
-  f.viking.recall = async () => { f.counts.recall++; return Array.from({ length: 20 }, (_, n) => ({ memory: { id: `${n}`, text: `${n} ${'x'.repeat(2000)}`, kind: 'note', scope: { kind: 'openviking' } }, via: ['openviking'] })); };
+  f.backend.recall = async () => { f.counts.recall++; return Array.from({ length: 20 }, (_, n) => ({ memory: { id: `${n}`, text: `${n} ${'x'.repeat(2000)}`, kind: 'note', scope: { kind: 'openviking' } }, via: ['openviking'] })); };
   const shared = await f.service.search(who, { query: 'common lesson', k: 20, shared_project_filter: 'none' });
   assert.equal(f.counts.recall, 1); assert.equal(shared.truncated, true); assert.ok(JSON.stringify(shared).length <= 12000);
 });
@@ -63,13 +63,13 @@ test('7 embed/shared failure stays local, replacement revokes, queue failure sav
   const first = await f.service.write(who, { kind: 'decision', text: 'original local lesson', key: 'topic' });
   assert.equal(first.saved, true); assert.equal(first.sync, 'queued');
   await f.service.write(who, { kind: 'decision', text: 'replacement local lesson', key: 'topic' }); assert.equal(f.counts.revoke, 1);
-  f.viking.recall = async () => { throw Error('secret failure'); };
+  f.backend.recall = async () => { throw Error('secret failure'); };
   const found = await f.service.search(who, { query: 'local lesson', shared_project_filter: 'none' });
   assert.equal(found.results.length, 1); assert.equal(found.mode, 'text'); assert.equal(found.shared.degraded, 'shared-unavailable');
-  f.viking.enqueue = () => { throw Error('full'); };
+  f.backend.enqueue = () => { throw Error('full'); };
   const saved = await f.service.write(who, { kind: 'note', text: 'another local conclusion' });
   assert.equal(saved.saved, true); assert.equal(saved.syncWarning, 'sync-unavailable'); assert.notEqual(saved.sync, 'queued');
-  const disabled = memoryService({ store: f.store, embedder: f.embedder, viking: f.viking, config: configuration({ syncWrites: false }) });
+  const disabled = memoryService({ store: f.store, embedder: f.embedder, backend: f.backend, config: configuration({ syncWrites: false }) });
   assert.equal((await disabled.write(who, { kind: 'note', text: 'disabled sync conclusion' })).sync, 'disabled');
 });
 test('7 durable queue restart and explicit capacity failure; 8 independent queue paths', async t => {

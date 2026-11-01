@@ -79,13 +79,24 @@ test('嵌入配置：只来自集成配置与显式环境变量，不从 CPA_BAS
   const root = await tmp();
   const none = embedSettings(resolveIntegrations({ root, env: { CPA_BASE_URL: 'https://gw.example/gateway/v1', CPA_API_KEY: 'k' } }));
   assert.equal(none.config.baseUrl, null);
-  assert.match(createEmbedder({ settings: none }).lastError, /embeddings\.baseUrl.*embeddings\.model.*CPA_EMBED_API_KEY/);
+  assert.match(createEmbedder({ settings: none }).lastError, /embeddings\.baseUrl.*embeddings\.model.*EMBEDDING_API_KEY/);
   await writeFile(join(root, 'integrations.json'), JSON.stringify({ revision: 1, integrations: { embeddings: { baseUrl: 'https://emb.example/', apiKeyEnv: 'MY_EMBED_KEY', model: 'my-model', dimensions: 256 } } }));
   const s = embedSettings(resolveIntegrations({ root, env: { MY_EMBED_KEY: 'secret', CPA_EMBED_MODEL: 'env-model' } }));
   assert.equal(s.config.baseUrl, 'https://emb.example');
   assert.equal(s.config.model, 'env-model', '环境变量覆盖文件');
   assert.equal(s.key, 'secret');
   assert.equal(vectorKey(s.config), 'env-model@256');
+});
+
+test('嵌入配置：标准 EMBEDDING_* 环境变量优先，旧 CPA_EMBED_* 仅在标准变量缺失时回落', async () => {
+  const root = await tmp();
+  const std = embedSettings(resolveIntegrations({ root, env: { EMBEDDING_BASE_URL: 'https://emb.example.com', EMBEDDING_API_KEY: 'std-key', EMBEDDING_MODEL: 'std-model', EMBEDDING_DIMENSIONS: '128',
+    CPA_EMBED_BASE_URL: 'https://legacy.example.com', CPA_EMBED_API_KEY: 'legacy-key', CPA_EMBED_MODEL: 'legacy-model' } }));
+  assert.deepEqual([std.config.baseUrl, std.config.model, std.config.dimensions, std.key, std.keyEnv], ['https://emb.example.com', 'std-model', 128, 'std-key', 'EMBEDDING_API_KEY']);
+  assert.equal(createEmbedder({ settings: std }).available, true);
+  const legacy = embedSettings(resolveIntegrations({ root, env: { CPA_EMBED_BASE_URL: 'https://legacy.example.com', CPA_EMBED_API_KEY: 'legacy-key', CPA_EMBED_MODEL: 'legacy-model' } }));
+  assert.deepEqual([legacy.config.baseUrl, legacy.config.model, legacy.key], ['https://legacy.example.com', 'legacy-model', 'legacy-key']);
+  assert.equal(createEmbedder({ settings: legacy }).available, true);
 });
 
 const settingsWith = extra => ({ config: { ...INTEGRATION_DEFAULTS.embeddings, baseUrl: 'https://gw.example', model: 'm', ...extra }, key: 'k', keyEnv: 'K' });

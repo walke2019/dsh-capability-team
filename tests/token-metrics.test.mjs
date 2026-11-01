@@ -12,7 +12,7 @@ test('official usage sample, per-step replacement, explicit rates and savings', 
   const v = m.snapshot(a); assert.equal(v.steps.length, 1); assert.equal(v.steps[0].prompt, 1000);
   assert.equal(v.trimmedChars, 7300); assert.equal(v.compactions, 1); assert.equal(v.compactionMs, 125);
   assert.equal(estimateCost(u), null); assert.ok(v.steps[0].estimatedCost > 0);
-  assert.ok(TRIMMED_TOOLS.has('web_fetch')); assert.ok(TRIMMED_TOOLS.has('cpa_web_fetch'));
+  assert.ok(TRIMMED_TOOLS.has('web_fetch')); assert.ok(TRIMMED_TOOLS.has('omni_fetch'));
 });
 test('catalog budget and overlong memory skip improve useful recall', () => {
   const entries = Array.from({ length: 1000 }, (_, i) => ({ name: `skill-${i}`, description: 'd'.repeat(150) }));

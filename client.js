@@ -1270,12 +1270,12 @@ window.__ModuleLoader__.load({
       (d, t) => fmt(t('cards.export.summary'), { n: Object.keys(d.roles ?? {}).length, c: Object.keys(d.capabilities ?? {}).length }),
       d => [section(null, valueView({ format: d.format, version: d.version, name: d.name })),
         d.roles ? section('roles', valueView(Object.fromEntries(Object.entries(d.roles).map(([id, r]) => [id, `${r.displayName ?? id} · ${r.capability ?? ''}`])))) : null].filter(Boolean));
-    const SearchView = dataCard('cpa_search', ICONS.free, 'cards.search',
+    const SearchView = dataCard('omni_search', ICONS.free, 'cards.search',
       (d, t, args) => fmt(t('cards.search.summary'), { q: d.query ?? args.query ?? '', n: d.results?.length ?? 0 }),
-      d => section(d.provider ?? null, h('ol', { className: 'ctm-mc-results' }, ...(d.results ?? []).slice(0, 20).map((r, i) => h('li', { key: i },
+      d => section(d.engine ?? d.provider ?? null, h('ol', { className: 'ctm-mc-results' }, ...(d.results ?? []).slice(0, 20).map((r, i) => h('li', { key: i },
         h('span', { className: 'ctm-name' }, r.title ?? r.url), r.url ? h('span', { className: 'ctm-sub' }, r.url) : null,
         r.snippet || r.content ? h('span', { className: 'ctm-sub' }, firstLine(r.snippet ?? r.content)) : null)))));
-    const FetchView = dataCard('cpa_web_fetch', ICONS.free, 'cards.fetch',
+    const FetchView = dataCard('omni_fetch', ICONS.free, 'cards.fetch',
       (d, t, args) => d.title ?? d.url ?? args.url ?? '',
       d => section(d.url ?? null, h('div', { className: 'ctm-text' }, String(d.content ?? d.text ?? d.markdown ?? '').slice(0, 1200))));
     const HandoffView = dataCard('capability_handoff', ICONS.plan, 'cards.handoff',
@@ -3484,8 +3484,8 @@ window.__ModuleLoader__.load({
       capability_task_budget: BudgetView,
       capability_member_override: OverrideView,
       capability_team_export: ExportView,
-      cpa_search: SearchView,
-      cpa_web_fetch: FetchView,
+      omni_search: SearchView,
+      omni_fetch: FetchView,
       capability_handoff: HandoffView,
       capability_rotate_member: RotateView,
       capability_memory_search: MemorySearchView,

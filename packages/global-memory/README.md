@@ -26,7 +26,52 @@ Only one instance may run per profile. Disable the bundle, plugin, or set `enabl
 | sharedProjectFilter | current | Safe local fallback; `none` explicitly permits cross-project shared search |
 | syncWrites | true | Queue explicit non-session writes when the shared backend is enabled |
 
-Unknown configuration fields are rejected. The embedding/OpenViking settings use the existing integrations file/environment resolution and DSH credential references. There are no credentials or real service endpoints in this package. Credential service absence falls back to environment resolution. Enabling the bundle does not prove backend health or completed remote ingestion.
+Unknown configuration fields are rejected. The embedding and shared-backend settings use the existing integrations file/environment resolution and DSH credential references. There are no credentials or real service endpoints in this package. Credential service absence falls back to environment resolution. Enabling the bundle does not prove backend health or completed remote ingestion.
+
+### Zero configuration
+
+With no integrations configured, memory is fully local: notes are stored under the DSH capability-team home, searched with full-text (BM25-style) ranking, and nothing leaves the machine. Embeddings and a shared backend are optional upgrades.
+
+### Optional embeddings (any OpenAI-compatible endpoint)
+
+Set these in the environment (or the `embeddings` section of `integrations.json`). Keys can also be saved in DSH Settings → credentials under the same name.
+
+| Variable | Meaning |
+| --- | --- |
+| `EMBEDDING_BASE_URL` | Endpoint base, without the path (default path `/v1/embeddings`) |
+| `EMBEDDING_API_KEY` | Bearer key (name configurable via `embeddings.apiKeyEnv`) |
+| `EMBEDDING_MODEL` | Model id |
+| `EMBEDDING_DIMENSIONS` | Optional output dimensions, for models that accept it |
+
+Legacy `CPA_EMBED_*` names are still read when the matching `EMBEDDING_*` variable is unset. Vectors are tagged by `model@dimensions`; changing either re-embeds lazily and never mixes vector spaces.
+
+| Provider | `EMBEDDING_BASE_URL` | `EMBEDDING_MODEL` (example) |
+| --- | --- | --- |
+| OpenAI (or an OpenAI-compatible proxy) | `https://openai.example.com` | `text-embedding-3-small` |
+| Jina (or a Jina-backed gateway) | `https://jina.example.com` | `jina-embeddings-v3` (optionally set `embeddings.queryTask`/`passageTask`) |
+| vLLM / any gateway | `https://gateway.example.com` | the served model name |
+| Ollama (behind an HTTPS front, see below) | `https://localhost:11443` | `nomic-embed-text` |
+
+Use your provider's documented base URL in place of the `example.com` placeholders.
+
+The embeddings `baseUrl` must currently be `https`; a local Ollama or vLLM server on `http://localhost` needs an HTTPS front (for example a local reverse proxy) until plain-http loopback is accepted for embeddings. Embedding failures always fall back to text search.
+
+### Shared backends
+
+`integrations.memory.backend` selects where non-session memories are mirrored as shared long-term memory. The local store always remains the source of truth.
+
+| Backend | Config | Behaviour |
+| --- | --- | --- |
+| `local` (default) | none | No mirroring; shared recall returns nothing |
+| `openviking` | `memory.url` / `OPENVIKING_URL` (https, or http on loopback), optional key `OPENVIKING_API_KEY`, `account`, `user` | Writes are queued durably and committed in batches; recall merges the server's context search. A down server never blocks a member |
+
+Each caller labels what it sends (the team plugin as its team, this package as global memory) and keeps its own queue file per backend.
+
+### How to add a backend
+
+1. Create `memory-<id>.js` at the repository root exporting a factory `create<Id>(options)` that returns the interface documented at the top of `memory-backends.js`: `name`, `enabled`, `lastError`, `enqueue(memory, who)`, `revoke(memories)`, `recall(query, limit)`, `flush()`, `status()`, `pending()`. `options` carries `settings`, `queuePath`, `label`, `fetcher`, `now`, `schedule` and `warn`.
+2. Add one registry line (and its import) to `MEMORY_BACKEND_REGISTRY` in `memory-backends.js`.
+3. Accept the id in `MEMORY_BACKENDS` (`integrations-config.js`), add tests with a mocked `fetcher`, then rebuild `shared/` with `node packages/global-memory/scripts/build-shared.mjs`.
 
 ## Privacy and semantics
 
@@ -34,7 +79,7 @@ Unknown configuration fields are rejected. The embedding/OpenViking settings use
 - Default writes are project-scoped. `global` is explicitly cross-project. There is no role write scope.
 - Session notes are local only: never embedded, enqueued, revoked remotely, or backfilled. Each agent id owns its session notes; children do not inherit them. Session-only search never sends its query to a remote service.
 - Other searches send only the redacted query for optional embedding. Non-session explicit writes may send the redacted passage and project identity to configured services. Existing shared-store session records written by other plugins are not migrated or re-embedded by this plugin.
-- The current OpenViking adapter has no trustworthy project metadata. Therefore `current` never calls shared recall and reports `project-filter-unavailable`, preserving local search. `none` is an explicit opt-in to cross-project shared search, not an authorization mechanism. Text that looks like a project label is not trusted metadata.
+- The current shared backends (OpenViking) have no trustworthy project metadata. Therefore `current` never calls shared recall and reports `project-filter-unavailable`, preserving local search. `none` is an explicit opt-in to cross-project shared search, not an authorization mechanism. Text that looks like a project label is not trusted metadata.
 - Project cwd is pinned on first use. Missing cwd permits only session/global writes and searches; project writes fail clearly.
 - Embedding/shared failures fall back to text/local search. Queuing is not remote completion: `queued` means persisted locally; `saved: true` remains true on a later sync failure with `syncWarning`. The global-memory queue is separate from the team's queue.
 - Automatic context is optional, reference-only, and bounded. Only the existing package context placeholder is replaced; full-prompt/suppression decisions are respected. Tool writes/searches do not mutate the current task's cached block. New tasks clear stale results; timeouts/abort/late generations cannot commit old results.
