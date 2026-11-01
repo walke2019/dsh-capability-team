@@ -4,7 +4,11 @@ import { apply } from '../integrations.js';
 test('工具注册；检索权限来自能力配置', async () => {
   const definitions = []; const disposers = [];
   let role = { capability: 'backend', search: false };
-  apply({ effect: fn => disposers.push(fn()), tools: { register: tool => { definitions.push(tool); return () => {}; } } }, { resolve: async () => role });
+  // Isolated from the user's real integrations.json (which may enable the provider and speech tools).
+  const home = process.env.CAPABILITY_TEAM_HOME;
+  process.env.CAPABILITY_TEAM_HOME = (await import('node:fs')).mkdtempSync((await import('node:path')).join((await import('node:os')).tmpdir(), 'int-'));
+  try { apply({ effect: fn => disposers.push(fn()), tools: { register: tool => { definitions.push(tool); return () => {}; } } }, { resolve: async () => role }); }
+  finally { if (home === undefined) delete process.env.CAPABILITY_TEAM_HOME; else process.env.CAPABILITY_TEAM_HOME = home; }
   assert.deepEqual(definitions.map(d => d.name), ['cpa_search', 'cpa_web_fetch', 'capability_free_task']);
   for (const d of definitions) { assert.ok(d.output.schema); assert.equal(typeof d.output.render, 'function'); }
   assert.equal(disposers.length, 3);

@@ -5,7 +5,10 @@ import { validateConfig, effectiveConfig } from '../config.js';
 
 const project = '/p';
 const lines = n => Array.from({ length: n }, (_, i) => `line ${i}`).join('\n') + '\n';
-const fsOf = files => path => files[path];
+// Fixture keys are POSIX paths; on Windows `path.resolve('/p', 'a.js')` yields `C:\p\a.js`, so strip the drive
+// and normalise separators before looking a file up.
+const posix = path => path.replace(/^[A-Za-z]:/, '').split('\\').join('/');
+const fsOf = files => path => files[posix(path)];
 const check = (exec, files, extra = {}) => checkFileLimits(exec, FILE_LIMITS, { project, cwd: project, read: fsOf(files), ...extra });
 
 test('lineCount 与文件分类', () => {
@@ -89,6 +92,6 @@ test('备选模型最多 3 个', () => {
 
 test('sizeViolations 跳过生成文件与非代码文件', () => {
   const files = { 'a.js': lines(501), 'b.md': lines(9000), 'c.js': '// @generated\n' + lines(9000), 'tests/t.test.mjs': lines(801) };
-  const out = sizeViolations(Object.keys(files), FILE_LIMITS, path => files[path.replace(/^\/r\//, '')], '/r');
+  const out = sizeViolations(Object.keys(files), FILE_LIMITS, path => files[posix(path).replace(/^\/r\//, '')], '/r');
   assert.deepEqual(out.map(v => v.file).sort(), ['a.js', 'tests/t.test.mjs']);
 });

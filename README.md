@@ -314,8 +314,25 @@ Errors unrelated to availability, such as context overflow or content refusals, 
 |---|---|
 | `search` | `baseUrl`, `apiKeyEnv`, `searchPath`, `fetchPath`, `headers` (extra request headers, e.g. a User-Agent your gateway requires), `providers` / `fetchProviders` (when set, they become the tools' provider choices; empty means any), `timeoutMs`, `fetchTimeoutMs` |
 | `embeddings` | `baseUrl`, `apiKeyEnv`, `path`, `model`, `provider`, `dimensions`, `queryTask`, `passageTask`, `headers`, `timeoutMs`, `batch` |
+| `audio` | `baseUrl`, `apiKeyEnv`, `path`, `statusPath` (registers `cpa_transcribe_status` when set), `model`, `headers`, `timeoutMs` (default 125 s), `maxBytes` (default 8 MiB) |
 
-Keys never go into the config: `apiKeyEnv` is only an environment variable name, and `headers` may not contain `Authorization`, `Cookie` and the like.
+`search` also has `providersPath`: when set, `cpa_search_providers` (GET the provider list) is registered. Search and fetch time out after 120 s by default, leaving room for the gateway's provider fallback.
+
+Keys never go into the config: `apiKeyEnv` is only the key's name. It is looked up in DSH's credential store first (keys saved in Settings, such as a provider's `CPA_API_KEY`), then in an environment variable of the same name; it is re-read before each request and only placed in the `Authorization` header, never in prompts, tool arguments or logs. `headers` may not contain `Authorization`, `Cookie` and the like.
+
+Result checks: an HTTP 200 must still carry a real result (a `results` list for search, page content for fetch, text for transcription), otherwise it is reported as a failure; 401 points to client auth, 400 to parameters, 429 to back off, 502/504 to upstream failure, 413 to the gateway's size limit; error bodies are never echoed. Status endpoints only reflect the gateway's local health.
+
+**Speech to text `cpa_transcribe`**: registered only when `audio.baseUrl` is set. Type and size are checked first (files over `maxBytes` are never read), then the user approves that one file in DSH's native question box; only then are its real bytes read and uploaded as multipart (the HTTP library sets the boundary).
+
+Example (CPA tool center; fill in your gateway's paths):
+
+```json
+{ "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "fetchPath": "/v1/crawl", "providersPath": "/v1/search/providers" },
+  "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "model": "jina-embeddings-v3", "queryTask": "retrieval.query", "passageTask": "retrieval.passage" },
+  "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "statusPath": "/v1/audio/status" } }
+```
+
+The embeddings model and dimensions must match between storing and searching (a change re-embeds old vectors); producing vectors is not knowledge-base retrieval, which the memory hub does.
 
 ## File rules
 
@@ -418,7 +435,21 @@ The Usage page also shows, per member, **average input per step** (uncached inpu
 - **On-demand search**: `capability_memory_search`;
 - **Ranking**: BM25 full-text (Latin words plus Chinese single characters and bigrams) and vector cosine, merged by reciprocal rank fusion (RRF), then decayed with a 30-day half-life and slightly boosted by use; without embeddings it uses full-text only, says why in the results, and fills in missing vectors later;
 - **Forgetting**: memories unused for 180 days and superseded ones are removed on compaction; at most 2000 per project;
-- Storage: `$CAPABILITY_TEAM_HOME/memory/<project hash>.jsonl` and `global.jsonl`, append-only, atomically replaced on compaction.
+- Storage: `$CAPABILITY_TEAM_HOME/memory/<project hash>.jsonl` and `global.jsonl`, append-only, atomically replaced on compaction; writes and compaction take a file lock and a file changed by another DSH process is re-read, so several processes (Desktop, `dsh web`) can share it;
+- **Credentials removed**: before storing, common secret formats (`sk-…`, `ghp_…`, `Bearer …`, JWTs, private keys, user:password in URLs, `api_key=…`, …) and the credential values configured for the integrations are replaced with `[已隐去凭据]`.
+
+### Shared long-term memory (OpenViking, optional)
+
+[memory-openviking.js](memory-openviking.js): on the Integrations page, set `backend` to `openviking` and `url` to the server under "Shared long-term memory"; the key name defaults to `OPENVIKING_API_KEY` (kept in DSH credentials). Then:
+
+- new memories outside session scope (credentials already removed) are committed to [OpenViking](https://github.com/volcengine/OpenViking) every 20 seconds as one session; it extracts long-term memories that any device or agent using the same server (DSH, Codex, OpenClaw…) can recall;
+- `capability_memory_search` queries local memory and OpenViking; local results come first, and the result notes how many shared memories were included or why the server is unavailable;
+- while the server is down, pending memories stay queued for the next attempt (up to 200) and search uses local memory only, so members are never blocked;
+- remote URLs must use https; http is accepted only for this machine; URLs may not carry a user or password.
+
+For ordinary DSH sessions outside the team, also install the official `@openviking/dsh-memory-plugin` (Plugins page); it reads `url` and `api_key` from `~/.openviking/ovcli.conf`.
+
+When hosting the server yourself: listen on 127.0.0.1 behind an HTTPS reverse proxy; use `api_key` auth with `encryption.api_key_hashing`; enable `encryption.enabled` for file encryption, with the root key on a different disk from the data; OpenViking does not encrypt its vector store or logs, so keep the data directory on an encrypted volume (LUKS on Linux).
 
 ### Embeddings endpoint
 
@@ -466,6 +497,7 @@ Tests use mocked ctx, model catalogs and question dialogs, and make no model, se
 | [integrations-config.js](integrations-config.js) | Integrations config layers, validation, saving and HTTP API |
 | [file-limits.js](file-limits.js) | File rules (shared by the tool guard and lint) |
 | [dispatch-confirm.js](dispatch-confirm.js) | Dispatch confirmation: routes, validation, HTTP API and native dialog fallback |
+| [dispatch-routes-store.js](dispatch-routes-store.js) | Persists "this task only" routes across DSH restarts |
 | [session-rotation.js](session-rotation.js) | Session rotation signals, handoffs and successors |
 | [board-dispatch.js](board-dispatch.js) | Board dispatch: subtasks, write scopes, dependencies, hand-out and reassignment |
 | [route-health.js](route-health.js) | Route failures that survive restarts |
@@ -514,13 +546,13 @@ Development checks: `npm run lint` checks JavaScript syntax and file rules, and 
 
 Verified:
 
-- 298 regression tests pass (including file rules, dispatch confirmation, session rotation, the task control panel and the memory hub), covering route filtering, prefix rules, shared global policy, revision conflicts, component draft/save/error states, keeping the editor on refresh failure, UTF-8 stream chunking, quota error switching across chunks, input limits, active lock protection, stale lock recovery, sync prompt/policy consistency and init/teardown; component tests use mocked hooks and APIs, which is not the same as browser testing;
+- 347 regression tests pass on Windows (Node 24.21.0), with no POSIX-only path or permission assumptions (including file rules, dispatch confirmation, session rotation, the task control panel and the memory hub), covering route filtering, prefix rules, shared global policy, revision conflicts, component draft/save/error states, keeping the editor on refresh failure, UTF-8 stream chunking, quota error switching across chunks, input limits, active lock protection, stale lock recovery, sync prompt/policy consistency and init/teardown; component tests use mocked hooks and APIs, which is not the same as browser testing;
 - a real host was started in an isolated DSH_HOME with the desktop's bundled CLI: the capability-team preset registered and the diagnostics plugin activated; this is not acceptance of a session after the production desktop process reloaded;
 - the `capability-team-overview` registration in the installed package and connected client was confirmed, but later source fixes still need confirmation that the running process reloaded;
 - an independent browser got 401 from the GUI, so read, toggle, save and restore on an authenticated page have not been accepted yet;
 - every tool's parameter schema passes DSH's own validation code;
 - auto-matching was trial-run against the OpenRouter public catalog (450+ models) and matched the tier rules above;
-- search, web fetch and embeddings were tested live against a real gateway locally (called through the Integrations config).
+- search, crawl, provider list, embeddings (jina-embeddings-v3, 1024 dims, query/passage tasks), memory hybrid recall, speech status and speech-to-text were tested live against the CPA tool center on this machine through the plugin modules, with the key taken from the DSH credential store.
 
 Not yet accepted in a real DSH session:
 
@@ -533,11 +565,12 @@ Not yet accepted in a real DSH session:
 
 Known limitations:
 
-- Tiers are based on naming patterns and prices; new vendors (such as nvidia, stepfun, cohere) are currently listed as "unrecognized" and need a tier set manually.
-- Free variants (`:free`, `-free`) never take part in auto-matching or serve as fallbacks.
-- The native UI still shows teammates' internal ids; display names only apply in the model context.
-- A rotation successor (`<role>-rN`) does not start step counting automatically (its predecessor used the dispatch's budget); start it in the task control area.
-- Routes confirmed as "this task only" are kept in memory and revert to the project config after DSH restarts.
+- Tiers are based on vendor naming patterns. NVIDIA Nemotron, StepFun Step 3+ and Cohere Command are recognized; vendors outside the rules are still listed as "unrecognized" and need a tier set manually.
+- Free variants (`:free`, `-free`) never take part in auto-matching or serve as fallbacks, by design: their rate limits make them unreliable for routing.
+- The native team UI shows the teammate's DSH member name: DSH's `spawn_teammate` only accepts a lower-kebab-case `name` and has no display-name field, so display names apply in the model context and the plugin's panels.
+- A rotation successor (`<role>-rN`) inherits its predecessor's task budget automatically (same assignment, complexity, deadline, per-task model override, and the steps already used).
+- Routes confirmed as "this task only" are saved per Lead under the plugin data directory and survive a DSH restart; they expire after 30 days.
+- On Windows the audit files' `0o600`/`0o700` modes are not enforced by the OS (chmod only toggles read-only); privacy relies on the per-user profile ACL of the DSH home.
 
 ## License
 

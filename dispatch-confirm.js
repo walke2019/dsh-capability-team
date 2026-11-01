@@ -13,8 +13,19 @@ export const DISPATCH_CONFIRM_PATH = '/api/capability-team.dispatch-confirm';
 export { CONFIRM_MODES } from './config.js';
 export const MAX_ROUTE_FALLBACKS = 3;
 const CARD_GRACE_MS = 8000; // no card asked for the request in this time → the host has no card; use the question box
+const HEARTBEAT_MS = 15000; // a card that stopped polling this long ago is gone (tab closed, page left); use the question box
+const CONFIRM_TIMEOUT_MS = 10 * 60 * 1000; // nobody answers at all → fail instead of hanging the Lead's turn forever
 const leads = new Map(); // lead id → { pending: Map(callId → request), routes: Map(role → route), confirmed: Map(role → key) }
-const stateOf = id => { if (!leads.has(id)) leads.set(id, { pending: new Map(), routes: new Map(), confirmed: new Map() }); return leads.get(id); };
+let routeStore; // optional persistence for per-task routes (dispatch-routes-store.js), set by the plugin
+/** Persist confirmed per-task routes so they survive a DSH restart; `undefined` keeps them in memory only. */
+export function setRouteStore(store) { routeStore = store; }
+const stateOf = id => {
+  if (!leads.has(id)) {
+    const saved = routeStore?.load(id);
+    leads.set(id, { pending: new Map(), routes: new Map(saved?.routes ?? []), confirmed: new Map(saved?.confirmed ?? []) });
+  }
+  return leads.get(id);
+};
 const sameRoute = (a, b) => a?.provider === b?.provider && a?.model === b?.model;
 const keyOf = r => JSON.stringify([r.primary ? routeKey(r.primary) : null, r.fallbacks.map(routeKey)]);
 export const parseRoute = text => {
@@ -22,7 +33,7 @@ export const parseRoute = text => {
   return i > 0 && i < s.length - 1 && !/\s/.test(s) ? { provider: s.slice(0, i), model: s.slice(i + 1) } : undefined;
 };
 /** Per-task route the user confirmed for a member of this Lead, if any. */
-export function confirmedRoute(leadId, role) { return leads.get(leadId)?.routes.get(role); }
+export function confirmedRoute(leadId, role) { return (leads.has(leadId) || routeStore ? stateOf(leadId) : undefined)?.routes.get(role); }
 /** Apply a confirmed per-task route to a resolved role (before the model policy). */
 export function withConfirmedRoute(role, route) {
   if (!route?.primary) return role;
@@ -83,7 +94,7 @@ export function validateAnswer(offered, answer) {
 export function pendingView(leadId, callId) {
   const request = leads.get(leadId)?.pending.get(callId);
   if (!request) return { schemaVersion: 1, status: 'none' };
-  request.seen = true;
+  request.lastSeenAt = Date.now(); // heartbeat: the card keeps polling while it is on screen
   return { schemaVersion: 1, status: 'pending', callId, catalogVersion: request.catalogVersion, maxFallbacks: MAX_ROUTE_FALLBACKS, routes: request.offered };
 }
 /** Resolve a pending request with the card's answer; throws (with status) when it cannot. */
@@ -99,8 +110,8 @@ export function answerPending(leadId, callId, answer) {
 const fallbackText = r => r.fallbacks.length ? r.fallbacks.map(routeKey).join('、') : '无';
 const routeLine = r => `${r.displayName ?? r.role}（${r.capability}）：主 ${r.primary ? routeKey(r.primary) : '未分配'}；回退 ${fallbackText(r)}`;
 /** Native question box: confirm as offered, or type changes as "角色: 主模型, 回退1, 回退2". */
-async function askNative(userQuestions, exec, offered) {
-  const answer = await userQuestions.ask({ agent: exec.agent, signal: exec.signal, questions: [{
+async function askNative(userQuestions, exec, offered, signal) {
+  const answer = await userQuestions.ask({ agent: exec.agent, signal, questions: [{
     id: 'dispatch', header: '确认分派',
     question: '按以下角色和模型分派？要调整就选“仅本次调整”或“保存为项目默认”，并在输入框逐行填写“角色id: 主模型, 回退1, 回退2”（回退最多 3 个）。',
     detail: offered.map(routeLine).join('\n'),
@@ -117,7 +128,55 @@ async function askNative(userQuestions, exec, offered) {
   });
   return { decision: 'confirm', scope: choice === '保存为项目默认' ? 'project' : 'task', routes };
 }
-export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, prefs, health = () => ({}) } = {}) {
+const minutesOf = ms => Number((ms / 60000).toFixed(1));
+/**
+ * Register a pending request and wait for its answer from the card or the native question box. Every exit
+ * (answer, cancel, timeout, abort) clears the abort listener, both timers and the pending entry, and aborts an
+ * open native question box so no stale dialog is left behind.
+ */
+function waitForAnswer(ctx, state, exec, callId, offered, catalogVersion, { graceMs, heartbeatMs, timeoutMs }) {
+  const startedAt = Date.now();
+  const native = new AbortController(); // ends the native question box when the request ends any other way
+  let settled = false, deadline, check, onAbort, nativeError;
+  const request = { offered, catalogVersion, lastSeenAt: undefined, nativeAsked: false };
+  const cleanup = () => {
+    clearTimeout(deadline); clearInterval(check);
+    if (onAbort) exec.signal?.removeEventListener?.('abort', onAbort);
+    if (state.pending.get(callId) === request) state.pending.delete(callId);
+    native.abort();
+  };
+  return new Promise((resolve, reject) => {
+    const finish = (fn, value) => { if (settled) return; settled = true; cleanup(); fn(value); };
+    request.resolve = value => finish(resolve, value);
+    const fail = error => finish(reject, error);
+    if (exec.signal?.aborted) { fail(new Error('分派确认已中止')); return; }
+    state.pending.set(callId, request);
+    onAbort = () => fail(new Error('分派确认已中止'));
+    exec.signal?.addEventListener?.('abort', onAbort, { once: true });
+    deadline = setTimeout(() => fail(new Error(`分派确认超时（${minutesOf(timeoutMs)} 分钟无人确认），未创建或通知任何队友。`
+      + `${nativeError ? `原生问答框也不可用（${nativeError.code ?? nativeError.message}）。` : ''}请询问用户是否重新分派。`)), timeoutMs);
+    deadline.unref?.();
+    // The card proves it is on screen by polling; it never showed up within graceMs, or its heartbeat is older
+    // than heartbeatMs → the host has no card or the user left it, so ask once in the native question box.
+    const cardGone = () => (request.lastSeenAt === undefined ? Date.now() - startedAt >= graceMs : Date.now() - request.lastSeenAt > heartbeatMs);
+    check = setInterval(() => {
+      if (settled || request.nativeAsked || !ctx.userQuestions?.ask || !cardGone()) return;
+      request.nativeAsked = true; // asked at most once: a second dialog for the same plan would only confuse
+      clearInterval(check);
+      askNative(ctx.userQuestions, exec, offered, native.signal).then(answer => {
+        if (settled) return;
+        try { request.resolve(validateAnswer(offered, answer)); } catch (error) { fail(error); }
+      }, error => {
+        // The question box failed (e.g. NO_PROVIDER when no client is attached, or it was dismissed by the host).
+        // That is not the user's answer: the card can still answer while the request is pending (the user may
+        // reopen the conversation), so keep waiting; the overall timeout still ends the wait with a clear error.
+        if (!settled) nativeError = error;
+      });
+    }, Math.max(5, Math.min(1000, graceMs, heartbeatMs)));
+    check.unref?.();
+  });
+}
+export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, heartbeatMs = HEARTBEAT_MS, timeoutMs = CONFIRM_TIMEOUT_MS, prefs, health = () => ({}) } = {}) {
   async function saveDefaults(exec, routes) {
     const changed = routes.filter(r => r.changed);
     if (!changed.length) return null;
@@ -152,22 +211,7 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, pref
       if (mode === 'never' || (mode === 'on-change' && unchanged)) return { asked: false, routes: offered };
       const catalogVersion = createHash('sha256').update(JSON.stringify(offered.map(r => r.candidates))).digest('hex').slice(0, 16);
       const callId = exec.callId ?? `dispatch-${Date.now()}`;
-      let result;
-      try {
-        result = await new Promise((resolve, reject) => {
-          const request = { offered, catalogVersion, seen: false, resolve };
-          state.pending.set(callId, request);
-          const onAbort = () => reject(new Error('分派确认已中止'));
-          exec.signal?.addEventListener?.('abort', onAbort, { once: true });
-          const timer = setTimeout(() => {
-            if (request.seen || !ctx.userQuestions?.ask) return;
-            askNative(ctx.userQuestions, exec, offered)
-              .then(answer => { if (state.pending.get(callId) === request) resolve(validateAnswer(offered, answer)); })
-              .catch(reject);
-          }, graceMs);
-          timer.unref?.();
-        });
-      } finally { state.pending.delete(callId); }
+      const result = await waitForAnswer(ctx, state, exec, callId, offered, catalogVersion, { graceMs, heartbeatMs, timeoutMs });
       if (result.decision === 'cancel') throw new Error('用户取消了这次分派，未创建或通知任何队友。请询问用户要如何调整。');
       if (result.scope === 'project') await saveDefaults(exec, result.routes);
       if (project) void prefs.record(project, result.routes).catch(() => {});
@@ -176,6 +220,7 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, pref
         if (result.scope === 'project') state.routes.delete(r.role);
         state.confirmed.set(r.role, keyOf(r));
       }
+      routeStore?.save(leadId, state.routes, state.confirmed);
       return { asked: true, scope: result.scope, routes: result.routes.map(r => ({ ...offered.find(o => o.role === r.role), primary: r.primary, fallbacks: r.fallbacks, changed: r.changed })) };
     },
   };

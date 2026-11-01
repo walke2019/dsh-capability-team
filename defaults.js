@@ -84,6 +84,14 @@ export const VENDOR_RULES = Object.freeze([
   { vendor: 'doubao', match: /^doubao-/, base: 'upper', classes: [[/lite/, 'low'], [/flash/, 'medium']] },
   { vendor: 'mistral', match: /^(mistral|magistral|codestral|devstral|ministral)/, base: 'medium', size: true,
     classes: [[/large/, 'upper'], [/medium/, 'medium'], [/(small|ministral|tiny)/, 'low']] },
+  // NVIDIA Nemotron (often `llama-3.3-nemotron-super-…`): checked before Llama so the line name wins.
+  { vendor: 'nemotron', match: /nemotron/, version: /(?!)/, base: 'medium', size: true,
+    classes: [[/ultra/, 'upper'], [/super/, 'medium'], [/(nano|mini)/, 'low']] },
+  // StepFun Step 3+ (`step3`, `step-3.5-flash`): the Flash line is a large MoE, so it sits in the balanced tier.
+  { vendor: 'stepfun', match: /^step-?\d/, floor: 3, base: 'upper', classes: [[/(mini|lite)/, 'low'], [/flash/, 'medium']] },
+  // Cohere Command: A is the current flagship line; R / R+ and the 7B are older or light. Digits in both\n  // Nemotron and Command ids are base-model versions or dates, so they are treated as versionless.
+  { vendor: 'cohere', match: /^(c4ai-)?command-/, version: /(?!)/, base: 'medium',
+    classes: [[/command-a/, 'upper'], [/(r7b|light)/, 'low'], [/command-r-plus/, 'medium'], [/command-r\b/, 'low']] },
   { vendor: 'llama', match: /^(llama|meta-llama)/, floor: 4, base: 'medium', size: true },
   { vendor: 'gemma', match: /^gemma/, floor: 4, base: 'low', size: true },
 ]);

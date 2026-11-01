@@ -2,9 +2,19 @@
 // (Latin words + CJK character bigrams), optional vectors, and hybrid ranking by reciprocal rank fusion.
 // Writes merge near-duplicates instead of piling them up; ranking decays with age and rises with use.
 import { createHash, randomUUID } from 'node:crypto';
-import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cosine } from './memory-embed.js';
+import { acquireLock } from './theme.js';
+/** Several DSH processes (Desktop, `dsh web`, profiles) share the files: writes and compaction take a file lock. */
+async function withFileLock(path, fn) {
+  let handle = null;
+  for (let attempt = 0; !handle; attempt++) {
+    try { handle = await acquireLock(`${path}.lock`); }
+    catch (error) { if (attempt >= 100 || ['EACCES', 'EPERM', 'ENOENT'].includes(error.code) && attempt >= 3) throw error; await new Promise(r => setTimeout(r, 30)); }
+  }
+  try { return await fn(); } finally { await handle.close().catch(() => {}); await unlink(`${path}.lock`).catch(() => {}); }
+}
 export const MEMORY_KINDS = ['handoff', 'result', 'pitfall', 'decision', 'note'];
 export const MEMORY_LIMITS = { maxText: 2000, maxPerFile: 2000, halfLifeDays: 30, pruneDays: 180, duplicateCosine: 0.92, injectChars: 2400 };
 const DAY = 86400000;
@@ -64,9 +74,12 @@ export function rank(docs, query, queryVector, { now = Date.now(), halfLifeDays 
 export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS } = {}) {
   const dir = join(root, 'memory');
   const cache = new Map(); // file key → memories
+  const seen = new Map(); // file key → size:mtime of the file as last read or written by this process
   const pathOf = key => join(dir, `${key}.jsonl`);
+  const stamp = async key => { try { const s = await stat(pathOf(key)); return `${s.size}:${s.mtimeMs}`; } catch { return 'none'; } };
   async function load(key) {
-    if (cache.has(key)) return cache.get(key);
+    // Another process may have appended or compacted since: re-read when the file changed under us.
+    if (cache.has(key) && seen.get(key) === await stamp(key)) return cache.get(key);
     let list = [];
     try {
       const latest = new Map();
@@ -76,18 +89,35 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
       }
       list = [...latest.values()].filter(m => !m.deleted);
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    const previous = cache.get(key);
+    if (previous) { previous.length = 0; previous.push(...list); list = previous; } // keep callers' array identity
     cache.set(key, list);
+    seen.set(key, await stamp(key));
     return list;
   }
   async function persist(key, record) {
     await mkdir(dir, { recursive: true });
-    await appendFile(pathOf(key), JSON.stringify(record) + '\n');
+    await withFileLock(pathOf(key), async () => {
+      const before = await stamp(key);
+      await appendFile(pathOf(key), JSON.stringify(record) + '\n');
+      // Only our own append happened since the last read: the cache is still current.
+      if (seen.get(key) === before) seen.set(key, await stamp(key));
+    });
   }
-  async function compact(key) {
-    const list = await load(key);
-    const temp = `${pathOf(key)}.${randomUUID()}.tmp`;
-    await writeFile(temp, list.map(m => JSON.stringify(m)).join('\n') + (list.length ? '\n' : ''));
-    await rename(temp, pathOf(key));
+  /** Rewrite the file from its current content (re-read under the lock, so other processes' appends survive). */
+  async function compact(key, select = list => list) {
+    await mkdir(dir, { recursive: true });
+    return withFileLock(pathOf(key), async () => {
+      seen.delete(key);
+      const list = await load(key);
+      const keep = select(list);
+      const temp = `${pathOf(key)}.${randomUUID()}.tmp`;
+      await writeFile(temp, keep.map(m => JSON.stringify(m)).join('\n') + (keep.length ? '\n' : ''));
+      await rename(temp, pathOf(key));
+      list.length = 0; list.push(...keep);
+      seen.set(key, await stamp(key));
+      return keep;
+    });
   }
   const keyOf = scope => (scope.kind === 'global' ? 'global' : fileKey(scope.project));
   return {
@@ -137,14 +167,14 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
     async setVector(m, vector, model) { m.vector = vector; m.model = model; await persist(keyOf(m.scope), m); },
     /** Forget: drop superseded entries and unused old ones, keep the newest maxPerFile. */
     async prune(scope) {
-      const fk = keyOf(scope);
-      const list = await load(fk);
       const cutoff = now() - limits.pruneDays * DAY;
-      const keep = list.filter(m => !m.supersededBy && !((m.hits ?? 0) === 0 && (m.updatedAt ?? m.createdAt) < cutoff))
-        .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)).slice(0, limits.maxPerFile);
-      const removed = list.length - keep.length;
-      cache.set(fk, keep);
-      await compact(fk);
+      let removed = 0;
+      await compact(keyOf(scope), list => {
+        const keep = list.filter(m => !m.supersededBy && !((m.hits ?? 0) === 0 && (m.updatedAt ?? m.createdAt) < cutoff))
+          .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)).slice(0, limits.maxPerFile);
+        removed = list.length - keep.length;
+        return keep;
+      });
       return removed;
     },
     async remove(scope, id) {

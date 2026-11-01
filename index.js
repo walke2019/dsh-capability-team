@@ -9,7 +9,8 @@ import { createPlanGate } from './plan-gate.js';
 import { createRuntimeObservability } from './runtime-observability.js';
 import { createTaskControl } from './member-task-control.js';
 import { createTaskAudit } from './task-control-audit.js';
-import { createDispatchConfirm } from './dispatch-confirm.js';
+import { createDispatchConfirm, setRouteStore } from './dispatch-confirm.js';
+import { createRouteStore } from './dispatch-routes-store.js';
 import { applyModelPrefsTool, createModelPrefs } from './model-prefs.js';
 import { createBoardDispatch } from './board-dispatch.js';
 import { baseName } from './session-rotation.js';
@@ -18,7 +19,7 @@ import { createTokenDiscipline } from './token-discipline.js';
 import { createRouteHealth, mergeHealth } from './route-health.js';
 import { createRotation } from './session-rotation.js';
 import { createMemoryHub } from './memory-hub.js';
-import { setPluginIntegrations } from './integrations-config.js';
+import { knownSecretValues, setCredentialResolver, setPluginIntegrations } from './integrations-config.js';
 export const inject = ['agents', 'agentTeams', 'systemPrompt', 'tools', 'workingDirectory', 'skills', 'llm', 'userQuestions'];
 export function apply(host, config = {}) {
   // Lead-only and teammate-only plugin tools are installed per agent, so teammates do not carry the lead's tool schemas.
@@ -26,6 +27,8 @@ export function apply(host, config = {}) {
   const team = createTeam(ctx, config); // Validates preset bindings up front.
   // Endpoints/models for search and embeddings may come from the plugin config; the Overview file and env override it.
   setPluginIntegrations(config.integrations);
+  // Keys come from DSH's own credential store first (Settings → credentials), the environment second.
+  setCredentialResolver(async name => (await ctx.get?.('credentials')?.resolve(name))?.value);
   void team.refresh(); // First catalog match in the background; requests await it if still pending.
   const observability = createRuntimeObservability();
   const routeHealth = createRouteHealth(team.root);
@@ -35,12 +38,14 @@ export function apply(host, config = {}) {
     registered: provider => ctx.llm.listProviders().some(p => p.id === provider),
     log: message => ctx.logger?.info?.(`capability-team: ${message}`),
   });
-  const taskControl = createTaskControl(ctx, team, { audit: createTaskAudit(team.root), onChanged: () => observability.notifyTaskControl() });
+  const taskControl = createTaskControl(ctx, team, { audit: createTaskAudit(team.root), onChanged: () => observability.notifyTaskControl(),
+    predecessorOf: (leadId, name) => rotation.predecessorOf(leadId, name) });
   const planGate = createPlanGate(ctx, team);
-  const memory = createMemoryHub(ctx, team);
+  const memory = createMemoryHub(ctx, team, { secrets: () => knownSecretValues() });
   const rotation = createRotation(ctx, team, { onHandoff: handoff => memory.ingestHandoff(handoff) });
   const board = createBoardDispatch(ctx, team);
   const prefs = createModelPrefs(team.root);
+  setRouteStore(createRouteStore(team.root)); // per-task confirmed routes survive a DSH restart
   const workflow = createWorkflow(ctx, team, { onDelegate: (lead, roles) => planGate.reset(lead, roles), onAssignments: (lead, assignments) => taskControl.dispatch(lead, assignments), dispatchConfirm: createDispatchConfirm(ctx, team, { prefs, health: () => mergeHealth(routeHealth.recent(), failover.health()) }), rotation, board });
   taskControl.setWorkflow(workflow);
   taskControl.register();

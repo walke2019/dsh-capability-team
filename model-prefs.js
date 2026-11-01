@@ -62,6 +62,8 @@ export function createModelPrefs(root) {
     read,
     /** Habit per capability for a project. */
     async habits(project) {
+      // Wait for queued records so a habit read right after a confirmation sees it (rename timing differs by OS).
+      await queue.catch(() => {});
       const data = await read(project);
       return Object.fromEntries(Object.entries(data.byCapability).map(([cap, v]) => [cap, habitOf(v.choices)]).filter(([, h]) => h));
     },

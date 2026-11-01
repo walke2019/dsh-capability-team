@@ -2,8 +2,8 @@
 // endpoint is configuration (integrations.embeddings): base URL, path, extra headers, model, and the optional
 // provider / dimensions / task fields some gateways (e.g. a Jina-backed one) accept. Nothing is assumed.
 // Any failure returns undefined: the hub then uses full-text search and embeds missing vectors later.
-import { keyOf, resolveIntegrations } from './integrations-config.js';
-const STATUS_HINT = { 400: '模型或参数不被接受', 401: '密钥无效', 403: '被拒绝（检查密钥或网关要求的请求头）', 404: '网关没有这个路径', 429: '限流，稍后重试', 502: '上游故障', 504: '上游超时' };
+import { keyOf, refreshCredentials, resolveIntegrations } from './integrations-config.js';
+const STATUS_HINT = { 400: '模型或参数不被接受', 401: '客户端鉴权失败，检查密钥', 403: '被拒绝（检查密钥或网关要求的请求头）', 404: '网关没有这个路径', 429: '限流，稍后重试', 502: '上游失败', 504: '上游超时' };
 /** Embeddings config and key as resolved now. */
 export function embedSettings(resolved = resolveIntegrations()) {
   return { config: resolved.effective.embeddings, key: keyOf('embeddings', resolved), keyEnv: resolved.keys.embeddings.env };
@@ -27,6 +27,7 @@ export function createEmbedder({ settings = embedSettings, fetcher = fetch } = {
     get lastError() { const s = current(); return s.error ?? missing(s) ?? lastError; },
     get vectorKey() { const s = current(); return s.error || missing(s) ? null : vectorKey(s.config); },
     async embed(texts, purpose = 'passage') {
+      if (settings === embedSettings) await refreshCredentials().catch(() => {});
       const s = current();
       if (s.error || missing(s) || !texts.length) return undefined;
       const { config, key } = s;

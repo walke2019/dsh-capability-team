@@ -3,6 +3,7 @@ import { TIER_ORDER } from './defaults.js';
 import { routeMatcher, routeKey } from './model-policy.js';
 import { params } from './tool-schema.js';
 import { redactReason } from './task-control-audit.js';
+import { baseName } from './session-rotation.js';
 export const ESTIMATES = { simple: 15, medium: 40, complex: 80 };
 export const judgment = (used, estimated) => used > estimated * 2 ? 'unqualified' : used > estimated * 1.5 ? 'warning' : 'within';
 const rank = tier => TIER_ORDER.indexOf(tier);
@@ -11,7 +12,7 @@ const leadBindings = new Map();
 export const taskControlSnapshot = id => leadBindings.get(id)?.snapshot({id}) ?? null;
 export const taskControlBinding = agent => bindings.get(agent);
 export function taskError(code, message, status = 422) { return Object.assign(new Error(message), { code, status }); }
-export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged = () => {} } = {}) {
+export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged = () => {}, predecessorOf } = {}) {
   const groups = new Map(); let workflow;
   const changed = lead => { group(lead).revision++; try { onChanged(lead.id); } catch { /* notification never changes control */ } };
   let disposed = false;
@@ -53,19 +54,20 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
     if (!lease || lease.status === 'ended') return;
     group(lead).tombstones.set(`${lease._generation}:${lease.roleId}`,{assignmentId:lease.assignmentId,judgment:lease.judgment,startsUsed:lease.startsUsed});
     lease._routable=false;
-    lease.status = 'ended'; lease.override = null; lease.endedAt = now(); lease.endReason = reason; lease.revision++;
+    lease._lastOverride = lease.override; lease.status = 'ended'; lease.override = null; lease.endedAt = now(); lease.endReason = reason; lease.revision++;
     changed(lead); schedule(lead);
     await append(lead, 'lease-end', lease, reason);
   };
   const sweep = async lead => { const endings=[];for (const l of group(lead).leases) if (l.status !== 'ended' && now() >= l.expiresAt) endings.push(end(lead,l,'timeout'));await Promise.all(endings); };
   const serial = (lead, action) => { const g = group(lead), result = g.queue.catch(() => {}).then(action); g.queue = result; return result; };
   const active = (lead, role) => group(lead).leases.find(l => l.roleId === role && l.status !== 'ended');
-  const currentAssignment = (lead, role) => {const plan=workflow?.state(lead).plan;return plan?.mode==='delegate'?plan.assignments?.find(a=>a.role===role):undefined;};
+  // A rotation successor (<role>-rN) works on its predecessor's assignment.
+  const currentAssignment = (lead, role) => {const plan=workflow?.state(lead).plan;return plan?.mode==='delegate'?plan.assignments?.find(a=>a.role===role||a.role===baseName(role)):undefined;};
   const requireAssignment = (lead, role) => { if (!currentAssignment(lead, role)) throw taskError('FORBIDDEN', 'Role not in current delegate assignment', 403); };
   const checkCAS = (lease, args) => { if (!lease || args.lease_id !== lease.leaseId || args.expected_revision !== lease.revision) throw taskError('CONFLICT', 'CONFLICT', 409); };
   const steps = id => { const agent = ctx.agents.get(id); try { return ctx.get?.('sessionProjections')?.stateOf(agent.session, 'capabilityTeamReport')?.view?.stepsStarted ?? 0; } catch { return 0; } };
   async function candidates(lead, roleId) {
-    member(lead, roleId); const { effective, policy } = await team.load(lead); const entry = effective.roles[roleId], capability = effective.capabilities[entry?.capability];
+    member(lead, roleId); const { effective, policy } = await team.load(lead); const entry = effective.roles[roleId] ?? effective.roles[baseName(roleId)], capability = effective.capabilities[entry?.capability];
     if (!capability) throw taskError('NOT_FOUND', 'Unknown role', 404);
     const rows = [];
     for (const provider of ctx.llm.listProviders()) {
@@ -130,6 +132,31 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
         const live=ctx.agents.get(m.id); if(live)bindings.set(live, api); return structuredClone(newLease);
       });
     },
+    /**
+     * Rotation: the successor `to` continues the predecessor's lease of the current dispatch — same assignment,
+     * task, complexity, deadline and per-task override, with the steps already used carried over — so the budget
+     * keeps counting without a manual start. Returns the new lease, or null when there is nothing to continue.
+     */
+    async inherit(lead, from, to) {
+      return serial(lead, async () => {
+        const g = group(lead), m = member(lead, to); await sweep(lead);
+        if (active(lead, to)) return null;
+        const prev = g.leases.find(l => l.roleId === from && l._generation === g.generation);
+        if (!prev || !currentAssignment(lead, to)) return null;
+        const override = prev.override ?? prev._lastOverride ?? null;
+        if (prev.status !== 'ended') await end(lead, prev, 'rotated');
+        const used = prev.startsUsed;
+        const { _actor, _source, _generation, _routable, _lastOverride, ...plain } = prev;
+        const lease = { ...structuredClone(plain), leaseId: randomUUID(), revision: 1, roleId: to, memberSessionId: m.id, status: 'armed',
+          createdAt: now(), startedAt: null, endedAt: null, endReason: null, expiresAt: Math.max(prev.expiresAt, now() + 30 * 60000),
+          baselineStarts: steps(m.id) - used, startsUsed: used, override };
+        Object.assign(lease, { _generation: g.generation, _routable: true, _actor: { kind: 'system', id: lead.id }, _source: 'lifecycle' });
+        await append(lead, 'budget-inherit', lease, `rotated from ${from}`);
+        g.leases = [lease, ...g.leases]; changed(lead); schedule(lead);
+        const live = ctx.agents.get(m.id); if (live) bindings.set(live, api);
+        return structuredClone(lease);
+      });
+    },
     async override(lead, args, actor = { kind: 'lead', id: lead.id }) {
       validate(args,'override');
       return serial(lead, async () => {
@@ -183,7 +210,7 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
         if(['within','warning','unqualified'].indexOf(next)>['within','warning','unqualified'].indexOf(l.judgment)){l.judgment=next;l.revision++;await append(lead,`threshold-${next}`,l);}
       }
     },
-    snapshot(lead) {const g=group(lead);for(const l of g.leases)if(l.status!=='ended'&&now()>=l.expiresAt){void end(lead,l,'timeout').catch(()=>{});}return structuredClone({schemaVersion:1,revision:g.revision,leases:g.leases.map(({_actor,_source,_generation,_routable,...lease})=>lease),auditTail:g.auditTail});},
+    snapshot(lead) {const g=group(lead);for(const l of g.leases)if(l.status!=='ended'&&now()>=l.expiresAt){void end(lead,l,'timeout').catch(()=>{});}return structuredClone({schemaVersion:1,revision:g.revision,leases:g.leases.map(({_actor,_source,_generation,_routable,_lastOverride,...lease})=>lease),auditTail:g.auditTail});},
     summary(lead) {for(const l of group(lead).leases.filter(l=>l.status!=='ended')){const used=Math.max(l.startsUsed,steps(l.memberSessionId)-l.baselineStarts);const next=judgment(used,l.estimatedSteps);if(used!==l.startsUsed){l.startsUsed=used;l.revision++;changed(lead);}if(['within','warning','unqualified'].indexOf(next)>['within','warning','unqualified'].indexOf(l.judgment)){l.judgment=next;l.revision++;void append(lead,`threshold-${next}`,l);}}return JSON.stringify(api.snapshot(lead).leases.filter(l=>l.status!=='ended'&&l.judgment!=='within').map(l=>({role:l.roleId,used:l.startsUsed,estimated:l.estimatedSteps,judgment:l.judgment}))).slice(0,2000);},
     dispose() {disposed=true;for(const [id,g] of groups){if(g.timer)clearTimeout(g.timer);leadBindings.delete(id);}groups.clear();},
     register() {
@@ -196,7 +223,7 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
         }
       })));
       ctx.on('agent/status',({agent,status})=>{void api.status(agent,status).catch(()=>{});});
-      ctx.on('agent/created',({agent})=>{const identity=ctx.agentTeams.tryMembership(agent);if(identity?.role==='teammate'){const lead=identity.root;const pending=group(lead).pending.find(a=>a.role===identity.name&&!a.consumed&&!a.claimed&&a.generation===group(lead).generation);if(pending){pending.claimed=true;void api.budget(lead,{action:'start',role:pending.role,complexity:pending.complexity,assignment_id:pending.assignmentId},{kind:'system',id:lead.id}).catch(()=>{});}}});
+      ctx.on('agent/created',({agent})=>{const identity=ctx.agentTeams.tryMembership(agent);if(identity?.role==='teammate'){const lead=identity.root;const pending=group(lead).pending.find(a=>a.role===identity.name&&!a.consumed&&!a.claimed&&a.generation===group(lead).generation);if(pending){pending.claimed=true;void api.budget(lead,{action:'start',role:pending.role,complexity:pending.complexity,assignment_id:pending.assignmentId},{kind:'system',id:lead.id}).catch(()=>{});}else{const from=predecessorOf?.(lead.id,identity.name);if(from)void api.inherit(lead,from,identity.name).catch(()=>{});}}});
       ctx.on('agent/disposed',({agent})=>{void api.status(agent,'disposed').catch(()=>{});});
       for(const [name,method] of [['capability_task_budget','budget'],['capability_member_override','override']]) ctx.effect(()=>ctx.tools.register({name,description:'单队友单任务，不修改配置。budget action=start/finish/inspect，override action=set/clear/inspect。先inspect获取leaseId与revision；修改需lease_id和expected_revision，CONFLICT后重新inspect。同一assignment不能重置预算。',parameters:params(Object.fromEntries((method==='budget'?['action','role','lease_id','expected_revision','task_id','assignment_id','complexity','timeout_seconds','reason']:['action','role','lease_id','expected_revision','provider','model','catalog_version','reason']).map(k=>[k,{type:['expected_revision','timeout_seconds'].includes(k)?'number':'string',...(k==='action'?{enum:method==='budget'?['start','finish','inspect']:['set','clear','inspect']}:k==='complexity'?{enum:['simple','medium','complex']}:{})}])),['action','role']),output:{schema:{type:'string'},render:(_a,v)=>[{type:'text',text:v}]},execute:async(args,exec)=>JSON.stringify(await api[method](exec.agent,args))}));
     },

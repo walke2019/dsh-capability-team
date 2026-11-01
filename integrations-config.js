@@ -9,13 +9,22 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { acquireLock, defaultRoot } from './theme.js';
 export const INTEGRATION_DEFAULTS = Object.freeze({
-  search: Object.freeze({ baseUrl: null, apiKeyEnv: 'CPA_SEARCH_API_KEY', searchPath: '/v1/search', fetchPath: '/v1/web/fetch', headers: {}, providers: [], fetchProviders: [], timeoutMs: 15000, fetchTimeoutMs: 30000 }),
+  // Search gateways fall back across upstream providers, so a full answer can take up to two minutes.
+  search: Object.freeze({ baseUrl: null, apiKeyEnv: 'CPA_SEARCH_API_KEY', searchPath: '/v1/search', fetchPath: '/v1/web/fetch', providersPath: null, headers: {}, providers: [], fetchProviders: [], timeoutMs: 120000, fetchTimeoutMs: 120000 }),
   embeddings: Object.freeze({ baseUrl: null, apiKeyEnv: 'CPA_EMBED_API_KEY', path: '/v1/embeddings', headers: {}, model: null, provider: null, dimensions: null, queryTask: null, passageTask: null, timeoutMs: 15000, batch: 32 }),
+  // Speech to text: multipart upload of a user-approved local file. maxBytes mirrors the gateway's current cap;
+  // the gateway's own limit wins when it is lower (a 413 is reported, never retried).
+  audio: Object.freeze({ baseUrl: null, apiKeyEnv: 'CPA_AUDIO_API_KEY', path: '/v1/audio/transcriptions', statusPath: null, headers: {}, model: null, timeoutMs: 125000, maxBytes: 8388608 }),
+  // Memory hub backend: 'local' (team store only) or 'openviking' (also shared long-term memory on that server).
+  // The OpenViking key is optional: a local dev-mode server on 127.0.0.1 needs none.
+  memory: Object.freeze({ backend: 'local', url: null, apiKeyEnv: 'OPENVIKING_API_KEY', account: null, user: null, timeoutMs: 8000, recallLimit: 4 }),
 });
 /** Environment variables that override single fields (kept for existing setups). */
 export const ENV_OVERRIDES = Object.freeze({
   search: { baseUrl: 'CPA_SEARCH_BASE_URL' },
   embeddings: { baseUrl: 'CPA_EMBED_BASE_URL', model: 'CPA_EMBED_MODEL', dimensions: 'CPA_EMBED_DIMENSIONS' },
+  audio: { baseUrl: 'CPA_AUDIO_BASE_URL' },
+  memory: { url: 'OPENVIKING_URL' },
 });
 const SECTIONS = Object.keys(INTEGRATION_DEFAULTS);
 const HEADER_NAME = /^[A-Za-z0-9-]{1,64}$/;
@@ -32,7 +41,7 @@ function validateField(section, key, value) {
       return url.href.replace(/\/+$/, '');
     }
     case 'apiKeyEnv': return /^[A-Z_][A-Z0-9_]{0,63}$/.test(value) ? value : fail(label, '须为环境变量名（大写字母、数字、下划线）');
-    case 'searchPath': case 'fetchPath': case 'path':
+    case 'searchPath': case 'fetchPath': case 'providersPath': case 'statusPath': case 'path':
       return typeof value === 'string' && /^\/[A-Za-z0-9._~\/-]{0,200}$/.test(value) && !value.includes('..') ? value : fail(label, '须为以 / 开头的路径');
     case 'headers': {
       if (typeof value !== 'object' || Array.isArray(value)) fail(label, '须为 {名称: 值} 对象');
@@ -50,8 +59,20 @@ function validateField(section, key, value) {
     case 'model': case 'provider': case 'queryTask': case 'passageTask':
       return typeof value === 'string' && value.trim() && value.length <= 200 && !/\s/.test(value.trim()) ? value.trim() : fail(label, '须为不含空白的字符串');
     case 'dimensions': return integerIn(value, 1, 8192, label, '须为 1–8192 的整数');
-    case 'timeoutMs': case 'fetchTimeoutMs': return integerIn(value, 1000, 120000, label, '须为 1000–120000 毫秒');
+    case 'timeoutMs': case 'fetchTimeoutMs': return integerIn(value, 1000, 300000, label, '须为 1000–300000 毫秒');
     case 'batch': return integerIn(value, 1, 256, label, '须为 1–256 的整数');
+    case 'maxBytes': return integerIn(value, 1024, 104857600, label, '须为 1024–104857600 字节');
+    case 'backend': return ['local', 'openviking'].includes(value) ? value : fail(label, '须为 local 或 openviking');
+    case 'url': {
+      // Plain http is accepted only for a server on this machine; anything remote must use https.
+      let url; try { url = new URL(String(value)); } catch { fail(label, '不是合法地址'); }
+      const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+      if (!(url.protocol === 'https:' || (url.protocol === 'http:' && loopback)) || url.username || url.password || url.search || url.hash) fail(label, '须为 https 地址（本机可用 http://127.0.0.1），不含账号和查询参数');
+      return url.href.replace(/\/+$/, '');
+    }
+    case 'account': case 'user':
+      return typeof value === 'string' && /^[\w.@-]{1,64}$/.test(value) ? value : fail(label, '须为 1–64 位字母、数字或 ._@-');
+    case 'recallLimit': return integerIn(value, 0, 20, label, '须为 0–20 的整数');
     default: return fail(label, '不是支持的字段');
   }
 }
@@ -107,7 +128,36 @@ export function resolveIntegrations({ root = defaultRoot(), env = process.env } 
   return resolved;
 }
 /** The API key for a section, read from the environment variable its config names. */
-export const keyOf = (section, resolved, env = resolved.env ?? process.env) => env[resolved.effective[section].apiKeyEnv] || undefined;
+export const keyOf = (section, resolved, env = resolved.env ?? process.env) => {
+  const name = resolved.effective[section].apiKeyEnv;
+  return (env === process.env ? credentialCache.get(name) : undefined) || env[name] || undefined;
+};
+// DSH's credential store (ctx.credentials, the keys saved in Settings such as a provider's CPA_API_KEY) is
+// consulted first, so `apiKeyEnv` names a DSH credential reference and the process environment is the fallback.
+// Values are cached in memory only, refreshed before each request, and only ever placed in a request header.
+let credentialResolver;
+const credentialCache = new Map();
+export function setCredentialResolver(fn) { credentialResolver = fn; credentialCache.clear(); }
+/** Re-read the keys every section names from the DSH credential store (no-op without the store). */
+export async function refreshCredentials(resolved = resolveIntegrations()) {
+  if (!credentialResolver) return;
+  for (const section of SECTIONS) {
+    const name = resolved.effective[section].apiKeyEnv;
+    try { const value = await credentialResolver(name); if (value) credentialCache.set(name, value); else credentialCache.delete(name); }
+    catch { credentialCache.delete(name); }
+  }
+}
+/** Every configured key value (store and environment), only for redacting them out of stored text. */
+export function knownSecretValues(resolved = resolveIntegrations()) {
+  return [...new Set(SECTIONS.map(section => keyOf(section, resolved)).filter(Boolean))];
+}
+/** Whether each section's key is configured (DSH store or environment), never the value. */
+export async function keyPresence(resolved) {
+  await refreshCredentials(resolved);
+  const out = {};
+  for (const section of SECTIONS) out[section] = { ...resolved.keys[section], present: !!keyOf(section, resolved) };
+  return out;
+}
 /** Save the file layer (merge per field; null restores the lower layer) with an optimistic revision check. */
 export async function saveIntegrations(patch, expectedRevision, { root = defaultRoot() } = {}) {
   const changes = validateIntegrations(patch);
@@ -144,7 +194,10 @@ export async function handleIntegrations(request, { root = defaultRoot(), env = 
   const fail = (status, code, message) => Response.json({ code, message }, { status });
   try {
     const url = new URL(request.url);
-    if (request.method === 'GET') return Response.json(describeIntegrations(resolveIntegrations({ root, env })), { headers: { 'cache-control': 'no-store' } });
+    if (request.method === 'GET') {
+      const resolved = resolveIntegrations({ root, env });
+      return Response.json({ ...describeIntegrations(resolved), keys: await keyPresence(resolved) }, { headers: { 'cache-control': 'no-store' } });
+    }
     if (request.method !== 'POST') return fail(400, 'BAD_REQUEST', 'Method not allowed');
     if (crossSiteRequest(request)) return fail(403, 'FORBIDDEN', 'Same-origin required');
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') ?? '')) return fail(400, 'BAD_REQUEST', 'JSON required');

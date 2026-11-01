@@ -41,6 +41,11 @@ const effective = effectiveConfig({
 const llm = { listProviders: () => [{ id: 'provider-a', name: 'Provider A' }], listModels: async () => ['m1', 'm2', 'm3'].map(id => ({ id, name: id })) };
 const plan = { mode: 'delegate', assignments: [{ role: 'diao-chan', displayName: '貂蝉', capability: 'frontend', task: '改前端' }] };
 const flush = () => new Promise(resolve => setTimeout(resolve, 10));
+// Wait until the card is registered: confirm() does file I/O first, whose latency differs by OS.
+const pendingFor = async (lead, callId) => {
+  for (let i = 0; i < 500; i++) { if (pendingView(lead, callId).status === 'pending') return; await flush(); }
+  throw new Error(`no pending dispatch for ${lead}`);
+};
 
 test('确认分派会被记录，之后的新会话预选你的习惯；“保存为项目默认”仍按配置比较', async () => {
   const root = await mkdtemp(join(tmpdir(), 'prefs-'));
@@ -50,14 +55,14 @@ test('确认分派会被记录，之后的新会话预选你的习惯；“保�
   for (const lead of ['L1', 'L2']) {
     forgetLead(lead);
     const p = confirm.confirm({ agent: { id: lead }, callId: 'c' }, plan, effective, { disabledRoutes: [] }, 'always');
-    await flush();
+    await pendingFor(lead, 'c');
     answerPending(lead, 'c', { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m2', fallbacks: ['provider-a/m3'] }] });
     await p; await flush();
   }
   assert.deepEqual(await prefs.habits('/proj'), { frontend: { primary: 'provider-a/m2', fallbacks: ['provider-a/m3'], count: 2, of: 2, settled: false } });
   forgetLead('L3');
   const p = confirm.confirm({ agent: { id: 'L3' }, callId: 'c' }, plan, effective, { disabledRoutes: [] }, 'always');
-  await flush();
+  await pendingFor('L3', 'c');
   const view = pendingView('L3', 'c');
   assert.equal(view.routes[0].primary.model, 'm2', '新会话预选习惯');
   assert.equal(view.routes[0].learned.preselected, true);

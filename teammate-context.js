@@ -11,9 +11,23 @@ const isTeammateAgent = agent => agent?.session?.header?.parentSession !== undef
 /**
  * A ctx whose tools.register keeps lead-only and teammate-only tools back and installs them per agent when that
  * agent is created. Everything else passes through to the host unchanged.
+ * Agents that already existed when the plugin loaded (or reloaded) never fire agent/created, so the scoped tools
+ * are also installed for every agent in ctx.agents.list() once registration finished, and lazily on the first
+ * agent/pre-step of an agent. Installation is idempotent per agent and tool name.
  */
 export function scopeTools(ctx) {
   const lead = [], teammate = [];
+  const installed = new WeakMap();
+  const install = agent => {
+    if (!agent?.ctx?.tools) return;
+    const done = installed.get(agent) ?? new Set();
+    installed.set(agent, done);
+    for (const def of isTeammateAgent(agent) ? teammate : lead) {
+      if (done.has(def.name)) continue;
+      done.add(def.name);
+      try { agent.ctx.tools.register(def); } catch { /* already present for this agent */ }
+    }
+  };
   const tools = new Proxy(ctx.tools, {
     get(target, prop) {
       if (prop === 'register') return def => {
@@ -26,11 +40,12 @@ export function scopeTools(ctx) {
     },
   });
   const scoped = new Proxy(ctx, { get: (target, prop) => (prop === 'tools' ? tools : target[prop]) });
-  ctx.on('agent/created', ({ agent }) => {
-    const defs = isTeammateAgent(agent) ? teammate : lead;
-    for (const def of defs) { try { agent.ctx.tools.register(def); } catch { /* already present for this agent */ } }
-  });
-  return { ctx: scoped, deferred: () => ({ lead: [...lead], teammate: [...teammate] }) };
+  ctx.on('agent/created', ({ agent }) => install(agent));
+  ctx.on('agent/pre-step', (payload, next) => { install(payload?.agent); return next(); });
+  // Plugin tools register synchronously during apply; existing agents are backfilled right after it returns.
+  const installExisting = () => { let agents = []; try { agents = ctx.agents?.list?.() ?? []; } catch { /* host without agents service */ } for (const agent of agents) install(agent); };
+  queueMicrotask(installExisting);
+  return { ctx: scoped, deferred: () => ({ lead: [...lead], teammate: [...teammate] }), installExisting };
 }
 /** First clause of a description, at most `max` characters. */
 export function shortDescription(text, max = CATALOG_DESCRIPTION_CHARS) {

@@ -9,6 +9,8 @@ import { createMemoryStore, rank, tokenize, visible } from '../memory-store.js';
 import { createMemoryHub } from '../memory-hub.js';
 
 const tmp = () => mkdtemp(join(tmpdir(), 'mem-'));
+// Never read the user's real integrations (a configured shared-memory server would make tests hit the network).
+process.env.CAPABILITY_TEAM_HOME = await tmp();
 const P = '/proj';
 const role = r => ({ kind: 'role', project: P, role: r });
 

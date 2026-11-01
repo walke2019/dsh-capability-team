@@ -27,11 +27,11 @@ window.__ModuleLoader__.load({
       'workflow.tokens': 'Token 规则', 'workflow.tokens.value': '空闲时上下文 ≥{ratio}% 自动压缩 · 命令/搜索输出超过 {chars} 字只留头尾',
       'confirm.habit': '按你的习惯 {n}/{of}', 'confirm.failing': '最近失败 {n} 次', 'confirm.primaryFailing': '主模型 {route} 最近失败 {n} 次，建议换一个。', 'confirm.habitSettled': '最近 3 次你都这样选，可以改为“保存为项目默认”。', 'plan.boardScope': '写入范围 {list}', 'plan.boardAfter': '等待 {list}', 'workflow.enforceWriteScopes': '写入范围', 'workflow.enforceWriteScopes.on': '强制（范围外修改会被拒绝）', 'workflow.enforceWriteScopes.off': '仅提示', 'cards.prefs': '模型偏好', 'cards.prefs.summary': '已学到 {n} 个能力的偏好', 'cards.prefs.cleared': '已清空学到的偏好',
       'confirm.expand': '展开', 'confirm.collapse': '收起', 'picker.search': '输入搜索模型…', 'picker.count': '{n} / {total} 个模型', 'picker.empty': '没有匹配的模型', 'picker.noProvider': '其他',
-      'nav.integrations': '集成', 'int.help': '搜索网关与记忆枢纽嵌入接口的地址、路径、模型都是你自己的设置，保存后下一次调用起生效（工具里的渠道列表在 DSH 重载插件后更新）。密钥不在这里填写：只填存放密钥的环境变量名，并在 DSH 的 Host 环境里设置它。留空表示使用下一层（插件配置或默认值）。',
+      'nav.integrations': '集成', 'int.help': '搜索网关与记忆枢纽嵌入接口的地址、路径、模型都是你自己的设置，保存后下一次调用起生效（工具里的渠道列表在 DSH 重载插件后更新）。密钥不在这里填写：只填密钥的名称，先在 DSH 设置的凭据里查找，找不到再读同名环境变量。留空表示使用下一层（插件配置或默认值）。',
       'int.search': '搜索与网页读取', 'int.search.hint': 'cpa_search / cpa_web_fetch 调用的聚合网关。', 'int.embeddings': '嵌入（记忆枢纽向量检索）', 'int.embeddings.hint': 'OpenAI 兼容的嵌入接口；provider、dimensions、task 只在填写后才会发送。改模型或维度后，旧向量会自动重算。',
-      'int.keySet': '密钥：已在环境变量 {name} 中设置', 'int.keyMissing': '密钥：环境变量 {name} 未设置', 'int.unset': '未设置',
+      'int.keySet': '密钥 {name}：已设置（DSH 凭据或环境变量）', 'int.keyMissing': '密钥 {name}：DSH 凭据和环境变量里都没有', 'int.audio': '语音转写', 'int.memory': '共享长期记忆（OpenViking）', 'int.memory.hint': 'backend 填 openviking 后，团队记忆（去掉密钥后）同时写入该服务器，检索时合并其召回；服务器不可用时自动只用本地记忆。远程地址只接受 https。', 'int.field.backend': '后端（local / openviking）', 'int.field.url': '服务器地址（https；本机可用 http）', 'int.field.account': '账号（trusted 模式可选）', 'int.field.user': '用户（trusted 模式可选）', 'int.field.recallLimit': '每次召回条数（0–20）', 'int.audio.hint': 'cpa_transcribe 调用的转写接口；每个文件上传前都要你在确认框授权，超过上限的文件不读取。', 'int.unset': '未设置',
       'int.source.default': '默认值', 'int.source.plugin': '插件配置', 'int.source.file': '本页设置', 'int.source.env': '环境变量 {name}（只读）',
-      'int.field.baseUrl': '网关地址（https）', 'int.field.apiKeyEnv': '密钥环境变量名', 'int.field.searchPath': '搜索路径', 'int.field.fetchPath': '网页读取路径', 'int.field.path': '接口路径', 'int.field.headers': '附加请求头（每行 名称: 值）', 'int.field.providers': '搜索渠道（逗号分隔，留空不限）', 'int.field.fetchProviders': '读取渠道（逗号分隔，留空不限）', 'int.field.timeoutMs': '超时（毫秒）', 'int.field.fetchTimeoutMs': '读取超时（毫秒）', 'int.field.model': '模型', 'int.field.provider': '渠道 provider（可选）', 'int.field.dimensions': '维度（可选）', 'int.field.queryTask': '检索 task（可选）', 'int.field.passageTask': '入库 task（可选）', 'int.field.batch': '每批条数',
+      'int.field.baseUrl': '网关地址（https）', 'int.field.apiKeyEnv': '密钥名称（DSH 凭据 / 环境变量）', 'int.field.providersPath': '渠道列表路径（可选，GET）', 'int.field.statusPath': '状态路径（可选，GET）', 'int.field.maxBytes': '上传上限（字节）', 'int.field.searchPath': '搜索路径', 'int.field.fetchPath': '网页读取路径', 'int.field.path': '接口路径', 'int.field.headers': '附加请求头（每行 名称: 值）', 'int.field.providers': '搜索渠道（逗号分隔，留空不限）', 'int.field.fetchProviders': '读取渠道（逗号分隔，留空不限）', 'int.field.timeoutMs': '超时（毫秒）', 'int.field.fetchTimeoutMs': '读取超时（毫秒）', 'int.field.model': '模型', 'int.field.provider': '渠道 provider（可选）', 'int.field.dimensions': '维度（可选）', 'int.field.queryTask': '检索 task（可选）', 'int.field.passageTask': '入库 task（可选）', 'int.field.batch': '每批条数',
       'int.save': '保存', 'int.reset': '撤销', 'int.saving': '正在保存…', 'int.saved': '已保存。', 'int.conflict': '配置已被别处修改，已刷新，请重新填写。', 'int.saveFailed': '保存失败：', 'int.invalid': '{field} 的格式不对', 'int.loading': '正在读取集成配置…', 'int.loadFailed': '读取集成配置失败。',
       'cards.memorySearch': '记忆检索', 'cards.memorySearch.summary': '“{q}” · {n} 条 · {mode}', 'cards.memory.mode.hybrid': '全文+向量', 'cards.memory.mode.text': '仅全文', 'cards.memoryWrite': '写入记忆', 'cards.memoryWrite.saved': '已保存', 'cards.memoryWrite.merged': '已合并到相同记忆', 'cards.memory.kind.handoff': '交接', 'cards.memory.kind.result': '结果', 'cards.memory.kind.pitfall': '踩坑', 'cards.memory.kind.decision': '决定', 'cards.memory.kind.note': '笔记',
       'usage.avgPrompt': '每步平均输入 {n}', 'usage.cacheShare': '缓存读取占 {p}%', 'usage.heavyContext': '每步上下文偏大，建议轮换会话', 'usage.contextHint': '每步平均输入 =（未缓存输入 + 缓存读取 + 缓存写入）÷ 步数。数值越大，每一步重发的上下文越多。',
@@ -40,7 +40,7 @@ window.__ModuleLoader__.load({
       'cards.catalog': '模型目录', 'cards.catalog.summary': '{n} 个模型 · {p} 个渠道', 'cards.catalog.errors': '读取失败的渠道', 'cards.budget': '任务步数预算', 'cards.override': '临时模型', 'cards.lease.role': '成员', 'cards.lease.status': '状态', 'cards.lease.judgment': '判定', 'cards.lease.steps': '步数', 'cards.lease.ends': '到期', 'cards.lease.endReason': '结束原因',
       'cards.export': '导出团队模板', 'cards.export.summary': '{n} 个角色 · {c} 个能力', 'cards.search': '聚合搜索', 'cards.search.summary': '“{q}” · {n} 条结果', 'cards.fetch': '网页读取',
       'plan.fallbacks': '回退：{list}', 'confirm.title': '确认分派', 'confirm.hint': '核对每个角色的模型和回退模型，确认后才会派活；可以直接修改。', 'confirm.primary': '主模型', 'confirm.fallbacks': '回退模型', 'confirm.noFallbacks': '无回退模型', 'confirm.addFallback': '添加回退模型…', 'confirm.max': '最多 {n} 个回退模型', 'confirm.up': '上移', 'confirm.down': '下移', 'confirm.remove': '移除',
-      'confirm.scope': '修改范围', 'confirm.scope.task': '只用于这次任务', 'confirm.scope.project': '保存为项目默认', 'confirm.scope.projectHint': '会修改能力 {list} 的模型，使用这些能力的所有角色都会受影响。', 'confirm.ok': '确认分派', 'confirm.cancel': '取消', 'confirm.loading': '正在读取待确认的分派…', 'confirm.sent': '已确认，正在派活。', 'confirm.cancelled': '已取消这次分派。',
+      'confirm.scope': '修改范围', 'confirm.scope.task': '只用于这次任务', 'confirm.scope.project': '保存为项目默认', 'confirm.scope.projectHint': '会修改能力 {list} 的模型，使用这些能力的所有角色都会受影响。', 'confirm.ok': '确认分派', 'confirm.cancel': '取消', 'confirm.loading': '正在读取待确认的分派…', 'confirm.sent': '已确认，正在派活。', 'confirm.cancelled': '已取消这次分派。', 'confirm.stale': '确认请求已失效（可能插件已重载或已超时），请中断本轮后重新分派。',
       'confirm.error.conflict': '可用模型已变化，已刷新，请重新确认。', 'confirm.error.invalid': '模型选择无效：', 'confirm.error.other': '提交失败，请重试。', 'confirm.confirmedBy': '已由你确认',
       'models.primary': '主用', 'models.fallback': '备用', 'models.save': '全局保存', 'models.saving': '正在保存…', 'models.saved': '已全局保存；所有会话的下一次请求按新规则检查。',
       'tier.high': '旗舰档', 'tier.upper': '高阶档', 'tier.medium': '中阶档', 'tier.low': '轻量档', 'tier.unknown': '未分类',
@@ -278,11 +278,11 @@ window.__ModuleLoader__.load({
       'workflow.tokens': 'Token rules', 'workflow.tokens.value': 'Compact idle members above {ratio}% · trim command/search output over {chars} chars',
       'confirm.habit': 'Your usual choice {n}/{of}', 'confirm.failing': 'Failed {n}× recently', 'confirm.primaryFailing': 'Model {route} failed {n}× recently; consider another one.', 'confirm.habitSettled': 'You chose this the last 3 times; consider "Save as project default".', 'plan.boardScope': 'writes {list}', 'plan.boardAfter': 'after {list}', 'workflow.enforceWriteScopes': 'Write scopes', 'workflow.enforceWriteScopes.on': 'Enforced (edits outside are refused)', 'workflow.enforceWriteScopes.off': 'Advisory', 'cards.prefs': 'Model preferences', 'cards.prefs.summary': 'Learned preferences for {n} capabilities', 'cards.prefs.cleared': 'Learned preferences cleared',
       'confirm.expand': 'Show more', 'confirm.collapse': 'Show less', 'picker.search': 'Type to search models…', 'picker.count': '{n} of {total} models', 'picker.empty': 'No matching models', 'picker.noProvider': 'Other',
-      'nav.integrations': 'Integrations', 'int.help': 'The search gateway and the memory hub\'s embeddings endpoint are your own settings; changes apply from the next call (provider lists in the tools update after DSH reloads the plugin). Keys are not entered here: give the name of the environment variable that holds the key and set it in the DSH host environment. Leave a field empty to use the next layer (plugin config or default).',
+      'nav.integrations': 'Integrations', 'int.help': 'The search gateway and the memory hub\'s embeddings endpoint are your own settings; changes apply from the next call (provider lists in the tools update after DSH reloads the plugin). Keys are not entered here: give the key\'s name; it is looked up in DSH\'s credential store (Settings) first, then in an environment variable of the same name. Leave a field empty to use the next layer (plugin config or default).',
       'int.search': 'Search and page fetch', 'int.search.hint': 'The gateway behind cpa_search / cpa_web_fetch.', 'int.embeddings': 'Embeddings (memory hub vector search)', 'int.embeddings.hint': 'An OpenAI-compatible embeddings endpoint; provider, dimensions and task are sent only when filled in. Changing the model or dimensions re-embeds old vectors automatically.',
-      'int.keySet': 'Key: set in environment variable {name}', 'int.keyMissing': 'Key: environment variable {name} is not set', 'int.unset': 'not set',
+      'int.keySet': 'Key {name}: set (DSH credential or environment)', 'int.keyMissing': 'Key {name}: not in DSH credentials or the environment', 'int.audio': 'Speech to text', 'int.memory': 'Shared long-term memory (OpenViking)', 'int.memory.hint': 'With backend set to openviking, team memories (with credentials removed) are also written to that server and its recall is merged into search; when the server is down, only local memory is used. Remote URLs must use https.', 'int.field.backend': 'Backend (local / openviking)', 'int.field.url': 'Server URL (https; http only on this machine)', 'int.field.account': 'Account (optional, trusted mode)', 'int.field.user': 'User (optional, trusted mode)', 'int.field.recallLimit': 'Results per recall (0–20)', 'int.audio.hint': 'The endpoint behind cpa_transcribe; you approve every file in a dialog before it is uploaded, and files over the limit are never read.', 'int.unset': 'not set',
       'int.source.default': 'default', 'int.source.plugin': 'plugin config', 'int.source.file': 'this page', 'int.source.env': 'env {name} (read-only)',
-      'int.field.baseUrl': 'Gateway URL (https)', 'int.field.apiKeyEnv': 'Key environment variable', 'int.field.searchPath': 'Search path', 'int.field.fetchPath': 'Fetch path', 'int.field.path': 'Endpoint path', 'int.field.headers': 'Extra headers (one "Name: value" per line)', 'int.field.providers': 'Search providers (comma-separated, empty = any)', 'int.field.fetchProviders': 'Fetch providers (comma-separated, empty = any)', 'int.field.timeoutMs': 'Timeout (ms)', 'int.field.fetchTimeoutMs': 'Fetch timeout (ms)', 'int.field.model': 'Model', 'int.field.provider': 'Provider (optional)', 'int.field.dimensions': 'Dimensions (optional)', 'int.field.queryTask': 'Query task (optional)', 'int.field.passageTask': 'Passage task (optional)', 'int.field.batch': 'Batch size',
+      'int.field.baseUrl': 'Gateway URL (https)', 'int.field.apiKeyEnv': 'Key name (DSH credential / env)', 'int.field.providersPath': 'Provider list path (optional, GET)', 'int.field.statusPath': 'Status path (optional, GET)', 'int.field.maxBytes': 'Upload limit (bytes)', 'int.field.searchPath': 'Search path', 'int.field.fetchPath': 'Fetch path', 'int.field.path': 'Endpoint path', 'int.field.headers': 'Extra headers (one "Name: value" per line)', 'int.field.providers': 'Search providers (comma-separated, empty = any)', 'int.field.fetchProviders': 'Fetch providers (comma-separated, empty = any)', 'int.field.timeoutMs': 'Timeout (ms)', 'int.field.fetchTimeoutMs': 'Fetch timeout (ms)', 'int.field.model': 'Model', 'int.field.provider': 'Provider (optional)', 'int.field.dimensions': 'Dimensions (optional)', 'int.field.queryTask': 'Query task (optional)', 'int.field.passageTask': 'Passage task (optional)', 'int.field.batch': 'Batch size',
       'int.save': 'Save', 'int.reset': 'Discard', 'int.saving': 'Saving…', 'int.saved': 'Saved.', 'int.conflict': 'Changed elsewhere; reloaded. Please re-enter your edits.', 'int.saveFailed': 'Could not save:', 'int.invalid': '{field} is not in the right format', 'int.loading': 'Loading integrations…', 'int.loadFailed': 'Could not load integrations.',
       'cards.memorySearch': 'Memory search', 'cards.memorySearch.summary': '"{q}" · {n} · {mode}', 'cards.memory.mode.hybrid': 'text + vector', 'cards.memory.mode.text': 'text only', 'cards.memoryWrite': 'Save memory', 'cards.memoryWrite.saved': 'Saved', 'cards.memoryWrite.merged': 'Merged into an existing memory', 'cards.memory.kind.handoff': 'Handoff', 'cards.memory.kind.result': 'Result', 'cards.memory.kind.pitfall': 'Pitfall', 'cards.memory.kind.decision': 'Decision', 'cards.memory.kind.note': 'Note',
       'usage.avgPrompt': 'Avg input per step {n}', 'usage.cacheShare': 'Cache reads {p}%', 'usage.heavyContext': 'Large context per step; consider rotating the session', 'usage.contextHint': 'Average input per step = (uncached input + cache reads + cache writes) ÷ steps. Higher means more context is resent every step.',
@@ -291,7 +291,7 @@ window.__ModuleLoader__.load({
       'cards.catalog': 'Model catalog', 'cards.catalog.summary': '{n} models · {p} providers', 'cards.catalog.errors': 'Providers that failed to load', 'cards.budget': 'Task step budget', 'cards.override': 'Temporary model', 'cards.lease.role': 'Member', 'cards.lease.status': 'Status', 'cards.lease.judgment': 'Judgment', 'cards.lease.steps': 'Steps', 'cards.lease.ends': 'Expires', 'cards.lease.endReason': 'End reason',
       'cards.export': 'Export team template', 'cards.export.summary': '{n} roles · {c} capabilities', 'cards.search': 'Web search', 'cards.search.summary': '"{q}" · {n} results', 'cards.fetch': 'Web page',
       'plan.fallbacks': 'Fallbacks: {list}', 'confirm.title': 'Confirm dispatch', 'confirm.hint': 'Check each role\'s model and fallbacks. Nothing is dispatched until you confirm; you can edit them here.', 'confirm.primary': 'Model', 'confirm.fallbacks': 'Fallbacks', 'confirm.noFallbacks': 'No fallbacks', 'confirm.addFallback': 'Add fallback…', 'confirm.max': 'Up to {n} fallbacks', 'confirm.up': 'Move up', 'confirm.down': 'Move down', 'confirm.remove': 'Remove',
-      'confirm.scope': 'Apply to', 'confirm.scope.task': 'This task only', 'confirm.scope.project': 'Save as project default', 'confirm.scope.projectHint': 'Changes the model of capability {list}; every role using it is affected.', 'confirm.ok': 'Confirm dispatch', 'confirm.cancel': 'Cancel', 'confirm.loading': 'Loading the pending dispatch…', 'confirm.sent': 'Confirmed. Dispatching.', 'confirm.cancelled': 'Dispatch cancelled.',
+      'confirm.scope': 'Apply to', 'confirm.scope.task': 'This task only', 'confirm.scope.project': 'Save as project default', 'confirm.scope.projectHint': 'Changes the model of capability {list}; every role using it is affected.', 'confirm.ok': 'Confirm dispatch', 'confirm.cancel': 'Cancel', 'confirm.loading': 'Loading the pending dispatch…', 'confirm.sent': 'Confirmed. Dispatching.', 'confirm.cancelled': 'Dispatch cancelled.', 'confirm.stale': 'This confirmation request is no longer valid (the plugin may have reloaded or it timed out). Interrupt this turn and dispatch again.',
       'confirm.error.conflict': 'Available models changed. Refreshed; please confirm again.', 'confirm.error.invalid': 'Invalid model choice:', 'confirm.error.other': 'Could not submit. Try again.', 'confirm.confirmedBy': 'Confirmed by you',
       'models.primary': 'Primary', 'models.fallback': 'Fallback', 'models.save': 'Save globally', 'models.saving': 'Saving…', 'models.saved': 'Saved globally; every session uses it from its next request.',
       'tier.high': 'Flagship', 'tier.upper': 'Advanced', 'tier.medium': 'Balanced', 'tier.low': 'Lightweight', 'tier.unknown': 'Unclassified',
@@ -1049,9 +1049,10 @@ window.__ModuleLoader__.load({
     // fallbacks, edits them, and confirms or cancels. Answers go to api/capability-team.dispatch-confirm;
     // the tool keeps waiting until then, so nobody is dispatched before the user decides.
     const CONFIRM_PATH = 'api/capability-team.dispatch-confirm';
+    const CONFIRM_HEARTBEAT_MS = 5000; // keep polling while pending so the tool knows the card is still on screen
     const rkey = r => (r ? `${r.provider}/${r.model}` : '');
     function DispatchConfirmCard({ sessionId, callId, t }) {
-      const [view, setView] = React.useState(null); // null loading · {status:'none'} · pending view
+      const [view, setView] = React.useState(null); // null loading · {status:'stale'|'gone'} · pending view
       const [edits, setEdits] = React.useState({}); // role → { primary, fallbacks }
       const [scope, setScope] = React.useState('task');
       const [busy, setBusy] = React.useState(false);
@@ -1062,24 +1063,34 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         if (!sessionId || !callId) return undefined;
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-        let tries = 0, timer = null, live = true;
+        let tries = 0, timer = null, live = true, wasPending = false;
+        const again = ms => { timer = setTimeout(load, ms); };
         const load = async () => {
+          timer = null;
           try {
             const res = await fetch(apiUrl(CONFIRM_PATH, { sessionId, callId }), { signal: ctrl?.signal });
             const body = res.ok ? await res.json() : null;
             if (!live) return;
+            // Pending: show it once, then keep polling as a heartbeat until it ends or the card unmounts.
+            if (body?.status === 'pending') { if (!wasPending) setView(body); wasPending = true; again(CONFIRM_HEARTBEAT_MS); return; }
+            // It was pending and is gone now: answered here or in the question box, or ended on the server.
+            if (wasPending) { setView(v => (v?.status === 'pending' ? { status: 'gone' } : v)); return; }
             // The tool registers its request right after it starts; retry briefly before giving up.
-            if (body?.status === 'pending') { setView(body); return; }
-            if (++tries < 6) { timer = setTimeout(load, 500); return; }
-            setView({ status: 'none' });
-          } catch (e) { if (live && e?.name !== 'AbortError') setView({ status: 'none' }); }
+            if (++tries < 6) { again(500); return; }
+            // The call is still running but has no request: the plugin reloaded or the request expired.
+            setView({ status: 'stale' });
+          } catch (e) {
+            if (!live || e?.name === 'AbortError') return;
+            if (wasPending) again(CONFIRM_HEARTBEAT_MS); else setView({ status: 'stale' });
+          }
         };
         load();
         return () => { live = false; ctrl?.abort(); if (timer) clearTimeout(timer); };
       }, [sessionId, callId, reload]);
       if (sent) return h('div', { className: 'ctm-dc', 'data-state': 'sent' }, h('span', { className: 'ctm-sub' }, t(sent === 'cancel' ? 'confirm.cancelled' : 'confirm.sent')));
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('confirm.loading')));
-      if (view.status !== 'pending') return null; // Not asked (on-change / never) or answered in the question box.
+      if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('confirm.stale')));
+      if (view.status !== 'pending') return null; // Answered in the question box or ended on the server.
       const max = view.maxFallbacks ?? 3;
       const current = r => edits[r.role] ?? { primary: rkey(r.primary), fallbacks: r.fallbacks.map(rkey) };
       const update = (r, change) => setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } }));
@@ -3085,14 +3096,16 @@ window.__ModuleLoader__.load({
               : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null)));
     }
 
-    // ---------- integrations settings (search gateway, embeddings) ----------
+    // ---------- integrations settings (search gateway, embeddings, speech to text) ----------
     // Every endpoint detail is the user's own setting. Keys are never shown or stored: the form names the
     // environment variable that holds each key and only says whether it is set. Fields an environment
     // variable overrides are read-only here.
     const INTEGRATIONS_PATH = 'api/capability-team.integrations';
     const INTEGRATION_FIELDS = {
-      search: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['searchPath', 'text'], ['fetchPath', 'text'], ['headers', 'headers'], ['providers', 'list'], ['fetchProviders', 'list'], ['timeoutMs', 'number'], ['fetchTimeoutMs', 'number']],
+      search: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['searchPath', 'text'], ['fetchPath', 'text'], ['providersPath', 'text'], ['headers', 'headers'], ['providers', 'list'], ['fetchProviders', 'list'], ['timeoutMs', 'number'], ['fetchTimeoutMs', 'number']],
       embeddings: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['path', 'text'], ['model', 'text'], ['provider', 'text'], ['dimensions', 'number'], ['queryTask', 'text'], ['passageTask', 'text'], ['headers', 'headers'], ['timeoutMs', 'number'], ['batch', 'number']],
+      audio: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['path', 'text'], ['statusPath', 'text'], ['model', 'text'], ['headers', 'headers'], ['timeoutMs', 'number'], ['maxBytes', 'number']],
+      memory: [['backend', 'text'], ['url', 'url'], ['apiKeyEnv', 'text'], ['account', 'text'], ['user', 'text'], ['timeoutMs', 'number'], ['recallLimit', 'number']],
     };
     const toInput = (kind, v) => (v === null || v === undefined ? '' : kind === 'list' ? v.join(', ') : kind === 'headers' ? Object.entries(v).map(([k, x]) => `${k}: ${x}`).join('\n') : String(v));
     /** Form text → config value; empty means "clear this layer" (null). Returns undefined for invalid input. */
@@ -3168,7 +3181,7 @@ window.__ModuleLoader__.load({
           h('button', { type: 'button', className: 'ctm-btn', disabled: !sectionDirty(name), onClick: () => setDraft(prev => { const n = { ...prev }; delete n[name]; return n; }) }, t('int.reset'))));
       return h('div', { className: 'ctm-ov-block ctm-int' },
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('int.help')),
-        section('search'), section('embeddings'),
+        section('search'), section('embeddings'), section('audio'), section('memory'),
         status ? h('p', { className: `ctm-sub ${status.tone === 'error' ? 'ctm-warn' : ''}`, role: status.tone === 'error' ? 'alert' : 'status' }, status.text) : null);
     }
 

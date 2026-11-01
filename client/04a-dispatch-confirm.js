@@ -3,9 +3,10 @@
     // fallbacks, edits them, and confirms or cancels. Answers go to api/capability-team.dispatch-confirm;
     // the tool keeps waiting until then, so nobody is dispatched before the user decides.
     const CONFIRM_PATH = 'api/capability-team.dispatch-confirm';
+    const CONFIRM_HEARTBEAT_MS = 5000; // keep polling while pending so the tool knows the card is still on screen
     const rkey = r => (r ? `${r.provider}/${r.model}` : '');
     function DispatchConfirmCard({ sessionId, callId, t }) {
-      const [view, setView] = React.useState(null); // null loading · {status:'none'} · pending view
+      const [view, setView] = React.useState(null); // null loading · {status:'stale'|'gone'} · pending view
       const [edits, setEdits] = React.useState({}); // role → { primary, fallbacks }
       const [scope, setScope] = React.useState('task');
       const [busy, setBusy] = React.useState(false);
@@ -16,24 +17,34 @@
       React.useEffect(() => {
         if (!sessionId || !callId) return undefined;
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-        let tries = 0, timer = null, live = true;
+        let tries = 0, timer = null, live = true, wasPending = false;
+        const again = ms => { timer = setTimeout(load, ms); };
         const load = async () => {
+          timer = null;
           try {
             const res = await fetch(apiUrl(CONFIRM_PATH, { sessionId, callId }), { signal: ctrl?.signal });
             const body = res.ok ? await res.json() : null;
             if (!live) return;
+            // Pending: show it once, then keep polling as a heartbeat until it ends or the card unmounts.
+            if (body?.status === 'pending') { if (!wasPending) setView(body); wasPending = true; again(CONFIRM_HEARTBEAT_MS); return; }
+            // It was pending and is gone now: answered here or in the question box, or ended on the server.
+            if (wasPending) { setView(v => (v?.status === 'pending' ? { status: 'gone' } : v)); return; }
             // The tool registers its request right after it starts; retry briefly before giving up.
-            if (body?.status === 'pending') { setView(body); return; }
-            if (++tries < 6) { timer = setTimeout(load, 500); return; }
-            setView({ status: 'none' });
-          } catch (e) { if (live && e?.name !== 'AbortError') setView({ status: 'none' }); }
+            if (++tries < 6) { again(500); return; }
+            // The call is still running but has no request: the plugin reloaded or the request expired.
+            setView({ status: 'stale' });
+          } catch (e) {
+            if (!live || e?.name === 'AbortError') return;
+            if (wasPending) again(CONFIRM_HEARTBEAT_MS); else setView({ status: 'stale' });
+          }
         };
         load();
         return () => { live = false; ctrl?.abort(); if (timer) clearTimeout(timer); };
       }, [sessionId, callId, reload]);
       if (sent) return h('div', { className: 'ctm-dc', 'data-state': 'sent' }, h('span', { className: 'ctm-sub' }, t(sent === 'cancel' ? 'confirm.cancelled' : 'confirm.sent')));
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('confirm.loading')));
-      if (view.status !== 'pending') return null; // Not asked (on-change / never) or answered in the question box.
+      if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('confirm.stale')));
+      if (view.status !== 'pending') return null; // Answered in the question box or ended on the server.
       const max = view.maxFallbacks ?? 3;
       const current = r => edits[r.role] ?? { primary: rkey(r.primary), fallbacks: r.fallbacks.map(rkey) };
       const update = (r, change) => setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } }));

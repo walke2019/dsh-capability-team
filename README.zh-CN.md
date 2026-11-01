@@ -314,8 +314,25 @@ DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时�
 |---|---|
 | `search` | `baseUrl`、`apiKeyEnv`、`searchPath`、`fetchPath`、`headers`（附加请求头，例如网关要求的 User-Agent）、`providers` / `fetchProviders`（填写后成为工具的可选渠道，留空不限）、`timeoutMs`、`fetchTimeoutMs` |
 | `embeddings` | `baseUrl`、`apiKeyEnv`、`path`、`model`、`provider`、`dimensions`、`queryTask`、`passageTask`、`headers`、`timeoutMs`、`batch` |
+| `audio` | `baseUrl`、`apiKeyEnv`、`path`、`statusPath`（填写后注册 `cpa_transcribe_status`）、`model`、`headers`、`timeoutMs`（默认 125 秒）、`maxBytes`（默认 8 MiB） |
 
-密钥永远不进配置：`apiKeyEnv` 只是环境变量名，`headers` 里不允许 `Authorization`、`Cookie` 等。
+`search` 另有 `providersPath`：填写后注册 `cpa_search_providers`（GET 渠道列表）。搜索与抓取默认超时 120 秒，给网关的多渠道降级留出时间。
+
+密钥永远不进配置：`apiKeyEnv` 只是密钥名称，先在 DSH 凭据库（设置里保存的密钥，例如渠道用的 `CPA_API_KEY`）里查找，找不到再读同名环境变量；每次请求前重新读取，只放进 `Authorization` 请求头，不进提示词、工具参数或日志。`headers` 里不允许 `Authorization`、`Cookie` 等。
+
+返回结果的校验：HTTP 200 也要有真实结果（搜索要有 `results` 列表，抓取要有正文，转写要有文本），否则按失败报告；401 提示检查客户端鉴权，400 参数，429 退避，502/504 上游失败，413 超过网关上限；错误正文不回显。状态接口只代表网关本地服务健康。
+
+**语音转写 `cpa_transcribe`**：只有配置了 `audio.baseUrl` 才注册。先检查格式和大小（超过 `maxBytes` 不读取），再在 DSH 原生确认框里请用户授权这一个文件，授权后才读取并以 multipart 上传真实字节（boundary 由 HTTP 库设置）。
+
+示例（CPA 工具中心，各路径按你的网关填写）：
+
+```json
+{ "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "fetchPath": "/v1/crawl", "providersPath": "/v1/search/providers" },
+  "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "model": "jina-embeddings-v3", "queryTask": "retrieval.query", "passageTask": "retrieval.passage" },
+  "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "statusPath": "/v1/audio/status" } }
+```
+
+嵌入的模型和维度必须在入库与检索时一致（换了会自动重算旧向量）；生成向量本身不等于知识库检索，检索由记忆枢纽完成。
 
 ## 文件铁律
 
@@ -418,7 +435,21 @@ DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时�
 - **按需检索**：`capability_memory_search`；
 - **检索方式**：BM25 全文（英文单词 + 中文单字和双字）与向量余弦，用倒数排名融合（RRF）合并，再按 30 天半衰期衰减、按被使用次数小幅加权；嵌入不可用时只用全文，并在结果里说明原因，之后自动补算缺失的向量；
 - **遗忘**：180 天未被使用的记忆和被替换的记忆在整理时删除，每个项目最多保留 2000 条；
-- 存储：`$CAPABILITY_TEAM_HOME/memory/<项目哈希>.jsonl` 与 `global.jsonl`，只追加写入，整理时原子替换。
+- 存储：`$CAPABILITY_TEAM_HOME/memory/<项目哈希>.jsonl` 与 `global.jsonl`，只追加写入，整理时原子替换；写入和整理加文件锁，文件被别的 DSH 进程改过时自动重读，多个进程（Desktop、`dsh web`）可同时使用；
+- **去掉密钥**：写入前把常见密钥格式（`sk-…`、`ghp_…`、`Bearer …`、JWT、私钥、URL 里的账号密码、`api_key=…` 等）和集成里配置的凭据值替换为 `[已隐去凭据]`。
+
+### 共享长期记忆（OpenViking，可选）
+
+[memory-openviking.js](memory-openviking.js)：在“集成”页的“共享长期记忆”里把 `backend` 设为 `openviking`、`url` 填服务器地址，密钥名称默认 `OPENVIKING_API_KEY`（存在 DSH 凭据里）。之后：
+
+- 非会话范围的新记忆（已去掉密钥）每 20 秒合并为一个会话提交给 [OpenViking](https://github.com/volcengine/OpenViking)，由它提取成长期记忆，换设备、换智能体（DSH、Codex、OpenClaw 等连同一个服务器的工具）都能召回；
+- `capability_memory_search` 同时查本地和 OpenViking，本地结果在前，结果里注明共享记忆条数或不可用原因；
+- 服务器不可用时，待提交的记忆留在队列里下次重试（最多 200 条），检索只用本地记忆，不阻塞成员；
+- 远程地址只接受 https，只有本机地址可用 http；地址里不能带账号密码。
+
+普通 DSH 会话（不在团队里）要用同一份记忆，再装官方插件 `@openviking/dsh-memory-plugin`（插件页添加），它读 `~/.openviking/ovcli.conf` 里的 `url` 和 `api_key`。
+
+自建服务器时建议：只监听 127.0.0.1，由反向代理提供 HTTPS；用 `api_key` 鉴权并开启 `encryption.api_key_hashing`；开启 `encryption.enabled` 加密存储文件，主密钥和数据放在不同的盘上；OpenViking 不加密向量库和日志，数据目录应再放在加密卷上（Linux 用 LUKS）。
 
 ### 嵌入接口
 
@@ -465,6 +496,7 @@ npm run build     # 发布前检查打包文件集合
 | [config-projection.js](config-projection.js) | 配置保存计数投影，触发面板自动读取配置 |
 | [file-limits.js](file-limits.js) | 文件铁律（工具守卫与 lint 共用） |
 | [dispatch-confirm.js](dispatch-confirm.js) | 派活确认：路由、校验、HTTP 接口与原生提问框兜底 |
+| [dispatch-routes-store.js](dispatch-routes-store.js) | “只用于这次任务”的路由持久化（重启不丢） |
 | [session-rotation.js](session-rotation.js) | 会话轮换信号、交接与接替者 |
 | [board-dispatch.js](board-dispatch.js) | 看板派活：子任务、写入范围、依赖、自动分配与改派 |
 | [route-health.js](route-health.js) | 持久化的模型故障记录 |
@@ -513,13 +545,13 @@ npm run build     # 发布前检查打包文件集合
 
 已验证：
 
-- 298 项回归测试通过（含文件铁律、派活确认、会话轮换、任务控制面板与记忆枢纽），包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
+- 347 项回归测试在 Windows（Node 24.21.0）上全部通过，路径与权限不依赖 POSIX 假设（含文件铁律、派活确认、会话轮换、任务控制面板与记忆枢纽），包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
 - 使用桌面自带 CLI 在隔离 DSH_HOME 中启动真实宿主，能力协作团队预设已注册，诊断插件成功激活；这不是生产桌面进程重新加载后的会话验收；
 - 已安装包和已连接 Client 的 `capability-team-overview` 活动注册已核实，但此后源码修复仍需确认运行进程重新加载；
 - 独立浏览器访问 GUI 返回 401，尚未完成已认证页面的读取、勾选、保存、恢复操作验收；
 - 所有工具的参数 Schema 通过了 DSH 自带的校验代码；
 - 用 OpenRouter 公开目录（450 多个模型）试跑过自动匹配，结果符合上面的分档规则。
-- 搜索、网页读取与嵌入接口已用真实网关在本机实测通过（经“集成”配置调用）。
+- 搜索、爬取、渠道列表、嵌入（jina-embeddings-v3，1024 维，检索/入库 task）、记忆混合召回、语音状态与语音转写已在本机经插件模块对 CPA 工具中心实测通过，密钥取自 DSH 凭据库。
 
 尚未在真实 DSH 会话中验收：
 
@@ -532,11 +564,12 @@ npm run build     # 发布前检查打包文件集合
 
 已知限制：
 
-- 分档基于命名规律和价格，新厂商（如 nvidia、stepfun、cohere）目前会被列为“未识别”，需要手动指定档位。
-- 免费变体（`:free`、`-free`）一律不参与自动匹配，也不作备选。
-- 原生界面仍显示队友的内部 id，显示名只在模型上下文中生效。
-- 轮换后的接替者（`<角色>-rN`）不会自动开始任务步数计数（原派活批次的预算已被前任使用），需要在任务控制区手动开始。
-- 派活确认中“只用于这次任务”的路由保存在内存里，DSH 重启后恢复为项目配置。
+- 分档基于厂商命名规律。NVIDIA Nemotron、阶跃星辰 Step 3+、Cohere Command 已可自动识别；规则之外的厂商仍会列为“未识别”，需要手动指定档位。
+- 免费变体（`:free`、`-free`）按设计不参与自动匹配，也不作备选：限流严重，不适合作为路由。
+- 原生团队界面显示的是队友的 DSH 成员名：DSH 的 `spawn_teammate` 只接受小写短横线格式的 `name`，没有显示名字段，因此显示名只在模型上下文和本插件面板中生效。
+- 轮换后的接替者（`<角色>-rN`）会自动继承前任的任务预算（同一派活、复杂度、截止时间、本次任务的临时模型，以及已用步数）。
+- 派活确认中“只用于这次任务”的路由按主控保存在插件数据目录，DSH 重启后仍然有效，30 天后过期。
+- Windows 上审计文件的 `0o600`/`0o700` 权限不由系统强制（chmod 只能切换只读），私密性依赖 DSH 主目录所在用户配置文件的 ACL。
 
 ## 许可
 

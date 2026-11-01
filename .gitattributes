@@ -1,0 +1,4 @@
+# Keep LF everywhere so generated client.js and tests are byte-identical on Windows, Linux and macOS.
+* text=auto eol=lf
+*.svg text eol=lf
+*.png binary

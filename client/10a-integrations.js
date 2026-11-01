@@ -1,11 +1,13 @@
-    // ---------- integrations settings (search gateway, embeddings) ----------
+    // ---------- integrations settings (search gateway, embeddings, speech to text) ----------
     // Every endpoint detail is the user's own setting. Keys are never shown or stored: the form names the
     // environment variable that holds each key and only says whether it is set. Fields an environment
     // variable overrides are read-only here.
     const INTEGRATIONS_PATH = 'api/capability-team.integrations';
     const INTEGRATION_FIELDS = {
-      search: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['searchPath', 'text'], ['fetchPath', 'text'], ['headers', 'headers'], ['providers', 'list'], ['fetchProviders', 'list'], ['timeoutMs', 'number'], ['fetchTimeoutMs', 'number']],
+      search: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['searchPath', 'text'], ['fetchPath', 'text'], ['providersPath', 'text'], ['headers', 'headers'], ['providers', 'list'], ['fetchProviders', 'list'], ['timeoutMs', 'number'], ['fetchTimeoutMs', 'number']],
       embeddings: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['path', 'text'], ['model', 'text'], ['provider', 'text'], ['dimensions', 'number'], ['queryTask', 'text'], ['passageTask', 'text'], ['headers', 'headers'], ['timeoutMs', 'number'], ['batch', 'number']],
+      audio: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['path', 'text'], ['statusPath', 'text'], ['model', 'text'], ['headers', 'headers'], ['timeoutMs', 'number'], ['maxBytes', 'number']],
+      memory: [['backend', 'text'], ['url', 'url'], ['apiKeyEnv', 'text'], ['account', 'text'], ['user', 'text'], ['timeoutMs', 'number'], ['recallLimit', 'number']],
     };
     const toInput = (kind, v) => (v === null || v === undefined ? '' : kind === 'list' ? v.join(', ') : kind === 'headers' ? Object.entries(v).map(([k, x]) => `${k}: ${x}`).join('\n') : String(v));
     /** Form text → config value; empty means "clear this layer" (null). Returns undefined for invalid input. */
@@ -81,6 +83,6 @@
           h('button', { type: 'button', className: 'ctm-btn', disabled: !sectionDirty(name), onClick: () => setDraft(prev => { const n = { ...prev }; delete n[name]; return n; }) }, t('int.reset'))));
       return h('div', { className: 'ctm-ov-block ctm-int' },
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('int.help')),
-        section('search'), section('embeddings'),
+        section('search'), section('embeddings'), section('audio'), section('memory'),
         status ? h('p', { className: `ctm-sub ${status.tone === 'error' ? 'ctm-warn' : ''}`, role: status.tone === 'error' ? 'alert' : 'status' }, status.text) : null);
     }

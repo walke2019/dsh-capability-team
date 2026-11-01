@@ -2,6 +2,8 @@
 // Node path APIs lack dirfd-relative operations: hostile concurrent directory swaps
 // are NOT prevented. Append completion is not a power-loss durability guarantee.
 // Retention: current file plus four rotated segments (five total).
+// Permissions: 0o700/0o600 apply on POSIX; on Windows chmod only toggles read-only, and privacy comes from
+// the per-user profile ACL that the DSH home directory inherits.
 import { createHash } from 'node:crypto';
 import { mkdir, lstat, open, readdir, unlink, rename, chmod, realpath } from 'node:fs/promises';
 import { constants } from 'node:fs';

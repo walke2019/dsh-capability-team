@@ -4,7 +4,9 @@ import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 5));
-function load(fetchImpl) {
+// Real timers are unref'd: a card left pending keeps its heartbeat going and must not hold the test process open.
+const unrefTimers = { setTimeout: (fn, ms) => { const id = setTimeout(fn, ms); id.unref?.(); return id; }, clearTimeout };
+function load(fetchImpl, timers = unrefTimers) {
   let exposed, cursor = 0;
   const states = [], effects = [];
   const React = {
@@ -17,12 +19,14 @@ function load(fetchImpl) {
   };
   const calls = [];
   const fetch = async (url, init = {}) => { calls.push({ url, init }); return fetchImpl(url, init, calls); };
-  const sandbox = { window: { __ModuleLoader__: { load: spec => spec.factory(() => React) }, __ctmTestHook: x => { exposed = x; } }, fetch, AbortController, URLSearchParams, setTimeout, clearTimeout };
+  const sandbox = { window: { __ModuleLoader__: { load: spec => spec.factory(() => React) }, __ctmTestHook: x => { exposed = x; } }, fetch, AbortController, URLSearchParams, setTimeout: timers.setTimeout, clearTimeout: timers.clearTimeout };
   new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext(sandbox);
   const t = k => `${k}[{n}|{list}]`;
   let ran = false;
-  const render = (props, runEffects = !ran) => { cursor = 0; effects.length = 0; const tree = exposed.DispatchConfirmCard({ t, ...props }); if (runEffects) { ran = true; for (const fn of effects.splice(0)) fn(); } return tree; };
-  return { render, calls, exposed, rerunEffects: () => { ran = false; } };
+  const cleanups = [];
+  const render = (props, runEffects = !ran) => { cursor = 0; effects.length = 0; const tree = exposed.DispatchConfirmCard({ t, ...props }); if (runEffects) { ran = true; for (const fn of effects.splice(0)) cleanups.push(fn()); } return tree; };
+  const unmount = () => { for (const fn of cleanups.splice(0)) fn?.(); };
+  return { render, calls, exposed, unmount, rerunEffects: () => { ran = false; } };
 }
 const find = (node, pred) => { if (!node || typeof node !== 'object') return undefined; if (pred(node)) return node; for (const c of node.children ?? []) { const r = find(c, pred); if (r) return r; } };
 const findAll = (node, pred, acc = []) => { if (!node || typeof node !== 'object') return acc; if (pred(node)) acc.push(node); for (const c of node.children ?? []) findAll(c, pred, acc); return acc; };
@@ -83,11 +87,47 @@ test('取消发送 cancel；409 时刷新重读而不是重试', async () => {
   assert.equal(JSON.parse(h2.calls.find(c => c.init.method === 'POST').init.body).decision, 'cancel');
 });
 
-test('没有等待中的请求（未要求确认）时不显示卡片', async () => {
+test('调用仍在运行但服务端没有等待中的请求时显示失效提示，而不是静默隐藏', async () => {
   const h = load(async () => json(200, { schemaVersion: 1, status: 'none' }));
   h.render(props);
   for (let i = 0; i < 7; i++) await new Promise(resolve => setTimeout(resolve, 520));
+  const tree = h.render(props);
+  assert.equal(tree.props['data-state'], 'stale');
+  assert.ok(text(tree).includes('confirm.stale'));
+  assert.equal(h.calls.length, 6, '重试用尽后停止轮询');
+});
+
+// Manual timers for the card: the heartbeat waits ~5s between polls, so the test runs queued polls directly.
+function manualTimers() {
+  const queue = new Map(); let next = 1;
+  return { queue,
+    setTimeout: (fn, ms) => { const id = next++; queue.set(id, { fn, ms }); return id; },
+    clearTimeout: id => { queue.delete(id); },
+    async tick() { const [[id, { fn, ms }]] = queue; queue.delete(id); fn(); await flush(); return ms; } };
+}
+
+test('等待确认期间每 ~5s 轮询维持心跳；请求结束后停止', async () => {
+  const timers = manualTimers();
+  const h = load(async (url, init, calls) => json(200, calls.length <= 3 ? pending : { schemaVersion: 1, status: 'none' }), timers);
+  h.render(props); await flush();
+  assert.ok(text(h.render(props)).includes('貂蝉'));
+  assert.equal(await timers.tick(), 5000, '心跳间隔约 5 秒');
+  assert.equal(await timers.tick(), 5000);
+  assert.equal(h.calls.length, 3);
+  assert.ok(text(h.render(props)).includes('貂蝉'), '心跳不重置正在编辑的卡片');
+  await timers.tick();
+  assert.equal(h.calls.length, 4);
+  assert.equal(timers.queue.size, 0, '请求结束（已在别处回答）后停止轮询');
   assert.equal(h.render(props), null);
+});
+
+test('卸载卡片即停止心跳', async () => {
+  const timers = manualTimers();
+  const h = load(async () => json(200, pending), timers);
+  h.render(props); await flush();
+  assert.equal(timers.queue.size, 1);
+  h.unmount();
+  assert.equal(timers.queue.size, 0);
 });
 
 test('派活计划卡片在等待确认时附带确认卡片', () => {

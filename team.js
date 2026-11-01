@@ -9,9 +9,14 @@ import { readGlobalPolicy, readGlobalPolicySync, saveGlobalPolicy } from './sess
 /**
  * Detect routes from the live DSH catalog. Re-runs only when the registered provider set changes,
  * so adding or removing a channel is picked up without a restart and a request costs one sync call.
+ * A degraded result (catalog errors or an unassigned capability) is retried at most once per
+ * `retryMs`, so a channel that was not ready at startup heals without a manual refresh. A retry that
+ * still finds nothing stays unassigned: requests remain blocked (fail-closed, no downgrade).
  */
-function createDetector(llm, preset) {
-  let signature; let pending; let current = { base: preset, report: [], unknown: [], errors: [] };
+export const DETECT_RETRY_MS = 30_000;
+const degraded = r => r.errors.length > 0 || r.report.some(x => x.status === 'unassigned');
+export function createDetector(llm, preset, { now = Date.now, retryMs = DETECT_RETRY_MS } = {}) {
+  let signature; let pending; let lastAt = 0; let current = { base: preset, report: [], unknown: [], errors: [] };
   const providers = () => (llm?.listProviders?.() ?? []).map(p => p.id);
   const detect = async () => {
     const ids = providers();
@@ -33,16 +38,16 @@ function createDetector(llm, preset) {
       // Serialize reads; an explicit refresh always re-reads models even when provider IDs are unchanged.
       if (pending) await pending;
       const sig = providers().join('|');
-      if (!force && sig === signature) return current;
-      signature = sig;
+      if (!force && sig === signature && !(degraded(current) && now() - lastAt >= retryMs)) return current;
+      signature = sig; lastAt = now();
       pending = detect().finally(() => { pending = undefined; });
       return pending;
     },
   };
 }
-export function createTeam(ctx, config = {}, { root = defaultRoot() } = {}) {
+export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = {}) {
   const preset = baseConfig(config);
-  const detector = createDetector(ctx.llm, preset);
+  const detector = createDetector(ctx.llm, preset, detect);
   const pins = new WeakMap();
   const policyBase = policy => policy.disabledRoutes.length
     ? withAutoRoutes(preset, autoMatch(detector.get().entries ?? [], preset.capabilities, { disabledRoutes: policy.disabledRoutes }))

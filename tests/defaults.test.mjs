@@ -84,6 +84,14 @@ test('所需档位缺失时可升档；没有合格模型时保持未分配，�
   const none = autoMatch([{ provider: 'p', model: 'house-model-x' }], { qa: { tier: 'upper' } });
   assert.equal(none.report[0].status, 'unassigned'); assert.equal(none.routes.qa, undefined);
 });
+test('新厂商也能自动分档：NVIDIA Nemotron、StepFun、Cohere Command', () => {
+  const tier = id => classify(id)?.tier;
+  assert.deepEqual(['nvidia/llama-3.1-nemotron-ultra-253b-v1', 'nvidia/llama-3.3-nemotron-super-49b-v1.5', 'nvidia/nemotron-nano-9b-v2'].map(tier), ['upper', 'medium', 'low']);
+  assert.equal(classify('nvidia/llama-3.3-nemotron-super-49b-v1.5').vendor, 'nemotron');
+  assert.deepEqual(['stepfun-ai/step3', 'stepfun/step-3.5-flash', 'step-3-mini'].map(tier), ['upper', 'medium', 'low']);
+  assert.equal(classify('step-2-16k'), undefined, 'Step 2 太旧');
+  assert.deepEqual(['cohere/command-a-03-2025', 'command-r-plus-08-2024', 'command-r-08-2024', 'command-r7b-12-2024'].map(tier), ['upper', 'medium', 'low', 'low']);
+});
 test('模式变体视为同一模型；旧代模型排在备选末尾', () => {
   const r = autoMatch([
     { provider: 'a', model: 'claude-sonnet-5.5' }, { provider: 'a', model: 'claude-sonnet-5-5-thinking' },

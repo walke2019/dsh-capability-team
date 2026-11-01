@@ -4,13 +4,15 @@
 // Recall is capped (MEMORY_LIMITS.injectChars) and only changes when the task changes, so it costs little
 // context and does not resend the runtime snapshot every step.
 import { createEmbedder } from './memory-embed.js';
+import { createOpenViking } from './memory-openviking.js';
+import { redactSecrets } from './memory-redact.js';
 import { MEMORY_KINDS, MEMORY_LIMITS, createMemoryStore } from './memory-store.js';
 import { baseName } from './session-rotation.js';
 import { params } from './tool-schema.js';
 const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] };
 const SCOPES = ['project', 'role', 'session', 'global'];
 const messageText = message => (Array.isArray(message?.content) ? message.content.map(c => c?.text ?? '').join('\n') : String(message?.text ?? message?.content ?? '')).trim();
-export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root), embedder = createEmbedder() } = {}) {
+export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root), embedder = createEmbedder(), viking = createOpenViking(), secrets = () => [] } = {}) {
   const recall = new Map(); // agent id → { query, block }
   const reports = new Map(); // `${session}:${callId}` → text of a pending teammate report
   const identity = agent => {
@@ -31,19 +33,29 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       if (!who?.project) throw new Error('当前会话不属于能力团队项目，不能写记忆');
       if (!SCOPES.includes(scope)) throw new Error(`scope 须为 ${SCOPES.join(' / ')}`);
       if (scope === 'global' && !who.lead) throw new Error('只有主控可以写全局记忆');
-      const embedded = await embedOne(String(text ?? ''), 'passage');
+      // Secrets never enter memory: it is recalled into other members' prompts and may leave this machine.
+      const clean = redactSecrets(String(text ?? ''), await Promise.resolve(secrets()).catch(() => []));
+      const embedded = await embedOne(clean, 'passage');
       const s = scope === 'global' ? { kind: 'global' } : scope === 'project' ? { kind: 'project', project: who.project }
         : scope === 'session' ? { kind: 'session', project: who.project, session: who.session } : { kind: 'role', project: who.project, role: who.role };
-      return store.write({ scope: s, kind, text, tags: Array.isArray(tags) ? tags.map(String).slice(0, 10) : [], key: key ? String(key).slice(0, 120) : null,
+      const saved = await store.write({ scope: s, kind, text: clean, tags: Array.isArray(tags) ? tags.map(String).slice(0, 10) : [], key: key ? String(key).slice(0, 120) : null,
         vector: embedded?.vector ?? null, model: embedded?.model ?? null, source: { member: who.name, session: who.session, lead: who.leadId, at: Date.now() } });
+      // Session-scoped notes stay local; everything else also becomes shared long-term memory.
+      if (!saved.merged && scope !== 'session') viking.enqueue(saved.memory, who);
+      return saved;
     },
     async search(who, { query, k = 6, kinds }) {
       const q = String(query ?? '').slice(0, 2000);
-      const embedded = q ? await embedOne(q, 'query') : null;
+      const limit = Math.min(Math.max(1, k), 20);
+      const [embedded, shared] = await Promise.all([q ? embedOne(q, 'query') : null, kinds ? [] : viking.recall(q)]);
       void backfill(who.project).catch(() => {});
-      const results = await store.search({ project: who.project, role: who.lead ? undefined : who.role, session: who.session, query: q, vector: embedded?.vector, vectorModel: embedded?.model, k: Math.min(Math.max(1, k), 20), kinds });
-      return { results, mode: embedded ? 'hybrid' : 'text', embedError: embedded ? null : embedder.lastError };
+      const local = await store.search({ project: who.project, role: who.lead ? undefined : who.role, session: who.session, query: q, vector: embedded?.vector, vectorModel: embedded?.model, k: limit, kinds });
+      // Team memories first (scoped to this project/role), then shared long-term ones not already covered.
+      const seen = new Set(local.map(r => r.memory.text));
+      const results = [...local, ...shared.filter(r => !seen.has(r.memory.text))].slice(0, limit + shared.length);
+      return { results, mode: embedded ? 'hybrid' : 'text', embedError: embedded ? null : embedder.lastError, ...(viking.enabled ? { shared: { count: shared.length, error: viking.lastError } } : {}) };
     },
+    viking,
     /** Called by rotation after a member writes its handoff. */
     async ingestHandoff(h) {
       const who = { project: team.pinned(ctx.agents.get(h.session)) ?? undefined, role: h.role, session: h.session, lead: false, leadId: h.lead, name: h.member };
@@ -61,7 +73,8 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       const { results } = await hub.search(who, { query, k: 8 });
       const block = store.format(results, MEMORY_LIMITS.injectChars);
       recall.set(agent.id, { query, block, ids: results.map(r => r.memory.id) });
-      if (results.length) await store.markUsed(results.map(r => r.memory));
+      const local = results.filter(r => r.memory.scope.kind !== 'openviking');
+      if (local.length) await store.markUsed(local.map(r => r.memory));
     },
     recallText(agent) {
       const r = recall.get(agent.id);
@@ -101,8 +114,9 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
         async execute(args, exec) {
           const who = identity(exec.agent);
           if (!who) throw new Error('只有能力团队成员可以检索记忆');
-          const { results, mode, embedError } = await hub.search(who, args);
+          const { results, mode, embedError, shared } = await hub.search(who, args);
           return JSON.stringify({ mode, ...(embedError ? { note: `向量检索暂不可用：${embedError}` } : {}),
+            ...(shared ? { shared: shared.error ? `共享长期记忆（OpenViking）暂不可用：${shared.error}` : `含 ${shared.count} 条共享长期记忆（OpenViking）` } : {}),
             results: results.map(r => ({ id: r.memory.id, kind: r.memory.kind, scope: r.memory.scope.kind, text: r.memory.text, via: r.via, updatedAt: r.memory.updatedAt })) });
         },
       }));
@@ -115,6 +129,8 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
           return JSON.stringify({ saved: true, merged, id: memory.id, kind: memory.kind, scope: memory.scope.kind, embedded: !!memory.vector });
         },
       }));
+      // Plugin reload or shutdown: send what is still queued for the shared long-term memory.
+      ctx.effect(() => () => { void viking.flush().catch(() => {}); });
     },
   };
   return hub;

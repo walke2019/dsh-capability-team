@@ -1,5 +1,8 @@
 import { params } from './tool-schema.js';
-import { INTEGRATION_DEFAULTS, keyOf, resolveIntegrations } from './integrations-config.js';
+import { INTEGRATION_DEFAULTS, keyOf, refreshCredentials, resolveIntegrations } from './integrations-config.js';
+/** What a gateway status means for the caller; error bodies are never echoed (they may carry upstream secrets). */
+export const STATUS_HINT = { 400: '参数无效', 401: '客户端鉴权失败，检查密钥', 403: '被拒绝，检查密钥或网关要求的请求头', 404: '网关没有这个路径', 413: '内容超过网关上限', 429: '限流，请退避后重试', 502: '上游失败', 504: '上游超时' };
+export const httpError = (label, status) => new Error(`${label} HTTP ${status}${STATUS_HINT[status] ? `（${STATUS_HINT[status]}）` : ''}`);
 // Gateway, paths, headers and the provider lists are configuration (integrations.search), never code.
 export function requestBody(kind, args, config = INTEGRATION_DEFAULTS.search) {
   const allowed = kind === 'search' ? ['query','max_results','search_type','provider'] : ['url','format','provider'];
@@ -36,20 +39,30 @@ export function gatewayBase(raw) {
 export function searchSettings(resolved = resolveIntegrations()) {
   return { config: resolved.effective.search, key: keyOf('search', resolved), keyEnv: resolved.keys.search.env };
 }
+/** A 200 still has to carry a real result: search needs a results list, fetch needs page content. */
+export function checkResult(kind, data) {
+  if (kind === 'search' && !Array.isArray(data?.results)) throw new Error('聚合网关返回 200 但没有 results 列表，未取得搜索结果');
+  if (kind === 'fetch' && !(typeof data?.content === 'string' && data.content.trim())) throw new Error('聚合网关返回 200 但没有网页正文，请改用搜索摘要');
+  if (kind === 'providers' && !Array.isArray(data?.data)) throw new Error('聚合网关返回 200 但没有渠道列表');
+  return data;
+}
 export async function gateway(kind, args, { fetcher = fetch, settings, key, base, signal } = {}) {
+  if (!settings && key === undefined) await refreshCredentials();
   const current = settings ?? searchSettings();
   const config = { ...current.config, ...(base !== undefined ? { baseUrl: base } : {}) };
   const secret = key !== undefined ? key : current.key;
-  const body = requestBody(kind, args, config);
-  if (!secret) throw new Error(`聚合搜索缺少密钥：请在 Host 环境设置 ${current.keyEnv ?? 'CPA_SEARCH_API_KEY'}（变量名可在“集成”页修改）并重启`);
+  const body = kind === 'providers' ? undefined : requestBody(kind, args, config);
+  if (!secret) throw new Error(`聚合搜索缺少密钥：在 DSH 设置中保存凭据 ${current.keyEnv ?? 'CPA_SEARCH_API_KEY'}，或在 Host 环境设置同名变量（名称可在“集成”页修改）`);
   const origin = gatewayBase(config.baseUrl);
-  const timeout = AbortSignal.timeout(kind === 'search' ? config.timeoutMs : config.fetchTimeoutMs);
-  const response = await fetcher(`${origin}${kind === 'search' ? config.searchPath : config.fetchPath}`, {
-    method: 'POST', redirect: 'error', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-    headers: { ...config.headers, Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  if (kind === 'providers' && !config.providersPath) throw new Error('未配置渠道查询路径 search.providersPath');
+  const timeout = AbortSignal.timeout(kind === 'fetch' ? config.fetchTimeoutMs : config.timeoutMs);
+  const path = { search: config.searchPath, fetch: config.fetchPath, providers: config.providersPath }[kind];
+  const response = await fetcher(`${origin}${path}`, {
+    method: body ? 'POST' : 'GET', redirect: 'error', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    headers: { ...config.headers, Authorization: `Bearer ${secret}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}),
   });
   // Never echo error bodies: gateways may include secrets or upstream headers.
-  if (!response.ok) throw new Error(`聚合网关 HTTP ${response.status}；抓取失败时请使用搜索摘要`);
+  if (!response.ok) throw httpError('聚合网关', response.status);
   if (!response.body) throw new Error('聚合网关返回空响应');
   const reader = response.body.getReader(); const parts = []; let size = 0;
   try {
@@ -57,7 +70,9 @@ export async function gateway(kind, args, { fetcher = fetch, settings, key, base
   } finally { reader.releaseLock(); }
   const text = Buffer.concat(parts).toString('utf8');
   if (text.includes(secret)) throw new Error('响应包含凭据，已阻止回传');
-  try { return JSON.parse(text); } catch { throw new Error('聚合网关返回非JSON数据'); }
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error('聚合网关返回非JSON数据'); }
+  return checkResult(kind, data);
 }
 /** Tool schemas; a configured provider list becomes the enum, otherwise provider is a free name. */
 export function searchSchemas(config = INTEGRATION_DEFAULTS.search) {
@@ -65,6 +80,7 @@ export function searchSchemas(config = INTEGRATION_DEFAULTS.search) {
   return {
     cpa_search: params({ query: { type: 'string', description: '搜索关键词' }, max_results: { type: 'integer', description: '结果数量，1–20' }, search_type: { type: 'string', enum: ['web','news','code'] }, provider: provider(config.providers) }, ['query']),
     cpa_web_fetch: params({ url: { type: 'string', description: '公开网页URL，不含凭据' }, format: { type: 'string', enum: ['markdown','html'] }, provider: provider(config.fetchProviders) }, ['url']),
+    ...(config.providersPath ? { cpa_search_providers: params({}, []) } : {}),
   };
 }
 export const schemas = searchSchemas();
