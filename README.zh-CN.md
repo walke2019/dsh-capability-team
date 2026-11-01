@@ -46,12 +46,12 @@
 ### 团队工作台
 - 总览成员、任务、活动、用量和模型。
 - 提供角色会话视图与任务控制。
-- 管理可选搜索和记忆服务设置。
+- 不再提供集成页或设置界面；集成配置只读。
 
-### 记忆与集成
-- 可选混合记忆，支持嵌入后端与 OpenViking。
-- 搜索和抓取端点可配置，不在插件中写死。
-- 密钥保存在 Host 环境变量中，配置只记录变量名。
+### 独立工具与记忆
+- `packages/cpa-tools` 无界面，向所有会话提供聚合搜索、网页抓取、搜索渠道列表和语音转写。
+- `packages/global-memory` 读取嵌入与 OpenViking 配置；团队插件的记忆枢纽读取同一份配置。
+- 安装步骤和配置格式见[配置参考](docs/configuration.zh-CN.md)及各插件 README。
 
 ## 快速开始
 
@@ -69,16 +69,22 @@
 
 ### 最小配置
 
-先在 DSH 注册渠道与模型，预设会据此匹配。可选集成变量在 DSH Host 环境设置，修改后重启 DSH：
+先在 DSH 注册渠道与模型，预设会据此匹配。右侧面板没有集成页，配置只读，可通过配置文件、Host 环境变量或 DSH 凭据库提供。在 DSH 插件管理器安装并启用 `packages/cpa-tools`、`packages/global-memory` 目录或对应 `.tgz` 包，然后重启 DSH。`cpa-tools` 和 `global-memory` 的细节见对应 README。
 
-| 变量 | 用途 |
-|---|---|
-| `CPA_SEARCH_BASE_URL` | 可选搜索端点；示例地址使用 `https://gateway.example.com`。 |
-| `CPA_SEARCH_API_KEY` | 启用搜索时使用的凭据变量名。 |
-| `CPA_EMBED_BASE_URL`、`CPA_EMBED_MODEL`、`CPA_EMBED_DIMENSIONS` | 可选嵌入端点与模型设置。 |
-| `CPA_EMBED_API_KEY` | 启用向量记忆时使用的凭据变量名。 |
-| `CAPABILITY_TEAM_HOME` | 可选的项目团队配置存放位置。 |
-| `CAPABILITY_TEAM_OPENCODE_EXECUTABLE`、`CAPABILITY_TEAM_OPENCODE_MODELS` | 可选文本任务通道配置。 |
+配置文件位置为 `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`，可用 `CAPABILITY_TEAM_HOME` 覆盖目录。示例：
+
+```json
+{
+  "integrations": {
+    "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_SEARCH_API_KEY" },
+    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_AUDIO_API_KEY" },
+    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_EMBED_API_KEY", "model": "<model>" },
+    "openviking": { "url": "https://gateway.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
+  }
+}
+```
+
+也可设置 `CPA_SEARCH_BASE_URL`、`CPA_AUDIO_BASE_URL`、`CPA_EMBED_BASE_URL`、`OPENVIKING_URL`。密钥只放在 DSH 凭据库或对应环境变量中；勿写入配置。`CAPABILITY_TEAM_OPENCODE_EXECUTABLE` 和 `CAPABILITY_TEAM_OPENCODE_MODELS` 仍可配置免费文本任务通道。
 
 新建团队会话后，可以说：“读取团队配置。”主控会给出当前角色和模型匹配概览。
 

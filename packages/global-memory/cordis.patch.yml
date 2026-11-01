@@ -1,0 +1,5 @@
+- insert:
+    - id: global-memory
+      name: '@local/dsh-global-memory'
+      config:
+        enabled: true

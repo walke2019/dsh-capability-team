@@ -23,7 +23,7 @@ test('每个注册的工具参数都是合法的对象根 JSON Schema，且只�
     assert.doesNotThrow(() => assertToolSchema(p), name);
     for (const [key, prop] of Object.entries(p.properties)) assert.ok(!('required' in prop), `${name}.${key} 不得使用 required: true 简写`);
   }
-  assert.deepEqual(tools.cpa_search.parameters.required, ['query']);
+  assert.equal(tools.cpa_search, undefined, 'CPA tools belong to the independent profile bundle');
   assert.deepEqual(tools.capability_team_save.parameters.required, ['expected_revision']);
   assert.deepEqual(tools.capability_team_read.parameters, { type: 'object', properties: {} });
 });

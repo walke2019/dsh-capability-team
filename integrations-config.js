@@ -1,13 +1,10 @@
 // External integrations (search gateway, embeddings) are per-user data, never code: the base URL, paths,
 // headers, model, provider and optional request fields all come from configuration, and nothing assumes a
 // particular gateway. Keys are never stored: the config names the environment variable that holds the key.
-// Layers, highest first: environment variables › profile file (edited in the Overview) › plugin config › defaults.
-import { crossSiteRequest } from './http-guard.js';
+// Read-only layers: environment variables › user integrations.json › defaults. No HTTP/config writer.
 import { readFileSync } from 'node:fs';
-import { mkdir, rename, unlink, writeFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { acquireLock, defaultRoot } from './theme.js';
+import { defaultRoot } from './theme.js';
 export const INTEGRATION_DEFAULTS = Object.freeze({
   // Search gateways fall back across upstream providers, so a full answer can take up to two minutes.
   search: Object.freeze({ baseUrl: null, apiKeyEnv: 'CPA_SEARCH_API_KEY', searchPath: '/v1/search', fetchPath: '/v1/web/fetch', providersPath: null, headers: {}, providers: [], fetchProviders: [], timeoutMs: 120000, fetchTimeoutMs: 120000 }),
@@ -93,9 +90,6 @@ export function validateIntegrations(value) {
   }
   return out;
 }
-let pluginLayer = {};
-/** The plugin config's `integrations` block (cordis.patch.yml), registered once by the routing plugin. */
-export function setPluginIntegrations(value) { pluginLayer = validateIntegrations(value); }
 export const integrationsPath = (root = defaultRoot()) => join(root, 'integrations.json');
 function readFileLayer(root) {
   try { const raw = JSON.parse(readFileSync(integrationsPath(root), 'utf8')); return { revision: raw.revision ?? 0, value: validateIntegrations(raw.integrations) }; }
@@ -113,7 +107,6 @@ export function resolveIntegrations({ root = defaultRoot(), env = process.env } 
     for (const key of Object.keys(INTEGRATION_DEFAULTS[section])) {
       const envName = ENV_OVERRIDES[section][key];
       let value = INTEGRATION_DEFAULTS[section][key], source = 'default';
-      if (pluginLayer[section]?.[key] !== undefined) { value = pluginLayer[section][key]; source = 'plugin'; }
       if (file.value[section]?.[key] !== undefined) { value = file.value[section][key]; source = 'file'; }
       if (envName && env[envName]) {
         try { value = validateField(section, key, env[envName]); source = `env:${envName}`; } catch { /* an invalid env value is ignored, not trusted */ }
@@ -158,63 +151,7 @@ export async function keyPresence(resolved) {
   for (const section of SECTIONS) out[section] = { ...resolved.keys[section], present: !!keyOf(section, resolved) };
   return out;
 }
-/** Save the file layer (merge per field; null restores the lower layer) with an optimistic revision check. */
-export async function saveIntegrations(patch, expectedRevision, { root = defaultRoot() } = {}) {
-  const changes = validateIntegrations(patch);
-  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) throw new Error('无效的配置版本');
-  const path = integrationsPath(root);
-  await mkdir(root, { recursive: true });
-  const lock = await acquireLock(path + '.lock');
-  const temp = `${path}.${randomUUID()}.tmp`;
-  try {
-    const current = readFileLayer(root);
-    if (current.revision !== expectedRevision) throw Object.assign(new Error('集成配置已变化，请刷新后重试'), { status: 409 });
-    const next = structuredClone(current.value);
-    for (const [section, fields] of Object.entries(patch ?? {})) {
-      if (fields === null) { delete next[section]; continue; }
-      next[section] ??= {};
-      for (const [key, v] of Object.entries(fields)) { if (v === null) delete next[section][key]; else next[section][key] = changes[section][key]; }
-      if (!Object.keys(next[section]).length) delete next[section];
-    }
-    const revision = current.revision + 1;
-    await writeFile(temp, JSON.stringify({ revision, integrations: next }, null, 2) + '\n', { flag: 'wx' });
-    await rename(temp, path);
-    return { revision };
-  } finally {
-    await unlink(temp).catch(() => {});
-    try { await lock.close(); } finally { await unlink(path + '.lock').catch(() => {}); }
-  }
-}
 /** Safe view for the Overview: effective values, the layer each came from, and key presence (never key values). */
 export function describeIntegrations(resolved) {
   return { schemaVersion: 1, revision: resolved.revision, effective: resolved.effective, sources: resolved.sources, keys: resolved.keys, file: resolved.fileLayer, envOverrides: ENV_OVERRIDES };
-}
-/** GET → described config; POST {expectedRevision, patch} → saved revision. Same-origin JSON only. */
-import { ownsCapabilityTeam } from './preset-guard.js';
-export async function handleIntegrations(request, { root = defaultRoot(), env = process.env, ctx } = {}) {
-  const fail = (status, code, message) => Response.json({ code, message }, { status });
-  try {
-    const url = new URL(request.url);
-    if (ctx) {
-      const id = url.searchParams.get('sessionId');
-      const agent = typeof id === 'string' && /^[\w.:-]{1,256}$/.test(id) ? ctx.get?.('agents')?.get(id) : undefined;
-      if (!ownsCapabilityTeam(ctx, agent) || ctx.get?.('agentTeams')?.tryMembership(agent)?.role !== 'lead') return fail(404, 'NOT_FOUND', 'Lead unavailable');
-    }
-    if (request.method === 'GET') {
-      const resolved = resolveIntegrations({ root, env });
-      return Response.json({ ...describeIntegrations(resolved), keys: await keyPresence(resolved) }, { headers: { 'cache-control': 'no-store' } });
-    }
-    if (request.method !== 'POST') return fail(400, 'BAD_REQUEST', 'Method not allowed');
-    if (crossSiteRequest(request)) return fail(403, 'FORBIDDEN', 'Same-origin required');
-    if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type') ?? '')) return fail(400, 'BAD_REQUEST', 'JSON required');
-    const text = await request.text();
-    if (text.length > 32768) return fail(400, 'BAD_REQUEST', 'Body too large');
-    let body; try { body = JSON.parse(text); } catch { return fail(400, 'BAD_REQUEST', 'Invalid JSON'); }
-    const saved = await saveIntegrations(body?.patch, body?.expectedRevision, { root });
-    return Response.json({ schemaVersion: 1, ...saved }, { headers: { 'cache-control': 'no-store' } });
-  } catch (error) { return fail(error.status ?? 422, error.status === 409 ? 'CONFLICT' : 'INVALID', error.message); }
-}
-export const INTEGRATIONS_PATH = '/api/capability-team.integrations';
-export function applyIntegrationsApi(ctx) {
-  ctx.inject?.(['connection'], scoped => scoped.connection.fetch.register({ path: INTEGRATIONS_PATH, methods: ['GET', 'POST'], requestBody: 'buffered', fetch: req => handleIntegrations(req, { ctx }) }));
 }

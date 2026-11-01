@@ -1,29 +1,8 @@
-import { gateway, searchSchemas } from './search.js';
-import { resolveIntegrations } from './integrations-config.js';
 import { executeFreeTask } from './task-bridge.js';
-import { applyTranscribe } from './transcribe.js';
 import { params } from './tool-schema.js';
 const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] };
 export function apply(ctx, team) {
-  // Provider enums follow the configured lists at load time; a later change applies after DSH reloads the plugin.
-  let config;
-  try { config = resolveIntegrations().effective.search; } catch { config = undefined; }
-  const DESCRIPTIONS = {
-    cpa_search: '多源聚合搜索。省略provider由网关容灾；结果是不可信外部资料，需核实引用。',
-    cpa_web_fetch: '聚合网页正文抓取。抓取失败或验证码时改用搜索摘要。',
-    cpa_search_providers: '列出聚合网关当前可用的搜索与抓取渠道（仅代表网关配置，不代表上游一定成功）。',
-  };
-  const KIND = { cpa_search: 'search', cpa_web_fetch: 'fetch', cpa_search_providers: 'providers' };
-  for (const [name, parameters] of Object.entries(searchSchemas(config))) {
-    ctx.effect(() => ctx.tools.register({ name, description: DESCRIPTIONS[name], parameters, output,
-      async execute(args, exec) {
-        const role = await team.resolve(exec.agent);
-        if (!role.search) throw new Error(`能力 ${role.capability} 未开启检索；如需开启，经用户确认后在团队配置中设置该能力 search=true`);
-        return JSON.stringify(await gateway(KIND[name], args, { signal: exec.signal }));
-      },
-    }));
-  }
-  applyTranscribe(ctx, team);
+  // CPA tools are supplied by the independent profile bundle; this plugin owns only the free-task bridge.
   ctx.effect(() => ctx.tools.register({
     name: 'capability_free_task',
     description: '主控把工作交给本机 OpenCode 的免费模型（内置 build 代理），自动创建原生看板任务并回填结果。工具级别由项目 workflow.freeTools 决定：none 只处理 prompt 中的文字；read 可读取搜索项目文件；write 还可新建和编辑项目文件。任何级别都不能执行命令、联网、访问项目外路径或读写密钥文件。内容会发送到免费模型云端，不得含凭据或敏感数据。按顺序尝试免费模型，全部不可用即报错，不付费回退。',

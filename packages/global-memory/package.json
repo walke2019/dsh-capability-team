@@ -1,0 +1,12 @@
+{
+  "name": "@local/dsh-global-memory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "description": "Explicit memory tools and bounded automatic recall for DSH sessions",
+  "exports": { ".": "./index.js", "./locale/*.json": "./locale/*.json", "./icon": "./icon.svg" },
+  "files": ["*.js", "shared/**", "cordis.patch.yml", "locale/*.json", "icon.svg", "README.md"],
+  "scripts": { "build": "node scripts/build-shared.mjs", "test": "node --test ../../tests/global-memory/*.test.mjs" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

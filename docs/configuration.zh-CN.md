@@ -18,7 +18,7 @@
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | 可选 OpenCode 可执行文件路径；未设置时从 `PATH` 查找。 |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | 可选 OpenCode 模型目录路径。 |
 
-集成地址、路径、模型和维度也可在工作台设置。密钥只引用环境变量名，不能把密钥值写进项目配置。
+集成为只读配置，须通过下文的配置文件、Host 环境变量或 DSH 凭据库提供。密钥值不得写入配置文件。
 
 ## 默认能力与角色
 
@@ -99,26 +99,26 @@
 
 `capability_free_task` 使用本机 OpenCode 可执行文件与模型目录。`CAPABILITY_TEAM_OPENCODE_EXECUTABLE` 和 `CAPABILITY_TEAM_OPENCODE_MODELS` 可覆盖自动查找。模型必须在目录中标为免费、未弃用且支持工具。额度、鉴权或模型不可用时按序尝试下一个免费模型，不会使用付费模型。工具级别为 `none`、`read`、`write`；始终禁止 shell、联网、子代理、项目外路径和敏感凭据文件。`read`/`write` 会将项目内容发送到免费模型云端，切勿包含密钥。
 
-## 集成
+## 独立工具与集成配置
 
-集成设置优先级依次为 Host 环境覆盖、工作台保存的 `$CAPABILITY_TEAM_HOME/integrations.json`、插件配置、关闭状态的默认值。支持 `search`、`embeddings` 与 `audio`：
+右侧面板没有集成页或设置界面，配置为只读。通过 `integrations.json`、Host 环境变量或 DSH 凭据库提供配置。在 DSH 插件管理器安装并启用 `packages/cpa-tools` 与 `packages/global-memory` 目录（或对应 `.tgz` 包），然后重启 DSH。团队插件的记忆枢纽也读取 `global-memory` 使用的同一份配置。
 
-| 配置段 | 常用字段 |
-|---|---|
-| `search` | `baseUrl`、`apiKeyEnv`、`searchPath`、`fetchPath`、`providers`、`fetchProviders`、`providersPath`、`headers`、`timeoutMs`、`fetchTimeoutMs`。 |
-| `embeddings` | `baseUrl`、`apiKeyEnv`、`path`、`model`、`provider`、`dimensions`、`queryTask`、`passageTask`、`headers`、`timeoutMs`、`batch`。 |
-| `audio` | `baseUrl`、`apiKeyEnv`、`path`、`statusPath`、`model`、`headers`、`timeoutMs`、`maxBytes`。 |
+`cpa-tools` 无界面，向所有会话提供聚合搜索、网页抓取、搜索渠道列表和语音转写工具；团队插件中 `search: false` 的角色不能调用这五个工具。插件/工具未安装或未启用时，应如实报告。`global-memory` 读取嵌入和 OpenViking 配置。
 
-示例统一使用保留的示例域名：
+配置文件为 `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`，可用 `CAPABILITY_TEAM_HOME` 覆盖目录。示例：
 
 ```json
 {
-  "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY" },
-  "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "model": "<model>" }
+  "integrations": {
+    "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_SEARCH_API_KEY" },
+    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_AUDIO_API_KEY" },
+    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_EMBED_API_KEY", "model": "<model>" },
+    "openviking": { "url": "https://gateway.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
+  }
 }
 ```
 
-密钥在请求时从 DSH 凭据库或同名 Host 环境变量读取，不写入配置和日志。只有配置音频端点后才注册语音转写；读取和上传单个文件前需用户确认。HTTP 成功响应仍须包含有效结果，错误响应正文不会回显。
+也可在 DSH Host 环境设置 `CPA_SEARCH_BASE_URL`、`CPA_AUDIO_BASE_URL`、`CPA_EMBED_BASE_URL` 与 `OPENVIKING_URL`。密钥仅保存在 DSH 凭据库或对应环境变量中，不要写入配置文件。字段详情见两个独立插件的 README。
 
 ## 会话轮换与交接
 

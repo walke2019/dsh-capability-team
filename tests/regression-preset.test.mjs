@@ -10,7 +10,7 @@ import { createMemoryHub } from '../memory-hub.js';
 import { createTokenDiscipline, TOKEN_RULES } from '../token-discipline.js';
 import { createTokenMetrics } from '../token-metrics.js';
 import { createOpenViking } from '../memory-openviking.js';
-import { handleIntegrations } from '../integrations-config.js';
+import * as integrationConfig from '../integrations-config.js';
 
 function fixture(preset, member = true, child = false) {
   const root = { id: 'root', ctx: { preset } };
@@ -62,18 +62,9 @@ test('QA regression: owned root permits policy and API GET, session query is man
   assert.equal(ownsCapabilityTeam(f.ctx, f.agent), true);
   applyRoles(f.ctx, { owns: a => ownsCapabilityTeam(f.ctx, a) }, {});
   assert.equal(f.injected(), 1);
-  const root = await mkdtemp(join(tmpdir(), 'qa-integrations-'));
-  f.ctx.agentTeams.tryMembership = () => ({ role: 'lead', root: { ctx: { preset: 'capability-team' } } });
-  for (const id of [null, 'missing', '../invalid']) {
-    const url = new URL('https://app.example.test/api');
-    if (id !== null) url.searchParams.set('sessionId', id);
-    assert.equal((await handleIntegrations(new Request(url), { ctx: f.ctx, root, env: {} })).status, 404);
-  }
-  const response = await handleIntegrations(new Request('https://app.example.test/api?sessionId=worker'), { ctx: f.ctx, root, env: {} });
-  assert.equal(response.status, 200);
-  assert.equal(response.headers.get('cache-control'), 'no-store');
-  f.ctx.agentTeams.tryMembership = () => ({ role: 'teammate', root: { ctx: { preset: 'capability-team' } } });
-  assert.equal((await handleIntegrations(new Request('https://app.example.test/api?sessionId=worker'), { ctx: f.ctx, root, env: {} })).status, 404);
+  assert.equal(integrationConfig.handleIntegrations, undefined);
+  assert.equal(integrationConfig.applyIntegrationsApi, undefined);
+  assert.equal(integrationConfig.saveIntegrations, undefined);
 });
 
 test('QA regression: cumulative official usage yields step deltas without double counting', () => {

@@ -18,7 +18,7 @@ Set variables in the DSH host process environment. Restart DSH after changing th
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | Optional OpenCode executable path; otherwise discovered from `PATH`. |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | Optional OpenCode model catalog path. |
 
-Integration URL, path, model and dimensions can also be configured in the workbench. Secrets are referenced only by environment variable name; never put key values in project configuration.
+Integration settings are read-only; provide them through the integrations file, host environment variables, or DSH credential store as described below. Never put literal key values in configuration.
 
 ## Defaults: capabilities and roles
 
@@ -99,26 +99,26 @@ Search and web-fetch tools are available only to capabilities with `search: true
 
 `capability_free_task` uses the local OpenCode executable and catalog. `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` and `CAPABILITY_TEAM_OPENCODE_MODELS` override discovery. Models must be catalog-listed free, non-deprecated, and tool-capable. Quota/auth/model availability failures move to the next configured free model; paid models are never used. Tool levels are `none`, `read`, and `write`; shell, network, subagents, outside-project paths, and sensitive credential files remain forbidden. At read/write levels project content is sent to the free model’s cloud, so do not include secrets.
 
-## Integrations
+## Independent tools and integrations
 
-Integration settings resolve in this order: host environment overrides, workbench-saved `$CAPABILITY_TEAM_HOME/integrations.json`, plugin configuration, then disabled defaults. Configuration supports `search`, `embeddings`, and `audio` sections.
+There is no integrations page or settings UI. Configuration is read-only and can be supplied through `integrations.json`, host environment variables, or the DSH credential store. Install and enable the independent plugins `packages/cpa-tools` and `packages/global-memory` in the DSH plugin manager (or install their corresponding `.tgz` packages), then restart DSH. The team plugin's memory hub reads the same configuration as `global-memory`.
 
-| Section | Common fields |
-|---|---|
-| `search` | `baseUrl`, `apiKeyEnv`, `searchPath`, `fetchPath`, `providers`, `fetchProviders`, `providersPath`, `headers`, `timeoutMs`, `fetchTimeoutMs`. |
-| `embeddings` | `baseUrl`, `apiKeyEnv`, `path`, `model`, `provider`, `dimensions`, `queryTask`, `passageTask`, `headers`, `timeoutMs`, `batch`. |
-| `audio` | `baseUrl`, `apiKeyEnv`, `path`, `statusPath`, `model`, `headers`, `timeoutMs`, `maxBytes`. |
+`cpa-tools` provides search, web fetch, search-provider listing, and transcription tools to all sessions without a UI. Team-plugin roles with `search: false` cannot call these five tools. If a tool/plugin is unavailable or disabled, report that truthfully. `global-memory` reads embedding and OpenViking settings.
 
-Example values use a reserved example host:
+The file is `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`; `CAPABILITY_TEAM_HOME` can override the directory. Example:
 
 ```json
 {
-  "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY" },
-  "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "model": "<model>" }
+  "integrations": {
+    "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_SEARCH_API_KEY" },
+    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_AUDIO_API_KEY" },
+    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_EMBED_API_KEY", "model": "<model>" },
+    "openviking": { "url": "https://gateway.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
+  }
 }
 ```
 
-Keys are read from DSH credentials or the named host environment variable at request time. They are never stored in configuration or logs. Audio transcription is registered only when an audio endpoint is configured and requires per-file user approval before reading/uploading the file. HTTP success must include a valid result body; errors are reported without echoing upstream bodies.
+Alternatively set `CPA_SEARCH_BASE_URL`, `CPA_AUDIO_BASE_URL`, `CPA_EMBED_BASE_URL`, and `OPENVIKING_URL` in the DSH host environment. Secrets belong in the DSH credential store or named environment variables, never as literal configuration values. See the plugin READMEs for schemas and details.
 
 ## Session rotation and handoff
 

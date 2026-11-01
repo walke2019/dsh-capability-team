@@ -34,15 +34,6 @@
 .ctm-mc-item{padding-left:8px;border-left:2px solid var(--dsw-alias-border-l1,rgba(127,127,127,.25))}
 .ctm-mc-results{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .ctm-mc-results li{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere}
-.ctm-int{display:flex;flex-direction:column;gap:12px}
-.ctm-int-section{border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.3));border-radius:10px;margin:0 0 12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0;background:var(--dsw-alias-bg-layer-1)}
-.ctm-int-grid{display:grid;grid-template-columns:120px minmax(0,1fr);column-gap:12px;row-gap:8px;align-items:start}
-.ctm-int-key{padding-top:6px}
-.ctm-int-val{display:flex;flex-direction:column;gap:2px;min-width:0}
-.ctm-int-val input,.ctm-int-val textarea{font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35));background:transparent;color:inherit;min-width:0}
-.ctm-int-val input:disabled,.ctm-int-val textarea:disabled{opacity:.6}
-.ctm-int-src{font-size:11px}
-@container ctm-ov (max-width:420px){.ctm-int-grid{grid-template-columns:minmax(0,1fr)}.ctm-int-key{padding-top:0}}
 .ctm-dc{display:flex;flex-direction:column;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.3));font-size:12px;line-height:1.5}
 .ctm-dc-head{display:flex;flex-direction:column;gap:2px}
 .ctm-dc-title{font-size:13px}

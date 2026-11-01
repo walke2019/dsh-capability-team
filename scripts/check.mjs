@@ -16,6 +16,22 @@ async function walk(dir) {
   }
   return result;
 }
+// The standalone Host bundle has a separate publication closure.
+for (const bundle of ['global-memory', 'cpa-tools']) {
+const globalRoot = join(root, 'packages', bundle);
+  await stat(join(globalRoot, 'package.json'));
+  const check = spawnSync(process.execPath, [join(globalRoot, 'scripts/build-shared.mjs'), '--check'], { encoding: 'utf8', windowsHide: true });
+  if (check.status !== 0) throw new Error(check.stderr || 'Shared hash check failed');
+  const files = await walk(globalRoot);
+  for (const path of files.filter(p => /\.js$/.test(p))) {
+    const source = await readFile(path, 'utf8');
+    for (const m of source.matchAll(/\b(?:import|export)\s+(?:[^;'"()]*?\s+from\s*)?['"](\.[^'"]+)['"]|\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/g)) {
+      const target = join(dirname(path), m[1] ?? m[2]);
+      if (relative(globalRoot, target).startsWith('..') || !files.includes(target)) throw new Error(`Global memory import escapes package: ${path}`);
+    }
+  }
+  console.log(`${bundle.toUpperCase().replaceAll('-', '_')}_CLOSURE_OK`);
+}
 let checked = 0;
 for (const path of await walk(root)) {
   if (/\.m?js$/.test(path)) {

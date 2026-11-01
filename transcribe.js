@@ -72,16 +72,11 @@ async function approve(ctx, exec, path, size) {
   if (!answer.answers.find(a => a.id === 'upload')?.selected.includes('允许上传')) throw new Error('用户未授权上传该文件');
 }
 const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] };
-export function applyTranscribe(ctx, team) {
-  let config;
-  try { config = resolveIntegrations().effective.audio; } catch { config = undefined; }
-  if (!config?.baseUrl) return; // not configured: no tool, nothing for the model to misuse
-  const gate = async exec => { const role = await team.resolve(exec.agent); if (!role.search) throw new Error(`能力 ${role.capability} 未开启外部服务（search=true）`); };
+export function applyTranscribe(ctx) {
   ctx.effect(() => ctx.tools.register({ name: 'cpa_transcribe', output,
     description: '语音转文字：上传一个本地音频文件到配置的转写网关。每个文件都需用户在确认框中授权；未授权不读取。',
     parameters: params({ file_path: { type: 'string', description: '本地音频文件路径（相对路径按工作目录解析）' }, language: { type: 'string', description: '可选：语言代码，如 zh、en' }, prompt: { type: 'string', description: '可选：术语提示，不得含凭据' } }, ['file_path']),
     async execute(args, exec) {
-      await gate(exec);
       const cwd = await ctx.workingDirectory.ensure(exec.agent, exec.signal);
       const path = isAbsolute(String(args.file_path)) ? String(args.file_path) : resolve(cwd, String(args.file_path));
       const max = audioSettings().config.maxBytes;
@@ -90,8 +85,8 @@ export function applyTranscribe(ctx, team) {
       return JSON.stringify(result);
     },
   }));
-  if (config.statusPath) ctx.effect(() => ctx.tools.register({ name: 'cpa_transcribe_status', output, parameters: params({}, []),
+  ctx.effect(() => ctx.tools.register({ name: 'cpa_transcribe_status', output, parameters: params({}, []),
     description: '查询语音转写网关的本地健康状态（不代表上游一定成功）。',
-    async execute(_args, exec) { await gate(exec); return JSON.stringify(await audioStatus({ signal: exec.signal })); },
+    async execute(_args, exec) { return JSON.stringify(await audioStatus({ signal: exec.signal })); },
   }));
 }

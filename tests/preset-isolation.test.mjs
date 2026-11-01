@@ -4,7 +4,7 @@ import { ownsCapabilityTeam, isolatedProjection } from '../preset-guard.js';
 import { scopeTools, applySkillCatalog } from '../teammate-context.js';
 import { createWorkflow } from '../workflow.js';
 import { configDefinition } from '../config-projection.js';
-import { handleIntegrations } from '../integrations-config.js';
+import * as integrationsConfig from '../integrations-config.js';
 const agent = preset => ({ id: preset ?? 'plain', ctx: { preset, tools: { register() {} } }, session: { header: {} } });
 function fixture(preset, member = false, parent = false) {
   const root = agent(preset), a = parent ? agent(undefined) : root;
@@ -28,8 +28,7 @@ for (const [label, preset, member, parent] of [
   assert.equal(createWorkflow(ctx, {}).guard({ agent: a, name: 'pwsh' }), undefined);
   const p = isolatedProjection(ctx, configDefinition), state = p.init({ id: a.id });
   assert.deepEqual(p.wire.view(p.apply(state, { type: 'tool/call', data: { name: 'capability_team_save', callId: 'c' } })), { version: 0 });
-  const response = await handleIntegrations(new Request(`https://host.test/api?sessionId=${a.id}`), { ctx });
-  assert.equal(response.status, 404);
+  assert.equal(integrationsConfig.handleIntegrations, undefined);
 });
 test('本预设主控与成员按根会话识别，缺原生API时关闭', () => {
   for (const parent of [false, true]) {

@@ -1,0 +1,43 @@
+import { join } from 'node:path';
+import { configuration } from './config.js';
+import { createRuntime } from './runtime.js';
+import { memoryService } from './tools.js';
+import { createMemoryStore } from './shared/memory-store.js';
+import { createEmbedder } from './shared/memory-embed.js';
+import { createOpenViking } from './shared/memory-openviking.js';
+import { defaultRoot } from './shared/theme.js';
+import { setCredentialResolver, knownSecretValues, refreshCredentials } from './shared/integrations-config.js';
+export { Config } from './config.js';
+export const inject = ['agents','systemPrompt','tools','workingDirectory','agentPresets'];
+const instances = new WeakSet();
+export function apply(ctx, input = {}) {
+  const config = configuration(input);
+  const owner = ctx.root ?? ctx;
+  if (instances.has(owner)) throw new Error('global-memory already installed in this profile');
+  instances.add(owner);
+  ctx.effect(() => () => { instances.delete(owner); setCredentialResolver(null); });
+  if (!config.enabled) return;
+  ctx.inject?.(['credentials'], scoped => {
+    setCredentialResolver(name => scoped.credentials.resolve(name));
+    scoped.effect(() => () => setCredentialResolver(null));
+  });
+  ctx.inject?.(['agentTeams'], () => {});
+  const store = createMemoryStore(defaultRoot());
+  const embedder = createEmbedder();
+  // Do not recover/schedule a remote queue merely because a team-only profile loads us.
+  let backend, stopped = false;
+  const timers = new Set();
+  ctx.effect(() => () => { stopped = true; for (const timer of timers) clearTimeout(timer); timers.clear(); });
+  const schedule = (fn, ms) => {
+    if (stopped) return null;
+    const timer = setTimeout(() => { timers.delete(timer); if (!stopped) fn(); }, ms);
+    timer.unref?.(); timers.add(timer); return timer;
+  };
+  const getBackend = () => backend ??= createOpenViking({ queuePath: join(defaultRoot(), 'memory', 'global-memory-openviking-queue.json'), schedule });
+  const viking = {
+    get enabled() { return getBackend().enabled; }, get lastError() { return backend?.lastError; },
+    recall: (...args) => getBackend().recall(...args), enqueue: (...args) => getBackend().enqueue(...args), revoke: (...args) => getBackend().revoke(...args),
+  };
+  const secrets = async () => { await refreshCredentials().catch(() => {}); return knownSecretValues(); };
+  return createRuntime(ctx, config, memoryService({ store, embedder, viking, secrets, config }), store);
+}

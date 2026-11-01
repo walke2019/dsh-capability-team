@@ -29,7 +29,7 @@ export function requestBody(kind, args, config = INTEGRATION_DEFAULTS.search) {
 }
 /** Gateway base from configuration; only a credential-free https origin (optional path prefix) is accepted. */
 export function gatewayBase(raw) {
-  if (!raw) throw new Error('聚合搜索未配置网关地址：在团队总览“集成”页填写 search.baseUrl，或在 Host 环境设置 CPA_SEARCH_BASE_URL');
+  if (!raw) throw new Error('聚合搜索未配置网关地址：在 integrations.json 配置 search.baseUrl，或在 Host 环境设置 CPA_SEARCH_BASE_URL');
   let url;
   try { url = new URL(raw); } catch { throw new Error('CPA_SEARCH_BASE_URL 不是合法地址'); }
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('CPA_SEARCH_BASE_URL 必须是不含账号、查询参数的 https 地址');
@@ -52,7 +52,7 @@ export async function gateway(kind, args, { fetcher = fetch, settings, key, base
   const config = { ...current.config, ...(base !== undefined ? { baseUrl: base } : {}) };
   const secret = key !== undefined ? key : current.key;
   const body = kind === 'providers' ? undefined : requestBody(kind, args, config);
-  if (!secret) throw new Error(`聚合搜索缺少密钥：在 DSH 设置中保存凭据 ${current.keyEnv ?? 'CPA_SEARCH_API_KEY'}，或在 Host 环境设置同名变量（名称可在“集成”页修改）`);
+  if (!secret) throw new Error(`聚合搜索缺少密钥：在 DSH 设置中保存凭据 ${current.keyEnv ?? 'CPA_SEARCH_API_KEY'}，或在 Host 环境设置同名变量（名称由 integrations.json 的 apiKeyEnv 指定）`);
   const origin = gatewayBase(config.baseUrl);
   if (kind === 'providers' && !config.providersPath) throw new Error('未配置渠道查询路径 search.providersPath');
   const timeout = AbortSignal.timeout(kind === 'fetch' ? config.fetchTimeoutMs : config.timeoutMs);

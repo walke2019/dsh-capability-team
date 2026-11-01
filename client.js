@@ -10,7 +10,7 @@ window.__ModuleLoader__.load({
 
     const zh = {
       'nav.models': '模型', 'nav.roles': '角色', 'nav.usage': '用量', 'nav.logs': '日志',
-      'navfull.models': '模型管理', 'navfull.roles': '角色与配置', 'navfull.usage': '用量', 'navfull.logs': '请求日志', 'navfull.artifacts': '成果货架', 'navfull.report': '战报', 'navfull.integrations': '集成',
+      'navfull.models': '模型管理', 'navfull.roles': '角色与配置', 'navfull.usage': '用量', 'navfull.logs': '请求日志', 'navfull.artifacts': '成果货架', 'navfull.report': '战报',
       'usage.hint': '预算计数 token（不含缓存读取）= 未缓存输入 + 缓存写入 + 输出，缓存读取单列且仍可能收费，不等于账单金额。总量与每步耗时由宿主实时推送；按模型拆分的 token 来自上次刷新。', 'usage.total': '团队合计 {n}', 'usage.billable': '预算计数 {n}', 'usage.cacheRead': '缓存读取 {n}', 'usage.budget': '预算 {used} / {max}', 'usage.over': '已达预算，请求被阻止', 'usage.none': '暂无用量记录', 'usage.io': '输入 {i} · 输出 {o}', 'usage.step': '{n} 步 · 平均 {s}s/步', 'usage.ttft': '首 token {s}s', 'usage.decode': '{n} token/s', 'usage.stepHint': 'DSH 会话统计：每步模型墙钟时间、首 token 延迟与解码速度', 'overview.live': '实时',
       'models.preview': '已保存策略下的请求候选（非实际调用）', 'models.blocked': '已阻止：无允许模型', 'models.unassigned': '尚未分配', 'models.refreshPreview': '策略已保存，请刷新状态获取新的候选预览。',
       'evidence.title': '本会话模型日志', 'evidence.hint': '只展示本会话非继承日志。请求配置不等于调用成功，响应记录也不等于任务完成。',
@@ -27,12 +27,6 @@ window.__ModuleLoader__.load({
       'workflow.tokens': 'Token 规则', 'workflow.tokens.value': '空闲时上下文 ≥{ratio}% 自动压缩 · 命令/搜索输出超过 {chars} 字只留头尾',
       'confirm.habit': '按你的习惯 {n}/{of}', 'confirm.failing': '最近失败 {n} 次', 'confirm.primaryFailing': '主模型 {route} 最近失败 {n} 次，建议换一个。', 'confirm.habitSettled': '最近 3 次你都这样选，可以改为“保存为项目默认”。', 'plan.boardScope': '写入范围 {list}', 'plan.boardAfter': '等待 {list}', 'workflow.enforceWriteScopes': '写入范围', 'workflow.enforceWriteScopes.on': '强制（范围外修改会被拒绝）', 'workflow.enforceWriteScopes.off': '仅提示', 'cards.prefs': '模型偏好', 'cards.prefs.summary': '已学到 {n} 个能力的偏好', 'cards.prefs.cleared': '已清空学到的偏好',
       'confirm.expand': '展开', 'confirm.collapse': '收起', 'picker.search': '输入搜索模型…', 'picker.count': '{n} / {total} 个模型', 'picker.empty': '没有匹配的模型', 'picker.noProvider': '其他',
-      'nav.integrations': '集成', 'int.help': '搜索网关与记忆枢纽嵌入接口的地址、路径、模型都是你自己的设置，保存后下一次调用起生效（工具里的渠道列表在 DSH 重载插件后更新）。密钥不在这里填写：只填密钥的名称，先在 DSH 设置的凭据里查找，找不到再读同名环境变量。留空表示使用下一层（插件配置或默认值）。',
-      'int.search': '搜索与网页读取', 'int.search.hint': 'cpa_search / cpa_web_fetch 调用的聚合网关。', 'int.embeddings': '嵌入（记忆枢纽向量检索）', 'int.embeddings.hint': 'OpenAI 兼容的嵌入接口；provider、dimensions、task 只在填写后才会发送。改模型或维度后，旧向量会自动重算。',
-      'int.keySet': '密钥 {name}：已设置（DSH 凭据或环境变量）', 'int.keyMissing': '密钥 {name}：DSH 凭据和环境变量里都没有', 'int.audio': '语音转写', 'int.memory': '共享长期记忆（OpenViking）', 'int.memory.hint': 'backend 填 openviking 后，团队记忆（去掉密钥后）同时写入该服务器，检索时合并其召回；服务器不可用时自动只用本地记忆。远程地址只接受 https。', 'int.field.backend': '后端（local / openviking）', 'int.field.url': '服务器地址（https；本机可用 http）', 'int.field.account': '账号（trusted 模式可选）', 'int.field.user': '用户（trusted 模式可选）', 'int.field.recallLimit': '每次召回条数（0–20）', 'int.audio.hint': 'cpa_transcribe 调用的转写接口；每个文件上传前都要你在确认框授权，超过上限的文件不读取。', 'int.unset': '未设置',
-      'int.source.default': '默认值', 'int.source.plugin': '插件配置', 'int.source.file': '本页设置', 'int.source.env': '环境变量 {name}（只读）',
-      'int.field.baseUrl': '网关地址（https）', 'int.field.apiKeyEnv': '密钥名称（DSH 凭据 / 环境变量）', 'int.field.providersPath': '渠道列表路径（可选，GET）', 'int.field.statusPath': '状态路径（可选，GET）', 'int.field.maxBytes': '上传上限（字节）', 'int.field.searchPath': '搜索路径', 'int.field.fetchPath': '网页读取路径', 'int.field.path': '接口路径', 'int.field.headers': '附加请求头（每行 名称: 值）', 'int.field.providers': '搜索渠道（逗号分隔，留空不限）', 'int.field.fetchProviders': '读取渠道（逗号分隔，留空不限）', 'int.field.timeoutMs': '超时（毫秒）', 'int.field.fetchTimeoutMs': '读取超时（毫秒）', 'int.field.model': '模型', 'int.field.provider': '渠道 provider（可选）', 'int.field.dimensions': '维度（可选）', 'int.field.queryTask': '检索 task（可选）', 'int.field.passageTask': '入库 task（可选）', 'int.field.batch': '每批条数',
-      'int.save': '保存', 'int.reset': '撤销', 'int.saving': '正在保存…', 'int.saved': '已保存。', 'int.conflict': '配置已被别处修改，已刷新，请重新填写。', 'int.saveFailed': '保存失败：', 'int.invalid': '{field} 的格式不对', 'int.loading': '正在读取集成配置…', 'int.loadFailed': '读取集成配置失败。', 'int.noSession': '未提供能力协作团队会话，无法加载集成配置。',
       'cards.memorySearch': '记忆检索', 'cards.memorySearch.summary': '“{q}” · {n} 条 · {mode}', 'cards.memory.mode.hybrid': '全文+向量', 'cards.memory.mode.text': '仅全文', 'cards.memoryWrite': '写入记忆', 'cards.memoryWrite.saved': '已保存', 'cards.memoryWrite.merged': '已合并到相同记忆', 'cards.memory.kind.handoff': '交接', 'cards.memory.kind.result': '结果', 'cards.memory.kind.pitfall': '踩坑', 'cards.memory.kind.decision': '决定', 'cards.memory.kind.note': '笔记',
       'usage.avgPrompt': '每步平均输入 {n}', 'usage.cacheShare': '缓存读取占 {p}%', 'usage.heavyContext': '每步上下文偏大，建议轮换会话', 'usage.contextHint': '每步平均输入 =（未缓存输入 + 缓存读取 + 缓存写入）÷ 步数。数值越大，每一步重发的上下文越多。',
       'cards.handoff': '交接', 'cards.handoff.summary': '{name} 已交接 · {n} 个未完成任务', 'cards.handoff.diff': '代码改动', 'cards.handoff.test': '最后一次测试', 'cards.rotate': '会话轮换', 'cards.rotate.summary': '{from} → {to}',
@@ -272,7 +266,7 @@ window.__ModuleLoader__.load({
 
     const en = {
       'nav.models': 'Models', 'nav.roles': 'Roles', 'nav.usage': 'Usage', 'nav.logs': 'Logs',
-      'navfull.models': 'Model management', 'navfull.roles': 'Roles & settings', 'navfull.usage': 'Usage', 'navfull.logs': 'Request records', 'navfull.artifacts': 'Artifacts', 'navfull.report': 'Battle report', 'navfull.integrations': 'Integrations',
+      'navfull.models': 'Model management', 'navfull.roles': 'Roles & settings', 'navfull.usage': 'Usage', 'navfull.logs': 'Request records', 'navfull.artifacts': 'Artifacts', 'navfull.report': 'Battle report',
       'usage.hint': 'Budget tokens (excl. cache reads) = uncached input + cache write + output; cache reads are listed apart and may still incur costs, not equal to final billing amount. Totals and step times are pushed live by the host; per-model token splits come from the last refresh.', 'usage.total': 'Team total {n}', 'usage.billable': 'Budget {n}', 'usage.cacheRead': 'Cache read {n}', 'usage.budget': 'Budget {used} / {max}', 'usage.over': 'Budget reached; requests blocked', 'usage.none': 'No usage recorded', 'usage.io': 'In {i} · out {o}', 'usage.step': '{n} steps · {s}s/step', 'usage.ttft': 'first token {s}s', 'usage.decode': '{n} tokens/s', 'usage.stepHint': 'DSH session stats: model wall time per step, time to first token, and decode speed', 'overview.live': 'Live',
       'models.preview': 'Candidates under saved policy (not actual calls)', 'models.blocked': 'Blocked: no allowed model', 'models.unassigned': 'Unassigned', 'models.refreshPreview': 'Policy saved. Refresh to load updated candidates.',
       'evidence.title': 'Session model records', 'evidence.hint': 'Only non-inherited session records. A request header does not prove success; an assistant response does not prove task completion.',
@@ -289,12 +283,6 @@ window.__ModuleLoader__.load({
       'workflow.tokens': 'Token rules', 'workflow.tokens.value': 'Compact idle members above {ratio}% · trim command/search output over {chars} chars',
       'confirm.habit': 'Your usual choice {n}/{of}', 'confirm.failing': 'Failed {n}× recently', 'confirm.primaryFailing': 'Model {route} failed {n}× recently; consider another one.', 'confirm.habitSettled': 'You chose this the last 3 times; consider "Save as project default".', 'plan.boardScope': 'writes {list}', 'plan.boardAfter': 'after {list}', 'workflow.enforceWriteScopes': 'Write scopes', 'workflow.enforceWriteScopes.on': 'Enforced (edits outside are refused)', 'workflow.enforceWriteScopes.off': 'Advisory', 'cards.prefs': 'Model preferences', 'cards.prefs.summary': 'Learned preferences for {n} capabilities', 'cards.prefs.cleared': 'Learned preferences cleared',
       'confirm.expand': 'Show more', 'confirm.collapse': 'Show less', 'picker.search': 'Type to search models…', 'picker.count': '{n} of {total} models', 'picker.empty': 'No matching models', 'picker.noProvider': 'Other',
-      'nav.integrations': 'Integrations', 'int.help': 'The search gateway and the memory hub\'s embeddings endpoint are your own settings; changes apply from the next call (provider lists in the tools update after DSH reloads the plugin). Keys are not entered here: give the key\'s name; it is looked up in DSH\'s credential store (Settings) first, then in an environment variable of the same name. Leave a field empty to use the next layer (plugin config or default).',
-      'int.search': 'Search and page fetch', 'int.search.hint': 'The gateway behind cpa_search / cpa_web_fetch.', 'int.embeddings': 'Embeddings (memory hub vector search)', 'int.embeddings.hint': 'An OpenAI-compatible embeddings endpoint; provider, dimensions and task are sent only when filled in. Changing the model or dimensions re-embeds old vectors automatically.',
-      'int.keySet': 'Key {name}: set (DSH credential or environment)', 'int.keyMissing': 'Key {name}: not in DSH credentials or the environment', 'int.audio': 'Speech to text', 'int.memory': 'Shared long-term memory (OpenViking)', 'int.memory.hint': 'With backend set to openviking, team memories (with credentials removed) are also written to that server and its recall is merged into search; when the server is down, only local memory is used. Remote URLs must use https.', 'int.field.backend': 'Backend (local / openviking)', 'int.field.url': 'Server URL (https; http only on this machine)', 'int.field.account': 'Account (optional, trusted mode)', 'int.field.user': 'User (optional, trusted mode)', 'int.field.recallLimit': 'Results per recall (0–20)', 'int.audio.hint': 'The endpoint behind cpa_transcribe; you approve every file in a dialog before it is uploaded, and files over the limit are never read.', 'int.unset': 'not set',
-      'int.source.default': 'default', 'int.source.plugin': 'plugin config', 'int.source.file': 'this page', 'int.source.env': 'env {name} (read-only)',
-      'int.field.baseUrl': 'Gateway URL (https)', 'int.field.apiKeyEnv': 'Key name (DSH credential / env)', 'int.field.providersPath': 'Provider list path (optional, GET)', 'int.field.statusPath': 'Status path (optional, GET)', 'int.field.maxBytes': 'Upload limit (bytes)', 'int.field.searchPath': 'Search path', 'int.field.fetchPath': 'Fetch path', 'int.field.path': 'Endpoint path', 'int.field.headers': 'Extra headers (one "Name: value" per line)', 'int.field.providers': 'Search providers (comma-separated, empty = any)', 'int.field.fetchProviders': 'Fetch providers (comma-separated, empty = any)', 'int.field.timeoutMs': 'Timeout (ms)', 'int.field.fetchTimeoutMs': 'Fetch timeout (ms)', 'int.field.model': 'Model', 'int.field.provider': 'Provider (optional)', 'int.field.dimensions': 'Dimensions (optional)', 'int.field.queryTask': 'Query task (optional)', 'int.field.passageTask': 'Passage task (optional)', 'int.field.batch': 'Batch size',
-      'int.save': 'Save', 'int.reset': 'Discard', 'int.saving': 'Saving…', 'int.saved': 'Saved.', 'int.conflict': 'Changed elsewhere; reloaded. Please re-enter your edits.', 'int.saveFailed': 'Could not save:', 'int.invalid': '{field} is not in the right format', 'int.loading': 'Loading integrations…', 'int.loadFailed': 'Could not load integrations.', 'int.noSession': 'Capability team session unavailable; cannot load integrations.',
       'cards.memorySearch': 'Memory search', 'cards.memorySearch.summary': '"{q}" · {n} · {mode}', 'cards.memory.mode.hybrid': 'text + vector', 'cards.memory.mode.text': 'text only', 'cards.memoryWrite': 'Save memory', 'cards.memoryWrite.saved': 'Saved', 'cards.memoryWrite.merged': 'Merged into an existing memory', 'cards.memory.kind.handoff': 'Handoff', 'cards.memory.kind.result': 'Result', 'cards.memory.kind.pitfall': 'Pitfall', 'cards.memory.kind.decision': 'Decision', 'cards.memory.kind.note': 'Note',
       'usage.avgPrompt': 'Avg input per step {n}', 'usage.cacheShare': 'Cache reads {p}%', 'usage.heavyContext': 'Large context per step; consider rotating the session', 'usage.contextHint': 'Average input per step = (uncached input + cache reads + cache writes) ÷ steps. Higher means more context is resent every step.',
       'cards.handoff': 'Handoff', 'cards.handoff.summary': '{name} handed off · {n} open tasks', 'cards.handoff.diff': 'Code changes', 'cards.handoff.test': 'Last test run', 'cards.rotate': 'Session rotation', 'cards.rotate.summary': '{from} → {to}',
@@ -568,15 +556,6 @@ window.__ModuleLoader__.load({
 .ctm-mc-item{padding-left:8px;border-left:2px solid var(--dsw-alias-border-l1,rgba(127,127,127,.25))}
 .ctm-mc-results{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .ctm-mc-results li{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere}
-.ctm-int{display:flex;flex-direction:column;gap:12px}
-.ctm-int-section{border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.3));border-radius:10px;margin:0 0 12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0;background:var(--dsw-alias-bg-layer-1)}
-.ctm-int-grid{display:grid;grid-template-columns:120px minmax(0,1fr);column-gap:12px;row-gap:8px;align-items:start}
-.ctm-int-key{padding-top:6px}
-.ctm-int-val{display:flex;flex-direction:column;gap:2px;min-width:0}
-.ctm-int-val input,.ctm-int-val textarea{font:inherit;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35));background:transparent;color:inherit;min-width:0}
-.ctm-int-val input:disabled,.ctm-int-val textarea:disabled{opacity:.6}
-.ctm-int-src{font-size:11px}
-@container ctm-ov (max-width:420px){.ctm-int-grid{grid-template-columns:minmax(0,1fr)}.ctm-int-key{padding-top:0}}
 .ctm-dc{display:flex;flex-direction:column;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.3));font-size:12px;line-height:1.5}
 .ctm-dc-head{display:flex;flex-direction:column;gap:2px}
 .ctm-dc-title{font-size:13px}
@@ -3193,7 +3172,6 @@ window.__ModuleLoader__.load({
         ['usage', usageTotal(usage) ? compact(usageTotal(usage)) : null],
         ['artifacts', null],
         ['report', null],
-        ['integrations', null],
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
@@ -3289,8 +3267,6 @@ window.__ModuleLoader__.load({
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'artifacts', hidden: tab !== 'artifacts' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:artifacts`, t },
               h(ArtifactsRack, { sessionId: effectiveSessionId, liveTeam, live, t }))) : null,
-          shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'integrations', hidden: tab !== 'integrations' },
-            h(ErrorBoundary, { key: `${effectiveSessionId}:integrations`, t }, tab === 'integrations' ? h(IntegrationsPanel, { t, sessionId: effectiveSessionId || null }) : null)) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'report', hidden: tab !== 'report' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:report`, t },
               h(BattleReportView, { sessionId: effectiveSessionId, liveTeam, live, t, runtimeState }))) : null,
@@ -3336,100 +3312,6 @@ window.__ModuleLoader__.load({
                   h('p', { className: 'ctm-sub ctm-ov-note' }, t('theme.templateDesc'))),
                 h('div', { className: 'ctm-ov-block' }, h('div', { className: 'ctm-label' }, t('overview.policy')), h(WorkflowList, { workflow: team.workflow, t })))
               : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null)));
-    }
-
-    // ---------- integrations settings (search gateway, embeddings, speech to text) ----------
-    // Every endpoint detail is the user's own setting. Keys are never shown or stored: the form names the
-    // environment variable that holds each key and only says whether it is set. Fields an environment
-    // variable overrides are read-only here.
-    const INTEGRATIONS_PATH = 'api/capability-team.integrations';
-    const INTEGRATION_FIELDS = {
-      search: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['searchPath', 'text'], ['fetchPath', 'text'], ['providersPath', 'text'], ['headers', 'headers'], ['providers', 'list'], ['fetchProviders', 'list'], ['timeoutMs', 'number'], ['fetchTimeoutMs', 'number']],
-      embeddings: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['path', 'text'], ['model', 'text'], ['provider', 'text'], ['dimensions', 'number'], ['queryTask', 'text'], ['passageTask', 'text'], ['headers', 'headers'], ['timeoutMs', 'number'], ['batch', 'number']],
-      audio: [['baseUrl', 'url'], ['apiKeyEnv', 'text'], ['path', 'text'], ['statusPath', 'text'], ['model', 'text'], ['headers', 'headers'], ['timeoutMs', 'number'], ['maxBytes', 'number']],
-      memory: [['backend', 'text'], ['url', 'url'], ['apiKeyEnv', 'text'], ['account', 'text'], ['user', 'text'], ['timeoutMs', 'number'], ['recallLimit', 'number']],
-    };
-    const toInput = (kind, v) => (v === null || v === undefined ? '' : kind === 'list' ? v.join(', ') : kind === 'headers' ? Object.entries(v).map(([k, x]) => `${k}: ${x}`).join('\n') : String(v));
-    /** Form text → config value; empty means "clear this layer" (null). Returns undefined for invalid input. */
-    function fromInput(kind, text) {
-      const s = String(text ?? '').trim();
-      if (!s) return null;
-      if (kind === 'number') { const n = Number(s); return Number.isFinite(n) ? n : undefined; }
-      if (kind === 'list') return s.split(/[,，\s]+/).filter(Boolean);
-      if (kind === 'headers') {
-        const out = {};
-        for (const line of s.split('\n').map(l => l.trim()).filter(Boolean)) { const i = line.indexOf(':'); if (i < 1) return undefined; out[line.slice(0, i).trim()] = line.slice(i + 1).trim(); }
-        return out;
-      }
-      return s;
-    }
-    const sourceLabel = (t, src) => (src?.startsWith('env:') ? fmt(t('int.source.env'), { name: src.slice(4) }) : label(t, `int.source.${src}`, src ?? ''));
-    function IntegrationsPanel({ t, sessionId }) {
-      const [data, setData] = React.useState(null);
-      const [draft, setDraft] = React.useState({});
-      const [status, setStatus] = React.useState(null);
-      const [reload, setReload] = React.useState(0);
-      const noSession = !sessionId;
-      React.useEffect(() => {
-        if (noSession) return undefined;
-        const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-        const targetUrl = sessionId ? apiUrl(INTEGRATIONS_PATH, { sessionId }) : apiUrl(INTEGRATIONS_PATH);
-        fetch(targetUrl, { signal: ctrl?.signal })
-          .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-          .then(body => { setData(body); setDraft({}); })
-          .catch(e => { if (e?.name !== 'AbortError') setStatus({ tone: 'error', text: t('int.loadFailed') }); });
-        return () => ctrl?.abort();
-      }, [reload, sessionId, noSession]);
-      if (noSession) return h('div', { className: 'ctm-ov-block ctm-int-empty' }, h('p', { className: 'ctm-sub' }, t('int.noSession')));
-      if (!data) return h('div', { className: 'ctm-ov-block' }, h('p', { className: 'ctm-sub' }, status?.text ?? t('int.loading')));
-      const valueOf = (section, key, kind) => draft[section]?.[key] ?? toInput(kind, data.file?.[section]?.[key] ?? (data.sources[section][key] === 'file' ? data.effective[section][key] : undefined));
-      const set = (section, key, text) => setDraft(prev => ({ ...prev, [section]: { ...prev[section], [key]: text } }));
-      const save = async () => {
-        const patch = {};
-        for (const [section, fields] of Object.entries(draft)) for (const [key, text] of Object.entries(fields)) {
-          const kind = INTEGRATION_FIELDS[section].find(([k]) => k === key)[1];
-          const value = fromInput(kind, text);
-          if (value === undefined) { setStatus({ tone: 'error', text: fmt(t('int.invalid'), { field: `${section}.${key}` }) }); return; }
-          (patch[section] ??= {})[key] = value;
-        }
-        if (!Object.keys(patch).length) return;
-        setStatus({ text: t('int.saving') });
-        try {
-          const targetUrl = sessionId ? apiUrl(INTEGRATIONS_PATH, { sessionId }) : apiUrl(INTEGRATIONS_PATH);
-          const res = await fetch(targetUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: data.revision, patch }) });
-          const body = await res.json().catch(() => ({}));
-          if (res.ok) { setStatus({ tone: 'success', text: t('int.saved') }); setReload(n => n + 1); return; }
-          if (res.status === 409) { setStatus({ tone: 'error', text: t('int.conflict') }); setReload(n => n + 1); return; }
-          setStatus({ tone: 'error', text: `${t('int.saveFailed')} ${String(body.message ?? '')}` });
-        } catch { setStatus({ tone: 'error', text: t('int.saveFailed') }); }
-      };
-      // Each section is its own card with a label/input grid and its own save/reset buttons; saving still
-      // submits the whole draft (every section's pending changes) so the revision/409 path above stays single.
-      const sectionDirty = name => Object.keys(draft[name] ?? {}).length > 0;
-      const section = name => h('fieldset', { key: name, className: 'ctm-int-section' },
-        h('legend', { className: 'ctm-label' }, t(`int.${name}`)),
-        h('p', { className: 'ctm-sub' }, t(`int.${name}.hint`)),
-        h('p', { className: `ctm-sub ${data.keys[name].present ? '' : 'ctm-warn'}` }, fmt(t(data.keys[name].present ? 'int.keySet' : 'int.keyMissing'), { name: data.keys[name].env })),
-        h('div', { className: 'ctm-int-grid' },
-          ...INTEGRATION_FIELDS[name].map(([key, kind]) => {
-            const src = data.sources[name][key];
-            const locked = src?.startsWith('env:');
-            const id = `ctm-int-${name}-${key}`;
-            const props = { id, value: locked ? toInput(kind, data.effective[name][key]) : valueOf(name, key, kind), disabled: locked,
-              placeholder: locked ? '' : toInput(kind, data.effective[name][key]) || t('int.unset'), onChange: e => set(name, key, e.target.value) };
-            return h(React.Fragment, { key },
-              h('label', { htmlFor: id, className: 'ctm-sub ctm-int-key' }, t(`int.field.${key}`)),
-              h('div', { className: 'ctm-int-val' },
-                kind === 'headers' ? h('textarea', { ...props, rows: 2 }) : h('input', { ...props, type: kind === 'number' ? 'number' : 'text', spellCheck: false }),
-                h('span', { className: 'ctm-sub ctm-int-src' }, sourceLabel(t, src))));
-          })),
-        h('div', { className: 'ctm-tc-row' },
-          h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: !sectionDirty(name), onClick: save }, t('int.save')),
-          h('button', { type: 'button', className: 'ctm-btn', disabled: !sectionDirty(name), onClick: () => setDraft(prev => { const n = { ...prev }; delete n[name]; return n; }) }, t('int.reset'))));
-      return h('div', { className: 'ctm-ov-block ctm-int' },
-        h('p', { className: 'ctm-sub ctm-ov-help' }, t('int.help')),
-        section('search'), section('embeddings'), section('audio'), section('memory'),
-        status ? h('p', { className: `ctm-sub ${status.tone === 'error' ? 'ctm-warn' : ''}`, role: status.tone === 'error' ? 'alert' : 'status' }, status.text) : null);
     }
 
     const BaseComponent = React.Component || class DummyComponent { constructor(props) { this.props = props; } };
@@ -3612,7 +3494,7 @@ window.__ModuleLoader__.load({
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, IntegrationsPanel, integrationFromInput: fromInput, RoleView, ModelSubTabs, CollapsibleList });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {

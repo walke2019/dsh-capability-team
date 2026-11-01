@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { cosine, createEmbedder, embedSettings, normalize, vectorKey } from '../memory-embed.js';
-import { INTEGRATION_DEFAULTS, resolveIntegrations, saveIntegrations } from '../integrations-config.js';
+import { INTEGRATION_DEFAULTS, resolveIntegrations } from '../integrations-config.js';
 import { createMemoryStore, rank, tokenize, visible } from '../memory-store.js';
 import { createMemoryHub } from '../memory-hub.js';
 
@@ -80,7 +80,7 @@ test('嵌入配置：只来自集成配置与显式环境变量，不从 CPA_BAS
   const none = embedSettings(resolveIntegrations({ root, env: { CPA_BASE_URL: 'https://gw.example/gateway/v1', CPA_API_KEY: 'k' } }));
   assert.equal(none.config.baseUrl, null);
   assert.match(createEmbedder({ settings: none }).lastError, /embeddings\.baseUrl.*embeddings\.model.*CPA_EMBED_API_KEY/);
-  await saveIntegrations({ embeddings: { baseUrl: 'https://emb.example/', apiKeyEnv: 'MY_EMBED_KEY', model: 'my-model', dimensions: 256 } }, 0, { root });
+  await writeFile(join(root, 'integrations.json'), JSON.stringify({ revision: 1, integrations: { embeddings: { baseUrl: 'https://emb.example/', apiKeyEnv: 'MY_EMBED_KEY', model: 'my-model', dimensions: 256 } } }));
   const s = embedSettings(resolveIntegrations({ root, env: { MY_EMBED_KEY: 'secret', CPA_EMBED_MODEL: 'env-model' } }));
   assert.equal(s.config.baseUrl, 'https://emb.example');
   assert.equal(s.config.model, 'env-model', '环境变量覆盖文件');

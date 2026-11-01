@@ -46,12 +46,12 @@ A configurable, capability-routed multi-agent team preset that extends DSH’s n
 ### Workbench
 - Team overview for members, tasks, activity, usage, and models.
 - Role-focused session view and task controls.
-- Settings for optional search and memory services.
+- No integrations page or settings UI; integration configuration is read-only.
 
-### Memory and integrations
-- Optional hybrid memory with embedding backends and OpenViking.
-- Search and fetch tools support configurable endpoints.
-- Secrets stay in host environment variables; configuration stores variable names.
+### Independent tools and memory
+- `packages/cpa-tools` provides search, web fetch, search-provider listing, and transcription to all sessions without a UI.
+- `packages/global-memory` reads embedding and OpenViking settings; the team plugin's memory hub reads the same configuration.
+- See [configuration reference](docs/configuration.md) and each package README for setup and schema.
 
 ## Quick Start
 
@@ -69,16 +69,22 @@ A configurable, capability-routed multi-agent team preset that extends DSH’s n
 
 ### Minimal setup
 
-Register providers and models in DSH first. The preset derives assignments from that catalog. Set optional integration variables in the DSH host environment, then restart DSH:
+Register providers and models in DSH first. The preset derives assignments from that catalog. There is no integrations page; configuration is read-only and is supplied through a file, host environment variables, or the DSH credential store. Install and enable `packages/cpa-tools` and `packages/global-memory` (or their corresponding `.tgz` packages) in DSH’s plugin manager, then restart DSH. See each package README for details.
 
-| Variable | Used for |
-|---|---|
-| `CPA_SEARCH_BASE_URL` | Optional search endpoint; example URL: `https://gateway.example.com`. |
-| `CPA_SEARCH_API_KEY` | Search credential when search is enabled. |
-| `CPA_EMBED_BASE_URL`, `CPA_EMBED_MODEL`, `CPA_EMBED_DIMENSIONS` | Optional embeddings endpoint and model settings. |
-| `CPA_EMBED_API_KEY` | Embeddings credential when vector memory is enabled. |
-| `CAPABILITY_TEAM_HOME` | Optional location for project team configurations. |
-| `CAPABILITY_TEAM_OPENCODE_EXECUTABLE`, `CAPABILITY_TEAM_OPENCODE_MODELS` | Optional free-text task channel configuration. |
+The configuration file is `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`; `CAPABILITY_TEAM_HOME` can override its directory. Example:
+
+```json
+{
+  "integrations": {
+    "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_SEARCH_API_KEY" },
+    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_AUDIO_API_KEY" },
+    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_EMBED_API_KEY", "model": "<model>" },
+    "openviking": { "url": "https://gateway.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
+  }
+}
+```
+
+Alternatively set `CPA_SEARCH_BASE_URL`, `CPA_AUDIO_BASE_URL`, `CPA_EMBED_BASE_URL`, and `OPENVIKING_URL`. Keep secrets in the DSH credential store or named environment variables, never as literal config values. `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` and `CAPABILITY_TEAM_OPENCODE_MODELS` configure the optional free-text task channel.
 
 Start a new team session and ask: “Read the team configuration.” The lead can report the current role and model-matching summary.
 

@@ -1,0 +1,5 @@
+- insert:
+    - id: cpa-tools
+      name: '@local/dsh-cpa-tools'
+      config:
+        enabled: true

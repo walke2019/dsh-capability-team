@@ -6,7 +6,6 @@ import { applyObservabilityProjections } from './observability-projection.js';
 import { applyObservabilityApi } from './observability-api.js';
 import { applyTaskControlApi } from './task-control-api.js';
 import { applyDispatchConfirmApi } from './dispatch-confirm.js';
-import { applyIntegrationsApi } from './integrations-config.js';
 export const inject = ['commands', 'agentPresets', 'tools'];
 /** Live roster state from the host's Agent Teams service: status, model, owned tasks. No log reads, cheap to poll. */
 export function teamActivity(ctx, agent) {
@@ -89,7 +88,6 @@ export function apply(ctx) {
   applyObservabilityApi(ctx);
   applyTaskControlApi(ctx);
   applyDispatchConfirmApi(ctx);
-  applyIntegrationsApi(ctx);
   ctx.effect(() => ctx.commands.register({
     name: 'capability-model-policy',
     description: '保存全局模型禁用列表与前缀规则；对所有能力协作团队会话从下一次请求起生效。',
