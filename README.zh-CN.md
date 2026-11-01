@@ -1,576 +1,127 @@
-# 能力协作团队（DSH 预设）
+# DSH 能力协作团队
+
+面向 DeepSeek Harness 的可配置多智能体团队预设：按能力分配模型，在 DSH 原生协作之上提供项目角色、模型策略与实时工作台。
+
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![DSH 0.2.1-rc.5](https://img.shields.io/badge/DSH-0.2.1--rc.5-6f42c1.svg) ![Node >= 22](https://img.shields.io/badge/Node-%3E%3D%2022-339933.svg)
 
 [English](README.md) | **简体中文**
 
-DeepSeek Harness（DSH）的多智能体预设：一个主控加若干专业能力队友。它复用 DSH 原生的团队与任务看板，每次模型请求都按队友的**能力**强制路由到对应模型，而不是让所有成员共用会话模型。
+## ✨ 核心优势
 
-- 包名 `@local/dsh-capability-team`，预设 id `capability-team`，显示名“能力协作团队”。
-- 模型只按能力映射，与显示名无关。默认角色名（孙权、诸葛亮等）只是示例数据，可以改成任何主题。
-- 安装后自动读取你在 DSH 中注册的渠道和模型，生成档位、主模型和同档备选，不写死任何渠道或模型。
-- 团队配置可以通过对话调整，用户在 DSH 原生确认框中批准后才保存。
+- 按队友能力与档位分配模型，不让所有成员共用主控模型。
+- 自动匹配已注册模型，并仅在同档模型间容灾切换。
+- 通过带确认保护的对话式工作流调整角色、职责与主题。
+- 在工作台集中查看团队活动、任务、用量和模型管理。
+- 按角色应用工具、文件路径与沙箱权限策略。
+- 将请求转为明确派活计划，并在 DSH 原生看板跟踪执行。
+- 支持计划式会话轮换与共享记忆集成。
+- 统计 Token 用量，并可设置角色预算。
 
-## 与 DSH 官方团队的关系
+## DSH 原生团队与本预设的分工
 
-本插件建立在 DSH 官方的“智能体团队”（`dsh-experimental-agent-team-profile`）之上，不重复实现团队本身：
-
-| 能力 | 来源 |
+| DSH 原生能力 | 本预设增强 |
 |---|---|
-| 创建队友、消息、等待、中断、共享任务板（依赖、写入范围提示） | 官方团队服务与工具，直接使用 |
-| 成员列表、任务看板、打开成员会话 | 官方团队界面；本插件的工作台读取同一份 `agentTeam` 投影，并沿用相同的导航 |
-| 每个会话的模型、用量、耗时统计 | 官方 `modelSelection`、`tokenUsage`、`sessionStats` 投影 |
-| 按能力给每个队友指定模型、分档自动匹配、全局排除、同档容灾、长上下文路由 | **本插件**。官方 `spawn_teammate` 没有模型参数，队友默认沿用主控的模型；官方的子代理模型选择只用于普通 `subagent` 工具，而该工具在团队模式下被禁用 |
-| 只读角色的沙箱 | 官方权限预设（`read-only`），由本插件按角色自动切换 |
-| 项目级角色、职责与适用场景、派活计划与执行约束、按路径的权限、预算、队友计划审批、团队模板 | **本插件**。官方没有对应功能；官方计划模式（`/plan`）由用户在本会话审阅，而这里由主控审阅队友计划 |
+| 队友生命周期、消息、等待与中断 | 按能力分配模型与同档容灾 |
+| 共享任务看板与依赖 | 项目角色、派活策略、写入范围限制与预算 |
+| 团队会话与用量投影 | 团队工作台、角色配置和模型管理 |
+| 权限预设与原生确认界面 | 按角色设置沙箱策略与配置变更确认 |
 
-## 目录
+## 🚀 功能特性
 
-- [安装](#安装)
-- [环境变量](#环境变量)
-- [默认能力与角色](#默认能力与角色)
-- [自动匹配模型](#自动匹配模型)
-- [对话式配置](#对话式配置)
-- [按角色限制权限](#按角色限制权限)
-- [用量统计与预算](#用量统计与预算)
-- [队友先交计划](#队友先交计划)
-- [协调开销](#协调开销)
-- [主控派活工作流](#主控派活工作流)
-- [重试与同档容灾](#重试与同档容灾)
-- [长上下文路由](#长上下文路由)
-- [搜索与免费通道](#搜索与免费通道)
-- [运行时细节](#运行时细节)
-- [集成配置](#集成配置)
-- [文件铁律](#文件铁律)
-- [派活确认](#派活确认)
-- [会话轮换与交接](#会话轮换与交接)
-- [Token 铁律](#token-铁律)
-- [看板派活](#看板派活)
-- [模型偏好学习](#模型偏好学习)
-- [任务控制](#任务控制)
-- [记忆枢纽](#记忆枢纽)
-- [开发与测试](#开发与测试)
-- [验证状态与已知限制](#验证状态与已知限制)
+### 模型路由与容灾
+- 按能力和档位自动匹配已注册模型。
+- 支持全局模型排除与可配置的同档备选。
+- 支持长上下文路由与冷却期重试。
 
-## 安装
+### 团队配置与角色
+- 配置项目角色名称、能力、职责和适用场景。
+- 对话式修改经校验并由 DSH 原生确认后保存。
+- 按角色设置工具、路径、命令和权限预设。
 
-需要 DSH Desktop（或 `dsh web`）以及 Node.js 22 或更高版本（代码用到了 `AbortSignal.any`）。
+### 工作流与协作
+- 支持委派、主控直办及符合条件的文本任务计划。
+- 接入原生任务板、依赖关系与范围约束。
+- 可启用队友计划审批、派活确认和会话交接。
 
-1. 克隆仓库到任意目录：
-   ```sh
-   git clone https://github.com/walke2019/dsh-capability-team.git
-   ```
-2. 使用 DSH 插件管理器安装克隆目录：`plugin_manager` 的 `install_bundle`，`target` 为该目录的绝对路径。不要手工写 profile 依赖或在 profile 目录运行包管理命令。安装结果若为 `restart-required`，完全退出并重启 DSH；若失败，先处理具体诊断，不把包目录存在视为安装成功。
-3. 本包的 [cordis.patch.yml](cordis.patch.yml) 会注册 `capability-team` 预设。如果想把它设为新会话的默认预设，在 profile 的 `cordis.patch.yml` 里把 `agent-preset-registry` 的 `selectedDefault` 设为 `capability-team`。
-4. 完全退出并重启 DSH，然后新建会话，选择“能力协作团队”。已打开的会话不会加载新代码。
+### 团队工作台
+- 总览成员、任务、活动、用量和模型。
+- 提供角色会话视图与任务控制。
+- 管理可选搜索和记忆服务设置。
 
-验收方法：在新会话里说“读取团队配置”。主控能调用 `capability_team_read`，并返回 `autoMatch` 匹配报告，就说明安装成功。
+### 记忆与集成
+- 可选混合记忆，支持嵌入后端与 OpenViking。
+- 搜索和抓取端点可配置，不在插件中写死。
+- 密钥保存在 Host 环境变量中，配置只记录变量名。
 
-## 环境变量
+## 快速开始
 
-所有变量都在 Host（DSH 进程）环境中设置，改完后要重启 DSH。仓库里不含任何密钥或私有地址。
+### 前置条件
 
-| 变量 | 必需 | 作用 |
-|---|---|---|
-| `CPA_SEARCH_BASE_URL` | 否 | 覆盖“集成”页的搜索网关地址（`https`，不含账号和查询参数） |
-| `CPA_SEARCH_API_KEY` | 使用搜索时 | 搜索网关密钥的默认环境变量；变量名可在“集成”页改成你自己的 |
-| `CPA_EMBED_BASE_URL` / `CPA_EMBED_MODEL` / `CPA_EMBED_DIMENSIONS` | 否 | 覆盖“集成”页的嵌入地址、模型、维度 |
-| `CPA_EMBED_API_KEY` | 使用向量检索时 | 嵌入接口密钥的默认环境变量；变量名同样可改 |
-| `CAPABILITY_TEAM_HOME` | 否 | 项目团队配置的存放目录，默认 `~/.dsh/capability-team-themes` |
-| `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | 否 | 免费通道使用的 OpenCode 原生可执行文件；默认在 `PATH` 中查找（各平台通用） |
-| `CAPABILITY_TEAM_OPENCODE_MODELS` | 否 | OpenCode 模型目录文件；默认 `$XDG_CACHE_HOME/opencode/models.json`（未设置时为 `~/.cache/…`） |
+- 启用原生智能体团队服务的 DSH Desktop 或 `dsh web`。
+- Node.js 22 或更高版本。
 
-搜索网关和嵌入接口的地址、路径、模型等都在团队总览的“集成”页配置（见[集成配置](#集成配置)），插件里不写死任何网关。密钥只放在环境变量里，配置中只记录变量名。
+### 安装与启用
 
-## 默认能力与角色
+1. 克隆本仓库。
+2. 在 DSH 插件管理器中通过 `install_bundle` 安装仓库目录。
+3. 若安装器提示需要重启，请重启 DSH。
+4. 新建会话并选择“能力协作团队”（`capability-team`）。如需设为默认，在 Host 配置中将预设注册表的 `selectedDefault` 设为 `capability-team`。
 
-[config.js](config.js) 中的 `seed` 是初始默认值，包含三部分：
+### 最小配置
 
-- **tiers**：档位 → 模型 ID 列表。默认为空，安装后自动填充。
-- **capabilities**：能力 → 职责、所需档位、厂商偏好 `prefer`、是否允许检索 `search`。渠道、模型和备选由自动匹配或项目配置提供。
-- **roles**：队友内部 id → 显示名、能力、可选职责描述。
+先在 DSH 注册渠道与模型，预设会据此匹配。可选集成变量在 DSH Host 环境设置，修改后重启 DSH：
 
-每个能力还可以有 `whenToUse`（什么情况下派给它，一句话），写进主控名册和派活提示，帮助主控选对角色；默认值见 [config.js](config.js)。
-
-| 能力 | 职责 | 所需档位 | 检索 | 厂商偏好 |
-|---|---|---|---|---|
-| orchestrator（主控） | 意图分析、任务分派、决策与最终交付 | high | 是 | claude, gpt, gemini |
-| technical-director | 技术方案、任务拆解、接口契约与技术验收 | upper | 否 | gpt, claude, gemini |
-| backend | 服务端、数据库、接口与后端测试 | upper | 否 | gpt, claude, deepseek, qwen, kimi, glm |
-| frontend | 页面、组件、交互与前端测试 | medium | 否 | gemini, claude, gpt |
-| research | 调用检索工具、核实来源与交叉验证 | medium | 是 | gemini, gpt, grok |
-| writer | 文档与交付说明 | low | 否 | gpt, claude, gemini, deepseek, qwen |
-| qa | 测试计划、回归、验收、失败复现与证据 | upper | 否 | gpt, claude, gemini |
-
-默认角色表在 `cordis.patch.yml` 的 `bindings` 中，可以直接修改，也可以按项目通过对话改名。合并后的配置会整体校验：
-
-- lead 必须绑定 orchestrator，其他角色不得绑定；
-- 显示名不能重复；
-- 模型必须属于其档位；
-- 不允许未知字段。
-
-静态系统提示词中不含任何角色名、模型或档位。
-
-## 自动匹配模型
-
-[defaults.js](defaults.js) 读取 DSH 中已注册的全部渠道与模型，自动生成默认档位、主模型和同档备选。官方 API、OpenAI 兼容中转和自建网关都可以，不依赖任何特定的渠道名。
-
-1. **归一化**：去掉网关前缀（`anthropic/`、`bai/`、`pro/deepseek-ai/` 等）、`:free` 等后缀和日期快照；`claude-opus-5-5` 与 `claude-opus-5.5` 视为同一模型。
-2. **排除**：
-   - 非对话模型：图像、视频（含 `gemini-omni-*`）、语音、实时语音（`*-live`）、翻译、向量、审核；
-   - 不能当团队成员的模型：不支持工具调用的（`grok-4.20-multi-agent`）、托管智能体（`deep-research`）、角色扮演（`-her`）、需审批的专用模型（`daybreak`、`rosalind`、`gpt-5.6-cyber`）；
-   - 带 `free` 的免费或试用变体；
-   - 低于各厂商最低版本的旧模型，例如 GPT-4、Claude 3、Gemini 2、Gemma 3。
-3. **分档**：规则按厂商命名规律写，不逐个列型号。厂商换代时常改命名，所以当前和上一代的写法都保留。下表为 2026-10-29 的快照，已对照各厂商官方模型页和 OpenRouter 公开目录核对：
-
-   | 档位 | 当前官方 ID（输入/输出，美元每百万 token） | 上一代命名 |
-   |---|---|---|
-   | high 旗舰 | `gpt-6-astra`（10/50）、`claude-fable-5-1`（10/50）、`claude-opus-5-5`（4/20）、`gemini-4-argon`（2/10，Gemini 4 用代号） | `gpt-5.0~5.5-pro`、`gemini-3.x-pro` |
-   | upper 强力 | `gpt-6.1-sol`（2/10）、`claude-sonnet-5-5`（2/10）、`grok-4.7`（2/6）、`kimi-k3.1-pro`、`qwen3.8-max(-prime)`、`glm-5.3(-prime)`、`deepseek-v4-pro`、`mimo-v2.6-pro`、`minimax-m3` | `gpt-5.6-sol`、`gpt-5.x` |
-   | medium 均衡 | `gpt-6.1-terra`（1/5）、`gemini-3.8-flash`、`deepseek-flash`（官方无版本名，现为 V4.1-Flash-1017）、`grok-build-0.1`、`glm-5.3-flashx` | `gpt-5.6-terra`、`gpt-5.x-mini`、`gemini-3.6-flash` |
-   | low 轻量 | `gpt-6-luna`（0.1/0.5）、`claude-haiku-5-5`、`minimax-m3.1-flash`、`mimo-v2.6-flash`、`qwen3.8-flash`、`glm-5.3-flash`、`gemini-3.5-flash-lite` | `gpt-5.6-luna`、`gpt-5.x-nano` |
-
-   各厂商的特殊规则：
-   - **OpenAI**：从 GPT-5.6 起改用 astra/sol/terra/luna 四条线命名，各线独立升级。截至 2026-10-29，官方是 `gpt-6.1-sol`、`gpt-6.1-terra` 和 `gpt-6-luna` 并存，还没有 `gpt-6.1-luna`。规则只比较同一条线内的版本号：将来出现 `gpt-6.1-luna` 时，它会自动成为主模型，`gpt-6-luna` 改作末位备选。
-   - **OpenAI `-pro`**：GPT-6 各线都带 `-pro`，与同线价格相同，视为同一模型的推理模式，不算更高一档；GPT-5 时代的 `-pro` 才是旗舰。
-   - **DeepSeek**：Flash 是完整的通用模型，只是定价低，归均衡档；其他国产厂商的 `-flash` 是轻量版，归轻量档。官方 API 现在只有 `deepseek-flash` 和 `deepseek-v4-pro` 两个模型名；旧名 `deepseek-v4-flash` 仍能调用，但实际也由 V4.1 Flash 处理。中转站一般带版本号（如 `deepseek-v4.1-flash`），两种写法都能识别。
-   - **xAI**：Grok 的版本号只看 `grok-` 后面的数字。`grok-build-0.1` 是编程智能体产品线，版本号自成体系，不当作旧代。
-   - **Gemini**：Flash 约 0.8/4，属均衡档。
-
-   通用规则：
-   - **代际按用户自己的目录判断**：同一厂商同一档线在目录里有更新的大版本时，旧版降一档并排到最后。例如有 `gemini-4-argon` 时，`gemini-3.1-pro` 降为强力档；但还没有 Gemini 4 Flash，所以 `gemini-3.8-flash` 不降档。只接了上一代渠道的用户，上一代模型仍按原档位使用。
-   - **小版本新版优先**：目录里同时有 `deepseek-v4.1-flash` 和 `deepseek-v4-flash` 时，前者作主模型，后者只作最后一个备选。
-   - **开源模型**按名称中的参数量（如 `-27b`、`-2.4t`）分档。
-   - **`-latest` 别名**会随新版本（含预览版）切换，排在固定版本之后；厂商自己的无版本正式名（如 `deepseek-flash`）是稳定名称，照常排序。
-   - **无法识别的模型不猜**，列入报告，由主控询问用户。
-4. **分配**：每个能力取所需档位中最合适的模型，依次比较：新一代优先 → 能力的厂商偏好 → 版本号 → 渠道注册顺序。
-5. **同档备选**（最多 3 个）：先放同一模型在其他渠道的副本，行为完全一致；再按每家一个放其他厂商的同档模型，分散单一厂商故障。同一模型的模式变体（`-pro`、`-high`、`-thinking`、`-fast` 等）视为同一个，不重复占位。
-6. **不降档**：所需档位没有允许的模型时，可自动选用更高档；更高档也没有时保持未分配并阻止请求，不沿用会话模型。全局禁用列表（含前缀规则）在自动选择主备之前过滤，并在请求路由时再次检查；已显式配置的主备不能被偷偷替换成其他候选。
-
-渠道增减后，下一次请求会自动重新匹配，无需重启。项目中显式保存的配置优先于自动匹配。`capability_team_read` 返回的 `autoMatch` 字段给出匹配报告（`matched` / `upgraded` / `below-tier` / `unassigned`）和未识别的模型。
-
-> 分档依据是厂商的官方定位、命名和价格，不是基准测试成绩。新厂商或新命名出现时，需要更新 `defaults.js` 中的 `VENDOR_RULES`。
-
-## 对话式配置
-
-[project-role-theme 技能](skills/project-role-theme/SKILL.md) 指导主控用以下工具调整当前项目的团队：
-
-| 工具 | 谁可用 | 作用 |
-|---|---|---|
-| `capability_team_read` | 所有成员 | 读取版本、默认值、项目覆盖项、生效结果和自动匹配报告 |
-| `capability_model_catalog` | 所有成员 | 读取 DSH 已注册渠道的精确模型 ID，并标注所属档位 |
-| `capability_team_save` | 仅主控 | 保存变更，必须携带 `expected_revision` |
-| `capability_team_export` | 所有成员 | 把当前团队导出为可移植模板 |
-| `capability_team_import` | 仅主控 | 把模板应用到当前项目，与保存走同一确认流程 |
-
-可以调整的内容包括：角色改名或整体换主题、职责描述、能力、档位与模型分配、同档备选、容灾策略、派活工作流约束、新增或移除角色。
-
-`capability_team_save` 的补丁中，对象表示合并，`null` 表示恢复默认，`false` 表示删除。保存流程：
-
-1. 校验合并后的完整配置；
-2. 核对新的或改动的模型是否在 DSH 目录中；
-3. 通过 DSH 原生提问框把完整差异交给用户；
-4. 用户点“保存”后才写入。确认结果取自提问框，不依赖模型自报的参数。
-
-## 按角色限制权限
-
-[access.js](access.js) 给每个能力加可选的 `access` 权限，以 `tools.guard` 对所有团队成员强制执行（单调守卫，其他插件无法放行）：
-
-| 字段 | 含义 |
+| 变量 | 用途 |
 |---|---|
-| `deny` | 禁用的工具名，`web_*` 这类以 `*` 结尾的写法按前缀匹配 |
-| `editPaths` | 允许修改的项目内相对路径 glob（`**` 跨目录，`*`、`?` 不跨目录）。约束 `write`、`edit` 和 `str_replace_editor` 的修改操作；`[]` 表示不能改任何文件，省略表示不限 |
-| `shell` | `false` 时禁止 `bash`、`pwsh` 和 `terminal_*`。只限制路径而保留 shell，可以用命令绕过，所以两者要一起设 |
-| `preset` | DSH 官方权限预设名（如 `read-only`）。每次请求前，如果该成员会话的当前预设不同，就用官方 `permissionPresets.set` 切换过去。预设**确实生效**后，命令改由官方沙箱约束（`shell=false` 也放行）；预设不存在或切换失败时仍按 `shell` 拦截，不会放宽 |
+| `CPA_SEARCH_BASE_URL` | 可选搜索端点；示例地址使用 `https://gateway.example.com`。 |
+| `CPA_SEARCH_API_KEY` | 启用搜索时使用的凭据变量名。 |
+| `CPA_EMBED_BASE_URL`、`CPA_EMBED_MODEL`、`CPA_EMBED_DIMENSIONS` | 可选嵌入端点与模型设置。 |
+| `CPA_EMBED_API_KEY` | 启用向量记忆时使用的凭据变量名。 |
+| `CAPABILITY_TEAM_HOME` | 可选的项目团队配置存放位置。 |
+| `CAPABILITY_TEAM_OPENCODE_EXECUTABLE`、`CAPABILITY_TEAM_OPENCODE_MODELS` | 可选文本任务通道配置。 |
 
-默认 research 使用官方 `read-only` 沙箱预设，不能改文件但可以执行只读命令；writer 只能改 `*.md`/`*.mdx`/`*.txt` 和 `docs/**`，不能执行命令（官方沙箱无法表达这类路径规则）；其他能力不限制。注意：预设自带审批策略，`read-only` 若配置为 `ask`，队友需要越出沙箱时会弹出审批。相对路径按成员当前工作目录解析，再与项目根目录比较；项目外路径、`~` 开头或无法确定目标的修改一律拒绝。检查只看路径字面值，不解析符号链接。
+新建团队会话后，可以说：“读取团队配置。”主控会给出当前角色和模型匹配概览。
 
-权限摘要会写进每个成员的团队上下文、主控名册和派活计划结果，总览“角色与配置”页也会显示。可通过对话修改（`capability_team_save` 的 `capabilities.<id>.access`，整体替换，`null` 取消限制）。
+## 配置
 
-## 用量统计与预算
-
-[usage.js](usage.js) 按 DSH token-meter 的 `tokenUsage` 规则折叠每个团队成员的会话日志：每次助手结算取最后一个用量样本，同一步内的流式样本互相替换，`llm/retry-started` 之后的重试单独计入。每个样本归属于它之前最近一次请求头里的模型，也就是实际发出请求的模型；继承自父会话的事件不计入。
-
-- **总览“用量”页**：按成员列出计费 token（未缓存输入 + 缓存写入 + 输出），缓存读取单独列出，以及每个模型的步数和平均每步耗时。总量与耗时实时更新（见下文“实时数据”）；按模型拆分的 token 来自上次刷新，与请求日志共用同一次日志读取。
-- **预算**：能力的 `maxTokens` 是该能力每个成员会话的计费 token 上限。请求路由时从 token-meter 的会话投影同步读取本会话累计用量（不读日志），达到上限就阻止请求并说明原因，不会换模型继续。宿主没有挂载 token-meter 时不拦截。可通过对话修改，`null` 取消。
-- DSH 不提供模型单价，所以这里只统计 token，不换算金额。
-
-## 队友先交计划
-
-[plan-gate.js](plan-gate.js) 实现能力的 `planFirst`：这类队友执行修改前要先把计划交给主控批准，类似 Claude Code 团队模式中队友在计划模式下提交、由 lead 批准的流程。
-
-1. 队友调用 `capability_submit_plan` 提交计划，插件以队友身份把计划作为【计划待批】消息发给主控；
-2. 主控用 `capability_review_plan` 批准，或附意见退回，结果发回给该队友；
-3. 批准前，守卫只放行分析类和协调类工具，写文件、命令等执行类工具一律拒绝；退回后需重新提交；
-4. 主控为新需求制定的派活计划指派到这个角色时，之前的批准作废，新任务要重新提交计划。
-
-DSH 自带的计划模式（`/plan`）由用户在本会话审阅，而且不限制工具；这里由主控审阅，并在工具层强制执行。计划状态保存在内存里，DSH 重启后需要重新提交。默认不对任何能力开启。
-
-### 团队模板
-
-[template.js](template.js) 定义可移植模板（`format: "capability-team-template"`，`version: 1`），包含角色、能力的职责、适用场景、档位、厂商偏好、权限、预算和先交计划，以及工作流和容灾策略。渠道、模型、备选和长上下文路由与各人的 DSH 目录绑定，不放进模板。
-
-导入时，能力的这些字段按模板设置，模板没写的字段清空；已有的渠道和模型保留；角色整体替换为模板中的角色。导入同样经过校验、目录核对和用户确认框，模板中的新能力会列为未分配，之后再分配模型。
-
-## 协调开销
-
-DSH 的 `wait_agent` 会在队友任何状态变化、消息或看板变更时唤醒主控，默认 30 秒超时。一次实测会话中，队友 29%、主控 73% 的模型步骤都是纯协调动作（进度通报、看板更新、反复等待）。因此策略要求（与同类项目“只返回结果摘要、由主控掌握完成判断”的做法一致）：
-
-- 队友只在认领和完成时各更新一次看板，用 `send_message` 只汇报一次最终结果，遇到阻塞或需要决策时才中途联系；
-- 主控派发后用 `wait_agent`（`timeoutMs=600000`）等待，醒来只处理最终结果、阻塞或决策请求，不回复进度消息。
-
-## 主控派活工作流
-
-[workflow.js](workflow.js) 让主控对每个新的用户需求先分析、再指派，而不是全部自己处理：
-
-1. **分析与指派**：用户每发一条新消息，主控进入新一轮。它可以先做少量只读分析（默认 6 次 `read`/`glob`/`grep`），然后必须调用 `capability_dispatch_plan`：
-   - `delegate`：多步骤或专业任务。写出需求分析，按名册职责选择一个或多个已登记角色，每个角色附具体任务与验收标准；
-   - `free`：长篇纯文本（总结、翻译、起草、整理给定材料），交给免费模型，必须写明理由。含密钥或敏感内容的不能用；
-   - `direct`：需要动手的一两步小事（查状态、看文件、跑命令），或两三句能答的问答，必须写明理由。这类事转交出去反而要多一步主控请求，更贵。
-   计划结果对用户可见，列出每个角色的显示名、能力和实际模型。
-2. **强制约束**（`tools.guard`，模型无法绕过）：
-   - 未制定计划时，shell、写文件、检索等执行类工具被拒绝，并提示先制定计划；
-   - `delegate` 后，主控只能创建计划内的队友、发消息、管理看板、等待和只读验收，不能亲自执行；
-   - `free` 后，主控只能调用 `capability_free_task` 并验收，不能自己执行；其他模式下不能调用免费通道；
-   - `direct` 后，主控自行执行的次数有上限（默认 3 次），超出就必须改为指派；
-   - 需求变化时可再次调用 `capability_dispatch_plan` 替换计划。
-3. **状态可见**：主控的团队上下文每一步都显示当前指派情况。队友的汇报消息不会重置本轮计划。
-
-只约束主控；队友照常使用所有工具。约束参数是项目配置的一部分，可以通过对话修改（`capability_team_save` 的 `workflow` 字段，按字段合并，`null` 恢复默认）：
-
-| 字段 | 默认 | 含义 |
-|---|---|---|
-| `mode` | `enforce` | `enforce` 强制；`remind` 只在上下文中提醒；`off` 关闭 |
-| `analysisBudget` | 6 | 制定计划前允许的只读分析次数 |
-| `directBudget` | 3 | `direct` 模式下主控自行执行的次数上限 |
-| `freeTools` | `none` | 免费模型的工具级别：`none` 只处理文字；`read` 可读取、搜索项目文件；`write` 还可新建、编辑项目文件（见下文） |
-| `freeModels` | `[]` | 免费模型的尝试顺序；空数组表示使用 OpenCode 模型目录中的全部免费模型，新的在前 |
-| `analysisTools` | read、glob、grep、read_image、session_search、session_event_search、session_event_read | 分析类工具（只读，制定计划前可少量使用） |
-| `coordinationTools` | 团队、看板、提问、技能、目标等工具 | 协调类工具，不受限制 |
-| `fileLimits` | 见[文件铁律](#文件铁律) | 文件行数与读写规则；`false` 关闭 |
-| `confirmDispatch` | `on-change` | 见[派活确认](#派活确认) |
-| `rotation` | 见[会话轮换与交接](#会话轮换与交接) | 轮换阈值；`false` 关闭 |
-| `enforceWriteScopes` | `true` | 拒绝队友修改其看板任务写入范围以外的文件（见[看板派活](#看板派活)） |
-| `tokens` | 见[Token 铁律](#token-铁律) | 空闲压缩与输出截断；`false` 关闭 |
-
-未列入以上两类的工具都视为执行类，包括其他插件新增的工具。
-
-## 重试与同档容灾
-
-[failover.js](failover.js) 在 DSH 请求出错时按以下顺序处理，所有参数都可以通过对话修改项目的 `failover` 策略：
-
-1. **DSH 渠道自带重试**：限流、5xx、超时、网络错误和空响应，默认 5 次，退避上限 10 秒。由渠道配置决定，本插件不干预。
-2. **追加重试**：DSH 放弃后，同一模型再重试 `retries` 次（默认 2）。指数退避从 1 秒开始，上限 15 秒，并遵守服务端的 `Retry-After`。额度或凭据错误不在同一渠道重复重试。
-3. **同档备选**：按能力 `fallbacks` 的顺序切换，跳过 DSH 未注册的渠道和冷却中的模型。备选必须同档，可以是付费模型；不跨档、不降档。全部失败时报告每个模型的错误。
-4. **冷却**：切走的模型冷却 `cooldownMs`（默认 60 秒，可设 5 秒到 10 分钟），到期后新请求自动回到主模型。同一个模型冷却结束后很快又失败，冷却时间逐次加倍（60 秒、2 分钟、4 分钟……最长 30 分钟），不会每分钟去试一次已经挂掉的渠道；连续 10 倍冷却时长没有再失败，重新从 1 倍算。
-
-上下文超长、内容拒绝等不属于可用性的错误不切换。根据 DSH 源码，只有已开始的流以错误结束时才会触发恢复钩子；请求发出前适配器直接抛错（例如渠道未注册）时，钩子不会执行，所以路由前会先跳过未注册的渠道。切换会记入会话请求头，下一步由本插件显式改回应走的模型。
-
-## 长上下文路由
-
-[long-context.js](long-context.js) 让能力在上下文较长时改用同档的另一个模型（通常是上下文窗口更大的），配置为 `longContext: { thresholdTokens, provider, model }`：
-
-- 每次请求从 token-meter 的 `contextPressure` 会话投影同步读取下一次提示词规模（与 DSH 占用显示的算法相同），不读日志、不调用模型。
-- 达到 `thresholdTokens` 时改用该模型，原主模型和备选排在其后照常容灾；降到阈值的 80% 以下（例如压缩之后）才切回，避免每一步来回切换导致缓存失效。
-- 模型必须与主模型同档，保持“不降档”；被全局模型策略禁用时忽略该路由。新路由保存前同样核对 DSH 目录。
-- 压缩时生成摘要用的模型由 DSH 的 `compaction-basic` 配置（`summarizationProvider/Model`）决定，不经过本插件的请求路由，所以“后台请求走便宜模型”请在压缩配置里设置。
-
-## 搜索与免费通道
-
-- **`cpa_search` / `cpa_web_fetch`**：调用“集成”页 `search` 段配置的聚合网关（`baseUrl` + `searchPath` / `fetchPath`，默认 `/v1/search`、`/v1/web/fetch`）。
-  - 只有能力的 `search` 为 `true` 的成员可用，默认是主控和检索。
-  - 抓取只允许公开 HTTP(S) 网页，拒绝本机、私网、云元数据地址和带账号密码的地址。
-  - 不跟随重定向；错误时不回显上游正文；响应中出现密钥时拒绝回传。
-  - 搜索结果是不可信的外部资料，需要核实引用。
-- **`capability_free_task`**：主控把任务交给本机 OpenCode 的免费模型，并回填原生看板：先创建任务、认领，再写入结果（含改动过的文件）、完成；失败时记录原因并释放任务。
-  - **跨平台定位**：可执行文件优先取 `CAPABILITY_TEAM_OPENCODE_EXECUTABLE`，否则在 `PATH` 中查找（Windows 找原生 `opencode.exe`，包括 npm 全局目录里的包内文件；macOS / Linux 找 `opencode`），最后找官方安装脚本的 `~/.opencode/bin`。不使用 `.cmd` / `.ps1` 包装脚本。
-  - **免费模型不写死**：从 OpenCode 自己的模型目录（`$XDG_CACHE_HOME/opencode/models.json`，默认 `~/.cache/opencode/models.json`，可用 `CAPABILITY_TEAM_OPENCODE_MODELS` 覆盖）中筛选 `opencode` 渠道里成本为 0、未弃用、支持工具的模型。目录随 OpenCode 更新，免费模型增减无需改代码；目录不存在时先运行一次 `opencode models`。项目 `freeModels` 只能调整顺序或缩小范围，每项运行时仍要在目录中核对为免费。
-  - **按序换模型**：某个免费模型报额度用尽、未授权、模型不存在等不可用错误时（OpenCode 自己会无限重试），立即终止并换下一个免费模型；全部不可用才报错。不改用付费模型。其他错误照实报告，不换模型。
-  - **使用内置 `build` 代理**：每次运行用内联配置（`OPENCODE_CONFIG_CONTENT`）只为本进程覆盖 `build` 的模型和权限，并关闭标题生成。原因是代理自身的权限优先于 `OPENCODE_PERMISSION`；用户默认代理可能委派到付费子代理，标题生成也会走用户配置的付费小模型。子进程以参数数组启动，不经过 shell。
-  - **工具级别**（项目 `workflow.freeTools`）：`none` 不开放任何文件；`read` 开放项目内读取和搜索；`write` 再开放项目内新建和编辑。三个级别都禁止 shell、联网、子代理、项目外路径，并禁止读写 `.env`、私钥、证书和带 credentials/secret 的文件。
-  - `none` 级别仍带一条不匹配任何文件的读取规则：实测 OpenCode 免费接口会以“Free usage limit reached”拒绝完全没有工具的请求。
-  - `read` 以上级别会把项目文件内容发到免费模型云端，所以默认 `none`。任何级别都不要发送含密钥或敏感数据的内容。
-
-## 运行时细节
-
-- **动态上下文**：每个团队成员创建时，在自己的作用域注册 `capability-team:roster` 上下文。每一步都会重新生成其中的角色、职责、模型和名册，所以保存后从下一步起生效。
-- **请求路由**：项目配置按修改时间缓存；每次请求读取全局模型策略。目录随渠道集合变更或显式刷新更新，禁用规则在缓存目录上重新分配，不发起模型调用。
-- **未登记的队友**：请求会失败，并提示主控通过对话登记该角色；系统不猜测模型。
-- **非团队会话**：不改写路由。
-- **项目归属**：成员首次请求时固定项目，之后切换目录也不会换配置。上级目录已有配置时，子目录视为同一项目。
-- **存储位置**：配置存放在 `$CAPABILITY_TEAM_HOME/<项目路径的 sha256>.json`，全局模型策略存放在 `$CAPABILITY_TEAM_HOME/model-policy/`（按 DSH profile 区分），都不写入用户仓库。
-- **并发保护**：保存时使用版本号 CAS 和锁文件；锁的所属进程已退出，或锁超过 30 秒，会自动回收。
-- **旧格式迁移**：旧版 names/descriptions/routes 格式的文件读取时自动迁移，下次保存时写成新格式。
-- **工具参数**：所有工具参数都是标准 JSON Schema（根对象 `type: "object"`，必填项写在 `required` 数组中），并且只使用 DSH 支持的关键字子集。辅助函数见 [tool-schema.js](tool-schema.js)。Claude 等接口会严格校验工具定义，不合法的定义会让整轮请求返回 400。
-
-## 集成配置
-
-[integrations-config.js](integrations-config.js)：搜索网关与嵌入接口是每个人自己的设置，插件不预设任何地址、模型或厂商字段。生效值按以下顺序取（高优先在前），总览“集成”页会标出每个字段的来源：
-
-1. 环境变量（见上表，只覆盖少数字段；被覆盖的字段在页面上只读）；
-2. “集成”页保存的文件 `$CAPABILITY_TEAM_HOME/integrations.json`（带版本号，并发修改返回冲突）；
-3. 插件配置：在 profile 的 `cordis.patch.yml` 里给 `@local/dsh-capability-team/roles` 加 `integrations: { search: {...}, embeddings: {...} }`；
-4. 默认值：地址和模型为空（功能关闭），路径默认 `/v1/search`、`/v1/web/fetch`、`/v1/embeddings`。
-
-| 段 | 字段 |
-|---|---|
-| `search` | `baseUrl`、`apiKeyEnv`、`searchPath`、`fetchPath`、`headers`（附加请求头，例如网关要求的 User-Agent）、`providers` / `fetchProviders`（填写后成为工具的可选渠道，留空不限）、`timeoutMs`、`fetchTimeoutMs` |
-| `embeddings` | `baseUrl`、`apiKeyEnv`、`path`、`model`、`provider`、`dimensions`、`queryTask`、`passageTask`、`headers`、`timeoutMs`、`batch` |
-| `audio` | `baseUrl`、`apiKeyEnv`、`path`、`statusPath`（填写后注册 `cpa_transcribe_status`）、`model`、`headers`、`timeoutMs`（默认 125 秒）、`maxBytes`（默认 8 MiB） |
-
-`search` 另有 `providersPath`：填写后注册 `cpa_search_providers`（GET 渠道列表）。搜索与抓取默认超时 120 秒，给网关的多渠道降级留出时间。
-
-密钥永远不进配置：`apiKeyEnv` 只是密钥名称，先在 DSH 凭据库（设置里保存的密钥，例如渠道用的 `CPA_API_KEY`）里查找，找不到再读同名环境变量；每次请求前重新读取，只放进 `Authorization` 请求头，不进提示词、工具参数或日志。`headers` 里不允许 `Authorization`、`Cookie` 等。
-
-返回结果的校验：HTTP 200 也要有真实结果（搜索要有 `results` 列表，抓取要有正文，转写要有文本），否则按失败报告；401 提示检查客户端鉴权，400 参数，429 退避，502/504 上游失败，413 超过网关上限；错误正文不回显。状态接口只代表网关本地服务健康。
-
-**语音转写 `cpa_transcribe`**：只有配置了 `audio.baseUrl` 才注册。先检查格式和大小（超过 `maxBytes` 不读取），再在 DSH 原生确认框里请用户授权这一个文件，授权后才读取并以 multipart 上传真实字节（boundary 由 HTTP 库设置）。
-
-示例（CPA 工具中心，各路径按你的网关填写）：
+大多数设置可通过团队工作台或团队配置工具管理。以下示例仅用于说明结构，实际字段和值以团队配置模式与已注册模型为准：
 
 ```json
-{ "search": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "fetchPath": "/v1/crawl", "providersPath": "/v1/search/providers" },
-  "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "model": "jina-embeddings-v3", "queryTask": "retrieval.query", "passageTask": "retrieval.passage" },
-  "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "CPA_API_KEY", "statusPath": "/v1/audio/status" } }
+{ "capabilities": { "writer": { "tier": "low", "search": false } } }
 ```
 
-嵌入的模型和维度必须在入库与检索时一致（换了会自动重算旧向量）；生成向量本身不等于知识库检索，检索由记忆枢纽完成。
+完整字段说明见[配置参考](docs/configuration.zh-CN.md)。
 
-## 文件铁律
+## 技术栈
 
-[file-limits.js](file-limits.js) 在工具层对所有团队成员强制执行，`npm run lint` 也对本仓库执行同一套规则：
+- **运行时：** Node.js 22+、DSH 插件生命周期与 Cordis 集成。
+- **团队服务：** DSH `ctx.agentTeams` API 与原生任务看板工具。
+- **工作台：** `client/` 中的 JavaScript 源码构建为 `client.js`。
+- **测试：** Node.js 内置 `node:test` 测试运行器。
+- **可选集成：** 可配置的搜索/嵌入 HTTP 服务与 OpenViking 记忆。
 
-| 规则 | 默认值 |
+## 项目结构
+
+| 路径 | 说明 |
 |---|---|
-| 源文件 | 300 行起应考虑拆分，**硬上限 500 行** |
-| 测试文件 | **硬上限 800 行** |
-| 已超标的文件 | 只能减不能增（改后行数不得多于改前） |
-| 整文件读取 | 超过 400 行的代码文件不能不带 `limit` 整读，先 grep 再按 `offset/limit` 小段读 |
-| 覆盖已有文件 | 禁止用 `write` 整体覆盖，已有文件只能用 `edit` 局部改 |
-| 队友汇报 | 每条 `send_message` 不超过 1500 字，超长分条发、先发结论 |
+| `client/` | 工作台客户端源码模块。 |
+| `scripts/` | 客户端打包与项目检查脚本。 |
+| `tests/` | Node.js 测试套件与夹具。 |
+| `skills/` | 项目角色与主题指导技能。 |
+| `locale/` | 英文和中文界面文案。 |
+| `config.js`、`defaults.js`、`roles.js` | 团队默认值、模型匹配和角色定义。 |
+| `cordis.patch.yml` | DSH 预设与插件注册配置。 |
+| `client.js` | DSH 加载的生成版工作台文件。 |
+| `index.js`、`ui.js` | 插件与 UI 入口。 |
 
-带 `// @generated` 首行的生成文件、锁文件、`node_modules`/`dist`/`vendor` 不受行数限制，但生成文件不能直接改。阈值通过对话修改 `workflow.fileLimits`（`false` 关闭）。
+## 文档索引
 
-客户端按这个规则拆成 [client/](client/) 下的源文件，`npm run build:client` 按文件名顺序拼成发布用的 [client.js](client.js)（DSH 每个包只加载一个客户端脚本，官方包也是构建成单文件）。`npm test` 前会自动构建，`npm run lint` 会检查 client.js 是否与源文件一致。
-
-## 派活确认
-
-[dispatch-confirm.js](dispatch-confirm.js)：主控的派活计划指派队友时，`capability_dispatch_plan` 先停下来，在对话里这次调用的下方显示一张确认卡片：
-
-- 每个角色一行：任务、主模型（下拉框，候选为同档且未被全局策略禁用的模型）、回退模型（最多 3 个，可增删和调整顺序）；
-- 修改范围：**只用于这次任务**（只影响本次主控会话里这个角色的请求），或**保存为项目默认**（写入项目配置，会影响使用该能力的所有角色）；
-- 点“确认分派”后主控才能创建或通知队友；点“取消”时计划不生效，主控需要再问你怎么调整。
-
-`workflow.confirmDispatch` 控制何时确认：`on-change`（默认，每个新会话第一次指派时确认，之后只在路由变化时确认）、`always`、`never`。不能显示卡片的客户端（命令行、ACP）在 8 秒后改用 DSH 原生提问框，可以逐行填写“角色id: 主模型, 回退1, 回退2”。回退模型在配置校验中也限制为最多 3 个。
-
-插件的所有返回 JSON 的工具都有自己的卡片（模型目录、预算、临时模型、导出/导入、搜索、网页读取、交接、轮换、记忆），对话里不再直接显示 JSON。
-
-## 会话轮换与交接
-
-[session-rotation.js](session-rotation.js) 统计每个队友会话的压缩次数、轮数、同一文件的重复读取次数和上下文占用比例：
-
-| 档位 | 默认条件（满足任一） | 动作 |
-|---|---|---|
-| 软阈值 | 压缩 ≥2 次、上下文 ≥75%、同一文件读 ≥15 次 | 只提醒：精简读取、读过的不要重读、尽快动手，**不要求交接** |
-| 硬阈值 | 压缩 ≥3 次、上下文 ≥90%、≥8 轮 | 主控不能再给它派新活，需要先轮换 |
-
-硬阈值只对**有进展的会话**生效（改过文件，或已被压缩过）。只做了只读调研、一行没改的会话即使上下文很满也只提醒，避免接替者把同样的代码再读一遍后又被轮换（实测出现过连续三任都没动手的空转）。
-
-- 队友调用 `capability_handoff` 写交接（已完成、剩余、踩过的坑、未决问题、验证方法），插件自动附上 `git diff --stat`、它名下未完成的看板任务和最后一次测试结果；
-- 主控调用 `capability_rotate_member`，得到接替者名字 `<角色>-r<N>`（DSH 团队名单不能复用名字）、接替者的首条消息，以及要依次调用的 `interrupt_agent` / `spawn_teammate`；接替者开工时，插件用 DSH 的改派操作把旧成员未完成的看板任务自动转给它；
-- 接替者沿用原角色的模型、权限、预算和已确认的路由；主控再给旧成员发消息会被拦下并提示改发给接替者；
-- 团队名额（`maxMembers`，DSH 默认 8）用完时不轮换，改为省上下文模式，并建议调大 DSH 的 `maxMembers`。
-
-阈值通过对话修改 `workflow.rotation`（`false` 关闭）。
-
-## Token 铁律
-
-[token-discipline.js](token-discipline.js) / [teammate-context.js](teammate-context.js)。实测本项目的提示词缓存命中率已经很高（93%～98% 的提示词 token 是缓存读取，DSH 自身做得很好），费用主要来自**每一步重发的上下文有多大**：DSH 默认到上下文窗口 80% 才压缩，会话长期以每步约 15 万 token 运行；一个前端会话 1358 步共重发了约 2 亿 token。所以规则围绕“前缀小而稳定、工作上下文小”：
-
-| 规则 | 做法 |
-|---|---|
-| 前缀稳定（保住缓存） | 插件注入的规则与上下文只在事件发生时变化，不放每步变化的计数；同一会话不随意换模型（长上下文路由有回滞，容灾冷却逐次加倍） |
-| 队友前缀精简 | 主控专用工具只装给主控、队友专用工具只装给队友；DSH 注入的技能目录对队友精简为“名字 + 一句话”（326 个技能实测从 5.6 万字降到 2.6 万字），可按能力用 `skills` 设为 `full` / `none` / 名单 |
-| 工作上下文小 | 文件铁律限制整读；命令、搜索、网页输出超过 6000 字当场只留开头 3000 字和结尾 1500 字，完整内容写到临时文件并给出路径（DSH 自带的裁剪要等压缩时才生效） |
-| 空闲时压缩 | 团队成员空闲时上下文超过窗口 35% 就压缩。空闲几分钟后提供方缓存本来就会过期，此时压缩几乎不损失缓存 |
-| 不做无用功 | 只做分到的任务，不做范围外调研，汇报一次说清（≤1500 字），主控长等待、不回复进度 |
-
-阈值通过对话修改 `workflow.tokens`（`idleCompactRatio`、`trimToolOutputChars`、`keepHeadChars`、`keepTailChars`；`false` 关闭）。
-
-**插件管不到、需要你在 DSH 配置里决定的两项：**
-- **进行中的压缩阈值**：一轮很长的工作中途压缩只由 DSH 的 `compaction-basic.thresholdRatio`（默认 0.8）决定，而且对所有会话生效。调到 0.5 左右可显著降低每步上下文，代价是更频繁的摘要请求。
-- **网关缓存黏性**：实测有 60 多次缓存在 5 分钟内无故失效，最可能是网关在多个上游账号间轮换。让网关按会话固定上游，可进一步提高命中率。
-
-## 看板派活
-
-[board-dispatch.js](board-dispatch.js)：派活走 DSH 官方团队的共享看板，与官方团队规则一致（列出 → 读取 → 认领 → 执行 → 完成）：
-
-- `capability_dispatch_plan` 的每个角色可以带 `tasks`，把工作拆成子任务，每个子任务有标题、说明、`write_scopes`（会修改的项目内路径）和 `blocked_by`（只能引用计划中排在前面的子任务，因此不会形成环）。不填 `tasks` 时整项作为一个看板任务。
-- 你确认分派后，插件直接在看板上建好这些任务。已经存在的队友立刻分到可开始的任务；新建的队友在开工时自动分到；被依赖挡住的任务等前置完成后再认领。
-- 每个队友的运行时上下文列出自己的看板任务与状态，并提示按看板流程认领和完成。
-- `workflow.enforceWriteScopes`（默认 `true`）：队友认领的任务声明了写入范围时，范围外的修改会被拒绝（DSH 本身只给出重叠警告）。设为 `false` 恢复为仅提示。
-- 主控收尾前应以 `team_task_list` 确认没有进行中的任务。
-
-## 模型偏好学习
-
-[model-prefs.js](model-prefs.js)：每次确认分派都会按能力记下你选的主模型和回退顺序（每个项目最多保留 20 次）。
-
-- **预选**：最近 10 次里某个主模型至少选过 2 次且占多数，下次派活卡片就预选它和你最近一次的回退顺序，并标注“按你的习惯”。卡片仍要你确认，不会悄悄替你改。
-- **避开故障**：近期故障的模型（冷却中、连续失败 ≥2 次，或密钥错误）不会被预选，并排到回退最后，卡片上标注失败次数。故障记录存在 `$CAPABILITY_TEAM_HOME/route-health.json`，DSH 重启后仍然有效：密钥错误保留一天，其他故障保留一小时。
-- **建议固化**：最近 3 次选择完全相同时，卡片提示保存为项目默认。
-- 主控可用 `capability_model_prefs`（`read` / `clear`）查看或清空学到的偏好；数据存在 `$CAPABILITY_TEAM_HOME/model-prefs/`。
-
-## 任务控制
-
-团队工作台的每张队友卡片下方有“任务控制”区：已用/估算步数（接近估算黄色、超出红色，不是质量评级）、临时模型（原模型 → 临时模型、到期时间、自动恢复规则）、最近操作记录。可以设置临时模型（候选只来自后端目录，设置前在页面内确认，写明费用与缓存影响）、恢复配置模型、结束租约，或在没有租约时按复杂度开始计数。409 时不自动重试，提示重新确认。
-
-用量页每个成员还显示**每步平均输入**（未缓存输入 + 缓存读取 + 缓存写入，除以步数）和**缓存读取占比**；每步平均超过 8 万 token 时提示轮换会话。
-
-## 记忆枢纽
-
-[memory-hub.js](memory-hub.js) / [memory-store.js](memory-store.js) / [memory-embed.js](memory-embed.js)：把团队学到的结论按项目保存下来，下次接到相关任务时自动带上。
-
-- **自动入库**：交接（同一角色的新交接替换旧的）、交接里的踩坑（项目范围）、队友成功发给主控的最终汇报（200 字以上）；
-- **主动写入**：`capability_memory_write`，类型 `pitfall` / `decision` / `note`；`decision` 带 `key` 时同主题的新决定替换旧的；相同内容自动合并；
-- **作用域**：`role`（默认，本角色）、`project`（全队）、`session`、`global`（仅主控可写）；别的项目的记忆不可见；
-- **自动召回**：成员收到新任务时按任务文本检索，最多 2400 字注入运行时上下文；任务不变时不重算，避免每步重发上下文；
-- **按需检索**：`capability_memory_search`；
-- **检索方式**：BM25 全文（英文单词 + 中文单字和双字）与向量余弦，用倒数排名融合（RRF）合并，再按 30 天半衰期衰减、按被使用次数小幅加权；嵌入不可用时只用全文，并在结果里说明原因，之后自动补算缺失的向量；
-- **遗忘**：180 天未被使用的记忆和被替换的记忆在整理时删除，每个项目最多保留 2000 条；
-- 存储：`$CAPABILITY_TEAM_HOME/memory/<项目哈希>.jsonl` 与 `global.jsonl`，只追加写入，整理时原子替换；写入和整理加文件锁，文件被别的 DSH 进程改过时自动重读，多个进程（Desktop、`dsh web`）可同时使用；
-- **去掉密钥**：写入前把常见密钥格式（`sk-…`、`ghp_…`、`Bearer …`、JWT、私钥、URL 里的账号密码、`api_key=…` 等）和集成里配置的凭据值替换为 `[已隐去凭据]`。
-
-### 共享长期记忆（OpenViking，可选）
-
-[memory-openviking.js](memory-openviking.js)：在“集成”页的“共享长期记忆”里把 `backend` 设为 `openviking`、`url` 填服务器地址，密钥名称默认 `OPENVIKING_API_KEY`（存在 DSH 凭据里）。之后：
-
-- 非会话范围的新记忆（已去掉密钥）每 20 秒合并为一个会话提交给 [OpenViking](https://github.com/volcengine/OpenViking)，由它提取成长期记忆，换设备、换智能体（DSH、Codex、OpenClaw 等连同一个服务器的工具）都能召回；
-- `capability_memory_search` 同时查本地和 OpenViking，本地结果在前，结果里注明共享记忆条数或不可用原因；
-- 服务器不可用时，待提交的记忆留在队列里下次重试（最多 200 条），检索只用本地记忆，不阻塞成员；
-- 远程地址只接受 https，只有本机地址可用 http；地址里不能带账号密码。
-
-普通 DSH 会话（不在团队里）要用同一份记忆，再装官方插件 `@openviking/dsh-memory-plugin`（插件页添加），它读 `~/.openviking/ovcli.conf` 里的 `url` 和 `api_key`。
-
-自建服务器时建议：只监听 127.0.0.1，由反向代理提供 HTTPS；用 `api_key` 鉴权并开启 `encryption.api_key_hashing`；开启 `encryption.enabled` 加密存储文件，主密钥和数据放在不同的盘上；OpenViking 不加密向量库和日志，数据目录应再放在加密卷上（Linux 用 LUKS）。
-
-### 嵌入接口
-
-记忆枢纽按 OpenAI 兼容格式请求 `<baseUrl><path>`（`path` 默认 `/v1/embeddings`）：
-
-```http
-POST <baseUrl><path>
-Authorization: Bearer <apiKeyEnv 指向的环境变量>
-Content-Type: application/json
-
-{"model":"<model>","input":["文本1","文本2"]}
-```
-
-`provider`、`dimensions`、`task`（入库用 `passageTask`、检索用 `queryTask`）只在“集成”页填写后才放进请求体，适配要求这些字段的网关（例如转发到 Jina 的网关可填 `provider=jina`、`queryTask=retrieval.query`、`passageTask=retrieval.passage`）。响应须为 `{"data":[{"index":0,"embedding":[...]}]}`，条数与输入一致且向量非空，否则视为失败并降级为全文检索（不会把网关状态页当成向量）。每条向量记录“模型@维度”，换模型或维度后旧向量不参与比较并在后台重算。
-
-## 开发与测试
-
-```sh
-npm test          # 先构建 client.js，再跑全部测试
-npm run lint      # 语法、文件行数、client.js 是否最新
-npm run build     # 发布前检查打包文件集合
-```
-
-测试使用模拟的 ctx、模型目录和提问框，不调用模型、搜索或 Git 写操作。自动匹配用中立的示例目录测试（官方 OpenAI、官方 Anthropic 和带厂商前缀的中转渠道，见 [tests/fixture.mjs](tests/fixture.mjs)），不依赖任何真实用户配置。
-
-| 文件 | 内容 |
-|---|---|
-| [index.js](index.js) | 插件入口，组装各模块 |
-| [roles.js](roles.js) / [team.js](team.js) | 角色绑定、团队上下文与请求路由 |
-| [config.js](config.js) | 默认配置、合并与校验 |
-| [defaults.js](defaults.js) | 模型归一化、分档与自动匹配 |
-| [allocation.js](allocation.js) | 模型目录读取与路由校验 |
-| [theme.js](theme.js) / [theme-plugin.js](theme-plugin.js) | 项目配置存储与对话式配置工具 |
-| [failover.js](failover.js) | 追加重试、同档容灾与冷却 |
-| [search.js](search.js) / [integrations.js](integrations.js) | 聚合搜索工具 |
-| [task-bridge.js](task-bridge.js) / [free-worker.mjs](free-worker.mjs) | 免费通道与看板回填 |
-| [tool-schema.js](tool-schema.js) | 工具参数 JSON Schema 辅助与校验 |
-| [workflow.js](workflow.js) | 主控派活计划与工具约束 |
-| [access.js](access.js) | 按角色的工具、命令与文件路径权限 |
-| [usage.js](usage.js) | 成员用量折叠与 token 预算 |
-| [long-context.js](long-context.js) | 同档长上下文路由 |
-| [plan-gate.js](plan-gate.js) | 队友计划提交、主控审批与执行守卫 |
-| [template.js](template.js) | 团队模板导出与导入 |
-| [config-projection.js](config-projection.js) | 配置保存计数投影，触发面板自动读取配置 |
-| [file-limits.js](file-limits.js) | 文件铁律（工具守卫与 lint 共用） |
-| [dispatch-confirm.js](dispatch-confirm.js) | 派活确认：路由、校验、HTTP 接口与原生提问框兜底 |
-| [dispatch-routes-store.js](dispatch-routes-store.js) | “只用于这次任务”的路由持久化（重启不丢） |
-| [session-rotation.js](session-rotation.js) | 会话轮换信号、交接与接替者 |
-| [board-dispatch.js](board-dispatch.js) | 看板派活：子任务、写入范围、依赖、自动分配与改派 |
-| [route-health.js](route-health.js) | 持久化的模型故障记录 |
-| [model-prefs.js](model-prefs.js) | 模型偏好学习与故障避让 |
-| [token-discipline.js](token-discipline.js) / [teammate-context.js](teammate-context.js) | Token 铁律：空闲压缩、输出截断、队友前缀精简 |
-| [memory-hub.js](memory-hub.js) / [memory-store.js](memory-store.js) / [memory-embed.js](memory-embed.js) | 记忆枢纽：入库、召回、混合检索与嵌入网关 |
-| [client/](client/) / [scripts/build-client.mjs](scripts/build-client.mjs) | 客户端源文件与单文件构建 |
-
-修改工具参数后，[tests/tool-schema.test.mjs](tests/tool-schema.test.mjs) 会逐个检查已注册工具的 Schema。
-
-## 团队总览与模型管理
-
-先在新会话的模式选择中选择“能力协作团队”，再打开右侧面板，从面板首页选择“团队总览”。
-
-**实时数据**：工作台（成员状态、看板任务、各成员实际使用的模型）和用量（token 总量、每步耗时、首 token 延迟、解码速度）不需要刷新，全部读取 DSH 自带的会话投影，与官方团队界面用的是同一份数据：
-
-- 主控会话的 `agentTeam`（团队服务）：成员和看板任务；
-- 各成员会话的 `modelSelection`（会话控制器）：当前模型，即最近一次请求实际使用的模型；
-- 各成员会话的 `tokenUsage`（token-meter）：用量；
-- 各成员会话的 `sessionStats`（session-stats）：步数、模型耗时、首 token 延迟和解码速度；
-- 面板订阅客户端共享的会话存储（`ctx.sessions.list`），这些投影一变就重绘，不执行命令，也不写入对话。点击队友卡片会打开该队友的会话，导航方式与官方团队界面相同。
-
-“角色与配置”页的每个角色、“请求日志”页顶部也叠加了上述实时数据（当前状态、最近一次请求的模型、步数）。
-
-**配置类数据**（角色定义、模型策略、诊断、请求日志明细）来自 `/capability-status`。斜杠命令的结果不会进入模型上下文，但会在对话里留下一张命令卡片，所以不定时轮询，只在这些时候读取：
-
-- 会话已组建团队（有队友）而面板还没有快照时，自动读取一次；
-- 本插件注册的 `capabilityTeamConfig` 投影（[config-projection.js](config-projection.js)）统计本会话里成功的 `capability_team_save`/`capability_team_import` 调用和模型策略保存，计数一变就自动再读一次（每个计数最多一次）；
-- 点击“刷新”时。
-
-上次结果按会话缓存在面板中，并记下读取时的配置计数，重新打开面板时据此判断缓存是否过期。总览不再占用中间会话视图，可与聊天并排查看。创造模式（cordis）会话不会因为重启或安装扩展而自动迁移，原会话可以继续保留。也可输入 `/capability-status` 读取诊断，无需启动模型。
-
-开发检查：`npm run lint` 检查全部 JavaScript 语法，`npm run build` 检查语法、包导出、发布文件和语言 JSON；本扩展直接发布原生 JavaScript，不需要转译。`npm test` 运行全部回归。
-
-- **团队工作台**：每个角色一张卡片，显示工作中/空闲/未启动/异常、当前看板任务与实际使用的模型，主控到委派中的队友有动态连线。数据来自上述实时投影和宿主推送的 `api-session/status`，不轮询、不写入对话。
-- 按档位横向标签列出预检候选（默认首个档位，在用模型排前，每次渲染 40 个），包括尚未分配和未分类模型；目录读取失败单独报错。分档是规则推断，不是能力实测。
-- 关闭开关表示禁用，点击“全局保存”才写入；未保存的修改只是草稿。保存带版本校验，冲突不覆盖其他窗口的变更。
-- **按前缀排除**：以 `*` 结尾的规则同时匹配“渠道/模型”和单独的模型 ID（如 `@cf/*` 覆盖所有渠道下的 `@cf/` 模型）；规则持续生效，以后新增的同前缀模型也会排除。
-- **模型策略是全局的**：按 DSH profile 只有一份，所有能力协作团队会话（含新建会话）共享，任一主会话保存后从各会话的下一次请求起生效；队友不能修改。不撤销已经发出的请求。
-- 保存后的候选预览与日志分开：候选仅表示当前策略允许的路由，实际选择还可能受故障冷却影响。保存后刷新查看新候选。
-- “已记录请求配置”证明日志记录了请求配置，不证明供应商调用成功；“已记录助手响应”也不等于任务验收通过。只提取模型标识与事件坐标，不展示正文或提示词。
-- 官方团队界面显示的队友模型取自 `modelSelection`，即最近一次请求实际使用的模型。队友发出第一次请求之前，那里显示的是继承来的模型。
-- 所有合格模型禁用后，请求会被阻止。总览的保存操作不调用模型，仍可取消禁用以恢复。
-
-## 验证状态与已知限制
-
-已验证：
-
-- 347 项回归测试在 Windows（Node 24.21.0）上全部通过，路径与权限不依赖 POSIX 假设（含文件铁律、派活确认、会话轮换、任务控制面板与记忆枢纽），包括路由过滤、前缀规则、全局策略共享、版本冲突、组件草稿/保存/错误状态、刷新失败保留编辑器、UTF-8流分块、跨块额度错误切换、输入上限、活动锁保护、遗留锁恢复、同步提示词策略一致性和初始化卸载；组件测试使用模拟 Hook 和接口，不等于浏览器实测；
-- 使用桌面自带 CLI 在隔离 DSH_HOME 中启动真实宿主，能力协作团队预设已注册，诊断插件成功激活；这不是生产桌面进程重新加载后的会话验收；
-- 已安装包和已连接 Client 的 `capability-team-overview` 活动注册已核实，但此后源码修复仍需确认运行进程重新加载；
-- 独立浏览器访问 GUI 返回 401，尚未完成已认证页面的读取、勾选、保存、恢复操作验收；
-- 所有工具的参数 Schema 通过了 DSH 自带的校验代码；
-- 用 OpenRouter 公开目录（450 多个模型）试跑过自动匹配，结果符合上面的分档规则。
-- 搜索、爬取、渠道列表、嵌入（jina-embeddings-v3，1024 维，检索/入库 task）、记忆混合召回、语音状态与语音转写已在本机经插件模块对 CPA 工具中心实测通过，密钥取自 DSH 凭据库。
-
-尚未在真实 DSH 会话中验收：
-
-- 按成员注册的上下文是否出现在提示词中；
-- 原生提问框的确认保存流程；
-- 每次请求的能力路由；
-- 真实故障下的容灾切换（需要实际制造失败请求，会产生付费调用）；
-- 派活确认卡片、任务控制面板与会话轮换在真实桌面会话中的交互（目前只有模拟 Hook 的组件测试）；
-- 记忆枢纽在真实 DSH 会话中的自动入库与召回（网关向量接口已实测可用，混合检索在本地用真实网关验证通过）。
-
-已知限制：
-
-- 分档基于厂商命名规律。NVIDIA Nemotron、阶跃星辰 Step 3+、Cohere Command 已可自动识别；规则之外的厂商仍会列为“未识别”，需要手动指定档位。
-- 免费变体（`:free`、`-free`）按设计不参与自动匹配，也不作备选：限流严重，不适合作为路由。
-- 原生团队界面显示的是队友的 DSH 成员名：DSH 的 `spawn_teammate` 只接受小写短横线格式的 `name`，没有显示名字段，因此显示名只在模型上下文和本插件面板中生效。
-- 轮换后的接替者（`<角色>-rN`）会自动继承前任的任务预算（同一派活、复杂度、截止时间、本次任务的临时模型，以及已用步数）。
-- 派活确认中“只用于这次任务”的路由按主控保存在插件数据目录，DSH 重启后仍然有效，30 天后过期。
-- Windows 上审计文件的 `0o600`/`0o700` 权限不由系统强制（chmod 只能切换只读），私密性依赖 DSH 主目录所在用户配置文件的 ACL。
+- [配置参考](docs/configuration.zh-CN.md)
+- [开发指南](docs/development.zh-CN.md)
+- [团队与仓库规范](AGENTS.md)
 
 ## 许可
 
-[MIT](LICENSE)
+MIT，详见 [LICENSE](LICENSE)。
+
+
