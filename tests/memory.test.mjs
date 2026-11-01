@@ -127,7 +127,7 @@ function fakeCtx() {
   const agents = new Map([['lead', lead], ['fe1', fe]]);
   const handlers = {};
   const tools = {};
-  const ctx = { agents, on: (name, fn) => { handlers[name] = fn; }, effect: fn => fn(), tools: { register: t => { tools[t.name] = t; } },
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, agents, on: (name, fn) => { handlers[name] = fn; }, effect: fn => fn(), tools: { register: t => { tools[t.name] = t; } },
     agentTeams: { tryMembership: a => (a === lead ? { role: 'lead' } : a === fe ? { role: 'teammate', name: 'diao-chan-r2', root: lead } : undefined) } };
   return { ctx, lead, fe, handlers, tools };
 }

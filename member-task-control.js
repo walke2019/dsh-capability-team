@@ -2,6 +2,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { TIER_ORDER } from './defaults.js';
 import { routeMatcher, routeKey } from './model-policy.js';
 import { params } from './tool-schema.js';
+import { ownsCapabilityTeam } from './preset-guard.js';
 import { redactReason } from './task-control-audit.js';
 import { baseName } from './session-rotation.js';
 export const ESTIMATES = { simple: 15, medium: 40, complex: 80 };
@@ -36,7 +37,7 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
     if (args.timeout_seconds !== undefined && (args.timeout_seconds < 60 || args.timeout_seconds > 28800)) throw taskError('INVALID','Invalid timeout');
   };
   const member = (lead, role) => {
-    if (ctx.agents.get(lead?.id) !== lead || ctx.agentTeams.tryMembership(lead)?.role !== 'lead') throw taskError('FORBIDDEN', 'Lead only', 403);
+    if (!ownsCapabilityTeam(ctx, lead) || ctx.agents.get(lead?.id) !== lead || ctx.agentTeams.tryMembership(lead)?.role !== 'lead') throw taskError('FORBIDDEN', 'Lead only', 403);
     if (typeof role !== 'string' || role.length > 80) throw taskError('BAD_REQUEST','Invalid role',400);
     if (role === 'lead') throw taskError('FORBIDDEN', 'Cannot target Lead', 403);
     const found = ctx.agentTeams.listMembers(lead).find(m => m.name === role && m.role !== 'lead');
@@ -222,9 +223,9 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
           void api.update(lead).catch(()=>{});
         }
       })));
-      ctx.on('agent/status',({agent,status})=>{void api.status(agent,status).catch(()=>{});});
-      ctx.on('agent/created',({agent})=>{const identity=ctx.agentTeams.tryMembership(agent);if(identity?.role==='teammate'){const lead=identity.root;const pending=group(lead).pending.find(a=>a.role===identity.name&&!a.consumed&&!a.claimed&&a.generation===group(lead).generation);if(pending){pending.claimed=true;void api.budget(lead,{action:'start',role:pending.role,complexity:pending.complexity,assignment_id:pending.assignmentId},{kind:'system',id:lead.id}).catch(()=>{});}else{const from=predecessorOf?.(lead.id,identity.name);if(from)void api.inherit(lead,from,identity.name).catch(()=>{});}}});
-      ctx.on('agent/disposed',({agent})=>{void api.status(agent,'disposed').catch(()=>{});});
+      ctx.on('agent/status',({agent,status})=>{if(ownsCapabilityTeam(ctx,agent))void api.status(agent,status).catch(()=>{});});
+      ctx.on('agent/created',({agent})=>{if(!ownsCapabilityTeam(ctx,agent))return;const identity=ctx.agentTeams.tryMembership(agent);if(identity?.role==='teammate'){const lead=identity.root;const pending=group(lead).pending.find(a=>a.role===identity.name&&!a.consumed&&!a.claimed&&a.generation===group(lead).generation);if(pending){pending.claimed=true;void api.budget(lead,{action:'start',role:pending.role,complexity:pending.complexity,assignment_id:pending.assignmentId},{kind:'system',id:lead.id}).catch(()=>{});}else{const from=predecessorOf?.(lead.id,identity.name);if(from)void api.inherit(lead,from,identity.name).catch(()=>{});}}});
+      ctx.on('agent/disposed',({agent})=>{if(ownsCapabilityTeam(ctx,agent))void api.status(agent,'disposed').catch(()=>{});});
       for(const [name,method] of [['capability_task_budget','budget'],['capability_member_override','override']]) ctx.effect(()=>ctx.tools.register({name,description:'单队友单任务，不修改配置。budget action=start/finish/inspect，override action=set/clear/inspect。先inspect获取leaseId与revision；修改需lease_id和expected_revision，CONFLICT后重新inspect。同一assignment不能重置预算。',parameters:params(Object.fromEntries((method==='budget'?['action','role','lease_id','expected_revision','task_id','assignment_id','complexity','timeout_seconds','reason']:['action','role','lease_id','expected_revision','provider','model','catalog_version','reason']).map(k=>[k,{type:['expected_revision','timeout_seconds'].includes(k)?'number':'string',...(k==='action'?{enum:method==='budget'?['start','finish','inspect']:['set','clear','inspect']}:k==='complexity'?{enum:['simple','medium','complex']}:{})}])),['action','role']),output:{schema:{type:'string'},render:(_a,v)=>[{type:'text',text:v}]},execute:async(args,exec)=>JSON.stringify(await api[method](exec.agent,args))}));
     },
   };

@@ -177,7 +177,7 @@ test('HTTP：GET 读取等待中的请求，POST 需要同源与 JSON', async ()
   forgetLead('L5');
   const confirm = createDispatchConfirm({ llm }, team, { graceMs: 1000 });
   const agent = lead('L5');
-  const ctx = { get: name => (name === 'agents' ? new Map([['L5', agent]]) : { tryMembership: a => (a === agent ? { role: 'lead' } : undefined) }) };
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, get: name => (name === 'agents' ? new Map([['L5', agent]]) : { tryMembership: a => (a === agent ? { role: 'lead' } : undefined) }) };
   const p = confirm.confirm({ agent, callId: 'h1' }, plan, effective, { disabledRoutes: [] }, 'always');
   await flush();
   const base = 'http://dsh.test/api/capability-team.dispatch-confirm';

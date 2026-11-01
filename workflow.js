@@ -110,13 +110,14 @@ export function validatePlan(args, effective) {
   return { mode: 'delegate', analysis, ...(args.reason ? { reason: text(args.reason, 500, '理由') } : {}), assignments: list };
 }
 
+import { ownsCapabilityTeam } from './preset-guard.js';
 export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchConfirm, rotation, board } = {}) {
   const states = new WeakMap();
   const state = agent => {
     if (!states.has(agent)) states.set(agent, { plan: undefined, analysisUsed: 0, directUsed: 0 });
     return states.get(agent);
   };
-  const isLead = agent => agent !== undefined && ctx.agentTeams.tryMembership(agent)?.role === 'lead';
+  const isLead = agent => ownsCapabilityTeam(ctx, agent) && ctx.agentTeams.tryMembership(agent)?.role === 'lead';
   const effectiveOf = agent => {
     const project = team.pinned(agent);
     return project ? team.loadSync(project, agent).effective : team.base;

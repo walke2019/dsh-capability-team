@@ -190,10 +190,16 @@ export function describeIntegrations(resolved) {
   return { schemaVersion: 1, revision: resolved.revision, effective: resolved.effective, sources: resolved.sources, keys: resolved.keys, file: resolved.fileLayer, envOverrides: ENV_OVERRIDES };
 }
 /** GET → described config; POST {expectedRevision, patch} → saved revision. Same-origin JSON only. */
-export async function handleIntegrations(request, { root = defaultRoot(), env = process.env } = {}) {
+import { ownsCapabilityTeam } from './preset-guard.js';
+export async function handleIntegrations(request, { root = defaultRoot(), env = process.env, ctx } = {}) {
   const fail = (status, code, message) => Response.json({ code, message }, { status });
   try {
     const url = new URL(request.url);
+    if (ctx) {
+      const id = url.searchParams.get('sessionId');
+      const agent = typeof id === 'string' && /^[\w.:-]{1,256}$/.test(id) ? ctx.get?.('agents')?.get(id) : undefined;
+      if (!ownsCapabilityTeam(ctx, agent) || ctx.get?.('agentTeams')?.tryMembership(agent)?.role !== 'lead') return fail(404, 'NOT_FOUND', 'Lead unavailable');
+    }
     if (request.method === 'GET') {
       const resolved = resolveIntegrations({ root, env });
       return Response.json({ ...describeIntegrations(resolved), keys: await keyPresence(resolved) }, { headers: { 'cache-control': 'no-store' } });
@@ -210,5 +216,5 @@ export async function handleIntegrations(request, { root = defaultRoot(), env = 
 }
 export const INTEGRATIONS_PATH = '/api/capability-team.integrations';
 export function applyIntegrationsApi(ctx) {
-  ctx.inject?.(['connection'], scoped => scoped.connection.fetch.register({ path: INTEGRATIONS_PATH, methods: ['GET', 'POST'], requestBody: 'buffered', fetch: req => handleIntegrations(req) }));
+  ctx.inject?.(['connection'], scoped => scoped.connection.fetch.register({ path: INTEGRATIONS_PATH, methods: ['GET', 'POST'], requestBody: 'buffered', fetch: req => handleIntegrations(req, { ctx }) }));
 }

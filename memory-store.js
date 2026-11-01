@@ -131,24 +131,25 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
       const list = await load(fk);
       const same = m => m.kind === kind && JSON.stringify(m.scope) === JSON.stringify(scope) && !m.supersededBy;
       const at = now();
+      const superseded = [];
       // A memory with the same topic key replaces the older ones (conflict update: newest wins).
       const supersede = async keeper => {
         if (!topic) return;
-        for (const old of list.filter(m => same(m) && m.key === topic && m.id !== keeper.id)) { old.supersededBy = keeper.id; old.updatedAt = at; await persist(fk, old); }
+        for (const old of list.filter(m => same(m) && m.key === topic && m.id !== keeper.id)) { superseded.push({ ...old }); old.supersededBy = keeper.id; old.updatedAt = at; await persist(fk, old); }
       };
       const dup = list.find(m => same(m) && (normText(m.text) === body || (vector && m.model === model && cosine(m.vector, vector) >= limits.duplicateCosine)));
       if (dup) {
         Object.assign(dup, { text: body.length >= dup.text.length ? body : dup.text, tags: [...new Set([...dup.tags, ...tags])], updatedAt: at, merged: (dup.merged ?? 0) + 1, ...(topic ? { key: topic } : {}), ...(vector ? { vector, model } : {}) });
         await persist(fk, dup);
         await supersede(dup);
-        return { memory: dup, merged: true };
+        return { memory: dup, merged: true, superseded };
       }
       const memory = { id: randomUUID(), scope, kind, text: body, tags: [...new Set(tags)], source, key: topic, vector, model, createdAt: at, updatedAt: at, hits: 0 };
       list.push(memory);
       await persist(fk, memory);
       await supersede(memory);
       if (list.length > limits.maxPerFile) await this.prune(scope);
-      return { memory, merged: false };
+      return { memory, merged: false, superseded };
     },
     /** Visible memories for a reader, ranked for `query`. */
     async search({ project, role, session, query, vector, vectorModel, k = 6, kinds }) {
@@ -187,8 +188,8 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
       const lines = []; let used = 0;
       for (const { memory: m } of results) {
         const line = `- [${m.kind}${m.scope.kind === 'role' ? `·${m.scope.role}` : ''}] ${m.text}`;
-        if (used + line.length > maxChars) break;
-        lines.push(line); used += line.length;
+        if (used + line.length + (lines.length ? 1 : 0) > maxChars) continue;
+        used += line.length + (lines.length ? 1 : 0); lines.push(line);
       }
       return lines.join('\n');
     },

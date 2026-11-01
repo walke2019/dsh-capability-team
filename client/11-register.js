@@ -106,6 +106,50 @@
         status: id => states.get(id),
         rosterVersion: () => roster,
         subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+        preset: id => {
+          const direct = snapshot()?.projectionsBySession?.[id]?.values?.agentPreset;
+          if (direct !== undefined) return direct;
+          try {
+            const b = sessions?.binding?.(id)?.session?.getSnapshot?.()?.agentPreset;
+            if (b !== undefined) return b;
+          } catch {}
+          try {
+            const s = snapshot()?.byId?.[id]?.preset;
+            if (s !== undefined) return s;
+          } catch {}
+          const parentId = snapshot()?.projectionsBySession?.[id]?.values?.agentTeam?.parentSessionId
+            || sessions?.binding?.(id)?.session?.getSnapshot?.()?.subagent?.address?.parentSessionId;
+          if (parentId && parentId !== id) {
+            const p = snapshot()?.projectionsBySession?.[parentId]?.values?.agentPreset;
+            if (p !== undefined) return p;
+            try {
+              const pb = sessions?.binding?.(parentId)?.session?.getSnapshot?.()?.agentPreset;
+              if (pb !== undefined) return pb;
+            } catch {}
+          }
+          return undefined;
+        },
+        isCapabilityTeam: id => {
+          if (!id) return false;
+          const directPreset = snapshot()?.projectionsBySession?.[id]?.values?.agentPreset;
+          if (directPreset === 'capability-team') return true;
+          if (directPreset && directPreset !== 'capability-team') return false;
+          const vals = snapshot()?.projectionsBySession?.[id]?.values;
+          if (vals?.capabilityTeamConfig !== undefined || vals?.capabilityTeamActivity !== undefined || vals?.capabilityTeamUsage !== undefined) return true;
+          const parentId = vals?.agentTeam?.parentSessionId
+            || sessions?.binding?.(id)?.session?.getSnapshot?.()?.subagent?.address?.parentSessionId;
+          if (parentId && parentId !== id) {
+            const parentP = snapshot()?.projectionsBySession?.[parentId]?.values?.agentPreset;
+            if (parentP === 'capability-team') return true;
+            if (parentP && parentP !== 'capability-team') return false;
+            const parentVals = snapshot()?.projectionsBySession?.[parentId]?.values;
+            if (parentVals?.capabilityTeamConfig !== undefined || parentVals?.capabilityTeamActivity !== undefined || parentVals?.capabilityTeamUsage !== undefined) return true;
+          }
+          const s = snapshot()?.byId?.[id]?.preset;
+          if (s === 'capability-team') return true;
+          if (s && s !== 'capability-team') return false;
+          return undefined;
+        },
         async children(parentId) {
           const reply = await remote?.subagents?.list?.(parentId);
           if (!reply?.ok) throw new Error(reply?.error?.message ?? 'subagent catalog unavailable');
@@ -167,12 +211,20 @@
         }), 'capability-team: right sidebar tab');
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab', key: 'capability-team-overview', id: 'capability-team-overview', locale: NS,
-        }, props => h(Overview, { ...props,
+        }, props => {
+          const effectiveLive = props.live ?? live;
+          const targetSessionId = props.sessionId;
+          const isCtm = effectiveLive?.isCapabilityTeam?.(targetSessionId);
+          if (isCtm === false) {
+            return h('div', { className: 'ctm-ov-empty ctm-not-mounted', 'data-tone': 'warn', style: { padding: '24px' } },
+              h('p', { className: 'ctm-sub' }, bound('overview.notMounted')));
+          }
+          return h(Overview, { ...props,
           // Item 3: Overview owns its own bilingual dictionary lookup keyed by its own locale toggle, not the
           // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
           // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.
           // `hostT` is only a fallback for any key missing from the plugin's own zh/en dictionaries.
-          hostT: bound, load: props.load ?? load, save: props.save ?? save, live: props.live ?? live, cache: props.cache ?? snapshotCache,
+          hostT: bound, load: props.load ?? load, save: props.save ?? save, live: effectiveLive, cache: props.cache ?? snapshotCache,
           // Same navigation as DSH's own Team panel: open normal session for Lead or continuable subagent address for teammate.
           openMember: typeof ctx.uiWorkspace?.openSession === 'function'
             ? (parentSessionId, childSessionId) => {
@@ -181,7 +233,8 @@
               } else {
                 ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' });
               }
-            } : undefined })));
+            } : undefined });
+        }));
         // Each view receives `t`; fall back to the bound translator when the slot does not inject one.
         const withT = View => function CapabilityToolView(props) { return h(View, { ...props, t: props.t ?? bound }); };
         for (const [key, View] of Object.entries(VIEWS)) {

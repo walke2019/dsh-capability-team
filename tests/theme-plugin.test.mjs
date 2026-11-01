@@ -11,7 +11,7 @@ import { CATALOG, fakeLlm } from './fixture.mjs';
 function harness(root, { role = 'lead', answer = '保存', extra = [] } = {}) {
   const tools = {}; const contexts = []; const listeners = {}; const asked = []; let skill;
   const membership = agent => agent.member ?? { role, name: role };
-  const ctx = {
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' },
     effect: fn => fn(),
     skills: { register: v => { skill = v; return () => {}; } },
     tools: { register: v => { tools[v.name] = v; return () => {}; } },
@@ -32,7 +32,7 @@ test('初始化未完成时卸载不会抛错或在卸载后注册上下文', as
   let release; let cleanup; let contexts = 0;
   const agent = { ctx: { systemPrompt: { context: () => { contexts++; return () => {}; } } } };
   const pending = new Promise(resolve => { release = resolve; });
-  const ctx = { effect: fn => { const value = fn(); if (typeof value === 'function') cleanup = value; },
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => { const value = fn(); if (typeof value === 'function') cleanup = value; },
     skills: { register: () => () => {} }, tools: { register: () => () => {} },
     agentTeams: { tryMembership: () => ({ role: 'lead' }) }, agents: { list: () => [agent] }, on() {} };
   apply(ctx, { pin: () => pending });

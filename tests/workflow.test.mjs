@@ -11,7 +11,7 @@ function harness(overrides = {}) {
   const eff = effectiveConfig(overrides, base);
   let guard; let claimed; const tools = {};
   const lead = { id: 'lead' }; const mate = { id: 'mate' };
-  const ctx = {
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' },
     effect: f => f(), on: (name, fn) => { if (name === 'agent/inbox/claimed') claimed = fn; },
     tools: { guard: g => { guard = g; return () => {}; }, register: t => { tools[t.name] = t; return () => {}; } },
     agentTeams: { tryMembership: a => a === lead ? { role: 'lead' } : a === mate ? { role: 'teammate', name: 'lv-bu' } : undefined },
@@ -157,7 +157,7 @@ test('delegate 计划把被指派的角色交给 onDelegate（用于让旧的队
   const eff = effectiveConfig({ capabilities: { backend: { planFirst: true } } }, base);
   const tools = {}; const calls = [];
   const lead = { id: 'lead' };
-  const ctx = { effect: f => f(), on: () => {},
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: f => f(), on: () => {},
     tools: { guard: () => () => {}, register: t => { tools[t.name] = t; return () => {}; } },
     agentTeams: { tryMembership: () => ({ id: 'T', role: 'lead' }), membership: () => ({ id: 'T', role: 'lead', name: 'lead' }) } };
   const team = { base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff }) };

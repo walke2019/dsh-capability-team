@@ -1,4 +1,5 @@
 import { apply as applyRoles } from './roles.js';
+import { ownsCapabilityTeam } from './preset-guard.js';
 import { apply as applyIntegrations } from './integrations.js';
 import { apply as applyTheme } from './theme-plugin.js';
 import { createTeam } from './team.js';
@@ -76,15 +77,16 @@ export function apply(host, config = {}) {
 function applyBoard(ctx, team, board, rotation) {
   ctx.on('agent/inbox/claimed', ({ agent }) => {
     const m = ctx.agentTeams.tryMembership(agent);
-    if (m?.role !== 'teammate' || !m.root) return;
+    if (!ownsCapabilityTeam(ctx, agent) || m?.role !== 'teammate' || !m.root) return;
     const from = rotation.predecessorOf(m.root.id, m.name);
     void (async () => { if (from) await board.transfer(m.root, from, m.name); await board.handOut(m.root, baseName(m.name), m.name); })().catch(() => {});
   });
   ctx.on('agent/created', ({ agent }) => {
-    if (ctx.agentTeams.tryMembership(agent)?.role !== 'teammate') return;
+    if (!ownsCapabilityTeam(ctx, agent) || ctx.agentTeams.tryMembership(agent)?.role !== 'teammate') return;
     agent.ctx.systemPrompt.context({ name: 'capability-team:board', order: 96, text: () => board.context(agent) });
   });
   ctx.effect(() => ctx.tools.guard(exec => {
+    if (!ownsCapabilityTeam(ctx, exec.agent)) return undefined;
     const project = team.pinned(exec.agent);
     if (!project) return undefined;
     let enforce;

@@ -74,7 +74,7 @@ function fakeTeam(root, members, { tasks = [] } = {}) {
   const lead = { id: 'lead-1', session: {} };
   const agents = new Map([[lead.id, lead], ...members.map(m => [m.id, { id: m.id, session: {}, ctx: {} }])]);
   const roster = [{ id: lead.id, name: 'lead', role: 'lead' }, ...members.map(m => ({ ...m, role: 'teammate' }))];
-  const ctx = {
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' },
     agents,
     agentTeams: {
       tryMembership: a => (a === lead ? { role: 'lead', root: lead } : members.some(m => m.id === a?.id) ? { role: 'teammate', root: lead, name: members.find(m => m.id === a.id).name } : undefined),

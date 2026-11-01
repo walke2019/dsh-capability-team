@@ -32,7 +32,7 @@ window.__ModuleLoader__.load({
       'int.keySet': '密钥 {name}：已设置（DSH 凭据或环境变量）', 'int.keyMissing': '密钥 {name}：DSH 凭据和环境变量里都没有', 'int.audio': '语音转写', 'int.memory': '共享长期记忆（OpenViking）', 'int.memory.hint': 'backend 填 openviking 后，团队记忆（去掉密钥后）同时写入该服务器，检索时合并其召回；服务器不可用时自动只用本地记忆。远程地址只接受 https。', 'int.field.backend': '后端（local / openviking）', 'int.field.url': '服务器地址（https；本机可用 http）', 'int.field.account': '账号（trusted 模式可选）', 'int.field.user': '用户（trusted 模式可选）', 'int.field.recallLimit': '每次召回条数（0–20）', 'int.audio.hint': 'cpa_transcribe 调用的转写接口；每个文件上传前都要你在确认框授权，超过上限的文件不读取。', 'int.unset': '未设置',
       'int.source.default': '默认值', 'int.source.plugin': '插件配置', 'int.source.file': '本页设置', 'int.source.env': '环境变量 {name}（只读）',
       'int.field.baseUrl': '网关地址（https）', 'int.field.apiKeyEnv': '密钥名称（DSH 凭据 / 环境变量）', 'int.field.providersPath': '渠道列表路径（可选，GET）', 'int.field.statusPath': '状态路径（可选，GET）', 'int.field.maxBytes': '上传上限（字节）', 'int.field.searchPath': '搜索路径', 'int.field.fetchPath': '网页读取路径', 'int.field.path': '接口路径', 'int.field.headers': '附加请求头（每行 名称: 值）', 'int.field.providers': '搜索渠道（逗号分隔，留空不限）', 'int.field.fetchProviders': '读取渠道（逗号分隔，留空不限）', 'int.field.timeoutMs': '超时（毫秒）', 'int.field.fetchTimeoutMs': '读取超时（毫秒）', 'int.field.model': '模型', 'int.field.provider': '渠道 provider（可选）', 'int.field.dimensions': '维度（可选）', 'int.field.queryTask': '检索 task（可选）', 'int.field.passageTask': '入库 task（可选）', 'int.field.batch': '每批条数',
-      'int.save': '保存', 'int.reset': '撤销', 'int.saving': '正在保存…', 'int.saved': '已保存。', 'int.conflict': '配置已被别处修改，已刷新，请重新填写。', 'int.saveFailed': '保存失败：', 'int.invalid': '{field} 的格式不对', 'int.loading': '正在读取集成配置…', 'int.loadFailed': '读取集成配置失败。',
+      'int.save': '保存', 'int.reset': '撤销', 'int.saving': '正在保存…', 'int.saved': '已保存。', 'int.conflict': '配置已被别处修改，已刷新，请重新填写。', 'int.saveFailed': '保存失败：', 'int.invalid': '{field} 的格式不对', 'int.loading': '正在读取集成配置…', 'int.loadFailed': '读取集成配置失败。', 'int.noSession': '未提供能力协作团队会话，无法加载集成配置。',
       'cards.memorySearch': '记忆检索', 'cards.memorySearch.summary': '“{q}” · {n} 条 · {mode}', 'cards.memory.mode.hybrid': '全文+向量', 'cards.memory.mode.text': '仅全文', 'cards.memoryWrite': '写入记忆', 'cards.memoryWrite.saved': '已保存', 'cards.memoryWrite.merged': '已合并到相同记忆', 'cards.memory.kind.handoff': '交接', 'cards.memory.kind.result': '结果', 'cards.memory.kind.pitfall': '踩坑', 'cards.memory.kind.decision': '决定', 'cards.memory.kind.note': '笔记',
       'usage.avgPrompt': '每步平均输入 {n}', 'usage.cacheShare': '缓存读取占 {p}%', 'usage.heavyContext': '每步上下文偏大，建议轮换会话', 'usage.contextHint': '每步平均输入 =（未缓存输入 + 缓存读取 + 缓存写入）÷ 步数。数值越大，每一步重发的上下文越多。',
       'cards.handoff': '交接', 'cards.handoff.summary': '{name} 已交接 · {n} 个未完成任务', 'cards.handoff.diff': '代码改动', 'cards.handoff.test': '最后一次测试', 'cards.rotate': '会话轮换', 'cards.rotate.summary': '{from} → {to}',
@@ -294,7 +294,7 @@ window.__ModuleLoader__.load({
       'int.keySet': 'Key {name}: set (DSH credential or environment)', 'int.keyMissing': 'Key {name}: not in DSH credentials or the environment', 'int.audio': 'Speech to text', 'int.memory': 'Shared long-term memory (OpenViking)', 'int.memory.hint': 'With backend set to openviking, team memories (with credentials removed) are also written to that server and its recall is merged into search; when the server is down, only local memory is used. Remote URLs must use https.', 'int.field.backend': 'Backend (local / openviking)', 'int.field.url': 'Server URL (https; http only on this machine)', 'int.field.account': 'Account (optional, trusted mode)', 'int.field.user': 'User (optional, trusted mode)', 'int.field.recallLimit': 'Results per recall (0–20)', 'int.audio.hint': 'The endpoint behind cpa_transcribe; you approve every file in a dialog before it is uploaded, and files over the limit are never read.', 'int.unset': 'not set',
       'int.source.default': 'default', 'int.source.plugin': 'plugin config', 'int.source.file': 'this page', 'int.source.env': 'env {name} (read-only)',
       'int.field.baseUrl': 'Gateway URL (https)', 'int.field.apiKeyEnv': 'Key name (DSH credential / env)', 'int.field.providersPath': 'Provider list path (optional, GET)', 'int.field.statusPath': 'Status path (optional, GET)', 'int.field.maxBytes': 'Upload limit (bytes)', 'int.field.searchPath': 'Search path', 'int.field.fetchPath': 'Fetch path', 'int.field.path': 'Endpoint path', 'int.field.headers': 'Extra headers (one "Name: value" per line)', 'int.field.providers': 'Search providers (comma-separated, empty = any)', 'int.field.fetchProviders': 'Fetch providers (comma-separated, empty = any)', 'int.field.timeoutMs': 'Timeout (ms)', 'int.field.fetchTimeoutMs': 'Fetch timeout (ms)', 'int.field.model': 'Model', 'int.field.provider': 'Provider (optional)', 'int.field.dimensions': 'Dimensions (optional)', 'int.field.queryTask': 'Query task (optional)', 'int.field.passageTask': 'Passage task (optional)', 'int.field.batch': 'Batch size',
-      'int.save': 'Save', 'int.reset': 'Discard', 'int.saving': 'Saving…', 'int.saved': 'Saved.', 'int.conflict': 'Changed elsewhere; reloaded. Please re-enter your edits.', 'int.saveFailed': 'Could not save:', 'int.invalid': '{field} is not in the right format', 'int.loading': 'Loading integrations…', 'int.loadFailed': 'Could not load integrations.',
+      'int.save': 'Save', 'int.reset': 'Discard', 'int.saving': 'Saving…', 'int.saved': 'Saved.', 'int.conflict': 'Changed elsewhere; reloaded. Please re-enter your edits.', 'int.saveFailed': 'Could not save:', 'int.invalid': '{field} is not in the right format', 'int.loading': 'Loading integrations…', 'int.loadFailed': 'Could not load integrations.', 'int.noSession': 'Capability team session unavailable; cannot load integrations.',
       'cards.memorySearch': 'Memory search', 'cards.memorySearch.summary': '"{q}" · {n} · {mode}', 'cards.memory.mode.hybrid': 'text + vector', 'cards.memory.mode.text': 'text only', 'cards.memoryWrite': 'Save memory', 'cards.memoryWrite.saved': 'Saved', 'cards.memoryWrite.merged': 'Merged into an existing memory', 'cards.memory.kind.handoff': 'Handoff', 'cards.memory.kind.result': 'Result', 'cards.memory.kind.pitfall': 'Pitfall', 'cards.memory.kind.decision': 'Decision', 'cards.memory.kind.note': 'Note',
       'usage.avgPrompt': 'Avg input per step {n}', 'usage.cacheShare': 'Cache reads {p}%', 'usage.heavyContext': 'Large context per step; consider rotating the session', 'usage.contextHint': 'Average input per step = (uncached input + cache reads + cache writes) ÷ steps. Higher means more context is resent every step.',
       'cards.handoff': 'Handoff', 'cards.handoff.summary': '{name} handed off · {n} open tasks', 'cards.handoff.diff': 'Code changes', 'cards.handoff.test': 'Last test run', 'cards.rotate': 'Session rotation', 'cards.rotate.summary': '{from} → {to}',
@@ -3001,6 +3001,29 @@ window.__ModuleLoader__.load({
       const isTeammateSession = !!(parentSessionId && parentSessionId !== sessionId);
       const isOrphanSubagent = !isTeammateSession && !!live?.isOrphanSubagent?.(sessionId);
       const effectiveSessionId = parentSessionId || sessionId;
+      const stored = state.sessionId === effectiveSessionId ? state : null;
+      const cached = stored?.data ? null : cache?.get(effectiveSessionId);
+      // Before the first manual read in this panel, show the last cached snapshot for this session.
+      const current = cached ? { ...stored, data: cached.data, at: cached.at, configVersion: cached.configVersion, cached: true } : stored ?? {};
+      const d = current.data;
+      const isPresetMounted = (() => {
+        if (d?.preset !== undefined) return d.preset === 'capability-team';
+        if (typeof live?.isCapabilityTeam === 'function') {
+          const res = live.isCapabilityTeam(effectiveSessionId);
+          if (res !== undefined) return res;
+        }
+        const proj = live?.projections?.(effectiveSessionId);
+        if (proj?.agentPreset !== undefined) return proj.agentPreset === 'capability-team';
+        if (proj?.capabilityTeamConfig !== undefined || proj?.capabilityTeamActivity !== undefined || proj?.capabilityTeamUsage !== undefined) return true;
+        if (parentSessionId && parentSessionId !== sessionId) {
+          const parentProj = live?.projections?.(parentSessionId);
+          if (parentProj?.agentPreset !== undefined) return parentProj.agentPreset === 'capability-team';
+          if (parentProj?.capabilityTeamConfig !== undefined || parentProj?.capabilityTeamActivity !== undefined || parentProj?.capabilityTeamUsage !== undefined) return true;
+        }
+        const p = live?.preset?.(effectiveSessionId);
+        if (p !== undefined) return p === 'capability-team';
+        return undefined;
+      })();
       const configVersionNow = () => live?.projections?.(effectiveSessionId)?.capabilityTeamConfig?.version;
       // The status command leaves a card in the conversation (never model context), so it runs on a click, once when
       // a team session has no snapshot yet, and again only when a configuration save moves the config counter.
@@ -3022,35 +3045,30 @@ window.__ModuleLoader__.load({
       React.useEffect(() => live?.subscribe(() => redraw(n => n + 1)), [live]);
       const rosterVersion = live?.rosterVersion?.() ?? 0;
       React.useEffect(() => {
-        if (!live) return undefined;
+        if (!live || isPresetMounted === false) return undefined;
         let stopped = false;
         live.children(effectiveSessionId).then(entries => { if (!stopped) setChildren({ sessionId: effectiveSessionId, entries }); }, () => {});
         return () => { stopped = true; };
-      }, [effectiveSessionId, live, rosterVersion]);
-      const stored = state.sessionId === effectiveSessionId ? state : null;
-      const cached = stored?.data ? null : cache?.get(effectiveSessionId);
-      // Before the first manual read in this panel, show the last cached snapshot for this session.
-      const current = cached ? { ...stored, data: cached.data, at: cached.at, configVersion: cached.configVersion, cached: true } : stored ?? {};
-      const d = current.data;
+      }, [effectiveSessionId, live, rosterVersion, isPresetMounted]);
       // The Lead's agentTeam projection is pushed live; without it the board falls back to the last refresh.
       const liveTeam = live?.projections?.(effectiveSessionId)?.agentTeam;
       const liveActivity = liveTeam ? teamActivityFrom(liveTeam, live) : null;
       const roster = liveRoster(effectiveSessionId, liveActivity ?? d?.activity, children?.sessionId === effectiveSessionId ? children.entries : null, live, liveActivity ? Date.now() : current.at);
       const usage = usageRows(d, liveTeam, live);
-      const shown = !isOrphanSubagent && !!(d || liveTeam);
+      const shown = isPresetMounted !== false && !isOrphanSubagent && !!(d || liveTeam);
       const boardRoles = d?.team?.roles ?? (liveTeam?.members ?? []).map(m => ({ id: m.name, displayName: m.name, ...(m.role === 'lead' ? { capability: 'orchestrator' } : {}) }));
       const configVersion = configVersionNow();
       // At most one automatic read per session and config counter; a failed one waits for a click or the next save.
       const autoKey = React.useRef('');
       React.useEffect(() => {
-        if (current.pending || !liveTeam) return;
+        if (isPresetMounted === false || current.pending || !liveTeam) return;
         const formed = (liveTeam.members?.length ?? 0) > 1;
         const stale = d ? configVersion !== undefined && current.configVersion !== configVersion : formed;
         const key = `${effectiveSessionId}:${d ? configVersion : 'initial'}`;
         if (!stale || autoKey.current === key) return;
         autoKey.current = key;
         refresh();
-      }, [effectiveSessionId, configVersion, !!d, !!liveTeam, liveTeam?.members?.length, current.pending]);
+      }, [effectiveSessionId, configVersion, !!d, !!liveTeam, liveTeam?.members?.length, current.pending, isPresetMounted]);
       // MVP-B: Failover runtime HTTP / SSE client
       const [runtimeState, setRuntimeState] = React.useState({ data: null, lag: false, unavailable: false });
       const lastEpoch = React.useRef(null);
@@ -3233,8 +3251,8 @@ window.__ModuleLoader__.load({
         h('div', { className: 'ctm-ov-scroll' },
           subagentNoticeNode,
           current.error ? h('p', { role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, current.error) : null,
-          !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(current.pending ? 'overview.loading' : 'overview.empty')),
-            current.pending ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
+          !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(isPresetMounted === false ? 'overview.notMounted' : current.pending ? 'overview.loading' : 'overview.empty')),
+            (isPresetMounted === false || current.pending) ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
           (!isTeammateSession || showOverview) && d && team ? h('div', { className: 'ctm-ov-stats' },
             stat(team.roles?.length ?? 0, t('overview.statRoles'), undefined, 'r'),
             stat(working, t('overview.statWorking'), working ? 'brand' : undefined, 'w'),
@@ -3272,7 +3290,7 @@ window.__ModuleLoader__.load({
             h(ErrorBoundary, { key: `${effectiveSessionId}:artifacts`, t },
               h(ArtifactsRack, { sessionId: effectiveSessionId, liveTeam, live, t }))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'integrations', hidden: tab !== 'integrations' },
-            h(ErrorBoundary, { key: `${effectiveSessionId}:integrations`, t }, tab === 'integrations' ? h(IntegrationsPanel, { t }) : null)) : null,
+            h(ErrorBoundary, { key: `${effectiveSessionId}:integrations`, t }, tab === 'integrations' ? h(IntegrationsPanel, { t, sessionId: effectiveSessionId || null }) : null)) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'report', hidden: tab !== 'report' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:report`, t },
               h(BattleReportView, { sessionId: effectiveSessionId, liveTeam, live, t, runtimeState }))) : null,
@@ -3346,19 +3364,23 @@ window.__ModuleLoader__.load({
       return s;
     }
     const sourceLabel = (t, src) => (src?.startsWith('env:') ? fmt(t('int.source.env'), { name: src.slice(4) }) : label(t, `int.source.${src}`, src ?? ''));
-    function IntegrationsPanel({ t }) {
+    function IntegrationsPanel({ t, sessionId }) {
       const [data, setData] = React.useState(null);
       const [draft, setDraft] = React.useState({});
       const [status, setStatus] = React.useState(null);
       const [reload, setReload] = React.useState(0);
+      const noSession = !sessionId;
       React.useEffect(() => {
+        if (noSession) return undefined;
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-        fetch(apiUrl(INTEGRATIONS_PATH), { signal: ctrl?.signal })
+        const targetUrl = sessionId ? apiUrl(INTEGRATIONS_PATH, { sessionId }) : apiUrl(INTEGRATIONS_PATH);
+        fetch(targetUrl, { signal: ctrl?.signal })
           .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
           .then(body => { setData(body); setDraft({}); })
           .catch(e => { if (e?.name !== 'AbortError') setStatus({ tone: 'error', text: t('int.loadFailed') }); });
         return () => ctrl?.abort();
-      }, [reload]);
+      }, [reload, sessionId, noSession]);
+      if (noSession) return h('div', { className: 'ctm-ov-block ctm-int-empty' }, h('p', { className: 'ctm-sub' }, t('int.noSession')));
       if (!data) return h('div', { className: 'ctm-ov-block' }, h('p', { className: 'ctm-sub' }, status?.text ?? t('int.loading')));
       const valueOf = (section, key, kind) => draft[section]?.[key] ?? toInput(kind, data.file?.[section]?.[key] ?? (data.sources[section][key] === 'file' ? data.effective[section][key] : undefined));
       const set = (section, key, text) => setDraft(prev => ({ ...prev, [section]: { ...prev[section], [key]: text } }));
@@ -3373,7 +3395,8 @@ window.__ModuleLoader__.load({
         if (!Object.keys(patch).length) return;
         setStatus({ text: t('int.saving') });
         try {
-          const res = await fetch(apiUrl(INTEGRATIONS_PATH), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: data.revision, patch }) });
+          const targetUrl = sessionId ? apiUrl(INTEGRATIONS_PATH, { sessionId }) : apiUrl(INTEGRATIONS_PATH);
+          const res = await fetch(targetUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: data.revision, patch }) });
           const body = await res.json().catch(() => ({}));
           if (res.ok) { setStatus({ tone: 'success', text: t('int.saved') }); setReload(n => n + 1); return; }
           if (res.status === 409) { setStatus({ tone: 'error', text: t('int.conflict') }); setReload(n => n + 1); return; }
@@ -3517,6 +3540,50 @@ window.__ModuleLoader__.load({
         status: id => states.get(id),
         rosterVersion: () => roster,
         subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+        preset: id => {
+          const direct = snapshot()?.projectionsBySession?.[id]?.values?.agentPreset;
+          if (direct !== undefined) return direct;
+          try {
+            const b = sessions?.binding?.(id)?.session?.getSnapshot?.()?.agentPreset;
+            if (b !== undefined) return b;
+          } catch {}
+          try {
+            const s = snapshot()?.byId?.[id]?.preset;
+            if (s !== undefined) return s;
+          } catch {}
+          const parentId = snapshot()?.projectionsBySession?.[id]?.values?.agentTeam?.parentSessionId
+            || sessions?.binding?.(id)?.session?.getSnapshot?.()?.subagent?.address?.parentSessionId;
+          if (parentId && parentId !== id) {
+            const p = snapshot()?.projectionsBySession?.[parentId]?.values?.agentPreset;
+            if (p !== undefined) return p;
+            try {
+              const pb = sessions?.binding?.(parentId)?.session?.getSnapshot?.()?.agentPreset;
+              if (pb !== undefined) return pb;
+            } catch {}
+          }
+          return undefined;
+        },
+        isCapabilityTeam: id => {
+          if (!id) return false;
+          const directPreset = snapshot()?.projectionsBySession?.[id]?.values?.agentPreset;
+          if (directPreset === 'capability-team') return true;
+          if (directPreset && directPreset !== 'capability-team') return false;
+          const vals = snapshot()?.projectionsBySession?.[id]?.values;
+          if (vals?.capabilityTeamConfig !== undefined || vals?.capabilityTeamActivity !== undefined || vals?.capabilityTeamUsage !== undefined) return true;
+          const parentId = vals?.agentTeam?.parentSessionId
+            || sessions?.binding?.(id)?.session?.getSnapshot?.()?.subagent?.address?.parentSessionId;
+          if (parentId && parentId !== id) {
+            const parentP = snapshot()?.projectionsBySession?.[parentId]?.values?.agentPreset;
+            if (parentP === 'capability-team') return true;
+            if (parentP && parentP !== 'capability-team') return false;
+            const parentVals = snapshot()?.projectionsBySession?.[parentId]?.values;
+            if (parentVals?.capabilityTeamConfig !== undefined || parentVals?.capabilityTeamActivity !== undefined || parentVals?.capabilityTeamUsage !== undefined) return true;
+          }
+          const s = snapshot()?.byId?.[id]?.preset;
+          if (s === 'capability-team') return true;
+          if (s && s !== 'capability-team') return false;
+          return undefined;
+        },
         async children(parentId) {
           const reply = await remote?.subagents?.list?.(parentId);
           if (!reply?.ok) throw new Error(reply?.error?.message ?? 'subagent catalog unavailable');
@@ -3578,12 +3645,20 @@ window.__ModuleLoader__.load({
         }), 'capability-team: right sidebar tab');
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab', key: 'capability-team-overview', id: 'capability-team-overview', locale: NS,
-        }, props => h(Overview, { ...props,
+        }, props => {
+          const effectiveLive = props.live ?? live;
+          const targetSessionId = props.sessionId;
+          const isCtm = effectiveLive?.isCapabilityTeam?.(targetSessionId);
+          if (isCtm === false) {
+            return h('div', { className: 'ctm-ov-empty ctm-not-mounted', 'data-tone': 'warn', style: { padding: '24px' } },
+              h('p', { className: 'ctm-sub' }, bound('overview.notMounted')));
+          }
+          return h(Overview, { ...props,
           // Item 3: Overview owns its own bilingual dictionary lookup keyed by its own locale toggle, not the
           // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
           // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.
           // `hostT` is only a fallback for any key missing from the plugin's own zh/en dictionaries.
-          hostT: bound, load: props.load ?? load, save: props.save ?? save, live: props.live ?? live, cache: props.cache ?? snapshotCache,
+          hostT: bound, load: props.load ?? load, save: props.save ?? save, live: effectiveLive, cache: props.cache ?? snapshotCache,
           // Same navigation as DSH's own Team panel: open normal session for Lead or continuable subagent address for teammate.
           openMember: typeof ctx.uiWorkspace?.openSession === 'function'
             ? (parentSessionId, childSessionId) => {
@@ -3592,7 +3667,8 @@ window.__ModuleLoader__.load({
               } else {
                 ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' });
               }
-            } : undefined })));
+            } : undefined });
+        }));
         // Each view receives `t`; fall back to the bound translator when the slot does not inject one.
         const withT = View => function CapabilityToolView(props) { return h(View, { ...props, t: props.t ?? bound }); };
         for (const [key, View] of Object.entries(VIEWS)) {

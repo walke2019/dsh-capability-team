@@ -127,7 +127,7 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
   // Install the team context in each Team member's own scope, like the native Team identity.
   const installed = new Map();
   const install = async agent => {
-    if (installed.has(agent) || ctx.agentTeams.tryMembership(agent) === undefined) return;
+    if (installed.has(agent) || !ownsCapabilityTeam(ctx, agent) || ctx.agentTeams.tryMembership(agent) === undefined) return;
     installed.set(agent, undefined);
     // Pin before the first step; a failure must not block creation and resurfaces on the next request.
     await team.pin(agent).catch(() => {});
@@ -154,3 +154,4 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
   ctx.effect(() => () => { for (const dispose of installed.values()) dispose?.(); installed.clear(); });
 }
 export { seed };
+import { ownsCapabilityTeam } from './preset-guard.js';

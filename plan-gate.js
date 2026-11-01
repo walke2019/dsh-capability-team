@@ -1,6 +1,7 @@
 // Plan-first teammates: a capability with `planFirst` submits a plan to the Lead and waits for approval before it may
 // run execution tools. A new dispatch plan that assigns the role asks for a fresh plan, so one approval covers one task.
 import { params } from './tool-schema.js';
+import { ownsCapabilityTeam } from './preset-guard.js';
 import { resolveRole } from './config.js';
 import { toolClass } from './workflow.js';
 export const SUBMIT_TOOL = 'capability_submit_plan';
@@ -41,7 +42,7 @@ export function createPlanGate(ctx, team) {
     },
     guard(exec) {
       const membership = ctx.agentTeams.tryMembership(exec.agent);
-      if (membership?.role !== 'teammate') return undefined;
+      if (!ownsCapabilityTeam(ctx, exec.agent) || membership?.role !== 'teammate') return undefined;
       let resolved;
       try { resolved = roleOf(exec.agent, membership); } catch { return undefined; } // Routing and the access guard report config errors.
       return planDenial(exec, resolved.role, plans.get(keyOf(membership)), resolved.effective.workflow);

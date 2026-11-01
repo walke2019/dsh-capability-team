@@ -7,7 +7,7 @@ function fixture(planFirst = true) {
   const guards = []; const tools = new Map(); const sent = [];
   const lead = { id: 'L', session: {} }; const mate = { id: 'M', session: {} };
   const members = new Map([[lead, { id: 'T', role: 'lead', name: 'lead' }], [mate, { id: 'T', role: 'teammate', name: 'lv-bu' }]]);
-  const ctx = { effect: fn => fn(), tools: { guard: fn => guards.push(fn), register: tool => tools.set(tool.name, tool) },
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), tools: { guard: fn => guards.push(fn), register: tool => tools.set(tool.name, tool) },
     agentTeams: { tryMembership: a => members.get(a), membership: a => members.get(a), sendMessage: async (from, request) => { sent.push({ from: from.id, to: request.target, text: request.content[0].text }); } } };
   const gate = createPlanGate(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }), base: effective });
   gate.register();

@@ -32,7 +32,14 @@ ${tokenRuleText(TOKEN_RULES)}项目可通过 workflow.fileLimits / workflow.toke
  * The loop re-runs agent/request for each retry, so the failover state picks the attempt's route.
  */
 export function apply(ctx, team, failover, observability, taskControl) {
-  ctx.effect(() => ctx.systemPrompt.section({ name: 'capability-team:policy', order: 95, text: policy }));
+  const installed = new WeakSet();
+  const installPolicy = agent => {
+    if (!team.owns(agent) || installed.has(agent)) return;
+    installed.add(agent);
+    agent.ctx.systemPrompt.context({ name: 'capability-team:policy', order: 95, text: () => team.owns(agent) ? policy : '' });
+  };
+  ctx.on('agent/created', ({ agent }) => installPolicy(agent));
+  for (const agent of ctx.agents?.list?.() ?? []) installPolicy(agent);
   const longContext = createLongContext();
   const hadOverride = new WeakSet();
   ctx.on('agent/request', async ({ agent, turn, step }, next) => {

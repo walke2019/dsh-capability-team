@@ -52,7 +52,7 @@ test('守卫按队友角色生效，非团队会话与未登记队友不拦截',
   let guard;
   const effective = effectiveConfig({});
   const members = new Map([['w', { role: 'teammate', name: 'chen-lin' }], ['b', { role: 'teammate', name: 'lv-bu' }], ['x', { role: 'teammate', name: 'ghost' }]]);
-  const ctx = { effect: fn => fn(), tools: { guard: fn => { guard = fn; } },
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), tools: { guard: fn => { guard = fn; } },
     agentTeams: { tryMembership: agent => members.get(agent.id) }, workingDirectory: { get: () => '/repo' } };
   applyAccess(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }) });
   const call = (id, name, args) => guard({ agent: { id, session: {} }, name, arguments: args });
@@ -97,7 +97,7 @@ test('守卫读取官方预设是否生效来决定是否放行命令', () => {
   let guard;
   const effective = effectiveConfig({});
   let active = false;
-  const ctx = { effect: fn => fn(), tools: { guard: fn => { guard = fn; } }, get: key => key === 'permissionPresets' ? { current: () => active ? 'read-only' : 'danger-full-access' } : undefined,
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), tools: { guard: fn => { guard = fn; } }, get: key => key === 'permissionPresets' ? { current: () => active ? 'read-only' : 'danger-full-access' } : undefined,
     agentTeams: { tryMembership: () => ({ role: 'teammate', name: 'zhao-yun' }) }, workingDirectory: { get: () => '/repo' } };
   applyAccess(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }) });
   const call = () => guard({ agent: { id: 'r', session: {} }, name: 'bash', arguments: {} });

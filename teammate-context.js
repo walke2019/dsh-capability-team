@@ -3,10 +3,12 @@
 // 1. Lead-only plugin tools are registered on the lead's agent only, teammate-only tools on teammates only.
 // 2. The skill catalog DSH injects is shortened for teammates (name + one short line), or limited / dropped
 //    per capability (`capabilities.<id>.skills`: 'compact' | 'full' | 'none' | [names or prefixes ending in *]).
+import { ownsCapabilityTeam } from './preset-guard.js';
 export const LEAD_ONLY_TOOLS = new Set(['capability_dispatch_plan', 'capability_free_task', 'capability_team_save', 'capability_team_import',
   'capability_rotate_member', 'capability_review_plan', 'capability_model_prefs', 'capability_task_budget', 'capability_member_override']);
 export const TEAMMATE_ONLY_TOOLS = new Set(['capability_handoff', 'capability_submit_plan']);
 export const CATALOG_DESCRIPTION_CHARS = 72;
+export const CATALOG_MAX_CHARS = 26000;
 const isTeammateAgent = agent => agent?.session?.header?.parentSession !== undefined;
 /**
  * A ctx whose tools.register keeps lead-only and teammate-only tools back and installs them per agent when that
@@ -19,7 +21,7 @@ export function scopeTools(ctx) {
   const lead = [], teammate = [];
   const installed = new WeakMap();
   const install = agent => {
-    if (!agent?.ctx?.tools) return;
+    if (!agent?.ctx?.tools || !ownsCapabilityTeam(ctx, agent)) return;
     const done = installed.get(agent) ?? new Set();
     installed.set(agent, done);
     for (const def of isTeammateAgent(agent) ? teammate : lead) {
@@ -55,12 +57,17 @@ export function shortDescription(text, max = CATALOG_DESCRIPTION_CHARS) {
 }
 const matches = (name, rules) => rules.some(r => (r.endsWith('*') ? name.startsWith(r.slice(0, -1)) : name === r));
 /** Rewrite one skill-catalog message for a policy; undefined means drop it. Entries (used for digests) are kept. */
-export function rewriteCatalog(message, policy) {
-  if (policy === 'full') return message;
+export function rewriteCatalog(message, policy, maxChars = CATALOG_MAX_CHARS) {
+  if (policy === 'full' && message.content?.reduce((n, c) => n + (c.text?.length ?? 0), 0) <= maxChars) return message;
   const entries = message.source?.entries ?? [];
   const kept = Array.isArray(policy) ? entries.filter(e => matches(e.name, policy)) : entries;
   if (policy === 'none' || (Array.isArray(policy) && !kept.length)) return undefined;
-  const lines = kept.map(e => `- \`${e.name}\`${e.description ? `: ${shortDescription(e.description)}` : ''}`);
+  const lines = []; let used = 500;
+  for (const e of kept) {
+    const line = `- \`${e.name}\`${e.description ? `: ${shortDescription(e.description)}` : ''}`;
+    if (used + line.length + 1 > maxChars) continue;
+    lines.push(line); used += line.length + 1;
+  }
   const text = ['<system-reminder>', 'Skills you can load with the `skill` tool (short list; load one before using it):', '', '<available_skills>', ...lines, '</available_skills>',
     'If the task clearly matches a skill, call the `skill` tool with its exact name before acting, then follow its full instructions.', '</system-reminder>'].join('\n');
   return { ...message, content: [{ type: 'text', text }] };
@@ -79,15 +86,15 @@ export function validateSkillsPolicy(value, label) {
 export function applySkillCatalog(ctx, policyOf) {
   ctx.on('agent/pre-step', async (payload, next) => {
     const decision = await next();
-    if (decision?.kind === 'reject' || !isTeammateAgent(payload.agent) || !Array.isArray(decision?.messages)) return decision;
+    if (decision?.kind === 'reject' || !ownsCapabilityTeam(ctx, payload.agent) || !isTeammateAgent(payload.agent) || !Array.isArray(decision?.messages)) return decision;
     let policy;
     try { policy = policyOf(payload.agent) ?? 'compact'; } catch { policy = 'compact'; }
-    if (policy === 'full') return decision;
-    const messages = [];
+    const messages = []; let remaining = CATALOG_MAX_CHARS;
     for (const m of decision.messages) {
       if (m?.source?.kind !== 'skill-catalog') { messages.push(m); continue; }
-      const next = rewriteCatalog(m, policy);
-      if (next) messages.push(next);
+      if (remaining < 500) continue;
+      const next = rewriteCatalog(m, policy, remaining);
+      if (next) { messages.push(next); remaining -= next.content.reduce((n, c) => n + (c.text?.length ?? 0), 0); }
     }
     return { ...decision, messages };
   }, { prepend: true });

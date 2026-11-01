@@ -11,10 +11,12 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promptTokens } from './long-context.js';
+import { ownsCapabilityTeam } from './preset-guard.js';
+import { createTokenMetrics, usageSample } from './token-metrics.js';
 export const TOKEN_RULES = { idleCompactRatio: 0.35, trimToolOutputChars: 6000, keepHeadChars: 3000, keepTailChars: 1500 };
 const KEYS = Object.keys(TOKEN_RULES);
 /** Tools whose output is a log or listing rather than content the model must read whole. */
-export const TRIMMED_TOOLS = new Set(['bash', 'pwsh', 'grep', 'glob', 'job_output', 'cpa_web_fetch', 'cpa_search', 'session_search', 'session_event_search']);
+export const TRIMMED_TOOLS = new Set(['bash', 'pwsh', 'grep', 'glob', 'job_output', 'web_fetch', 'web_search', 'cpa_web_fetch', 'cpa_search', 'session_search', 'session_event_search']);
 export function validateTokenRules(value) {
   if (value === undefined || value === null) return { ...TOKEN_RULES };
   if (value === false) return false;
@@ -38,8 +40,9 @@ export function trimText(text, rules, spillPath) {
   const tail = text.slice(-rules.keepTailChars);
   return `${head}\n\n[…已省略中间 ${text.length - head.length - tail.length} 字（共 ${text.length} 字）。完整输出：${spillPath}，需要时用 grep 或 read 的 offset/limit 查看…]\n\n${tail}`;
 }
-export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'capability-team-spill'), rulesOf } = {}) {
+export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'capability-team-spill'), rulesOf, trimmedTools = TRIMMED_TOOLS, ratesOf } = {}) {
   const compacting = new WeakSet();
+  const metrics = createTokenMetrics({ ratesOf });
   // `compaction` is not in the plugin's inject list, and cordis throws on a direct read of an un-injected
   // service (that once stopped the DSH host). It arrives through ctx.inject when the host provides it.
   let compactionService;
@@ -50,7 +53,7 @@ export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'ca
     if (!project) return TOKEN_RULES;
     try { return team.loadSync(project, agent).effective.workflow.tokens; } catch { return TOKEN_RULES; }
   };
-  const isMember = agent => { try { return !!ctx.agentTeams.tryMembership(agent); } catch { return false; } };
+  const isMember = agent => ownsCapabilityTeam(ctx, agent) && !!ctx.agentTeams.tryMembership(agent);
   const ratioOf = agent => {
     try {
       const projections = ctx.get?.('sessionProjections');
@@ -66,10 +69,12 @@ export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'ca
     const ratio = ratioOf(agent);
     if (ratio === undefined || ratio < r.idleCompactRatio) return false;
     compacting.add(agent);
-    try { return (await service.compactNow(agent, AbortSignal.timeout(180000))) !== null; }
+    const started = Date.now();
+    try { const done = (await service.compactNow(agent, AbortSignal.timeout(180000))) !== null; if (done) metrics.compact(agent, Date.now() - started); return done; }
     finally { compacting.delete(agent); }
   }
   const api = {
+    metrics,
     /** Compact an idle member whose context is above the idle threshold. Never throws; returns true when it ran. */
     async compactIdle(agent) {
       // busy (new work arrived), nothing compactable or any host error: skip, and try again on the next idle
@@ -78,15 +83,22 @@ export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'ca
     /** Post-execute decision: trim an oversized log/listing result for a team member. */
     async trim(exec, result) {
       const r = rules(exec.agent);
-      if (!r || !TRIMMED_TOOLS.has(exec.name) || !isMember(exec.agent) || !Array.isArray(result?.content)) return undefined;
+      if (!r || !new Set(trimmedTools).has(exec.name) || !isMember(exec.agent) || !Array.isArray(result?.content)) return undefined;
       const text = result.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
       if (text.length <= r.trimToolOutputChars || result.content.some(b => b.type !== 'text')) return undefined;
       await mkdir(spillDir, { recursive: true });
       const path = join(spillDir, `${String(exec.callId ?? Date.now()).replace(/[^\w.-]/g, '_')}.txt`);
       await writeFile(path, text);
-      return [{ type: 'text', text: trimText(text, r, path) }];
+      const trimmed = trimText(text, r, path);
+      metrics.trim(exec.agent, text.length, trimmed.length);
+      return [{ type: 'text', text: trimmed }];
     },
     register() {
+      ctx.on('agent/request', async (payload, next) => {
+        const result = await next();
+        if (isMember(payload.agent)) metrics.sample(payload.agent, payload.turn, payload.step, usageSample(ctx.get?.('sessionProjections'), payload.agent.session));
+        return result;
+      });
       try { ctx.inject?.(['compaction'], scoped => { compactionService = scoped.compaction; scoped.effect?.(() => () => { compactionService = undefined; }); }); } catch { /* host without compaction */ }
       // Listeners must never reject: an unhandled rejection inside a host event stops the DSH host.
       ctx.on('agent/status', ({ agent, status }) => { if (status === 'idle') api.compactIdle(agent).catch(() => {}); });

@@ -1,4 +1,5 @@
 import { safeId, safeTarget, safeTime, summarizeActivity } from './activity-summary.js';
+import { isolatedProjection } from './preset-guard.js';
 import { OWN_USAGE_KEY, initOwnUsage, applyOwnUsage, ownUsageView } from './usage.js';
 const schema = { parse(v) { if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('Invalid observability state'); return v; } };
 const n = x => typeof x === 'number' && x >= 0 ? Math.min(x, Number.MAX_SAFE_INTEGER) : 0;
@@ -134,6 +135,6 @@ export const ownUsageDefinition = {
 export const observabilityDefinitions = [activityDefinition, artifactsDefinition, reportDefinition, ownUsageDefinition];
 export function applyObservabilityProjections(ctx) {
   ctx.inject?.(['sessionProjections'], scoped => {
-    for (const def of observabilityDefinitions) scoped.effect(() => scoped.sessionProjections.register(def), `capability-team: ${def.key}`);
+    for (const def of observabilityDefinitions) scoped.effect(() => scoped.sessionProjections.register(isolatedProjection(ctx, def)), `capability-team: ${def.key}`);
   });
 }

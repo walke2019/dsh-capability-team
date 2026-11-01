@@ -9,6 +9,7 @@ import { redactSecrets } from './memory-redact.js';
 import { MEMORY_KINDS, MEMORY_LIMITS, createMemoryStore } from './memory-store.js';
 import { baseName } from './session-rotation.js';
 import { params } from './tool-schema.js';
+import { ownsCapabilityTeam } from './preset-guard.js';
 const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] };
 const SCOPES = ['project', 'role', 'session', 'global'];
 const messageText = message => (Array.isArray(message?.content) ? message.content.map(c => c?.text ?? '').join('\n') : String(message?.text ?? message?.content ?? '')).trim();
@@ -17,7 +18,7 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
   const reports = new Map(); // `${session}:${callId}` → text of a pending teammate report
   const identity = agent => {
     const m = ctx.agentTeams.tryMembership(agent);
-    if (!m) return undefined;
+    if (!m || !ownsCapabilityTeam(ctx, agent)) return undefined;
     return { project: team.pinned(agent) ?? team.pinned(m.root ?? agent), role: m.role === 'lead' ? 'lead' : baseName(m.name), session: agent.id, lead: m.role === 'lead', leadId: (m.root ?? agent).id, name: m.name ?? 'lead' };
   };
   const embedOne = async (text, purpose) => { const out = await embedder.embed([text], purpose); return out ? { vector: out.vectors[0], model: out.model } : null; };
@@ -41,7 +42,12 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       const saved = await store.write({ scope: s, kind, text: clean, tags: Array.isArray(tags) ? tags.map(String).slice(0, 10) : [], key: key ? String(key).slice(0, 120) : null,
         vector: embedded?.vector ?? null, model: embedded?.model ?? null, source: { member: who.name, session: who.session, lead: who.leadId, at: Date.now() } });
       // Session-scoped notes stay local; everything else also becomes shared long-term memory.
-      if (!saved.merged && scope !== 'session') viking.enqueue(saved.memory, who);
+      if (scope !== 'session') {
+        try {
+          if (saved.superseded?.length) viking.revoke?.(saved.superseded);
+          if (!saved.merged || saved.superseded?.length) viking.enqueue(saved.memory, who);
+        } catch (error) { saved.syncError = error.message; }
+      }
       return saved;
     },
     async search(who, { query, k = 6, kinds }) {
@@ -52,7 +58,12 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       const local = await store.search({ project: who.project, role: who.lead ? undefined : who.role, session: who.session, query: q, vector: embedded?.vector, vectorModel: embedded?.model, k: limit, kinds });
       // Team memories first (scoped to this project/role), then shared long-term ones not already covered.
       const seen = new Set(local.map(r => r.memory.text));
-      const results = [...local, ...shared.filter(r => !seen.has(r.memory.text))].slice(0, limit + shared.length);
+      const results = []; let chars = 0;
+      for (const row of [...local, ...shared.filter(r => !seen.has(r.memory.text))]) {
+        const size = JSON.stringify(row.memory.text).length;
+        if (results.length >= limit || chars + size > 12000) continue;
+        results.push(row); chars += size;
+      }
       return { results, mode: embedded ? 'hybrid' : 'text', embedError: embedded ? null : embedder.lastError, ...(viking.enabled ? { shared: { count: shared.length, error: viking.lastError } } : {}) };
     },
     viking,
@@ -82,18 +93,18 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
     },
     register() {
       ctx.on('agent/created', ({ agent }) => {
-        if (!ctx.agentTeams.tryMembership(agent)) return;
+        if (!ownsCapabilityTeam(ctx, agent) || !ctx.agentTeams.tryMembership(agent)) return;
         agent.ctx.systemPrompt.context({ name: 'capability-team:memory', order: 97, text: () => hub.recallText(agent) });
       });
       ctx.on('agent/inbox/claimed', ({ agent, message }) => {
         const text = messageText(message);
-        if (text.length >= 8 && ctx.agentTeams.tryMembership(agent)) void hub.refreshRecall(agent, text.slice(0, 2000)).catch(() => {});
+        if (text.length >= 8 && ownsCapabilityTeam(ctx, agent) && ctx.agentTeams.tryMembership(agent)) void hub.refreshRecall(agent, text.slice(0, 2000)).catch(() => {});
       });
       // A teammate's successful final report to the Lead becomes a 'result' memory of its role.
       try {
         ctx.on('session/event', (session, event) => {
           const agent = session?.id && ctx.agents.get(session.id);
-          if (!agent || ctx.agentTeams.tryMembership(agent)?.role !== 'teammate') return;
+          if (!ownsCapabilityTeam(ctx, agent) || ctx.agentTeams.tryMembership(agent)?.role !== 'teammate') return;
           const d = event?.data ?? {};
           if (event.type === 'tool/call' && d.name === 'send_message') {
             let args = {}; try { args = typeof d.arguments === 'string' ? JSON.parse(d.arguments) : d.arguments ?? {}; } catch { return; }
@@ -125,8 +136,8 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
         parameters: params({ kind: { type: 'string', enum: ['pitfall', 'decision', 'note'] }, text: { type: 'string' }, scope: { type: 'string', enum: SCOPES },
           key: { type: 'string', description: '决定的主题键（可选），同一主题的新决定会替换旧的' }, tags: { type: 'array', items: { type: 'string' } } }, ['kind', 'text']),
         async execute(args, exec) {
-          const { memory, merged } = await hub.write(identity(exec.agent), args);
-          return JSON.stringify({ saved: true, merged, id: memory.id, kind: memory.kind, scope: memory.scope.kind, embedded: !!memory.vector });
+          const { memory, merged, syncError } = await hub.write(identity(exec.agent), args);
+          return JSON.stringify({ saved: true, merged, ...(syncError ? { syncWarning: syncError } : {}), id: memory.id, kind: memory.kind, scope: memory.scope.kind, embedded: !!memory.vector });
         },
       }));
       // Plugin reload or shutdown: send what is still queued for the shared long-term memory.

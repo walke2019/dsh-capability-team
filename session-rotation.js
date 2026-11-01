@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { params } from './tool-schema.js';
+import { ownsCapabilityTeam } from './preset-guard.js';
 import { promptTokens } from './long-context.js';
 export const ROTATION = { softCompactions: 2, hardCompactions: 3, softRatio: 0.75, hardRatio: 0.9, softRepeatReads: 15, hardTurns: 8, maxMembers: 8 };
 const KEYS = Object.keys(ROTATION);
@@ -91,7 +92,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
     /** Lead guard: no new work for a retired member or one past the hard line; successors may be spawned. */
     guard(exec) {
       const membership = ctx.agentTeams.tryMembership(exec.agent);
-      if (membership?.role !== 'lead') return undefined;
+      if (!ownsCapabilityTeam(ctx, exec.agent) || membership?.role !== 'lead') return undefined;
       const lead = exec.agent;
       if (exec.name === 'send_message') {
         const target = exec.arguments?.target;
@@ -167,10 +168,10 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
           facts.openTasks?.length ? `3. 看板任务 ${facts.openTasks.map(t => t.id).join('、')} 会在 ${successor} 开工时由插件自动改派给它` : null].filter(Boolean).join('\n'), prompt };
     },
     register() {
-      try { ctx.on('session/event', (session, event) => { if (session?.id && ctx.agentTeams.tryMembership?.(ctx.agents.get(session.id))?.role === 'teammate') foldEvent(counters(session.id), event); }); } catch { /* host without session observers */ }
+      try { ctx.on('session/event', (session, event) => { if (session?.id && ownsCapabilityTeam(ctx, ctx.agents.get(session.id)) && ctx.agentTeams.tryMembership?.(ctx.agents.get(session.id))?.role === 'teammate') foldEvent(counters(session.id), event); }); } catch { /* host without session observers */ }
       ctx.on('agent/created', ({ agent }) => {
         const identity = ctx.agentTeams.tryMembership(agent);
-        if (identity?.role !== 'teammate') return;
+        if (!ownsCapabilityTeam(ctx, agent) || identity?.role !== 'teammate') return;
         counters(agent.id);
         // Runtime context only says something once a threshold is crossed, so it does not churn the cache.
         agent.ctx.systemPrompt.context({ name: 'capability-team:rotation', order: 98, text: () => {

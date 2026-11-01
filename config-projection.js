@@ -1,6 +1,7 @@
 // Client-visible per-session counter of successful team-configuration changes: capability_team_save / _import
 // results and /capability-model-policy saves. The overview re-reads its configuration snapshot only when this
 // number moves, so every tab stays current without running the (conversation-logged) status command on a timer.
+import { isolatedProjection } from './preset-guard.js';
 export const CONFIG_KEY = 'capabilityTeamConfig';
 const SAVE_TOOLS = ['capability_team_save', 'capability_team_import'];
 const POLICY_COMMAND = 'capability-model-policy';
@@ -33,6 +34,6 @@ export const configDefinition = {
 export function applyConfigProjection(ctx) {
   if (typeof ctx.inject !== 'function') return;
   ctx.inject(['sessionProjections'], scoped => {
-    scoped.effect(() => scoped.sessionProjections.register(configDefinition), 'capability-team: config projection');
+    scoped.effect(() => scoped.sessionProjections.register(isolatedProjection(ctx, configDefinition)), 'capability-team: config projection');
   });
 }

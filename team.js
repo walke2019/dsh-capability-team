@@ -3,6 +3,7 @@ import { confirmedRoute, withConfirmedRoute } from './dispatch-confirm.js';
 import { baseName } from './session-rotation.js';
 import { resolveRole, baseConfig, withAutoRoutes } from './config.js';
 import { projectRoot, loadProject, loadProjectSync, defaultRoot } from './theme.js';
+import { ownsCapabilityTeam } from './preset-guard.js';
 import { autoMatch } from './defaults.js';
 import { applyModelPolicy } from './model-policy.js';
 import { readGlobalPolicy, readGlobalPolicySync, saveGlobalPolicy } from './session-policy.js';
@@ -62,7 +63,7 @@ export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = 
     preset, root,
     detection: () => detector.get(),
     refresh: () => detector.ensure(true),
-    owns: agent => ctx.agentTeams.tryMembership(agent) !== undefined,
+    owns: agent => ownsCapabilityTeam(ctx, agent) && !!ctx.agentTeams.tryMembership(agent),
     pin,
     pinned: agent => pins.get(agent),
     async load(agent) {

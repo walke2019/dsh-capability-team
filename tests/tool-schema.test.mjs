@@ -8,7 +8,7 @@ import { assertToolSchema } from '../tool-schema.js';
 test('每个注册的工具参数都是合法的对象根 JSON Schema，且只用 DSH 支持的关键字', () => {
   const tools = {};
   const created = [];
-  const ctx = { effect: f => f(), on: (name, fn) => { if (name === 'agent/created') created.push(fn); }, systemPrompt: { section: () => () => {} },
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: f => f(), on: (name, fn) => { if (name === 'agent/created') created.push(fn); }, systemPrompt: { section: () => () => {} },
     tools: { register: t => { tools[t.name] = t; return () => {}; }, guard: () => () => {} }, skills: { register: () => () => {} },
     agents: { list: () => [] }, agentTeams: { membership: () => ({ role: 'lead' }), tryMembership: () => undefined }, workingDirectory: {}, userQuestions: {},
     llm: { listProviders: () => [], listModels: async () => [] } };

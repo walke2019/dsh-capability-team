@@ -84,7 +84,7 @@ function loadPanel(fetchImpl) {
   new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => spec.factory(() => React) }, __ctmTestHook: x => { exposed = x; } }, fetch, AbortController });
   const t = k => `${k}[{name}|{field}]`;
   let first = true;
-  const render = () => { cursor = 0; effects.length = 0; const tree = exposed.IntegrationsPanel({ t }); if (first) { first = false; for (const f of effects.splice(0)) f(); } return tree; };
+  const render = () => { cursor = 0; effects.length = 0; const tree = exposed.IntegrationsPanel({ t, sessionId: 's1' }); if (first) { first = false; for (const f of effects.splice(0)) f(); } return tree; };
   return { render, calls, exposed };
 }
 const find = (n, p) => { if (!n || typeof n !== 'object') return; if (p(n)) return n; for (const c of n.children ?? []) { const r = find(c, p); if (r) return r; } };

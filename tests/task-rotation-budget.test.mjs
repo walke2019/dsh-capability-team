@@ -13,7 +13,7 @@ function setup() {
   const names = new Map([[worker, 'dev'], [next, 'dev-r2']]);
   const role = { provider: 'p', model: 'mid', tier: 'medium', fallbacks: [] };
   const effective = { roles: { dev: { capability: 'frontend' } }, capabilities: { frontend: role }, tiers: { low: ['low'], medium: ['mid'], upper: ['upper'], high: ['high'] } };
-  const ctx = { effect: fn => fn(), on: (key, fn) => { handlers[key] = fn; }, tools: { register: () => () => {} }, agents: { get: id => agents.get(id) },
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), on: (key, fn) => { handlers[key] = fn; }, tools: { register: () => () => {} }, agents: { get: id => agents.get(id) },
     agentTeams: { tryMembership: a => (a === lead ? { role: 'lead', name: 'lead', root: lead } : names.has(a) ? { role: 'teammate', name: names.get(a), root: lead } : undefined),
       listMembers: () => members, listTasks: () => [] },
     get: () => ({ stateOf: session => ({ view: { stepsStarted: steps[session.header.id] } }) }),

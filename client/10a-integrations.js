@@ -24,19 +24,23 @@
       return s;
     }
     const sourceLabel = (t, src) => (src?.startsWith('env:') ? fmt(t('int.source.env'), { name: src.slice(4) }) : label(t, `int.source.${src}`, src ?? ''));
-    function IntegrationsPanel({ t }) {
+    function IntegrationsPanel({ t, sessionId }) {
       const [data, setData] = React.useState(null);
       const [draft, setDraft] = React.useState({});
       const [status, setStatus] = React.useState(null);
       const [reload, setReload] = React.useState(0);
+      const noSession = !sessionId;
       React.useEffect(() => {
+        if (noSession) return undefined;
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-        fetch(apiUrl(INTEGRATIONS_PATH), { signal: ctrl?.signal })
+        const targetUrl = sessionId ? apiUrl(INTEGRATIONS_PATH, { sessionId }) : apiUrl(INTEGRATIONS_PATH);
+        fetch(targetUrl, { signal: ctrl?.signal })
           .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
           .then(body => { setData(body); setDraft({}); })
           .catch(e => { if (e?.name !== 'AbortError') setStatus({ tone: 'error', text: t('int.loadFailed') }); });
         return () => ctrl?.abort();
-      }, [reload]);
+      }, [reload, sessionId, noSession]);
+      if (noSession) return h('div', { className: 'ctm-ov-block ctm-int-empty' }, h('p', { className: 'ctm-sub' }, t('int.noSession')));
       if (!data) return h('div', { className: 'ctm-ov-block' }, h('p', { className: 'ctm-sub' }, status?.text ?? t('int.loading')));
       const valueOf = (section, key, kind) => draft[section]?.[key] ?? toInput(kind, data.file?.[section]?.[key] ?? (data.sources[section][key] === 'file' ? data.effective[section][key] : undefined));
       const set = (section, key, text) => setDraft(prev => ({ ...prev, [section]: { ...prev[section], [key]: text } }));
@@ -51,7 +55,8 @@
         if (!Object.keys(patch).length) return;
         setStatus({ text: t('int.saving') });
         try {
-          const res = await fetch(apiUrl(INTEGRATIONS_PATH), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: data.revision, patch }) });
+          const targetUrl = sessionId ? apiUrl(INTEGRATIONS_PATH, { sessionId }) : apiUrl(INTEGRATIONS_PATH);
+          const res = await fetch(targetUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expectedRevision: data.revision, patch }) });
           const body = await res.json().catch(() => ({}));
           if (res.ok) { setStatus({ tone: 'success', text: t('int.saved') }); setReload(n => n + 1); return; }
           if (res.status === 409) { setStatus({ tone: 'error', text: t('int.conflict') }); setReload(n => n + 1); return; }

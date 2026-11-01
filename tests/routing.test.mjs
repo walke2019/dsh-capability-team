@@ -11,7 +11,7 @@ import { base, fakeLlm } from './fixture.mjs';
 import { createFailover } from '../failover.js';
 function fakeCtx(membership, cwd) {
   const listeners = {}; const sections = [];
-  const ctx = {
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' },
     effect: fn => fn(),
     systemPrompt: { section: s => { sections.push(s); return () => {}; } },
     agentTeams: { membership: () => membership(), tryMembership: () => membership() },

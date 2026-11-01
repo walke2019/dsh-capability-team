@@ -5,7 +5,7 @@ import { effectiveConfig } from '../config.js';
 
 test('主控专用工具只装给主控，队友专用工具只装给队友，其他工具照常全局注册', () => {
   const global = [], handlers = {};
-  const host = { tools: { register: d => { global.push(d.name); return () => {}; }, guard: () => {} }, on: (n, fn) => { handlers[n] = fn; } };
+  const host = { agentPresets: { composedPreset: () => 'capability-team' }, tools: { register: d => { global.push(d.name); return () => {}; }, guard: () => {} }, on: (n, fn) => { handlers[n] = fn; } };
   const { ctx } = scopeTools(host);
   for (const name of ['capability_dispatch_plan', 'capability_team_save', 'capability_handoff', 'capability_team_read', 'cpa_search']) ctx.tools.register({ name });
   assert.deepEqual(global, ['capability_team_read', 'cpa_search']);
@@ -19,7 +19,7 @@ test('插件晚于会话加载：已存在的主控补装主控工具，队友�
   const handlers = {};
   const mk = parentSession => { const got = []; return { got, ctx: { tools: { register: d => { got.push(d.name); return () => {}; } } }, session: { header: parentSession ? { parentSession } : {} } }; };
   const lead = mk(undefined), mate = mk('lead'), late = mk(undefined);
-  const host = { tools: { register: () => () => {} }, agents: { list: () => [lead, mate] }, on: (n, fn) => { handlers[n] = fn; } };
+  const host = { agentPresets: { composedPreset: () => 'capability-team' }, tools: { register: () => () => {} }, agents: { list: () => [lead, mate] }, on: (n, fn) => { handlers[n] = fn; } };
   const { ctx } = scopeTools(host);
   for (const name of ['capability_dispatch_plan', 'capability_free_task', 'capability_handoff']) ctx.tools.register({ name });
   await new Promise(resolve => setTimeout(resolve, 0)); // existing agents are backfilled after registration
@@ -61,7 +61,7 @@ test('技能目录：精简为名字加一句话，可按名单保留，none 时
 
 test('技能目录处理挂在最外层（prepend），只改队友，不改主控', async () => {
   let registered;
-  applySkillCatalog({ on: (name, fn, opts) => { registered = { name, fn, opts }; } }, () => 'compact');
+  applySkillCatalog({ agentPresets: { composedPreset: () => 'capability-team' }, on: (name, fn, opts) => { registered = { name, fn, opts }; } }, () => 'compact');
   assert.equal(registered.name, 'agent/pre-step');
   assert.deepEqual(registered.opts, { prepend: true });
   const decision = { kind: 'continue', messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }, catalog] };

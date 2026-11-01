@@ -39,6 +39,29 @@
       const isTeammateSession = !!(parentSessionId && parentSessionId !== sessionId);
       const isOrphanSubagent = !isTeammateSession && !!live?.isOrphanSubagent?.(sessionId);
       const effectiveSessionId = parentSessionId || sessionId;
+      const stored = state.sessionId === effectiveSessionId ? state : null;
+      const cached = stored?.data ? null : cache?.get(effectiveSessionId);
+      // Before the first manual read in this panel, show the last cached snapshot for this session.
+      const current = cached ? { ...stored, data: cached.data, at: cached.at, configVersion: cached.configVersion, cached: true } : stored ?? {};
+      const d = current.data;
+      const isPresetMounted = (() => {
+        if (d?.preset !== undefined) return d.preset === 'capability-team';
+        if (typeof live?.isCapabilityTeam === 'function') {
+          const res = live.isCapabilityTeam(effectiveSessionId);
+          if (res !== undefined) return res;
+        }
+        const proj = live?.projections?.(effectiveSessionId);
+        if (proj?.agentPreset !== undefined) return proj.agentPreset === 'capability-team';
+        if (proj?.capabilityTeamConfig !== undefined || proj?.capabilityTeamActivity !== undefined || proj?.capabilityTeamUsage !== undefined) return true;
+        if (parentSessionId && parentSessionId !== sessionId) {
+          const parentProj = live?.projections?.(parentSessionId);
+          if (parentProj?.agentPreset !== undefined) return parentProj.agentPreset === 'capability-team';
+          if (parentProj?.capabilityTeamConfig !== undefined || parentProj?.capabilityTeamActivity !== undefined || parentProj?.capabilityTeamUsage !== undefined) return true;
+        }
+        const p = live?.preset?.(effectiveSessionId);
+        if (p !== undefined) return p === 'capability-team';
+        return undefined;
+      })();
       const configVersionNow = () => live?.projections?.(effectiveSessionId)?.capabilityTeamConfig?.version;
       // The status command leaves a card in the conversation (never model context), so it runs on a click, once when
       // a team session has no snapshot yet, and again only when a configuration save moves the config counter.
@@ -60,35 +83,30 @@
       React.useEffect(() => live?.subscribe(() => redraw(n => n + 1)), [live]);
       const rosterVersion = live?.rosterVersion?.() ?? 0;
       React.useEffect(() => {
-        if (!live) return undefined;
+        if (!live || isPresetMounted === false) return undefined;
         let stopped = false;
         live.children(effectiveSessionId).then(entries => { if (!stopped) setChildren({ sessionId: effectiveSessionId, entries }); }, () => {});
         return () => { stopped = true; };
-      }, [effectiveSessionId, live, rosterVersion]);
-      const stored = state.sessionId === effectiveSessionId ? state : null;
-      const cached = stored?.data ? null : cache?.get(effectiveSessionId);
-      // Before the first manual read in this panel, show the last cached snapshot for this session.
-      const current = cached ? { ...stored, data: cached.data, at: cached.at, configVersion: cached.configVersion, cached: true } : stored ?? {};
-      const d = current.data;
+      }, [effectiveSessionId, live, rosterVersion, isPresetMounted]);
       // The Lead's agentTeam projection is pushed live; without it the board falls back to the last refresh.
       const liveTeam = live?.projections?.(effectiveSessionId)?.agentTeam;
       const liveActivity = liveTeam ? teamActivityFrom(liveTeam, live) : null;
       const roster = liveRoster(effectiveSessionId, liveActivity ?? d?.activity, children?.sessionId === effectiveSessionId ? children.entries : null, live, liveActivity ? Date.now() : current.at);
       const usage = usageRows(d, liveTeam, live);
-      const shown = !isOrphanSubagent && !!(d || liveTeam);
+      const shown = isPresetMounted !== false && !isOrphanSubagent && !!(d || liveTeam);
       const boardRoles = d?.team?.roles ?? (liveTeam?.members ?? []).map(m => ({ id: m.name, displayName: m.name, ...(m.role === 'lead' ? { capability: 'orchestrator' } : {}) }));
       const configVersion = configVersionNow();
       // At most one automatic read per session and config counter; a failed one waits for a click or the next save.
       const autoKey = React.useRef('');
       React.useEffect(() => {
-        if (current.pending || !liveTeam) return;
+        if (isPresetMounted === false || current.pending || !liveTeam) return;
         const formed = (liveTeam.members?.length ?? 0) > 1;
         const stale = d ? configVersion !== undefined && current.configVersion !== configVersion : formed;
         const key = `${effectiveSessionId}:${d ? configVersion : 'initial'}`;
         if (!stale || autoKey.current === key) return;
         autoKey.current = key;
         refresh();
-      }, [effectiveSessionId, configVersion, !!d, !!liveTeam, liveTeam?.members?.length, current.pending]);
+      }, [effectiveSessionId, configVersion, !!d, !!liveTeam, liveTeam?.members?.length, current.pending, isPresetMounted]);
       // MVP-B: Failover runtime HTTP / SSE client
       const [runtimeState, setRuntimeState] = React.useState({ data: null, lag: false, unavailable: false });
       const lastEpoch = React.useRef(null);
@@ -271,8 +289,8 @@
         h('div', { className: 'ctm-ov-scroll' },
           subagentNoticeNode,
           current.error ? h('p', { role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, current.error) : null,
-          !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(current.pending ? 'overview.loading' : 'overview.empty')),
-            current.pending ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
+          !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(isPresetMounted === false ? 'overview.notMounted' : current.pending ? 'overview.loading' : 'overview.empty')),
+            (isPresetMounted === false || current.pending) ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
           (!isTeammateSession || showOverview) && d && team ? h('div', { className: 'ctm-ov-stats' },
             stat(team.roles?.length ?? 0, t('overview.statRoles'), undefined, 'r'),
             stat(working, t('overview.statWorking'), working ? 'brand' : undefined, 'w'),
@@ -310,7 +328,7 @@
             h(ErrorBoundary, { key: `${effectiveSessionId}:artifacts`, t },
               h(ArtifactsRack, { sessionId: effectiveSessionId, liveTeam, live, t }))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'integrations', hidden: tab !== 'integrations' },
-            h(ErrorBoundary, { key: `${effectiveSessionId}:integrations`, t }, tab === 'integrations' ? h(IntegrationsPanel, { t }) : null)) : null,
+            h(ErrorBoundary, { key: `${effectiveSessionId}:integrations`, t }, tab === 'integrations' ? h(IntegrationsPanel, { t, sessionId: effectiveSessionId || null }) : null)) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'report', hidden: tab !== 'report' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:report`, t },
               h(BattleReportView, { sessionId: effectiveSessionId, liveTeam, live, t, runtimeState }))) : null,

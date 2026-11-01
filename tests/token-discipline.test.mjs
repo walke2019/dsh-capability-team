@@ -18,7 +18,7 @@ test('token 规则：默认值、校验、写进团队铁律', () => {
 });
 
 const member = { id: 'm', session: {} };
-const mkCtx = (extra = {}) => ({ agentTeams: { tryMembership: a => (a === member ? { role: 'teammate' } : undefined) }, ...extra });
+const mkCtx = (extra = {}) => ({ agentPresets: { composedPreset: () => 'capability-team' }, agentTeams: { tryMembership: a => (a === member ? { role: 'teammate' } : undefined) }, ...extra });
 
 test('长的命令输出只保留头尾，完整内容存到文件；读文件结果不截', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'spill-'));

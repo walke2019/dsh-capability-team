@@ -226,13 +226,14 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
   };
 }
 /** GET ?sessionId=&callId= → pending view; POST {sessionId, callId, decision, scope, routes, catalogVersion}. */
+import { ownsCapabilityTeam } from './preset-guard.js';
 export async function handleDispatchConfirm(ctx, request) {
   const fail = (status, code, message) => Response.json({ code, message }, { status });
   try {
     const url = new URL(request.url);
     const lead = id => {
       const agent = typeof id === 'string' && /^[\w.:-]{1,256}$/.test(id) ? ctx.get('agents')?.get(id) : undefined;
-      return agent && ctx.get('agentTeams')?.tryMembership(agent)?.role === 'lead' ? agent : undefined;
+      return ownsCapabilityTeam(ctx, agent) && ctx.get('agentTeams')?.tryMembership(agent)?.role === 'lead' ? agent : undefined;
     };
     if (request.method === 'GET') {
       const agent = lead(url.searchParams.get('sessionId'));

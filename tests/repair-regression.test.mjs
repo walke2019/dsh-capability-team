@@ -83,7 +83,7 @@ test('修复：会话策略同时影响同步提示词和异步请求，恢复�
 });
 test('修复：主控配置损坏时不放行执行工具', () => {
   const agent = {};
-  const ctx = { agentTeams: { tryMembership: () => ({ role: 'lead' }) } };
+  const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, agentTeams: { tryMembership: () => ({ role: 'lead' }) } };
   const team = { pinned: () => 'fixture', loadSync: () => { throw new Error('broken fixture'); } };
   assert.match(createWorkflow(ctx, team).guard({ agent, name: 'pwsh' }), /配置读取失败/);
 });

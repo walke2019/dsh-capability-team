@@ -66,10 +66,11 @@ export function accessSummary(access) {
   if (access.deny.length) parts.push(`禁用工具 ${access.deny.join('、')}`);
   return parts.length ? parts.join('；') : undefined;
 }
+import { ownsCapabilityTeam } from './preset-guard.js';
 export function applyAccess(ctx, team) {
   ctx.effect(() => ctx.tools.guard(exec => {
     const membership = ctx.agentTeams.tryMembership(exec.agent);
-    if (membership === undefined) return undefined;
+    if (!ownsCapabilityTeam(ctx, exec.agent) || membership === undefined) return undefined;
     const project = team.pinned(exec.agent);
     if (!project) return undefined; // Pinned before the first request; nothing can run earlier.
     let role, effective;
