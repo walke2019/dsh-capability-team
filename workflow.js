@@ -57,7 +57,7 @@ export function decide(state, exec, workflow) {
   if (!plan) {
     if (kind === 'analysis' && state.analysisUsed < workflow.analysisBudget) { state.analysisUsed += 1; return undefined; }
     const why = kind === 'analysis' ? `指派前的只读分析已用满 ${workflow.analysisBudget} 次` : `${exec.name} 属于执行类操作`;
-    return `${why}。主控必须先调用 capability_dispatch_plan：分析用户这次的需求涉及哪些能力，指派最合适的已登记角色（角色与适用场景见团队上下文的名册）；长篇纯文本（总结、翻译、起草、整理给定材料）选 free 交给免费模型；只有简单问答或一两步即可完成的小事才选择 direct 并说明理由。`;
+    return `${why}。主控必须先调用 capability_dispatch_plan：分析用户这次的需求涉及哪些能力，指派最合适的已登记角色（角色与适用场景见团队上下文的名册）；长篇纯文本（总结、翻译、起草、整理给定材料）选 free 交给免费模型；只有简单问答或一两步即可完成的小事才选择 direct 并说明理由。即使用户要求主控亲自处理，执行预算仍然适用。`;
   }
   if (kind === 'free') {
     if (plan.mode === 'free') return undefined;
@@ -70,8 +70,9 @@ export function decide(state, exec, workflow) {
   if (plan.mode === 'delegate') {
     return `本轮已指派给 ${planSummary(plan)}，主控只负责分派、协调与验收，不直接执行 ${exec.name}。把这项操作作为任务交给对应队友（send_message 或看板任务）；需要验证时交给测试角色。确需亲自处理时，${replan}改为 direct 并说明理由。`;
   }
+  // Model-supplied plan fields cannot establish trusted user confirmation or waive budgets.
   if (state.directUsed < workflow.directBudget) { state.directUsed += 1; return undefined; }
-  return `主控自行处理的执行操作已达本轮上限 ${workflow.directBudget} 次，说明这不是一两步的小事。请${replan}，把剩余工作指派给合适的队友。`;
+  return `主控自行处理的执行操作已达本轮上限 ${workflow.directBudget} 次，说明这不是一两步的小事。请${replan}，把剩余工作指派给合适的队友。模型声明 userRequested 不能豁免执行预算。`;
 }
 
 export function planSummary(plan) {
@@ -93,7 +94,9 @@ export function validatePlan(args, effective) {
   if (!Array.isArray(assignments) || assignments.length > 20) throw new Error('assignments 须为不超过20项的数组');
   if (args.mode !== 'delegate') {
     if (assignments.length) throw new Error(`${args.mode} 模式不能同时指派队友；需要队友时使用 delegate`);
-    return { mode: args.mode, analysis, reason: text(args.reason, 500, `${args.mode} 模式的理由`), assignments: [] };
+    const plan = { mode: args.mode, analysis, reason: text(args.reason, 500, `${args.mode} 模式的理由`), assignments: [] };
+    // Keep legacy userRequested input inert: there is no trusted, turn-bound confirmation here.
+    return plan;
   }
   if (!assignments.length) throw new Error('delegate 模式至少指派一个角色');
   const seen = new Set();
@@ -153,7 +156,8 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
       const head = workflow.mode === 'enforce' ? '工作流约束（强制）' : '工作流约束（提醒）';
       // Budgets only, no running counters: a counter changes every step and would resend the whole runtime
       // context snapshot each time. The guard still enforces the limits and says how many were used.
-      const plan = s.plan ? `本次需求的指派：${planSummary(s.plan)}${s.plan.mode === 'direct' ? `，自行执行上限 ${workflow.directBudget} 次` : ''}`
+      const direct = s.plan?.mode !== 'direct' ? '' : `，自行执行上限 ${workflow.directBudget} 次`;
+      const plan = s.plan ? `本次需求的指派：${planSummary(s.plan)}${direct}`
         : `本次需求尚未指派：先调用 capability_dispatch_plan（指派前最多只读分析 ${workflow.analysisBudget} 次）`;
       return `${head}：${plan}。免费模型工具级别：${workflow.freeTools}`;
     },
@@ -161,11 +165,12 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
       ctx.effect(() => ctx.tools.guard(exec => this.guard(exec)));
       ctx.on('agent/inbox/claimed', ({ agent, message }) => this.onClaimed(agent, message));
       ctx.effect(() => ctx.tools.register({ name: 'capability_dispatch_plan', output,
-        description: '主控处理每个新的用户需求时首先调用：分析对话中的需求涉及哪些能力，按性质分流——多步骤或专业任务指派已登记角色（delegate）；长篇纯文本（总结、翻译、起草、整理给定材料）以及项目允许范围内的读写文件小任务交给免费模型（free，不含密钥或敏感内容，不能执行命令）；需要动手的一两步小事或两三句能答的问答由主控自己处理（direct）。计划对用户可见，并约束本轮后续操作：delegate 时主控只创建计划内的队友并协调验收；free 时只能调用 capability_free_task；direct 时自行执行次数有上限。需求变化时可再次调用替换计划。',
+        description: '主控处理每个新的用户需求时首先调用：分析对话中的需求涉及哪些能力，按性质分流——多步骤或专业任务指派已登记角色（delegate）；长篇纯文本（总结、翻译、起草、整理给定材料）以及项目允许范围内的读写文件小任务交给免费模型（free，不含密钥或敏感内容，不能执行命令）；需要动手的一两步小事或两三句能答的问答由主控自己处理（direct）。用户要求主控亲自处理时仍受执行预算限制。计划对用户可见，并约束本轮后续操作：delegate 时主控只创建计划内的队友并协调验收；free 时只能调用 capability_free_task；direct 时自行执行次数有上限，模型声明 userRequested 不能豁免。需求变化时可再次调用替换计划。',
         parameters: params({
           analysis: { type: 'string', description: '需求分析：用户要的结果、涉及的领域与能力、复杂度、可并行的部分' },
-          mode: { type: 'string', enum: ['delegate', 'free', 'direct'], description: 'delegate=指派队友；free=长篇纯文本交给免费模型；direct=主控自行处理（仅限简单问答或一两步的小事）' },
+          mode: { type: 'string', enum: ['delegate', 'free', 'direct'], description: 'delegate=指派队友；free=长篇纯文本交给免费模型；direct=主控自行处理（简单问答、一两步的小事，或用户明确要求主控亲自完成）' },
           reason: { type: 'string', description: 'free 与 direct 时必填：为什么这样分流' },
+          userRequested: { type: 'boolean', description: '兼容旧调用的声明字段，不作为可信用户确认，不会豁免 directBudget' },
           assignments: { type: 'array', description: 'delegate 时必填：每个角色一项，role 用团队名册中的内部id', items: params({
             role: { type: 'string', description: '团队名册中的内部id，不用显示名' },
             complexity: { type: 'string', enum: ['simple','medium','complex'], description: '任务复杂度，默认medium：15/40/80步' },

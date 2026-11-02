@@ -3,11 +3,13 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import { resolveRole } from './config.js';
 import { checkFileLimits } from './file-limits.js';
+import { restrictiveToolName } from './tool-names.js';
 /** Tools that run arbitrary commands; a path restriction is meaningless while these stay available. */
 export const SHELL_TOOLS = ['bash', 'pwsh', 'terminal_*'];
 /** DSH file tools that modify files, with the argument holding the target path (dsh-tool-fs, dsh-tool-str-replace-editor). */
 const EDIT_TOOLS = { write: 'file_path', edit: 'file_path', str_replace_editor: 'path' };
 export const matchesTool = (name, rules) => rules.some(rule => rule.endsWith('*') ? name.startsWith(rule.slice(0, -1)) : name === rule);
+const matchesRestrictedTool = (name, rules) => matchesTool(name, rules) || matchesTool(restrictiveToolName(name, n => matchesTool(n, rules)), rules);
 /** Project-relative glob: `**` crosses directories, `*` and `?` stay inside one segment. */
 export function globRegex(pattern) {
   let out = '';
@@ -23,8 +25,9 @@ export function globRegex(pattern) {
 }
 /** Target path of a file-modifying call, or undefined when the call does not modify a file. */
 export function editTarget(exec) {
-  const key = EDIT_TOOLS[exec.name];
-  if (!key || (exec.name === 'str_replace_editor' && exec.arguments?.command === 'view')) return undefined;
+  const name = restrictiveToolName(exec.name, EDIT_TOOLS);
+  const key = EDIT_TOOLS[name];
+  if (!key || (name === 'str_replace_editor' && exec.arguments?.command === 'view')) return undefined;
   return typeof exec.arguments?.[key] === 'string' ? exec.arguments[key] : '';
 }
 /** Whether the session currently runs under the capability's DSH permission preset (sandbox and approval both match). */
@@ -44,8 +47,8 @@ export function ensurePreset(presets, session, access, log = () => {}) {
  */
 export function checkAccess(exec, access, { project, cwd, label, sandboxed = false }) {
   if (!access) return undefined;
-  if (access.deny.length && matchesTool(exec.name, access.deny)) return `${label}不允许使用工具 ${exec.name}（项目团队配置的 access.deny）。需要时请向 lead 汇报，由主控改派或经用户确认调整权限。`;
-  if (!access.shell && !sandboxed && matchesTool(exec.name, SHELL_TOOLS)) return `${label}不允许执行命令（项目团队配置的 access.shell=false${access.preset ? `，权限预设 ${access.preset} 尚未生效` : ''}）。需要运行命令时请向 lead 汇报。`;
+  if (access.deny.length && matchesRestrictedTool(exec.name, access.deny)) return `${label}不允许使用工具 ${exec.name}（项目团队配置的 access.deny）。需要时请向 lead 汇报，由主控改派或经用户确认调整权限。`;
+  if (!access.shell && !sandboxed && matchesRestrictedTool(exec.name, SHELL_TOOLS)) return `${label}不允许执行命令（项目团队配置的 access.shell=false${access.preset ? `，权限预设 ${access.preset} 尚未生效` : ''}）。需要运行命令时请向 lead 汇报。`;
   if (!access.editPaths) return undefined;
   const target = editTarget(exec);
   if (target === undefined) return undefined;
@@ -79,7 +82,8 @@ export function applyAccess(ctx, team) {
       // An unregistered teammate is already blocked at request routing; a broken config fails closed.
       return /未在当前项目的团队配置中登记/.test(error.message) ? undefined : `团队配置读取失败，已停止执行：${error.message}`;
     }
-    if (!role.search && ['omni_search','omni_fetch','omni_search_providers','omni_transcribe','omni_transcribe_status'].includes(exec.name)) return `能力 ${role.capability} 未开启外部服务（search=true）；需经用户确认调整团队配置`;
+    const searchTools = new Set(['omni_search','omni_fetch','omni_search_providers','omni_transcribe','omni_transcribe_status']);
+    if (!role.search && searchTools.has(restrictiveToolName(exec.name, searchTools))) return `能力 ${role.capability} 未开启外部服务（search=true）；需经用户确认调整团队配置`;
     const cwd = ctx.workingDirectory.get?.(exec.agent.session) ?? project;
     const sandboxed = presetActive(ctx.get?.('permissionPresets'), exec.agent.session, role.access);
     return checkAccess(exec, role.access, { project, cwd, sandboxed, label: `角色 ${role.displayName}（${role.capability}）` })

@@ -39,6 +39,7 @@
     "allocation.js",
     "theme-plugin.js",
     "tool-schema.js",
+    "tool-names.js",
     "workflow.js",
     "opencode.js",
     "ui.js",

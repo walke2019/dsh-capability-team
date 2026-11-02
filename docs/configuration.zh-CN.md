@@ -72,13 +72,13 @@
 
 ## 派活工作流
 
-主控通过 `capability_dispatch_plan` 将请求分类为 `delegate`、`free` 或 `direct`。委派任务需包含角色、具体任务和验收条件；免费文本任务只使用允许的免费模型与工具；直办次数由 `directBudget` 限制。
+主控通过 `capability_dispatch_plan` 将请求分类为 `delegate`、`free` 或 `direct`。委派任务需包含角色、具体任务和验收条件；免费文本任务只使用允许的免费模型与工具；直办次数由 `directBudget` 限制。旧字段 `userRequested` 只是模型声明，不是可信用户确认，不会豁免直办次数上限。
 
 | 工作流字段 | 含义 |
 |---|---|
 | `mode` | `enforce`、`remind` 或 `off`。 |
 | `analysisBudget` | 制定计划前的只读分析额度。 |
-| `directBudget` | direct 模式下主控自行执行的上限。 |
+| `directBudget` | direct 模式下主控自行执行的上限，声明 `userRequested: true` 的计划同样受限。 |
 | `freeTools` / `freeModels` | 免费任务工具级别与模型顺序。 |
 | `confirmDispatch` | 派活确认策略：`on-change`、`always` 或 `never`。 |
 | `enforceWriteScopes` | 拒绝超出当前任务写入范围的修改。 |

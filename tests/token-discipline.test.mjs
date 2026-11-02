@@ -29,6 +29,10 @@ test('长的命令输出只保留头尾，完整内容存到文件；读文件�
   assert.ok(!out[0].text.includes('MIDDLE'));
   assert.match(out[0].text, /完整输出：.*c1\.txt/);
   assert.equal(await readFile(join(dir, 'c1.txt'), 'utf8'), long);
+  for (const name of ['brisk_pwsh', 'mcp__s__brisk_pwsh']) {
+    const aliased = await td.trim({ name, callId: name, agent: member }, { content: [{ type: 'text', text: long }] });
+    assert.ok(aliased?.[0].text.length < 5200);
+  }
   assert.equal(await td.trim({ name: 'read', agent: member }, { content: [{ type: 'text', text: long }] }), undefined, 'read 不截');
   assert.equal(await td.trim({ name: 'bash', agent: member }, { content: [{ type: 'text', text: 'short' }] }), undefined);
   assert.equal(await td.trim({ name: 'bash', agent: { id: 'x' } }, { content: [{ type: 'text', text: long }] }), undefined, '非团队会话不动');

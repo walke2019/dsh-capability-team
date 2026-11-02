@@ -51,6 +51,16 @@ test('只读调研、还没改任何文件的会话不会被轮换（避免接�
   assert.equal(rotationLevel(m, 0.95, ROTATION).level, 'hard');
 });
 
+test('aliased calls still count reads, edits and PowerShell test evidence', () => {
+  const m = emptyMetrics();
+  for (const name of ['read', 'brisk_read', 'mcp__s__brisk_read']) foldEvent(m, { type: 'tool/call', data: { name, arguments: { file_path: 'a.js' } } });
+  for (const name of ['brisk_edit', 'mcp__s__brisk_write']) foldEvent(m, { type: 'tool/call', data: { name, arguments: {} } });
+  foldEvent(m, { type: 'tool/call', data: { name: 'mcp__s__brisk_pwsh', callId: 'p1', arguments: { command: 'node --test' } } });
+  assert.equal(m.maxRepeat, 3);
+  assert.equal(m.edits, 2);
+  assert.equal(m.pendingTest.callId, 'p1');
+});
+
 test('rotation 配置校验', () => {
   assert.deepEqual(validateRotation(undefined), ROTATION);
   assert.equal(validateRotation(false), false);
@@ -125,7 +135,7 @@ test('硬线时主控不能再给该队友派新活', () => {
   ctx.effect = () => {}; ctx.tools = { guard() {}, register() {} };
   r.register();
   for (let i = 0; i < 3; i++) ctx.onEvent(agents.get('m1').session = { id: 'm1' }, { type: 'compaction/end', data: {} });
-  assert.match(r.guard({ agent: lead, name: 'send_message', arguments: { target: 'diao-chan' } }), /已到轮换线.*capability_rotate_member/);
+  for (const name of ['send_message', 'brisk_send_message', 'mcp__s__brisk_send_message']) assert.match(r.guard({ agent: lead, name, arguments: { target: 'diao-chan' } }), /已到轮换线.*capability_rotate_member/);
 });
 
 test('接替者沿用用户为该角色确认的路由', async () => {

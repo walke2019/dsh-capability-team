@@ -10,6 +10,8 @@ import { join } from 'node:path';
 import { params } from './tool-schema.js';
 import { ownsCapabilityTeam } from './preset-guard.js';
 import { promptTokens } from './long-context.js';
+import { restrictiveToolName } from './tool-names.js';
+const TRACKED_TOOLS = new Set(['read', 'write', 'edit', 'str_replace_editor', 'apply_patch', 'bash', 'pwsh', 'send_message']);
 export const ROTATION = { softCompactions: 2, hardCompactions: 3, softRatio: 0.75, hardRatio: 0.9, softRepeatReads: 15, hardTurns: 8, maxMembers: 8 };
 const KEYS = Object.keys(ROTATION);
 const SUFFIX = /-r(\d+)$/;
@@ -48,7 +50,8 @@ export function rotationLevel(m, ratio, limits) {
 const TEST_CMD = /\b(npm (run )?test|node --test|pnpm test|yarn test|pytest|go test|cargo test|vitest|jest)\b/;
 /** Fold one session event into the counters. Pure, so tests can replay a log. */
 export function foldEvent(m, event) {
-  const d = event?.data ?? {};
+  const data = event?.data ?? {};
+  const d = { ...data, name: restrictiveToolName(data.name, TRACKED_TOOLS) };
   if (event?.type === 'compaction/end') m.compactions++;
   else if (event?.type === 'turn/start') m.turns++;
   else if (event?.type === 'tool/call') {
@@ -57,7 +60,7 @@ export function foldEvent(m, event) {
       const n = (m.reads.get(args.file_path) ?? 0) + 1; m.reads.set(args.file_path, n); m.maxRepeat = Math.max(m.maxRepeat, n);
     }
     if (['write', 'edit', 'str_replace_editor', 'apply_patch'].includes(d.name) && !(d.name === 'str_replace_editor' && args.command === 'view')) m.edits++;
-    if (d.name === 'bash' && TEST_CMD.test(String(args.command ?? ''))) m.pendingTest = { callId: d.callId, command: String(args.command).slice(0, 300) };
+    if (['bash', 'pwsh'].includes(d.name) && TEST_CMD.test(String(args.command ?? ''))) m.pendingTest = { callId: d.callId, command: String(args.command).slice(0, 300) };
   } else if (event?.type === 'tool/result' && m.pendingTest && d.message?.toolCallId === m.pendingTest.callId) {
     const text = (d.message.content ?? []).map(c => c.text ?? '').join('\n');
     const summary = text.split('\n').filter(l => /\b(pass|fail|tests?|ok|error)\b/i.test(l)).slice(-6).join('\n');
@@ -94,7 +97,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
       const membership = ctx.agentTeams.tryMembership(exec.agent);
       if (!ownsCapabilityTeam(ctx, exec.agent) || membership?.role !== 'lead') return undefined;
       const lead = exec.agent;
-      if (exec.name === 'send_message') {
+      if (restrictiveToolName(exec.name, TRACKED_TOOLS) === 'send_message') {
         const target = exec.arguments?.target;
         const next = retired.get(`${lead.id}:${target}`);
         if (next) return `队友 ${target} 已交接给 ${next}，请改发给 ${next}。`;

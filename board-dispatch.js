@@ -4,6 +4,7 @@
 // tasks of the member it replaces. Write scopes are advisory in DSH; here they can be enforced for edits.
 import { isAbsolute, relative, resolve } from 'node:path';
 import { baseName } from './session-rotation.js';
+import { restrictiveToolName } from './tool-names.js';
 const MAX_TASKS = 12;
 const text = (v, max, label) => {
   if (typeof v !== 'string' || !v.trim() || v.length > max) throw new Error(`${label}须为1–${max}字符`);
@@ -110,6 +111,7 @@ export function createBoardDispatch(ctx, team) {
     },
     /** Deny an edit outside the write scopes of the tasks a teammate holds (when any of them declares scopes). */
     guard(exec, limits = { enforce: true }) {
+      exec = { ...exec, name: restrictiveToolName(exec.name, new Set(['write', 'edit', 'str_replace_editor'])) };
       if (!limits.enforce || !['write', 'edit', 'str_replace_editor'].includes(exec.name) || (exec.name === 'str_replace_editor' && exec.arguments?.command === 'view')) return undefined;
       const m = teams()?.tryMembership?.(exec.agent);
       if (m?.role !== 'teammate' || !m.root) return undefined;

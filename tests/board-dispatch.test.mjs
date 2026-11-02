@@ -80,7 +80,9 @@ test('写入范围：只拦认领了带范围任务的队友，范围外的修�
   await board.create(lead, { assignments: [assignments[1]] }, { 'diao-chan': [{ subject: '改前端', write_scopes: ['client'] }] });
   const exec = (name, args) => ({ name, arguments: args, agent: { id: 'diao-chan', session: {} } });
   assert.equal(board.guard(exec('edit', { file_path: 'client/10-overview.js' })), undefined);
-  assert.match(board.guard(exec('edit', { file_path: 'server.js' })), /不在你认领的看板任务（task-1）的写入范围内：client/);
+  for (const name of ['edit', 'brisk_edit', 'mcp__s__brisk_edit', 'mcp__other__custom_edit']) {
+    assert.match(board.guard(exec(name, { file_path: 'server.js' })), /不在你认领的看板任务（task-1）的写入范围内：client/);
+  }
   assert.equal(board.guard(exec('read', { file_path: 'server.js' })), undefined, '读不受限');
   assert.equal(board.guard(exec('edit', { file_path: 'server.js' }), { enforce: false }), undefined, '可关闭');
   assert.equal(board.guard({ name: 'edit', arguments: { file_path: 'server.js' }, agent: { id: 'lead' } }), undefined, '主控不受限');

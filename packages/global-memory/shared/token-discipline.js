@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { promptTokens } from './long-context.js';
 import { ownsCapabilityTeam } from './preset-guard.js';
 import { createTokenMetrics, usageSample } from './token-metrics.js';
+import { restrictiveToolName } from './tool-names.js';
 export const TOKEN_RULES = { idleCompactRatio: 0.35, trimToolOutputChars: 6000, keepHeadChars: 3000, keepTailChars: 1500 };
 const KEYS = Object.keys(TOKEN_RULES);
 /** Tools whose output is a log or listing rather than content the model must read whole. */
@@ -83,7 +84,7 @@ export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'ca
     /** Post-execute decision: trim an oversized log/listing result for a team member. */
     async trim(exec, result) {
       const r = rules(exec.agent);
-      if (!r || !new Set(trimmedTools).has(exec.name) || !isMember(exec.agent) || !Array.isArray(result?.content)) return undefined;
+      if (!r || !new Set(trimmedTools).has(restrictiveToolName(exec.name, new Set(trimmedTools))) || !isMember(exec.agent) || !Array.isArray(result?.content)) return undefined;
       const text = result.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
       if (text.length <= r.trimToolOutputChars || result.content.some(b => b.type !== 'text')) return undefined;
       await mkdir(spillDir, { recursive: true });

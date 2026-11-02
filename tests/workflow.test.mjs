@@ -75,6 +75,26 @@ test('direct：有理由且执行次数有限，超出后要求改为指派', as
   assert.match(h.call(h.lead, 'pwsh'), /主控只负责分派/);
 });
 
+test('direct + userRequested：模型声明不是可信确认，仍受执行预算限制', async () => {
+  const h = harness();
+  h.user();
+  const out = JSON.parse(await h.plan({ analysis: '用户要求主控亲自修复', mode: 'direct', reason: '用户说“你自己改，不要派人”', userRequested: true }));
+  assert.equal(out.directBudget, W.directBudget);
+  assert.equal(out.userRequested, undefined);
+  assert.equal(h.wf.state(h.lead).plan.userRequested, undefined);
+  for (let i = 0; i < W.directBudget; i++) assert.equal(h.call(h.lead, 'pwsh'), undefined);
+  assert.match(h.call(h.lead, 'pwsh'), /已达本轮上限/);
+  assert.doesNotMatch(h.wf.status(h.lead, W), /不限执行/);
+  assert.doesNotMatch(out.next, /不限执行/);
+  // Model flags and user-looking reason strings never establish confirmation.
+  h.user();
+  await h.plan({ analysis: '小事', mode: 'direct', reason: '一条命令', userRequested: 'yes' });
+  for (let i = 0; i < W.directBudget; i++) assert.equal(h.call(h.lead, 'pwsh'), undefined);
+  assert.match(h.call(h.lead, 'pwsh'), /已达本轮上限/);
+  assert.match(decide({ plan: { mode: 'direct', userRequested: true }, directUsed: W.directBudget }, { name: 'pwsh' }, W), /已达本轮上限/);
+  assert.equal(validatePlan({ analysis: 'a', mode: 'free', reason: 'r', userRequested: true }, effective).userRequested, undefined);
+});
+
 test('free：只能调用免费通道，主控不能自己执行；其他模式下不能调用免费通道', async () => {
   const h = harness();
   h.user();

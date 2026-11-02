@@ -2,6 +2,7 @@
 // overwriting existing files, and short final reports. Enforced as a tools.guard (and by `npm run lint`),
 // so a model cannot talk its way past them. Measuring a target reads that one file synchronously.
 import { readFileSync } from 'node:fs';
+import { restrictiveToolName } from './tool-names.js';
 import { isAbsolute, relative, resolve } from 'node:path';
 export const FILE_LIMITS = { sourceWarn: 300, sourceMax: 500, testMax: 800, readMax: 400, reportMax: 1500 };
 const LIMIT_KEYS = Object.keys(FILE_LIMITS);
@@ -33,6 +34,7 @@ function readText(path) {
 const occurrences = (text, part) => (part ? text.split(part).length - 1 : 0);
 /** Text of the file after the call, or undefined when it cannot be predicted (the tool reports its own errors). */
 export function predictText(exec, current) {
+  exec = { ...exec, name: restrictiveToolName(exec.name, TARGET) };
   const a = exec.arguments ?? {};
   if (exec.name === 'write') return typeof a.content === 'string' ? a.content : undefined;
   if (exec.name === 'edit') {
@@ -62,6 +64,7 @@ function locate(exec, project, cwd) {
  */
 export function checkFileLimits(exec, limits, { project, cwd, role = 'teammate', read = readText }) {
   if (!limits) return undefined;
+  exec = { ...exec, name: restrictiveToolName(exec.name, name => Object.hasOwn(TARGET, name) || name === 'send_message') };
   if (exec.name === 'send_message' && role !== 'lead') {
     const text = exec.arguments?.message;
     if (typeof text === 'string' && text.length > limits.reportMax) return `汇报正文 ${text.length} 字，超过上限 ${limits.reportMax}。请分条发送，先发结论，每条不超过 ${limits.reportMax} 字。`;

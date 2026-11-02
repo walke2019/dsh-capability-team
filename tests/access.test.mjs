@@ -57,6 +57,7 @@ test('守卫按队友角色生效，非团队会话与未登记队友不拦截',
   applyAccess(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }) });
   const call = (id, name, args) => guard({ agent: { id, session: {} }, name, arguments: args });
   assert.match(call('w', 'bash', {}), /陈琳（writer）不允许执行命令/);
+  for (const name of ['omni_search', 'brisk_omni_search', 'mcp__s__brisk_omni_search']) assert.match(call('w', name, {}), /未开启外部服务/);
   assert.equal(call('w', 'write', { file_path: 'docs/a.md' }), undefined);
   assert.equal(call('b', 'bash', {}), undefined);
   assert.equal(call('x', 'bash', {}), undefined);
