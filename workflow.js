@@ -224,7 +224,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
               return { role: a.role, complexity: a.complexity, estimatedSteps: {simple:15,medium:40,complex:80}[a.complexity], displayName: a.displayName, capability: a.capability, model, fallbacks, ...(limits ? { access: limits } : {}),
                 ...(c.planFirst ? { planFirst: '执行前会提交计划，需主控用 capability_review_plan 批准' } : {}), task: a.task };
             });
-            result.next = '已存在的队友用 send_message 派发，不存在的用 spawn_teammate（name 用内部id）创建；可并行的同时派发，每项任务在看板建一条即可。派发时要求队友完成后只汇报一次最终结果、不发进度通报。之后用 wait_agent（timeoutMs=600000）等待，醒来只处理最终结果、阻塞或决策请求；主控只协调与验收，不亲自执行。';
+            result.next = '已存在的队友用 send_message 派发，不存在的用 spawn_teammate（name 用内部id）创建；可并行的同时派发，每项任务在看板建一条即可；有前置依赖的任务等前置完成后再派发，不提前发“等我通知”。派发时要求队友完成后只汇报一次最终结果、不发进度通报。之后用 wait_agent（timeoutMs=600000）等待，醒来只处理最终结果、阻塞或决策请求；主控只协调与验收，不亲自执行。';
           }
           if (plan.mode !== 'free' && (effective.workflow.fileLimits || effective.workflow.tokens)) result.fileRules = [fileLimitRules(effective.workflow.fileLimits), tokenRuleText(effective.workflow.tokens)].filter(Boolean).join('\n');
           if (plan.mode === 'delegate' && board) {
@@ -232,7 +232,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
               const byRole = await board.create(exec.agent, plan, rawTasks);
               if (byRole) {
                 for (const a of result.assignments) a.boardTasks = byRole[a.role] ?? [];
-                result.next = '已按计划在 DSH 团队看板上建好任务（见各角色的 boardTasks）。已存在的队友已自动分到可开始的任务，用 send_message 通知它；不存在的用 spawn_teammate（name 用内部id）创建，开工时插件会把它的任务自动分给它。消息里写明任务编号，并要求按看板流程：认领 → 执行 → complete，只改写入范围内的文件，完成后只汇报一次最终结果。之后用 wait_agent（timeoutMs=600000）等待；收尾前用 team_task_list 确认没有进行中的任务。';
+                result.next = '已按计划在 DSH 团队看板上建好任务（见各角色的 boardTasks）。已存在的队友已自动分到可开始的任务，用 send_message 通知它；不存在的用 spawn_teammate（name 用内部id）创建，开工时插件会把它的任务自动分给它。消息里写明任务编号，并要求按看板流程：认领 → 执行 → complete，只改写入范围内的文件，完成后只汇报一次最终结果。被依赖挡住的任务只留在看板上，先不要发给对应队友，也不要发“等我通知再开始”；等前置任务完成后再用 send_message 派发（队友空闲时消息会自动唤醒它）。之后用 wait_agent（timeoutMs=600000）等待；收尾前用 team_task_list 确认没有进行中的任务。';
               }
             } catch (error) { result.boardError = `看板任务创建失败：${error.message}；请改用 team_task_create 手动建任务`; }
           }

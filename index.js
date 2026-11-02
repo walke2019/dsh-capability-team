@@ -6,6 +6,7 @@ import { createTeam } from './team.js';
 import { createFailover } from './failover.js';
 import { createWorkflow } from './workflow.js';
 import { applyAccess } from './access.js';
+import { applyTeammateWait } from './teammate-wait.js';
 import { createPlanGate } from './plan-gate.js';
 import { createRuntimeObservability } from './runtime-observability.js';
 import { createTaskControl } from './member-task-control.js';
@@ -67,6 +68,7 @@ export function apply(host, config = {}) {
     return effective.capabilities[effective.roles[baseName(m.name)]?.capability]?.skills;
   });
   applyAccess(ctx, team);
+  applyTeammateWait(ctx);
   applyRoles(ctx, team, failover, observability, taskControl);
   applyIntegrations(ctx, team);
   applyTheme(ctx, team, failover, workflow, planGate, taskControl);
