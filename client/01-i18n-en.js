@@ -256,4 +256,11 @@
       'list.collapse': 'Collapse',
       'stage.title': 'Pixel office', 'stage.summary': '{n} / {m} seated', 'stage.collapse': 'Collapse office', 'stage.expand': 'Expand office',
       'stage.open': 'Open session', 'stage.empty': 'No team yet. Teammates take their seats once you send the first request.',
+      'stage.detail': 'Member details', 'stage.detailClose': 'Hide details', 'stage.detailHint': 'Click a character or its name plate in the office to see its model, context, cooldown and task controls',
+      'stage.parallel': '{n} parallel',
+      'stage.act.thinking': 'Thinking', 'stage.act.thinkingBubble': 'Thinking…', 'stage.act.reading': 'Reading', 'stage.act.writing': 'Writing',
+      'stage.act.terminal': 'Running a command', 'stage.act.searching': 'Searching', 'stage.act.browsing': 'Browsing', 'stage.act.messaging': 'Messaging',
+      'stage.act.board': 'Updating the board', 'stage.act.waiting': 'Waiting for teammates', 'stage.act.working': 'Using a tool', 'stage.act.failed': 'Failed',
+      'stage.act.failedBubble': 'Something failed; needs attention', 'stage.act.arriving': 'Taking a seat…', 'stage.act.idle': 'Idle', 'stage.act.offline': 'Not started',
+      'stage.act.doneBubble': 'Task done!',
     };

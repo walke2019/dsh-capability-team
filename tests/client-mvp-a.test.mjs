@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
+import { boardDetailsOf } from './helpers/client-harness.mjs';
 
 function createHarness(remote = { commands: {} }, sessions, { runEffects = false } = {}) {
   let plugin, cursor = 0, states = [];
@@ -101,7 +102,7 @@ test('MVP-A 1: 上下文压力条与预算条（无 maxTokens 时不画，有 ma
   const tree = h.render(element.type, { ...element.props, load: async () => snapshot });
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
   // 传带有 role.maxTokens 的 roles 给 board
-  const view = board.type({ ...board.props, roles: snapshot.team.roles });
+  const view = boardDetailsOf(board, { ...board.props, roles: snapshot.team.roles });
 
   // 1) diao-chan: 有 contextPressure (50%)，无 maxTokens -> 仅 1 个进度条（上下文压力条）
   const diaoCard = h.find(view, n => n.props?.['data-card'] === 'diao-chan');
@@ -151,7 +152,7 @@ test('MVP-A 2: 卡片显示打开会话按钮，支持点击、Enter 键与 Spac
     openMember: (parent, child) => opened.push([parent, child]),
   });
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type(board.props);
+  const view = boardDetailsOf(board);
 
   const diaoCard = h.find(view, n => n.props?.['data-card'] === 'diao-chan');
   const openBtn = h.find(diaoCard, n => n.props?.className === 'ctm-bd-open-btn');
@@ -205,7 +206,7 @@ test('MVP-A 3: 模型徽章映射与色阶，tooltip 保留真实 ID 与运行�
   const element = h.view({ sessionId: 's_lead', t: key => key });
   const tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type(board.props);
+  const view = boardDetailsOf(board);
 
   // gpt-6.1-sol -> 史诗紫
   const m1Card = h.find(view, n => n.props?.['data-card'] === 'm1');
@@ -355,7 +356,7 @@ test('MVP-A 5: 状态气泡在空闲时显示静态三国台词，有任务时�
   const element = h.view({ sessionId: 's_lead', t: key => key });
   const tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type(board.props);
+  const view = boardDetailsOf(board);
 
   // diao-chan 有任务：应显示 UI增强
   const diaoCard = h.find(view, n => n.props?.['data-card'] === 'diao-chan');
@@ -401,7 +402,7 @@ test('卡片无任务且 phase 为 model 时状态气泡文案不重复，且使
   const element = h.view({ sessionId: 's_lead', t: key => key });
   const tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const boardTree = board.type(board.props);
+  const boardTree = boardDetailsOf(board);
   const card = h.find(boardTree, n => n.props?.['data-card'] === 'diao-chan');
   assert.ok(card, 'diao-chan 卡片应存在');
 
@@ -461,7 +462,7 @@ test('MVP-A 6 (item 1 regression): 宿主 tokenUsage 伪造的用量必须被忽
   const element = h.view({ sessionId: 's_lead', t: (k, vals) => k + (vals ? JSON.stringify(vals) : ''), load: async () => snapshot });
   const tree = h.render(element.type, { ...element.props, load: async () => snapshot });
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type({ ...board.props, roles: snapshot.team.roles });
+  const view = boardDetailsOf(board, { ...board.props, roles: snapshot.team.roles });
 
   const diaoCard = h.find(view, n => n.props?.['data-card'] === 'diao-chan');
   assert.ok(diaoCard);
@@ -504,7 +505,7 @@ test('MVP-A 7 (item 9): 配置模型与"上次请求"模型不一致时双徽章
   const element = h.view({ sessionId: 's_lead', t: key => key });
   const tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type({ ...board.props, roles });
+  const view = boardDetailsOf(board, { ...board.props, roles });
 
   // m1: configured gpt-6.1-sol, last request claude-opus-5-5 (its declared fallback) -> both badges, tagged "fallback".
   const m1Card = h.find(view, n => n.props?.['data-card'] === 'm1');

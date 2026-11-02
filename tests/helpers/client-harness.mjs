@@ -2,6 +2,19 @@
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 
+/** Board tree + one tree per member with that member's detail panel open, under a synthetic root. */
+const findNode = (node, predicate) => {
+  if (!node || typeof node !== 'object') return undefined;
+  if (Array.isArray(node)) { for (const item of node) { const r = findNode(item, predicate); if (r) return r; } return undefined; }
+  if (predicate(node)) return node;
+  for (const child of node.children ?? []) { const r = findNode(child, predicate); if (r) return r; }
+};
+export function boardDetailsOf(board, props = board.props, find = findNode) {
+  const tree = board.type(props);
+  const stage = find(tree, n => typeof n.type === 'function' && typeof n.type.sprites === 'function');
+  if (!stage) throw new Error('OfficeStage must be mounted in TeamBoard');
+  return { type: 'board-details', props: {}, children: [tree, ...stage.props.cards.map(c => board.type.detail(props, c.id))] };
+}
 export function createHarness(remote = { commands: {} }, sessions, { runEffects = false, extraGlobals = {} } = {}) {
   let plugin, cursor = 0, states = [];
   const React = {
@@ -64,6 +77,10 @@ export function createHarness(remote = { commands: {} }, sessions, { runEffects 
     }
     return acc;
   };
+  // The card canvas is gone: member cards render only in the detail panel under the office stage. boardDetails renders
+  // the board once plus once per member with that member selected (TeamBoard.detail), so card assertions still run on
+  // the real panel. Returns one synthetic root node holding all those trees.
+  const boardDetails = (board, props = board.props) => boardDetailsOf(board, props, find);
   // resetState clears the shared hook slots so a component rendered on its own does not inherit another component's state.
-  return { view, render, find, findAll, resetCursor: () => { cursor = 0; }, resetState: () => { states = []; cursor = 0; } };
+  return { view, render, find, findAll, boardDetails, resetCursor: () => { cursor = 0; }, resetState: () => { states = []; cursor = 0; } };
 }

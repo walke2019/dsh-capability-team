@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHarness } from './helpers/client-harness.mjs';
+import { createHarness, boardDetailsOf } from './helpers/client-harness.mjs';
 
 test('MVP-B 1: Activity 投影未知 schemaVersion 显示 "版本不支持"', () => {
   const state = {
@@ -32,7 +32,7 @@ test('MVP-B 1: Activity 投影未知 schemaVersion 显示 "版本不支持"', ()
   const tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
   assert.ok(board, 'TeamBoard should be found');
-  const boardTree = board.type(board.props);
+  const boardTree = boardDetailsOf(board);
   const card = h.find(boardTree, n => n.props?.['data-card'] === 'diao-chan');
   assert.ok(card, 'diao-chan card should exist');
   const unsupported = h.find(card, n => JSON.stringify(n).includes('version.unsupported'));
@@ -70,7 +70,7 @@ test('MVP-B 2: Activity 并行 activeCount > 1 显示并行工具数且不显示
   const element = h.view({ sessionId: 's_lead', t: key => key });
   const tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const boardTree = board.type(board.props);
+  const boardTree = boardDetailsOf(board);
   const card = h.find(boardTree, n => n.props?.['data-card'] === 'diao-chan');
   assert.ok(card, 'card should exist');
   const str = JSON.stringify(card);
@@ -109,7 +109,7 @@ test('MVP-B 3: 成员非 running 但条目仍为 running 时标记 "历史未收
   const element = h.view({ sessionId: 's_lead', t: key => key });
   const tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const boardTree = board.type(board.props);
+  const boardTree = boardDetailsOf(board);
   const card = h.find(boardTree, n => n.props?.['data-card'] === 'diao-chan');
   assert.ok(card, 'card should exist');
   assert.ok(JSON.stringify(card).includes('activity.unsettled'), 'Should mark unsettled historical item');
@@ -161,12 +161,12 @@ test('MVP-B 4: 运行时冷却倒计时到 0 隐藏，不自称已恢复/健康'
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
 
   // Future cooling: renders badge
-  const boardTree1 = board.type({ ...board.props, runtimeState: runtimeFuture });
+  const boardTree1 = boardDetailsOf(board, { ...board.props, runtimeState: runtimeFuture });
   const card1 = h.find(boardTree1, n => n.props?.['data-card'] === 'diao-chan');
   assert.ok(JSON.stringify(card1).includes('runtime.cooling'), 'Future cooling shows countdown badge');
 
   // Expired cooling: hides badge, never says "healthy" or "recovered"
-  const boardTree2 = board.type({ ...board.props, runtimeState: runtimeExpired });
+  const boardTree2 = boardDetailsOf(board, { ...board.props, runtimeState: runtimeExpired });
   const card2 = h.find(boardTree2, n => n.props?.['data-card'] === 'diao-chan');
   assert.equal(JSON.stringify(card2).includes('runtime.cooling'), false, 'Expired cooling hides badge');
   assert.equal(JSON.stringify(card2).includes('healthy'), false);
@@ -225,7 +225,7 @@ test('MVP-B 5: 路由切换按 id 去重，显示原因 (容灾/长上下文 + c
   const element = h.view({ sessionId: 's_lead', t: key => key });
   const tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const boardTree = board.type({ ...board.props, runtimeState: runtimeWithSwitches });
+  const boardTree = boardDetailsOf(board, { ...board.props, runtimeState: runtimeWithSwitches });
   const card = h.find(boardTree, n => n.props?.['data-card'] === 'diao-chan');
   assert.ok(card, 'Card exists');
   const switches = h.findAll(card, n => n.props?.className === 'ctm-bd-switch');

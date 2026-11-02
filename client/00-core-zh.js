@@ -260,4 +260,11 @@
       'list.collapse': '收起',
       'stage.title': '像素办公室', 'stage.summary': '{n} / {m} 人在岗', 'stage.collapse': '收起办公室', 'stage.expand': '展开办公室',
       'stage.open': '打开会话', 'stage.empty': '队伍尚未成型，发出第一个需求后队友会入座',
+      'stage.detail': '成员详情', 'stage.detailClose': '收起详情', 'stage.detailHint': '点击办公室里的角色或其名牌，查看模型、上下文、冷却与任务控制等详情',
+      'stage.parallel': '并行 {n}',
+      'stage.act.thinking': '思考中', 'stage.act.thinkingBubble': '思考中…', 'stage.act.reading': '读文件', 'stage.act.writing': '写代码',
+      'stage.act.terminal': '跑命令', 'stage.act.searching': '搜索中', 'stage.act.browsing': '查网页', 'stage.act.messaging': '传信中',
+      'stage.act.board': '看板操作', 'stage.act.waiting': '等待队友', 'stage.act.working': '用工具', 'stage.act.failed': '出错了',
+      'stage.act.failedBubble': '出错了，需要处理', 'stage.act.arriving': '正在入座…', 'stage.act.idle': '空闲', 'stage.act.offline': '未上岗',
+      'stage.act.doneBubble': '任务完成！',
     };

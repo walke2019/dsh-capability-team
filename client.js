@@ -266,6 +266,13 @@ window.__ModuleLoader__.load({
       'list.collapse': '收起',
       'stage.title': '像素办公室', 'stage.summary': '{n} / {m} 人在岗', 'stage.collapse': '收起办公室', 'stage.expand': '展开办公室',
       'stage.open': '打开会话', 'stage.empty': '队伍尚未成型，发出第一个需求后队友会入座',
+      'stage.detail': '成员详情', 'stage.detailClose': '收起详情', 'stage.detailHint': '点击办公室里的角色或其名牌，查看模型、上下文、冷却与任务控制等详情',
+      'stage.parallel': '并行 {n}',
+      'stage.act.thinking': '思考中', 'stage.act.thinkingBubble': '思考中…', 'stage.act.reading': '读文件', 'stage.act.writing': '写代码',
+      'stage.act.terminal': '跑命令', 'stage.act.searching': '搜索中', 'stage.act.browsing': '查网页', 'stage.act.messaging': '传信中',
+      'stage.act.board': '看板操作', 'stage.act.waiting': '等待队友', 'stage.act.working': '用工具', 'stage.act.failed': '出错了',
+      'stage.act.failedBubble': '出错了，需要处理', 'stage.act.arriving': '正在入座…', 'stage.act.idle': '空闲', 'stage.act.offline': '未上岗',
+      'stage.act.doneBubble': '任务完成！',
     };
 
     const en = {
@@ -526,6 +533,13 @@ window.__ModuleLoader__.load({
       'list.collapse': 'Collapse',
       'stage.title': 'Pixel office', 'stage.summary': '{n} / {m} seated', 'stage.collapse': 'Collapse office', 'stage.expand': 'Expand office',
       'stage.open': 'Open session', 'stage.empty': 'No team yet. Teammates take their seats once you send the first request.',
+      'stage.detail': 'Member details', 'stage.detailClose': 'Hide details', 'stage.detailHint': 'Click a character or its name plate in the office to see its model, context, cooldown and task controls',
+      'stage.parallel': '{n} parallel',
+      'stage.act.thinking': 'Thinking', 'stage.act.thinkingBubble': 'Thinking…', 'stage.act.reading': 'Reading', 'stage.act.writing': 'Writing',
+      'stage.act.terminal': 'Running a command', 'stage.act.searching': 'Searching', 'stage.act.browsing': 'Browsing', 'stage.act.messaging': 'Messaging',
+      'stage.act.board': 'Updating the board', 'stage.act.waiting': 'Waiting for teammates', 'stage.act.working': 'Using a tool', 'stage.act.failed': 'Failed',
+      'stage.act.failedBubble': 'Something failed; needs attention', 'stage.act.arriving': 'Taking a seat…', 'stage.act.idle': 'Idle', 'stage.act.offline': 'Not started',
+      'stage.act.doneBubble': 'Task done!',
     };
 
     const CSS = `
@@ -719,23 +733,6 @@ window.__ModuleLoader__.load({
 .ctm-bd-at{margin-left:auto;display:inline-flex;align-items:center;gap:5px}
 .ctm-bd-pulse{width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-state-success-primary);animation:ctm-beat 2.5s ease-out infinite}
 @keyframes ctm-beat{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--dsw-alias-state-success-primary) 55%,transparent)}70%,100%{box-shadow:0 0 0 6px transparent}}
-.ctm-bd-canvas{position:relative;display:flex;flex-direction:column;gap:18px;padding:14px 8px;border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;background-color:var(--dsw-alias-bg-layer-2);background-image:radial-gradient(color-mix(in srgb,var(--dsw-alias-label-secondary) 28%,transparent) 1px,transparent 1.2px);background-size:14px 14px}
-.ctm-bd-lead{position:relative;display:flex;justify-content:center}
-.ctm-bd-lead>.ctm-bd-card{width:min(100%,280px)}
-.ctm-bd-mates{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:18px 8px;padding-top:2px}
-.ctm-bd-lead,.ctm-bd-mates{z-index:1}
-.ctm-bd-links{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-.ctm-bd-link{fill:none;stroke:var(--dsw-alias-border-l1);stroke-width:1.5;stroke-linejoin:round}
-.ctm-bd-link-end{fill:var(--dsw-alias-border-l1)}
-.ctm-bd-link[data-active]{stroke:color-mix(in srgb,var(--ctm-accent) 35%,transparent)}
-.ctm-bd-link-draw{fill:none;stroke:var(--ctm-accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:ctm-draw .6s ease-out forwards}
-.ctm-bd-link-flow{fill:none;stroke:var(--ctm-accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:5 7;opacity:0;animation:ctm-flow .8s linear infinite,ctm-fade-in .3s .6s forwards}
-.ctm-bd-link-dot{fill:var(--ctm-accent);filter:drop-shadow(0 0 3px var(--ctm-accent))}
-.ctm-bd-link-end[data-active]{fill:var(--ctm-accent)}
-@keyframes ctm-draw{to{stroke-dashoffset:0}}
-@keyframes ctm-flow{to{stroke-dashoffset:-12}}
-@keyframes ctm-fade-in{to{opacity:1}}
-@media (prefers-reduced-motion:reduce){.ctm-bd-link-draw{animation:none;stroke-dashoffset:0}.ctm-bd-link-flow,.ctm-bd-link-dot{display:none}}
 .ctm-bd-card{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 10px 11px;border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px rgba(0,0,0,.05);transition:border-color .2s,box-shadow .2s,opacity .2s}
 .ctm-bd-card[data-status=inactive]{opacity:.62;border-style:dashed}
 .ctm-bd-card[data-open]{cursor:pointer}
@@ -762,12 +759,10 @@ window.__ModuleLoader__.load({
 .ctm-bd-subject{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .ctm-bd-model{display:flex;min-width:0}
 .ctm-bd-task>.ctm-sub{flex:none}
-.ctm-bd-mates .ctm-bd-top{flex-wrap:wrap;row-gap:4px}
-.ctm-bd-mates .ctm-bd-state{order:3;flex-basis:100%;padding-left:36px;box-sizing:border-box}
 .ctm-bd-bar{position:absolute;left:10px;right:10px;bottom:4px;height:2px;border-radius:2px;overflow:hidden;opacity:0}
 .ctm-bd-card[data-status=running] .ctm-bd-bar,.ctm-bd-card[data-status=provisioning] .ctm-bd-bar{opacity:1;background:linear-gradient(90deg,transparent,var(--ctm-accent),transparent) 0 0/40% 100% no-repeat,color-mix(in srgb,var(--ctm-accent) 12%,transparent);animation:ctm-scan 1.4s ease-in-out infinite}
 @keyframes ctm-scan{0%{background-position:-40% 0,0 0}100%{background-position:140% 0,0 0}}
-@media (prefers-reduced-motion:reduce){.ctm-bd *,.ctm-bd *::before,.ctm-bd *::after,.ctm-bd-mates::after,.ctm-bd-card{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.ctm-bd *,.ctm-bd *::before,.ctm-bd *::after,.ctm-bd-card{animation:none!important}}
 .ctm-ov-route{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:12px}
 .ctm-ov-group{border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}
 .ctm-ov-group>summary{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;list-style:none;user-select:none}
@@ -917,11 +912,35 @@ window.__ModuleLoader__.load({
 .ctm-stage-meter[data-tone=error]>i{background:var(--dsw-alias-state-error-primary,#ff5c5c)}
 .ctm-stage-icon{position:absolute;transform:translate(-50%,-100%);font-size:14px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));animation:ctm-stage-float 1.6s ease-in-out infinite}
 .ctm-stage-bubble{position:absolute;z-index:2;transform:translate(-50%,-100%);max-width:180px;padding:3px 8px;border-radius:8px;background:var(--ctm-stage-plate);border:.5px solid rgba(255,255,255,.18);color:#f4f4f6;font-size:11px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-plate-act{font-size:10.5px;line-height:14px;color:#c3c3cb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-plate-act:empty{display:none}
+.ctm-stage-plate[data-act=thinking] .ctm-stage-plate-act,.ctm-stage-plate[data-act=writing] .ctm-stage-plate-act,.ctm-stage-plate[data-act=reading] .ctm-stage-plate-act,.ctm-stage-plate[data-act=searching] .ctm-stage-plate-act,.ctm-stage-plate[data-act=browsing] .ctm-stage-plate-act{color:#a9d4ff}
+.ctm-stage-plate[data-act=terminal] .ctm-stage-plate-act{color:#7ff0a8}
+.ctm-stage-plate[data-act=messaging] .ctm-stage-plate-act,.ctm-stage-plate[data-act=board] .ctm-stage-plate-act{color:#e6d38f}
+.ctm-stage-plate[data-act=waiting] .ctm-stage-plate-act{color:#cfd8ff}
+.ctm-stage-plate[data-act=failed]{border-color:var(--dsw-alias-state-error-primary,#ff5c5c)}
+.ctm-stage-plate[data-act=failed] .ctm-stage-plate-act{color:#ff9a9a}
+.ctm-stage-icon[data-act=thinking]{animation:ctm-stage-pulse 1.2s ease-in-out infinite}
+.ctm-stage-icon[data-act=waiting]{animation:ctm-stage-sway 2s ease-in-out infinite}
+.ctm-stage-icon[data-act=failed]{animation:ctm-stage-shake .5s 3}
+.ctm-stage-icon[data-act=done]{animation:ctm-stage-pop .5s ease-out}
+.ctm-stage-bubble[data-act=failed]{border-color:var(--dsw-alias-state-error-primary,#ff5c5c);color:#ffd0d0}
+.ctm-stage-bubble[data-act=done]{border-color:var(--dsw-alias-state-success-primary,#3ddc84)}
+.ctm-stage-bubble[data-act=thinking]{font-style:italic}
+.ctm-stage-detail{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ctm-stage-detail-head{display:flex;align-items:center;gap:8px;min-width:0}
+.ctm-stage-detail-head .ctm-btn{margin-left:auto;flex:none}
+.ctm-stage-detail-hint{margin:0;padding:6px 10px;border:.5px dashed var(--dsw-alias-border-l1);border-radius:8px;text-align:center}
+.ctm-stage-detail>.ctm-bd-card{width:100%;box-sizing:border-box}
 @container ctm-stage (max-width:599px){.ctm-stage-plate{min-width:64px;padding:2px 6px}.ctm-stage-bubble{max-width:140px}}
 @keyframes ctm-stage-blink{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes ctm-stage-float{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 3px))}}
 @keyframes ctm-stage-flash{0%,100%{filter:none}50%{filter:brightness(1.8)}}
-@media (prefers-reduced-motion:reduce){.ctm-stage-icon,.ctm-stage-dot[data-s=running],.ctm-stage-plate .ctm-model-badge[data-flash]{animation:none}.ctm-stage-meter>i,.ctm-stage-plate{transition:none}}
+@keyframes ctm-stage-pulse{0%,100%{opacity:1;transform:translate(-50%,-100%) scale(1)}50%{opacity:.6;transform:translate(-50%,-100%) scale(.88)}}
+@keyframes ctm-stage-sway{0%,100%{transform:translate(-50%,-100%) rotate(-12deg)}50%{transform:translate(-50%,-100%) rotate(12deg)}}
+@keyframes ctm-stage-shake{0%,100%{transform:translate(-50%,-100%)}25%{transform:translate(calc(-50% - 2px),-100%)}75%{transform:translate(calc(-50% + 2px),-100%)}}
+@keyframes ctm-stage-pop{0%{transform:translate(-50%,-100%) scale(.3)}70%{transform:translate(-50%,-100%) scale(1.3)}100%{transform:translate(-50%,-100%) scale(1)}}
+@media (prefers-reduced-motion:reduce){.ctm-stage-icon,.ctm-stage-icon[data-act],.ctm-stage-dot[data-s=running],.ctm-stage-plate .ctm-model-badge[data-flash]{animation:none}.ctm-stage-meter>i,.ctm-stage-plate{transition:none}}
 `;
 
     // ---------- pure helpers ----------
@@ -1903,66 +1922,6 @@ window.__ModuleLoader__.load({
           delegated: !card.lead && (status === 'running' || status === 'provisioning' || task?.status === 'in_progress') };
       });
     }
-    /**
-     * Lead → teammate paths in canvas coordinates. First-row cards get an S-curve into their top edge;
-     * lower rows would be hidden behind the row above, so they drop down the gutter beside the card and enter from the side.
-     */
-    function boardLinks(lead, mates, origin) {
-      if (!lead || !mates.length) return [];
-      const x = v => v.toFixed(1);
-      const top = Math.min(...mates.map(m => m.rect.top));
-      const x1 = lead.left + lead.width / 2 - origin.left, y1 = lead.bottom - origin.top;
-      const bus = (lead.bottom + top) / 2 - origin.top;
-      return mates.map(({ id, active, rect }) => {
-        const cx = rect.left + rect.width / 2 - origin.left;
-        if (rect.top - top < 2) {
-          const y2 = rect.top - origin.top, bend = Math.max(12, (y2 - y1) / 2);
-          return { id, active, d: `M${x(x1)} ${x(y1)}C${x(x1)} ${x(y1 + bend)} ${x(cx)} ${x(y2 - bend)} ${x(cx)} ${x(y2)}`, end: [cx, y2] };
-        }
-        // Gutter: halfway to the neighbour in the same row, or the canvas padding when the card stands alone.
-        const row = mates.filter(m => Math.abs(m.rect.top - rect.top) < 2 && m.id !== id);
-        const right = row.filter(m => m.rect.left > rect.left).sort((a, b) => a.rect.left - b.rect.left)[0];
-        const left = row.filter(m => m.rect.left < rect.left).sort((a, b) => b.rect.left - a.rect.left)[0];
-        const gx = (right ? (rect.right + right.rect.left) / 2 : left ? (left.rect.right + rect.left) / 2 : rect.left - 4) - origin.left;
-        const ex = (right ? rect.right : rect.left) - origin.left, ey = rect.top + 16 - origin.top;
-        return { id, active, d: `M${x(x1)} ${x(y1)}V${x(bus)}H${x(gx)}V${x(ey)}H${x(ex)}`, end: [ex, ey] };
-      });
-    }
-    /** Measure the rendered cards and keep one Lead → teammate path each; re-measured on layout changes. */
-    function useBoardLinks(canvas, cards) {
-      const [links, setLinks] = React.useState([]);
-      const signature = cards.map(c => `${c.id}:${c.lead ? 'L' : c.delegated ? 1 : 0}`).join('|');
-      (React.useLayoutEffect ?? React.useEffect)(() => {
-        const root = canvas.current;
-        if (!root) return undefined;
-        const measure = () => {
-          const lead = root.querySelector('.ctm-bd-lead>[data-card]');
-          const mates = [...root.querySelectorAll('.ctm-bd-mates>[data-card]')].map(el => ({
-            id: el.getAttribute('data-card'), active: el.hasAttribute('data-delegated'), rect: el.getBoundingClientRect() }));
-          const next = boardLinks(lead?.getBoundingClientRect(), mates, root.getBoundingClientRect());
-          setLinks(old => JSON.stringify(old) === JSON.stringify(next) ? old : next);
-        };
-        measure();
-        const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
-        if (observer) { observer.observe(root); for (const el of root.querySelectorAll('[data-card]')) observer.observe(el); }
-        else window.addEventListener?.('resize', measure);
-        return () => { observer ? observer.disconnect() : window.removeEventListener?.('resize', measure); };
-      }, [canvas, signature]);
-      return links;
-    }
-    function BoardLinks({ links }) {
-      if (!links.length) return null;
-      // Active paths are keyed by their state, so a new delegation remounts and replays the draw-in.
-      return h('svg', { className: 'ctm-bd-links', 'aria-hidden': true, focusable: 'false' },
-        ...links.map(link => h('g', { key: `${link.id}:${link.active ? 1 : 0}` },
-          h('path', { className: 'ctm-bd-link', d: link.d, ...(link.active ? { 'data-active': '' } : {}) }),
-          link.active ? h('path', { className: 'ctm-bd-link-draw', d: link.d, pathLength: 1 }) : null,
-          link.active ? h('path', { className: 'ctm-bd-link-flow', d: link.d }) : null,
-          link.active ? h('circle', { className: 'ctm-bd-link-dot', r: 2.5 },
-            h('animateMotion', { dur: '1.6s', begin: '0.6s', repeatCount: 'indefinite', path: link.d })) : null,
-          h('circle', { className: 'ctm-bd-link-end', cx: link.end[0], cy: link.end[1], r: 2.5, ...(link.active ? { 'data-active': '' } : {}) }))));
-    }
-
     /** Static model badge mapping: provider/model -> alias & rarity rank (legendary/epic/rare/cloth/default). */
     function modelBadgeInfo(route, t) {
       if (!route) return null;
@@ -2755,10 +2714,12 @@ window.__ModuleLoader__.load({
       const x = s.home.x, y = s.home.y, present = s.data.status !== 'inactive';
       px(x - 12 * S, y + S, 24 * S, 7 * S, desk); px(x - 12 * S, y, 24 * S, 5 * S, deskTop); px(x - 12 * S, y, 24 * S, S, 'rgba(255,255,255,.12)');
       px(x - 4 * S, y - 5 * S, 8 * S, 5 * S, '#1a1b22');
-      const screen = !present ? '#2b3340' : s.data.status === 'failed' ? '#8f2f2f' : s.phase === 'typing' ? '#3a9ad9' : '#4b5563';
-      px(x - 3 * S, y - 4 * S, 6 * S, 3 * S, screen);
-      if (s.phase === 'typing' && s.frame % 2) px(x - 2 * S, y - 3 * S, 2 * S, S, '#bfe6ff');
+      stageDrawScreen(px, s, S, x, y, present);
       px(x - S, y, 2 * S, S, '#111');
+      if (s.data.activity === 'reading') { // open book on the desk, the page flips every other frame
+        px(x - 6 * S, y + S, 5 * S, 3 * S, '#f1ead6'); px(x - 4 * S, y + S, S, 3 * S, '#cdbf9a');
+        if (s.frame % 2) px(x - 6 * S, y + S, 2 * S, 2 * S, '#ffffff');
+      }
       const a = s.palette.accent;
       switch (s.palette.prop) {
         case 'map': px(x + 5 * S, y + S, 6 * S, 3 * S, '#d9c38a'); px(x + 6 * S, y + 2 * S, 2 * S, S, '#b3412f'); break;
@@ -2772,26 +2733,56 @@ window.__ModuleLoader__.load({
       }
       px(x - 10 * S, y + S, 3 * S, 2 * S, '#c84b3c'); px(x - 9 * S, y, S, S, '#f0e9d8');
     }
-    /** 12×16 pixel person; `lead` wears the crown, `failed` shows a red mark, walking alternates the legs. */
+    /** Monitor content per activity: code lines scroll while writing, a green terminal flickers, failures turn red. */
+    function stageDrawScreen(px, s, S, x, y, present) {
+      const a = s.data.activity, f = s.frame;
+      const screen = !present ? '#2b3340' : a === 'failed' ? '#8f2f2f' : a === 'writing' ? '#1e3a5f' : a === 'terminal' ? '#0c2214'
+        : a === 'browsing' || a === 'searching' ? '#2d5f8a' : a === 'messaging' || a === 'board' ? '#5b4a8a' : a === 'thinking' || a === 'reading' ? '#3a4a5c' : '#4b5563';
+      px(x - 3 * S, y - 4 * S, 6 * S, 3 * S, screen);
+      if (a === 'writing') for (let i = 0; i < 3; i++) px(x - 2 * S, y - (4 - i) * S, ((f + i) % 3 + 2) * S, S * .6, i === (f % 3) ? '#bfe6ff' : '#6fa8dc');
+      else if (a === 'terminal') { px(x - 2 * S, y - 3 * S, 3 * S, S * .6, '#3ddc84'); if (f % 2) px(x + S, y - 3 * S, S, S * .6, '#b6ffcf'); }
+      else if (a === 'failed') { px(x - .5 * S, y - 4 * S, S, 2 * S * .8, '#ffd0d0'); if (f % 2) px(x - .5 * S, y - 1.6 * S, S, S * .5, '#ffd0d0'); }
+      else if (a === 'browsing' || a === 'searching') px(x - S, y - 4 * S + (f % 3) * S * .7, 2 * S, S * .6, '#a9d4ff');
+      else if (a === 'messaging' || a === 'board') px(x - 2 * S, y - 3 * S, 4 * S, S, f % 2 ? '#d9c38a' : '#f3e7c6');
+    }
+    /**
+     * 12×16 pixel person. The pose follows `s.data.activity` (typing / chin-on-hand / book / head-down / dozing) plus
+     * the one-shot overlays: `s.gesture` (idle stretch or coffee) and `s.celebrate` (jump with raised arms).
+     */
     function stageDrawPerson(px, s, S) {
-      const c = s.palette, f = s.facing, walking = s.phase === 'walking';
-      const bob = (s.phase === 'typing' || s.phase === 'idle') && s.frame === 2 ? S : 0;
-      const x = s.x, y0 = s.y - 16 * S + bob;
+      const c = s.palette, f = s.facing, walking = s.phase === 'walking', a = s.data.activity, fr = s.frame;
+      const jumping = s.celebrate > 0, typing = !jumping && ['writing', 'terminal', 'searching', 'browsing', 'messaging', 'board', 'working'].includes(a);
+      const lift = jumping ? Math.round(Math.abs(Math.sin(s.celebrate * 7)) * 4) * S : 0;
+      const bob = !jumping && !walking && fr === 2 && a !== 'failed' ? S : 0;
+      const x = s.x, y0 = s.y - 16 * S + bob - lift;
       const X = u => x + (f > 0 ? u : (12 - u - 1)) * S - 6 * S, Y = v => y0 + v * S;
       const R = (u, v, w, h, col) => px(f > 0 ? X(u) : X(u + w - 1), Y(v), w * S, h * S, col);
-      const legA = walking ? (s.frame % 2 ? 1 : 0) : 0;
+      const legA = walking ? (fr % 2 ? 1 : 0) : 0;
       R(4 - legA, 12, 2, 4, c.leg); R(7 + legA, 12, 2, 4, c.leg); R(4 - legA, 15, 2, 1, '#222'); R(7 + legA, 15, 2, 1, '#222');
       R(3, 6, 7, 6, c.robe); R(6, 6, 1, 6, c.accent);
-      const armL = s.phase === 'typing' && s.frame === 1 ? 1 : 0, armR = s.phase === 'typing' && s.frame === 3 ? 1 : 0;
-      R(2, 7 - armL, 1, 4, c.robe); R(10, 7 - armR, 1, 4, c.robe); R(2, 10 - armL, 1, 1, c.skin); R(10, 10 - armR, 1, 1, c.skin);
-      R(4, 3, 5, 3, c.skin); R(5, 4, 1, 1, '#222'); R(8, 4, 1, 1, '#222');
-      R(3, 0, 7, 3, c.hat); R(3, 2, 7, 1, c.accent);
-      if (s.data.lead) { R(4, -1, 1, 1, '#ffd766'); R(6, -2, 1, 2, '#ffd766'); R(8, -1, 1, 1, '#ffd766'); }
-      if (s.data.status === 'failed') R(11, 2, 1, 1, '#ff5c5c');
+      const arm = (u, top, col = c.robe) => { R(u, top, 1, 4, col); R(u, top + 3, 1, 1, c.skin); };
+      const head = a === 'failed' ? 1 : 0; // failed members hang their head
+      if (jumping || s.gesture === 'stretch') { R(2, 2, 1, 4, c.robe); R(10, 2, 1, 4, c.robe); R(2, 1, 1, 1, c.skin); R(10, 1, 1, 1, c.skin); }
+      else if (a === 'thinking') { arm(2, 7); R(10, 5, 1, 3, c.robe); R(9, 5, 1, 1, c.skin); } // chin on hand
+      else if (a === 'reading') { R(2, 8, 1, 2, c.robe); R(10, 8, 1, 2, c.robe); R(3, 9, 7, 2, '#e8dcbf'); R(6, 9, 1, 2, '#b3a37e'); }
+      else if (s.gesture === 'coffee') { arm(2, 7); R(10, 5, 1, 3, c.robe); R(9, 5, 2, 2, '#f1ead6'); R(9, 5, 2, 1, '#6b4226'); }
+      else {
+        const fast = a === 'writing' ? fr % 2 : fr === 1 ? 1 : 0, other = a === 'writing' ? 1 - fr % 2 : fr === 3 ? 1 : 0;
+        arm(2, 7 - (typing ? fast : 0)); arm(10, 7 - (typing ? other : 0));
+      }
+      R(4, 3 + head, 5, 3, c.skin);
+      if (a === 'waiting' || a === 'failed') { R(5, 5 + head, 1, 1, '#222'); R(8, 5 + head, 1, 1, '#222'); } // closed / downcast eyes
+      else { R(5, 4, 1, 1, '#222'); R(8, 4, 1, 1, '#222'); }
+      R(3, head, 7, 3, c.hat); R(3, 2 + head, 7, 1, c.accent);
+      if (s.data.lead) { R(4, -1 + head, 1, 1, '#ffd766'); R(6, -2 + head, 1, 2, '#ffd766'); R(8, -1 + head, 1, 1, '#ffd766'); }
+      if (a === 'failed') { R(11, -3, 1, 3, '#ff5c5c'); R(11, 1, 1, 1, '#ff5c5c'); } // red "!"
+      if (a === 'thinking') for (let i = 0; i < Math.max(1, fr % 4); i++) R(4 + i * 2, -3, 1, 1, '#e6e6ee'); // animated ellipsis
+      if (a === 'waiting') { const z = fr % 3; R(10 + z, -2 - z, 2, 1, '#cfd8ff'); R(11 + z, -3 - z, 1, 1, '#cfd8ff'); R(10 + z, -4 - z, 2, 1, '#cfd8ff'); } // zzz
+      if (s.data.ctxRatio >= .9) { R(1, 2 + (fr % 2), 1, 2, '#7fc8ff'); R(1, 4 + (fr % 2), 1, 1, '#c4e6ff'); } // sweat drop
     }
-    /** A dispatch scroll flying from the Lead's desk to a teammate. */
+    /** A letter in flight: wax-sealed scroll from the Lead, blue-sealed report back to the Lead. */
     function stageDrawCourier(px, c, S) {
-      px(c.x - 3 * S, c.y - 2 * S, 6 * S, 4 * S, '#f3e7c6'); px(c.x - 3 * S, c.y - 2 * S, 6 * S, S, '#d9c38a'); px(c.x - S, c.y - S, 2 * S, 2 * S, '#c84b3c');
+      px(c.x - 3 * S, c.y - 2 * S, 6 * S, 4 * S, '#f3e7c6'); px(c.x - 3 * S, c.y - 2 * S, 6 * S, S, '#d9c38a'); px(c.x - S, c.y - S, 2 * S, 2 * S, c.reply ? '#3a9ad9' : '#c84b3c');
     }
     /** Floor, wall and windows; reads the stage's colour tokens so light and dark themes both get a readable office. */
     function stageDrawRoom(ctx, px, w, h, S, colors) {
@@ -2806,14 +2797,17 @@ window.__ModuleLoader__.load({
 
     // ---------- office stage: layout, DOM plates and the render loop (imperative; React only owns the host element) ----------
     /**
-     * Sprites arrive from `stageSprites` (08d) and are diffed in `sync`: new members walk in from the door, a task that
-     * turns in_progress sends a courier from the Lead's desk, a changed route flashes the model badge. The first frame is
-     * painted synchronously because a hidden side pane never fires requestAnimationFrame.
+     * Sprites arrive from `stageSprites` (08d) and are diffed in `sync`: new members walk in from the door, and the
+     * one-shot effects from `stageEvents` (08e) fly letters between Lead and teammates, celebrate finished tasks and
+     * flash changed routes. Poses follow each sprite's `activity`. The first frame is painted synchronously because a
+     * hidden side pane never fires requestAnimationFrame.
      */
     class OfficeScene {
-      constructor(stage, canvas, overlay, { t, onOpen }) {
-        this.stage = stage; this.canvas = canvas; this.overlay = overlay; this.ctx = canvas.getContext('2d'); this.t = t; this.onOpen = onOpen;
-        this.sprites = new Map(); this.plates = new Map(); this.icons = new Map(); this.bubbles = new Map(); this.couriers = [];
+      constructor(stage, canvas, overlay, { t, onOpen, onSelect }) {
+        this.stage = stage; this.canvas = canvas; this.overlay = overlay; this.ctx = canvas.getContext('2d'); this.t = t; this.onOpen = onOpen; this.onSelect = onSelect;
+        this.sprites = new Map(); this.plates = new Map(); this.icons = new Map(); this.bubbles = new Map(); this.couriers = []; this.prevList = []; this.tick = 0;
+        this.onCanvasClick = e => { const id = this.hit(e); if (id) this.select(this.selected === id ? null : id); };
+        canvas.addEventListener?.('click', this.onCanvasClick);
         this.w = 0; this.h = 0; this.S = 3; this.plateW = 120; this.selected = null; this.synced = false; this.dirty = true; this.visible = true;
         this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.px = (x, y, w, h, c) => { this.ctx.fillStyle = c; this.ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
@@ -2827,11 +2821,12 @@ window.__ModuleLoader__.load({
       schedule() {
         cancelAnimationFrame(this.raf); clearTimeout(this.timer);
         this.raf = requestAnimationFrame(now => this.loop(now));
-        this.timer = setTimeout(() => this.loop(performance.now()), this.busy() ? 120 : 1000);
+        this.timer = setTimeout(() => this.loop(performance.now()), this.busy() && this.visible && !document.hidden ? 120 : 1000);
       }
       el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
       destroy() {
         cancelAnimationFrame(this.raf); clearTimeout(this.timer); this.ro?.disconnect(); document.removeEventListener('visibilitychange', this.onVisibility);
+        this.canvas.removeEventListener?.('click', this.onCanvasClick);
         for (const id of [...this.sprites.keys()]) this.remove(id);
       }
 
@@ -2845,15 +2840,21 @@ window.__ModuleLoader__.load({
           const was = prev.data; prev.data = data;
           if (was.status === 'inactive' && data.status !== 'inactive' && !this.reduced) this.walkIn(prev);
           else if (prev.phase !== 'walking') prev.phase = phaseOf(data);
-          if (data.task?.status === 'in_progress' && (was.task?.id !== data.task.id || was.task?.status !== 'in_progress') && !data.lead) this.courier(data.id);
-          if (was.route !== data.route && data.route) this.flash(data.id);
-          this.renderPlate(data.id);
+          if (was.activity !== data.activity) prev.gesture = null;
         }
+        if (this.synced) for (const ev of stageEvents(this.prevList, list)) this.effect(ev);
+        for (const data of list) this.renderPlate(data.id);
         for (const id of [...this.sprites.keys()]) if (!seen.has(id)) this.remove(id);
-        this.synced = true; this.dirty = true; this.positionOverlay(); this.draw();
+        this.prevList = list; this.synced = true; this.dirty = true; this.positionOverlay(); this.draw();
+      }
+      effect(ev) {
+        if (ev.type === 'flash') this.flash(ev.id);
+        else if (ev.type === 'mail') this.courier(ev.from, ev.to);
+        else if (ev.type === 'celebrate') { const s = this.sprites.get(ev.id); if (s) { s.celebrate = this.reduced ? 0 : 1.6; s.cheer = 2.4; } }
+        else if (ev.type === 'sweat') this.dirty = true;
       }
       add(data, enter) {
-        const s = { data, palette: stagePalette(data.id, data.capability), x: 0, y: 0, home: { x: 0, y: 0 }, facing: 1, phase: phaseOf(data), path: [], frame: 0, ft: 0, flash: 0 };
+        const s = { data, palette: stagePalette(data.id, data.capability), x: 0, y: 0, home: { x: 0, y: 0 }, facing: 1, phase: phaseOf(data), path: [], frame: 0, ft: 0, flash: 0, celebrate: 0, cheer: 0, gesture: null };
         this.sprites.set(data.id, s);
         const plate = this.el('div', 'ctm-stage-plate'); plate.dataset.id = data.id; plate.tabIndex = 0; plate.setAttribute('role', 'button');
         plate.addEventListener('click', () => this.select(this.selected === data.id ? null : data.id));
@@ -2867,11 +2868,30 @@ window.__ModuleLoader__.load({
         this.sprites.delete(id); for (const map of [this.plates, this.icons, this.bubbles]) { map.get(id)?.remove(); map.delete(id); }
         if (this.selected === id) this.select(null); this.resize();
       }
-      select(id) { this.selected = id && this.sprites.has(id) ? id : null; for (const [k, p] of this.plates) p.setAttribute('aria-selected', String(k === this.selected)); }
+      /** `notify=false` mirrors the React-held selection without echoing it back. */
+      select(id, notify = true) {
+        const next = id && this.sprites.has(id) ? id : null, changed = next !== this.selected;
+        this.selected = next; for (const [k, p] of this.plates) p.setAttribute('aria-selected', String(k === this.selected));
+        if (changed && notify) this.onSelect?.(next);
+        if (changed) this.dirty = true;
+      }
+      /** Canvas click → the member whose desk/body box contains the point (people are drawn over their desks). */
+      hit(e) {
+        const r = this.canvas.getBoundingClientRect?.(); if (!r) return null;
+        const x = e.clientX - r.left, y = e.clientY - r.top, S = this.S;
+        for (const [id, s] of this.sprites) if (Math.abs(x - s.home.x) <= 12 * S && y >= s.home.y - 18 * S && y <= s.home.y + 8 * S) return id;
+        return null;
+      }
       walkIn(s) { s.x = -12 * this.S; s.y = s.home.y + 9 * this.S; s.facing = 1; s.path = [{ x: s.home.x, y: s.y }, { x: s.home.x, y: s.home.y }]; s.phase = 'walking'; }
-      courier(id) {
-        const lead = [...this.sprites.values()].find(x => x.data.lead), to = this.sprites.get(id); if (!lead || !to || this.reduced) return;
-        this.couriers.push({ x: lead.home.x, y: lead.home.y, from: { ...lead.home }, to: { x: to.home.x - 10 * this.S, y: to.home.y + 2 * this.S }, t: 0, dur: .9 + Math.hypot(to.home.x - lead.home.x, to.home.y - lead.home.y) / 420 });
+      /** Fly a letter between two desks; `to == null` means "to the team" (fans out to every seated teammate). */
+      courier(fromId, toId) {
+        if (this.reduced) return;
+        const from = this.sprites.get(fromId); if (!from) return;
+        const targets = toId ? [this.sprites.get(toId)].filter(Boolean) : [...this.sprites.values()].filter(s => !s.data.lead && s.data.status !== 'inactive').slice(0, 6);
+        for (const to of targets) {
+          const dest = { x: to.home.x - 10 * this.S, y: to.home.y + 2 * this.S };
+          this.couriers.push({ x: from.home.x, y: from.home.y, from: { ...from.home }, to: dest, reply: !from.data.lead, t: 0, dur: .9 + Math.hypot(dest.x - from.home.x, dest.y - from.home.y) / 420 });
+        }
       }
       flash(id) { const b = this.plates.get(id)?.querySelector('.ctm-model-badge'); if (b) { b.removeAttribute('data-flash'); void b.offsetWidth; b.dataset.flash = ''; } }
 
@@ -2921,33 +2941,55 @@ window.__ModuleLoader__.load({
         const name = this.el('div', 'ctm-stage-plate-name');
         const dot = this.el('i', 'ctm-stage-dot'); dot.dataset.s = d.status; dot.title = d.statusLabel;
         name.append(dot, this.el('span', '', d.name));
+        const act = this.el('div', 'ctm-stage-plate-act', [d.activityLabel, d.parallel > 1 ? fmt(t('stage.parallel'), { n: d.parallel }) : ''].filter(Boolean).join(' · '));
+        act.dataset.act = d.activity ?? '';
         if (d.ctxRatio != null) { const m = this.el('div', 'ctm-stage-meter'); m.dataset.tone = d.ctxRatio >= .9 ? 'error' : d.ctxRatio >= .75 ? 'warn' : ''; m.style.setProperty('--p', Math.round(d.ctxRatio * 100) + '%'); m.title = `${t('live.contextPressure')} ${Math.round(d.ctxRatio * 100)}%`; m.append(this.el('i')); name.append(m); }
         const more = this.el('div', 'ctm-stage-plate-more');
         more.append(this.el('small', 'ctm-sub', [d.capability, d.statusLabel].filter(Boolean).join(' · ')));
         if (d.route) { const b = this.el('span', 'ctm-model-badge', d.routeAlias); b.dataset.grade = d.grade; b.title = d.route; more.append(b); }
         more.append(this.el('div', 'ctm-stage-plate-task', d.task ? `#${d.task.id} ${d.task.subject ?? ''}` : t('live.noTask')));
         if (d.openable && this.onOpen) { const btn = this.el('button', 'ctm-btn ctm-stage-open', t('stage.open')); btn.type = 'button'; btn.addEventListener('click', e => { e.stopPropagation(); this.onOpen(d.memberId); }); more.append(btn); }
-        p.append(name, more);
-        p.title = `${d.name} · ${d.statusLabel}${d.route ? ' · ' + d.route : ''}`; p.setAttribute('aria-label', p.title);
-        const icon = this.icons.get(id); icon.textContent = d.icon ?? ''; icon.hidden = !d.icon;
-        const bubble = this.bubbles.get(id); bubble.textContent = d.bubble ?? ''; bubble.title = d.bubble ?? ''; bubble.hidden = !d.bubble;
+        p.append(name, act, more); p.dataset.act = d.activity ?? '';
+        p.title = `${d.name} · ${d.activityLabel ?? d.statusLabel}${d.route ? ' · ' + d.route : ''}`; p.setAttribute('aria-label', p.title);
+        this.renderIcon(id); this.renderBubble(id, Date.now());
+      }
+      renderIcon(id) {
+        const s = this.sprites.get(id), icon = this.icons.get(id); if (!s || !icon) return;
+        const glyph = s.cheer > 0 ? '✅' : s.data.icon ?? ''; icon.textContent = glyph; icon.hidden = !glyph; icon.dataset.act = s.cheer > 0 ? 'done' : s.data.activity ?? '';
+      }
+      renderBubble(id, now) {
+        const s = this.sprites.get(id), bubble = this.bubbles.get(id); if (!s || !bubble) return;
+        const text = s.cheer > 0 ? this.t('stage.act.doneBubble') : stageBubbleText(s.data, now, this.t);
+        if (bubble.textContent !== text) { bubble.textContent = text; bubble.title = text; }
+        bubble.hidden = !text; bubble.dataset.act = s.cheer > 0 ? 'done' : s.data.activity ?? '';
       }
 
       /* ---------- loop ---------- */
-      busy() { return this.couriers.length > 0 || [...this.sprites.values()].some(s => s.phase === 'walking'); }
+      busy() {
+        return this.couriers.length > 0 || [...this.sprites.values()].some(s => s.phase === 'walking' || s.celebrate > 0 || s.cheer > 0
+          || s.data.status === 'running' || STAGE_BUSY_ACTS.has(s.data.activity));
+      }
       loop(now) {
         this.schedule();
         if (!this.last) this.last = now;
-        const idle = !this.busy(), minFrame = idle ? 66 : 0; if (now - this.last < minFrame) return;
+        // Reduced motion: still repaint state changes and the elapsed clock, but only a few frames per second.
+        const idle = !this.busy(), minFrame = this.reduced ? 500 : idle ? 66 : 0; if (now - this.last < minFrame) return;
         const dt = Math.min(.05, (now - this.last) / 1000); this.last = now;
         if (now - this.visibleAt > 1000) { const r = this.stage.getBoundingClientRect(); this.visible = r.width > 0 && r.bottom > 0 && r.top < (window.innerHeight || Infinity); this.visibleAt = now; }
         if ((document.hidden || !this.visible) && !this.dirty) return; // hidden or scrolled-away hosts still get one repaint per change
         this.update(dt); this.draw();
       }
       update(dt) {
-        for (const s of this.sprites.values()) {
-          s.ft += dt; const rate = s.phase === 'walking' ? .12 : s.phase === 'typing' ? .22 : .5;
+        const wall = Date.now(), second = Math.floor(wall / 1000), tickNow = second !== this.tick; this.tick = second;
+        for (const [id, s] of this.sprites) {
+          s.ft += dt; const rate = s.phase === 'walking' ? .12 : this.reduced ? 1 : STAGE_FRAME_RATE[s.data.activity] ?? .5;
           if (s.ft > rate) { s.ft = 0; s.frame = (s.frame + 1) % 4; }
+          const cheered = s.cheer > 0;
+          if (s.celebrate > 0) s.celebrate = Math.max(0, s.celebrate - dt);
+          if (s.cheer > 0) s.cheer = Math.max(0, s.cheer - dt);
+          if (cheered && !s.cheer) { this.renderIcon(id); this.renderBubble(id, wall); }
+          s.gesture = s.data.activity === 'idle' && !this.reduced ? stageIdleGesture(id, wall) : null;
+          if (tickNow && s.data.bubbleSince != null) this.renderBubble(id, wall);
           if (s.phase === 'walking' && s.path.length) {
             const p = s.path[0], dx = p.x - s.x, dy = p.y - s.y, dist = Math.hypot(dx, dy), step = 70 * dt;
             if (Math.abs(dx) > .5) s.facing = dx > 0 ? 1 : -1;
@@ -2963,7 +3005,8 @@ window.__ModuleLoader__.load({
         const css = getComputedStyle(this.stage), v = (k, d) => css.getPropertyValue(k).trim() || d;
         stageDrawRoom(ctx, this.px, w, h, S, { floorA: v('--ctm-stage-floor-a', '#1c1d26'), floorB: v('--ctm-stage-floor-b', '#202130'), grout: v('--ctm-stage-grout', 'rgba(0,0,0,.22)'), wall: v('--ctm-stage-wall', '#2a2b3a') });
         const desk = v('--ctm-stage-desk', '#3b2f26'), deskTop = v('--ctm-stage-desk-top', '#5a4535'), ents = [];
-        for (const s of this.sprites.values()) {
+        for (const [id, s] of this.sprites) {
+          if (id === this.selected) ents.push({ y: -1, f: () => { const x = s.home.x - 14 * S, y = s.home.y - 19 * S; this.px(x, y, 28 * S, S, '#ffd766'); this.px(x, s.home.y + 9 * S, 28 * S, S, '#ffd766'); } });
           ents.push({ y: s.home.y + 3 * S, f: () => stageDrawDesk(this.px, s, S, desk, deskTop) });
           if (s.data.status !== 'inactive') ents.push({ y: s.y + (s.phase === 'walking' ? 6 * S : 0), f: () => stageDrawPerson(this.px, s, S) });
         }
@@ -2973,33 +3016,35 @@ window.__ModuleLoader__.load({
       }
     }
     function phaseOf(data) { return data.status === 'running' ? 'typing' : 'idle'; }
+    /** Seconds per animation frame by activity: fast typing while writing, slow breathing when idle or dozing. */
+    const STAGE_FRAME_RATE = { writing: .12, terminal: .18, searching: .25, browsing: .3, messaging: .2, board: .25, working: .22, reading: .7, thinking: .4, waiting: .8, failed: .6, arriving: .3, idle: .5, offline: 1 };
 
     // ---------- office stage: boardCards + live projections → sprite data, and the React host component ----------
-    const STAGE_TOOL_GLYPHS = [['send_message', '📨'], ['team_task', '📋'], ['read', '📖'], ['write', '✍️'], ['edit', '✍️'], ['bash', '⌨️'], ['pwsh', '⌨️'], ['shell', '⌨️'], ['grep', '🔍'], ['glob', '🔍'], ['search', '🔍'], ['fetch', '🌐'], ['web', '🌐']];
-    function stageToolGlyph(tool) {
-      const name = String(tool ?? '').toLowerCase(); if (!name) return '';
-      return STAGE_TOOL_GLYPHS.find(([key]) => name.includes(key))?.[1] ?? '⚙️';
-    }
     /**
-     * Pure mapping, one entry per board card. Status/task/model come from boardCards (the same source as the cards
-     * below the stage); the current tool and context pressure come from the member's own live projections.
+     * Pure mapping, one entry per board card. Status/task/model come from boardCards (the same source as the member
+     * detail panel); the fine-grained activity, bubble and context pressure come from the member's own live projections.
      */
-    function stageSprites(cards, { live, t = k => k, currentMemberId = null, canOpen = false } = {}) {
+    function stageSprites(cards, { live, t = k => k, currentMemberId = null, canOpen = false, since } = {}) {
       return (cards ?? []).map(card => {
         const memberId = card.member?.id ?? null;
         const proj = memberId && live?.projections ? live.projections(memberId) : undefined;
         const act = proj?.capabilityTeamActivity, cur = act?.schemaVersion === 1 ? act.current : null;
-        const working = card.status === 'running' && act?.phase === 'tool' && cur && cur.status === 'running';
+        const activity = stageActivityOf(card.status, act);
+        const toolAct = !['thinking', 'idle', 'offline', 'failed', 'arriving'].includes(activity);
         const cp = proj?.contextPressure, projected = cp?.projectedTokens ?? cp?.pressureTokens;
         const ctxRatio = typeof projected === 'number' && typeof cp?.contextWindow === 'number' && cp.contextWindow > 0 ? Math.min(1, Math.max(0, projected / cp.contextWindow)) : null;
         const badge = card.model ? modelBadgeInfo(card.model, t) : null;
+        const task = card.task ? { id: card.task.id, subject: card.task.subject, status: card.task.status } : null;
+        const runSince = card.status === 'running' && memberId ? since?.get?.(memberId) ?? null : null;
+        const bubble = stageBubbleBase(activity, { cur, task, since: runSince, t });
         return {
           id: card.id, memberId, name: card.name, capability: card.role?.capability ?? (card.lead ? 'orchestrator' : ''), lead: !!card.lead,
           status: card.status, statusLabel: label(t, `live.${card.status}`, card.status),
-          task: card.task ? { id: card.task.id, subject: card.task.subject, status: card.task.status } : null,
-          route: card.model ?? null, routeAlias: badge?.alias ?? card.model ?? '', grade: badge?.grade ?? 'default',
-          icon: working ? stageToolGlyph(cur.tool) : '',
-          bubble: working ? [cur.summary, cur.target ? `(${cur.target})` : ''].filter(Boolean).join(' ') : '',
+          activity, activityLabel: label(t, `stage.act.${activity}`, activity), actKey: toolAct ? (cur?.id ?? cur?.startedAt ?? cur?.tool ?? '') : '',
+          task, route: card.model ?? null, routeAlias: badge?.alias ?? card.model ?? '', grade: badge?.grade ?? 'default',
+          icon: STAGE_ACT_GLYPH[activity] ?? '',
+          bubble: bubble.text, bubbleSince: bubble.since ?? null,
+          parallel: card.status === 'running' && typeof act?.activeCount === 'number' ? act.activeCount : 0,
           ctxRatio,
           openable: !!(canOpen && !card.lead && memberId && memberId !== currentMemberId && card.status !== 'provisioning' && card.status !== 'failed'),
         };
@@ -3011,18 +3056,19 @@ window.__ModuleLoader__.load({
      * the host (canvas + DOM plates) so React never reconciles those nodes. Without a DOM (unit tests, SSR) it renders
      * the header only.
      */
-    function OfficeStage({ cards, live, t, open, currentMemberId }) {
+    function OfficeStage({ cards, live, t, open, currentMemberId, since, selected = null, onSelect }) {
       const readCollapsed = () => { try { return window.localStorage?.getItem(STAGE_COLLAPSED_KEY) === '1'; } catch { return false; } };
       const [collapsed, setCollapsed] = React.useState(readCollapsed());
-      const host = React.useRef(null), sceneRef = React.useRef(null);
-      const sprites = stageSprites(cards, { live, t, currentMemberId, canOpen: !!open });
+      const host = React.useRef(null), sceneRef = React.useRef(null), selectRef = React.useRef(onSelect);
+      selectRef.current = onSelect; // the scene outlives renders, so it always calls the latest callback
+      const sprites = stageSprites(cards, { live, t, currentMemberId, canOpen: !!open, since });
       const seated = sprites.filter(s => s.status !== 'inactive').length;
       const toggle = () => setCollapsed(prev => { const next = !prev; try { window.localStorage?.setItem(STAGE_COLLAPSED_KEY, next ? '1' : '0'); } catch { /* storage unavailable */ } return next; });
       React.useEffect(() => {
         const el = host.current;
         if (!el || typeof document === 'undefined' || typeof requestAnimationFrame !== 'function') { sceneRef.current?.destroy(); sceneRef.current = null; return; }
-        if (!sceneRef.current) { sceneRef.current = new OfficeScene(el, el.querySelector('canvas'), el.querySelector('.ctm-stage-overlay'), { t, onOpen: open ? id => open(id) : null }); }
-        sceneRef.current.t = t; sceneRef.current.sync(sprites);
+        if (!sceneRef.current) { sceneRef.current = new OfficeScene(el, el.querySelector('canvas'), el.querySelector('.ctm-stage-overlay'), { t, onOpen: open ? id => open(id) : null, onSelect: id => selectRef.current?.(id) }); }
+        sceneRef.current.t = t; sceneRef.current.sync(sprites); sceneRef.current.select(selected, false);
       });
       React.useEffect(() => () => { sceneRef.current?.destroy(); sceneRef.current = null; }, []);
       return h('section', { className: 'ctm-stage', 'aria-label': t('stage.title'), ...(collapsed ? { 'data-collapsed': '' } : {}) },
@@ -3035,15 +3081,104 @@ window.__ModuleLoader__.load({
           h('div', { className: 'ctm-stage-overlay' }),
           sprites.length ? null : h('p', { className: 'ctm-stage-empty ctm-sub' }, t('stage.empty'))));
     }
-    OfficeStage.sprites = stageSprites; OfficeStage.palette = stagePalette; // test hooks for the pure helpers
+    // test hooks for the pure helpers
+    Object.assign(OfficeStage, { sprites: stageSprites, palette: stagePalette, activityOf: stageActivityOf, bubbleText: stageBubbleText,
+      events: stageEvents, idleGesture: stageIdleGesture, toolGlyph: stageToolGlyph });
 
-    function TeamBoard({ roles, activity, allocations, since, t, open, live, usage, runtimeState, currentMemberId, leadSessionId }) {
+    // ---------- office stage: pure live-activity derivation (no DOM; unit-tested through OfficeStage.* hooks) ----------
+    /** Tool name → activity. First match wins, so `web_search` is browsing and `read_image` is reading. */
+    const STAGE_TOOL_ACTS = [
+      ['send_message', 'messaging'], ['spawn', 'messaging'], ['team_task', 'board'], ['wait_agent', 'waiting'],
+      ['web', 'browsing'], ['fetch', 'browsing'], ['browse', 'browsing'], ['omni', 'browsing'],
+      ['read', 'reading'], ['write', 'writing'], ['edit', 'writing'],
+      ['bash', 'terminal'], ['pwsh', 'terminal'], ['shell', 'terminal'], ['exec', 'terminal'],
+      ['grep', 'searching'], ['glob', 'searching'], ['search', 'searching'],
+    ];
+    const STAGE_ACT_GLYPH = { thinking: '💭', reading: '📖', writing: '✍️', terminal: '⌨️', searching: '🔍', browsing: '🌐',
+      messaging: '📨', board: '📋', waiting: '⏳', failed: '❗', working: '⚙️', arriving: '🚪', idle: '', offline: '' };
+    /** Activities that keep the render loop at full rate (anything animated beyond the idle gestures). */
+    const STAGE_BUSY_ACTS = new Set(['thinking', 'reading', 'writing', 'terminal', 'searching', 'browsing', 'messaging', 'board', 'waiting', 'working', 'arriving']);
+    function stageToolAct(tool) {
+      const name = String(tool ?? '').toLowerCase(); if (!name) return 'working';
+      return STAGE_TOOL_ACTS.find(([key]) => name.includes(key))?.[1] ?? 'working';
+    }
+    function stageToolGlyph(tool) { return tool ? STAGE_ACT_GLYPH[stageToolAct(tool)] : ''; }
+    /**
+     * One fine-grained activity per member from the pushed status + capabilityTeamActivity projection:
+     * offline (no session) / arriving (provisioning) / failed / tool category while a call runs / thinking while the
+     * model generates (phase model, settled-but-still-running, or no projection yet) / idle.
+     */
+    function stageActivityOf(status, act) {
+      if (status === 'inactive') return 'offline';
+      if (status === 'failed') return 'failed';
+      if (status === 'provisioning') return 'arriving';
+      if (status !== 'running') return 'idle';
+      const cur = act?.schemaVersion === 1 ? act.current : null;
+      if (act?.schemaVersion === 1 && act.phase === 'tool' && cur?.status === 'running') return stageToolAct(cur.tool);
+      return 'thinking';
+    }
+    const stageClock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+    /** Bubble = base text + elapsed (recomputed by the scene once a second) + parallel count. */
+    function stageBubbleText(d, now, t = k => k) {
+      if (!d?.bubble) return '';
+      const parts = [d.bubble];
+      if (typeof d.bubbleSince === 'number' && now >= d.bubbleSince) parts.push(`· ${stageClock(now - d.bubbleSince)}`);
+      if (d.parallel > 1) parts.push(fmt(t('stage.parallel'), { n: d.parallel }));
+      return parts.join(' ');
+    }
+    /** Base bubble text and the start time it counts from, per activity. Idle/offline members stay quiet. */
+    function stageBubbleBase(activity, { cur, task, since, t }) {
+      const taskText = task ? `#${task.id} ${task.subject ?? ''}`.trim() : '';
+      if (activity === 'thinking') return { text: [t('stage.act.thinkingBubble'), taskText].filter(Boolean).join(' '), since };
+      if (activity === 'failed') return { text: t('stage.act.failedBubble'), since: null };
+      if (activity === 'arriving') return { text: t('stage.act.arriving'), since: null };
+      if (activity === 'idle' || activity === 'offline') return { text: '', since: null };
+      const tool = [cur?.summary || label(t, `stage.act.${activity}`, cur?.tool ?? ''), cur?.target ? `(${cur.target})` : ''].filter(Boolean).join(' ');
+      return { text: tool || t(`stage.act.${activity}`), since: typeof cur?.startedAt === 'number' ? cur.startedAt : since };
+    }
+    /**
+     * Deterministic idle gesture: every 4 s window each member has a hash-picked chance to stretch or sip coffee,
+     * so idle desks are alive without randomness (and tests can pin the result).
+     */
+    function stageIdleGesture(id, nowMs) {
+      const slot = Math.floor(nowMs / 4000), n = stageHash(`${id}:${slot}`) % 7;
+      return n === 0 ? 'stretch' : n === 1 ? 'coffee' : null;
+    }
+    /**
+     * Diff two sprite lists into one-shot effects. Mail flies Lead → teammate when a task turns in_progress for that
+     * teammate or the teammate wakes up while the Lead is messaging; teammate → Lead when the teammate starts a
+     * send_message call. Losing an in-progress task (done/removed) celebrates; a changed route flashes the badge.
+     */
+    function stageEvents(prev, next) {
+      const before = new Map((prev ?? []).map(d => [d.id, d])), out = [];
+      const lead = (next ?? []).find(d => d.lead), leadWas = lead ? before.get(lead.id) : null;
+      const leadMessaging = lead && (lead.activity === 'messaging' || leadWas?.activity === 'messaging');
+      for (const d of next ?? []) {
+        const was = before.get(d.id); if (!was) continue;
+        if (was.route !== d.route && d.route) out.push({ type: 'flash', id: d.id });
+        if (d.ctxRatio >= .9 && !(was.ctxRatio >= .9)) out.push({ type: 'sweat', id: d.id });
+        if (d.lead || !lead) continue;
+        const newTask = d.task?.status === 'in_progress' && (was.task?.id !== d.task.id || was.task?.status !== 'in_progress');
+        const woke = leadMessaging && d.status === 'running' && was.status !== 'running';
+        if (newTask || woke) out.push({ type: 'mail', from: lead.id, to: d.id });
+        if (d.activity === 'messaging' && (was.activity !== 'messaging' || was.actKey !== d.actKey)) out.push({ type: 'mail', from: d.id, to: lead.id });
+        if (was.task?.status === 'in_progress' && d.task?.id !== was.task.id) out.push({ type: 'celebrate', id: d.id });
+      }
+      if (lead && leadWas && lead.activity === 'messaging' && (leadWas.activity !== 'messaging' || leadWas.actKey !== lead.actKey)
+        && !out.some(e => e.type === 'mail' && e.from === lead.id)) out.push({ type: 'mail', from: lead.id, to: null });
+      return out;
+    }
+
+    /**
+     * Team workbench: the pixel office plus a member detail panel. Selection lives here (React) — OfficeScene reports
+     * clicks through `onSelect`; `selectedId` lets a host (or a test) pin the selection from outside.
+     */
+    function TeamBoard({ roles, activity, allocations, since, t, open, live, usage, runtimeState, currentMemberId, leadSessionId, selectedId }) {
       const cards = boardCards(roles, activity, allocations);
-      const lead = cards.filter(c => c.lead);
-      const mates = cards.filter(c => !c.lead);
       const running = cards.filter(c => c.status === 'running').length;
-      const canvas = React.useRef(null);
-      const links = useBoardLinks(canvas, cards);
+      const [picked, setPicked] = React.useState({ stageSelected: null });
+      const selected = selectedId !== undefined ? selectedId : (picked?.stageSelected ?? null);
+      const chosen = selected ? cards.find(c => c.id === selected) ?? null : null;
       const openable = c => Boolean(open && !c.lead && c.member?.id && (!currentMemberId || c.member.id !== currentMemberId) && c.status !== 'provisioning' && c.status !== 'failed');
       const tasks = activity?.tasks ?? [];
       const taskRevSig = tasks.map(tk => {
@@ -3201,13 +3336,15 @@ window.__ModuleLoader__.load({
           running ? badge(fmt(t('live.runningCount'), { n: running }), 'brand', 'run') : null,
           activity?.at ? h('span', { className: 'ctm-sub ctm-bd-at' }, h('i', { className: 'ctm-bd-pulse', 'aria-hidden': true }), t('live.polling')) : null),
         activity?.unavailable ? h('p', { className: 'ctm-ov-note ctm-warn' }, activity.unavailable) : null,
-        h(OfficeStage, { cards, live, t, open, currentMemberId }),
-        h('div', { className: 'ctm-bd-canvas', ref: canvas },
-          h(BoardLinks, { links }),
-          lead.length ? h('div', { className: 'ctm-bd-lead' }, ...lead.map(card)) : null,
-          mates.length ? h('div', { className: 'ctm-bd-mates' }, ...mates.map(card)) : null),
+        h(OfficeStage, { cards, live, t, open, currentMemberId, since, selected: chosen?.id ?? null, onSelect: id => setPicked({ stageSelected: id ?? null }) }),
+        cards.length ? h('section', { className: 'ctm-stage-detail', 'aria-live': 'polite', 'aria-label': t('stage.detail') },
+          chosen ? h('div', { className: 'ctm-stage-detail-head' },
+            h('span', { className: 'ctm-label' }, t('stage.detail')),
+            h('button', { type: 'button', className: 'ctm-btn', onClick: () => setPicked({ stageSelected: null }) }, t('stage.detailClose'))) : null,
+          chosen ? card(chosen) : h('p', { className: 'ctm-sub ctm-stage-detail-hint' }, t('stage.detailHint'))) : null,
         depsView);
     }
+    TeamBoard.detail = (props, id) => TeamBoard({ ...props, selectedId: id }); // test/host hook: board with one member's detail open
 
     // ---------- role view (teammate session): own role card + own usage/logs/artifacts, no team canvas ----------
     /**
