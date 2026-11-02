@@ -19,6 +19,7 @@
 | `EMBEDDING_DIMENSIONS` | 可选向量维度（旧名回退 `CPA_EMBED_DIMENSIONS`）。 |
 | `EMBEDDING_API_KEY` | 嵌入凭据的默认名称（旧名回退 `CPA_EMBED_API_KEY`）。 |
 | `OPENVIKING_URL` / `OPENVIKING_API_KEY` | `openviking` 记忆后端地址与可选密钥。 |
+| `MEMORY_SHARED_RECALL` | `current`（默认）全局记忆只检索本机；`none` 同时跨项目、跨实例检索共享后端。覆盖 `integrations.memory.sharedRecall`。 |
 | `CAPABILITY_TEAM_HOME` | 团队配置存储目录，默认 `~/.dsh/capability-team-themes`。 |
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | 可选 OpenCode 可执行文件路径；未设置时从 `PATH` 查找。 |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | 可选 OpenCode 模型目录路径。 |
@@ -131,7 +132,7 @@
 
 ### 从 DSH 凭据库读取设置
 
-每个单字段覆盖变量也可以作为同名 DSH 凭据保存（适合由集群管理端统一下发设置，客户端无需本地配置）。凭据优先于同名环境变量；非法值被忽略且不会记录日志；来源显示为 `credential:<名称>`。名称：`OMNI_SEARCH_BASE_URL`、`OMNI_SEARCH_ENGINES`、`OMNI_FETCH_ENGINES`（逗号分隔列表）、`OMNI_SEARCH_PROVIDERS_PATH`、`SEARXNG_URL`、`OMNI_AUDIO_BASE_URL`、`EMBEDDING_BASE_URL`、`EMBEDDING_MODEL`、`EMBEDDING_DIMENSIONS`（旧名 `CPA_EMBED_*`）、`MEMORY_BACKEND`、`OPENVIKING_URL`。这些设置改变工具结构时，`omni-search` 会重新注册搜索工具。
+每个单字段覆盖变量也可以作为同名 DSH 凭据保存（适合由集群管理端统一下发设置，客户端无需本地配置）。凭据优先于同名环境变量；非法值被忽略且不会记录日志；来源显示为 `credential:<名称>`。名称：`OMNI_SEARCH_BASE_URL`、`OMNI_SEARCH_ENGINES`、`OMNI_FETCH_ENGINES`（逗号分隔列表）、`OMNI_SEARCH_PROVIDERS_PATH`、`SEARXNG_URL`、`OMNI_AUDIO_BASE_URL`、`EMBEDDING_BASE_URL`、`EMBEDDING_MODEL`、`EMBEDDING_DIMENSIONS`（旧名 `CPA_EMBED_*`）、`MEMORY_BACKEND`、`OPENVIKING_URL`、`MEMORY_SHARED_RECALL`。这些设置改变工具结构时，`omni-search` 会重新注册搜索工具。
 
 ### 从 cpa-tools 迁移
 

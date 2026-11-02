@@ -51,7 +51,7 @@ test('6 strict scopes exclude role, respect k/JSON budget and explicit none', as
     const found = await f.service.search(who, { query: 'common lesson', scope });
     assert.equal(found.results.length, 1); assert.equal(found.results[0].scope, scope);
   }
-  const local = await f.service.search(who, { query: 'common lesson', k: 1 });
+  const local = await f.service.search(who, { query: 'common lesson', k: 1, shared_project_filter: 'current' });
   assert.equal(local.results.length, 1); assert.equal(local.shared.degraded, 'project-filter-unavailable'); assert.equal(f.counts.recall, 0);
   f.backend.recall = async () => { f.counts.recall++; return Array.from({ length: 20 }, (_, n) => ({ memory: { id: `${n}`, text: `${n} ${'x'.repeat(2000)}`, kind: 'note', scope: { kind: 'openviking' } }, via: ['openviking'] })); };
   const shared = await f.service.search(who, { query: 'common lesson', k: 20, shared_project_filter: 'none' });
@@ -71,6 +71,20 @@ test('7 embed/shared failure stays local, replacement revokes, queue failure sav
   assert.equal(saved.saved, true); assert.equal(saved.syncWarning, 'sync-unavailable'); assert.notEqual(saved.sync, 'queued');
   const disabled = memoryService({ store: f.store, embedder: f.embedder, backend: f.backend, config: configuration({ syncWrites: false }) });
   assert.equal((await disabled.write(who, { kind: 'note', text: 'disabled sync conclusion' })).sync, 'disabled');
+});
+test('6 shared recall scope follows the deployment setting unless the plugin or the call sets it', async t => {
+  const f = await fixture(t);
+  let deployment = 'none';
+  const service = memoryService({ store: f.store, embedder: f.embedder, backend: f.backend, config: configuration(), sharedFilter: () => deployment });
+  const crossed = await service.search(who, { query: 'any lesson' });
+  assert.equal(crossed.shared.filter, 'none'); assert.equal(crossed.shared.degraded, null); assert.equal(f.counts.recall, 1);
+  deployment = 'current';
+  const local = await service.search(who, { query: 'any lesson' });
+  assert.equal(local.shared.degraded, 'project-filter-unavailable'); assert.equal(f.counts.recall, 1);
+  assert.equal((await service.search(who, { query: 'any lesson', shared_project_filter: 'none' })).shared.filter, 'none');
+  const pinned = memoryService({ store: f.store, embedder: f.embedder, backend: f.backend, config: configuration({ sharedProjectFilter: 'current' }), sharedFilter: () => 'none' });
+  assert.equal((await pinned.search(who, { query: 'any lesson' })).shared.filter, 'current');
+  assert.throws(() => configuration({ sharedProjectFilter: 'all' }), /sharedProjectFilter/);
 });
 test('7 durable queue restart and explicit capacity failure; 8 independent queue paths', async t => {
   const f = await fixture(t);

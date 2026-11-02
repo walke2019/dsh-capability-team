@@ -1,18 +1,20 @@
-export const defaults = Object.freeze({ enabled: true, autoRecall: true, injectChars: 2400, recallK: 6, recallTimeoutMs: 2000, sharedRecall: true, sharedProjectFilter: 'current', syncWrites: true });
+// sharedProjectFilter null = not set here: the deployment setting `integrations.memory.sharedRecall` (file,
+// MEMORY_SHARED_RECALL environment variable or same-named DSH credential) decides at search time.
+export const defaults = Object.freeze({ enabled: true, autoRecall: true, injectChars: 2400, recallK: 6, recallTimeoutMs: 2000, sharedRecall: true, sharedProjectFilter: null, syncWrites: true });
 export function configuration(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid configuration');
   const c = { ...defaults, ...input };
   for (const key of Object.keys(input)) if (!(key in defaults)) throw new Error(`Unknown configuration: ${key}`);
   for (const key of ['enabled','autoRecall','sharedRecall','syncWrites']) if (typeof c[key] !== 'boolean') throw new Error(`Invalid ${key}`);
   for (const [key, min, max] of [['injectChars',200,6000],['recallK',1,20],['recallTimeoutMs',100,10000]]) if (!Number.isInteger(c[key]) || c[key] < min || c[key] > max) throw new Error(`Invalid ${key}`);
-  if (!['current','none'].includes(c.sharedProjectFilter)) throw new Error('Invalid sharedProjectFilter');
+  if (c.sharedProjectFilter !== null && !['current','none'].includes(c.sharedProjectFilter)) throw new Error('Invalid sharedProjectFilter');
   return c;
 }
 export const Config = { type: 'object', additionalProperties: false, properties: {
   enabled: { type: 'boolean', default: true }, autoRecall: { type: 'boolean', default: true },
   injectChars: { type: 'integer', minimum: 200, maximum: 6000, default: 2400 },
   recallK: { type: 'integer', minimum: 1, maximum: 20, default: 6 }, recallTimeoutMs: { type: 'integer', minimum: 100, maximum: 10000, default: 2000 },
-  sharedRecall: { type: 'boolean', default: true }, sharedProjectFilter: { type: 'string', enum: ['current','none'], default: 'current' }, syncWrites: { type: 'boolean', default: true },
+  sharedRecall: { type: 'boolean', default: true }, sharedProjectFilter: { type: ['string','null'], enum: ['current','none',null], default: null }, syncWrites: { type: 'boolean', default: true },
 } };
  function object(properties, required) { return { type: 'object', additionalProperties: false, properties, required }; }
 const str = (maxLength, minLength = 1) => ({ type: 'string', minLength, maxLength });

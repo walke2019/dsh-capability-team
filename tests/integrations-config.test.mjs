@@ -74,6 +74,19 @@ test('MEMORY_BACKENDS 列表校验 memory.backend', () => {
   assert.throws(() => validateIntegrations({ memory: { backend: 'mem0' } }), /local 或 openviking/);
 });
 
+test('memory.sharedRecall：默认 current，可由文件或 MEMORY_SHARED_RECALL 设置，非法值被忽略', async () => {
+  const root = await tmp();
+  assert.equal(resolveIntegrations({ root, env: {} }).effective.memory.sharedRecall, 'current');
+  assert.throws(() => validateIntegrations({ memory: { sharedRecall: 'all' } }), /current 或 none/);
+  await writeFile(join(root, 'integrations.json'), JSON.stringify({ integrations: { memory: { sharedRecall: 'none' } } }));
+  const file = resolveIntegrations({ root, env: {} });
+  assert.equal(file.effective.memory.sharedRecall, 'none'); assert.equal(file.sources.memory.sharedRecall, 'file');
+  const env = resolveIntegrations({ root, env: { MEMORY_SHARED_RECALL: 'current' } });
+  assert.equal(env.effective.memory.sharedRecall, 'current'); assert.equal(env.sources.memory.sharedRecall, 'env:MEMORY_SHARED_RECALL');
+  assert.equal(resolveIntegrations({ root, env: { MEMORY_SHARED_RECALL: 'everything' } }).effective.memory.sharedRecall, 'none');
+  assert.ok(configApi.overrideNames().includes('MEMORY_SHARED_RECALL'));
+});
+
 test('搜索引擎配置：引擎列表、SearXNG 地址、各引擎密钥名', async () => {
   assert.deepEqual(validateIntegrations({ search: { engines: ['brave', 'tavily', 'brave'] } }).search.engines, ['brave', 'tavily']);
   assert.throws(() => validateIntegrations({ search: { engines: ['google'] } }), /tavily/);

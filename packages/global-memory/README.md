@@ -23,7 +23,7 @@ Only one instance may run per profile. Disable the bundle, plugin, or set `enabl
 | recallK | 6 | Result limit (1–20) |
 | recallTimeoutMs | 2000 | Total automatic recall budget (100–10000 ms) |
 | sharedRecall | true | Permit shared search subject to project filter |
-| sharedProjectFilter | current | Safe local fallback; `none` explicitly permits cross-project shared search |
+| sharedProjectFilter | null | Unset follows the deployment setting `integrations.memory.sharedRecall` / `MEMORY_SHARED_RECALL` (default `current`); set `current` or `none` to pin it for this profile |
 | syncWrites | true | Queue explicit non-session writes when the shared backend is enabled |
 
 Unknown configuration fields are rejected. The embedding and shared-backend settings use the existing integrations file/environment resolution and DSH credential references. There are no credentials or real service endpoints in this package. Credential service absence falls back to environment resolution. Enabling the bundle does not prove backend health or completed remote ingestion.
@@ -67,9 +67,11 @@ The embeddings `baseUrl` must currently be `https`; a local Ollama or vLLM serve
 
 Each caller labels what it sends (the team plugin as its team, this package as global memory) and keeps its own queue file per backend. `MEMORY_BACKEND` overrides `memory.backend` (`local` or `openviking`).
 
+`memory.sharedRecall` decides whether this package's search and automatic recall query the shared backend: `current` (default) stays local, `none` searches the whole backend account so a memory written on one instance is found on another. `MEMORY_SHARED_RECALL` overrides it. It is read on every search, so a pushed credential applies without a reload. A plugin `sharedProjectFilter` or a call's `shared_project_filter` still wins.
+
 ### Settings from the DSH credential store
 
-Every override variable may also be stored as a same-named DSH credential, for example when a fleet manager pushes settings to every client, so a client works with zero local config. A credential wins over the same-named environment variable; invalid values are ignored and never logged. Names: `EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` (legacy `CPA_EMBED_*` equivalents), `MEMORY_BACKEND`, `OPENVIKING_URL`, plus the keys `EMBEDDING_API_KEY` and `OPENVIKING_API_KEY`. Credentials are re-read on start and before each embedding/backend request.
+Every override variable may also be stored as a same-named DSH credential, for example when a fleet manager pushes settings to every client, so a client works with zero local config. A credential wins over the same-named environment variable; invalid values are ignored and never logged. Names: `EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` (legacy `CPA_EMBED_*` equivalents), `MEMORY_BACKEND`, `OPENVIKING_URL`, `MEMORY_SHARED_RECALL`, plus the keys `EMBEDDING_API_KEY` and `OPENVIKING_API_KEY`. Credentials are re-read on start and before each embedding/backend request.
 
 ### How to add a backend
 
