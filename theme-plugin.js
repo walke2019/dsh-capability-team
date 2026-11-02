@@ -141,16 +141,23 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
         modelNotice: '角色模型为配置目标；实际使用的模型以工作台显示为准（取自各会话最近一次请求）。队友第一次请求之前，官方团队界面显示的是继承来的模型。' };
     });
     const removeContext = agent.ctx.systemPrompt.context({ name: 'capability-team:roster', order: 98, required: true,
-      text: () => teamContext(team, agent, ctx.agentTeams.tryMembership(agent), failover, workflow, planGate) });
+      text: () => (ownsCapabilityTeam(ctx, agent) ? teamContext(team, agent, ctx.agentTeams.tryMembership(agent), failover, workflow, planGate) : '') });
     const removeBudgetContext = taskControl && ctx.agentTeams.tryMembership(agent)?.role === 'lead'
       ? agent.ctx.systemPrompt.context({ name: 'capability-team:task-budget', order: 99, required: true,
-        text: () => taskControl.summary(agent) }) : () => {};
+        text: () => (ownsCapabilityTeam(ctx, agent) ? taskControl.summary(agent) : '') }) : () => {};
     const removeWriter = registerPolicyWriter(agent, (routes, revision) => team.savePolicy(agent, routes, revision));
     installed.set(agent, () => { removeReader(); removeWriter(); removeContext(); removeBudgetContext(); });
   };
   for (const agent of ctx.agents.list()) void install(agent);
   ctx.on('agent/created', ({ agent }) => install(agent));
   ctx.on('agent/disposed', ({ agent }) => { installed.get(agent)?.(); installed.delete(agent); });
+  // A blank session reused for another preset is recomposed without agent/created or agent/disposed.
+  ctx.on('agent-preset/selected', sessionId => {
+    let agent; try { agent = ctx.agents?.get?.(sessionId); } catch { return; }
+    if (!agent) return;
+    if (ownsCapabilityTeam(ctx, agent)) { void install(agent); return; }
+    installed.get(agent)?.(); installed.delete(agent);
+  });
   ctx.effect(() => () => { for (const dispose of installed.values()) dispose?.(); installed.clear(); });
 }
 export { seed };

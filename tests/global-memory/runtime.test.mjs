@@ -18,6 +18,7 @@ function fixture(options = {}) {
     const value = { contexts: [{ name: CONTEXT, text: '' }, { name: 'other', text: 'unchanged' }], tools: ['stable'], sections: ['policy'] };
     return runtime.assemble(value, { agent, ...overrides }, async () => value);
   };
+  ctx.listeners = listeners;
   return { ctx, agent, tools, contexts, runtime, claim, assembly, calls: () => calls };
 }
 test('1 ordinary/other presets/subagents eligible; team root and failed services safely yield', () => {
@@ -68,4 +69,19 @@ test('4 independent switches and 6 injection title counts toward budget', async 
   const f = fixture({ search: async () => ({ results: [{ kind: 'note', scope: 'project', text: 'x'.repeat(5000) }] }) });
   f.claim('task'); assert.equal((await f.assembly()).contexts[0].text.length, 2400); f.runtime.cleanup();
   assert.throws(() => configuration({ unknown: true })); assert.throws(() => configuration({ injectChars: 10 }));
+});
+test('pre-step is a waterfall: listener passes the downstream decision through for every agent', async () => {
+  const f = fixture();
+  const handler = f.ctx.listeners?.get?.('agent/pre-step');
+  assert.equal(typeof handler, 'function');
+  const decision = { kind: 'enter', messages: [] };
+  for (const agent of [f.agent, undefined, { id: 'x' }]) assert.equal(await handler({ agent, messages: [], turn: 1, step: 1 }, async () => decision), decision);
+  f.runtime.cleanup();
+});
+test('recalled memory is served by the context provider, so the per-request refreshContext keeps it', async () => {
+  const f = fixture(); f.claim('provider task');
+  const assembled = await f.assembly();
+  assert.match(assembled.contexts[0].text, /provider task/);
+  assert.equal(f.contexts.get(CONTEXT).text(), assembled.contexts[0].text);
+  f.runtime.cleanup();
 });

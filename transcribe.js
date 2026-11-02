@@ -2,10 +2,11 @@
 // user approves that exact path in DSH's native question box, then uploaded as multipart with its real bytes;
 // fetch's FormData sets the boundary. The key goes into the Authorization header only, never into prompts,
 // tool arguments or logs. A 200 still has to carry text to count as a result.
-import { open } from 'node:fs/promises';
-import { basename, isAbsolute, resolve } from 'node:path';
+import { open, realpath } from 'node:fs/promises';
+import { basename, isAbsolute, relative, resolve } from 'node:path';
 import { keyOf, refreshCredentials, resolveIntegrations } from './integrations-config.js';
 import { gatewayBase, httpError } from './search.js';
+import { readCapped } from './search-engines.js';
 import { params } from './tool-schema.js';
 export const AUDIO_TYPES = { '.mp3': 'audio/mpeg', '.mp4': 'audio/mp4', '.m4a': 'audio/mp4', '.mpeg': 'audio/mpeg', '.mpga': 'audio/mpeg', '.wav': 'audio/wav', '.webm': 'audio/webm', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.flac': 'audio/flac' };
 const AUDIO_BASE = { what: '语音转写', field: 'audio.baseUrl', envName: 'OMNI_AUDIO_BASE_URL' };
@@ -18,14 +19,18 @@ export function audioSettings(resolved = resolveIntegrations()) {
  * before approval, and the size checked is the size of the file actually read (no stat/read race).
  */
 export async function readAudio(path, maxBytes, approve = async () => {}) {
-  if (!AUDIO_TYPES[extOf(path)]) throw new Error(`不支持的音频格式：${extOf(path) || '无扩展名'}（支持 ${Object.keys(AUDIO_TYPES).join(' ')}）`);
-  const handle = await open(path, 'r');
+  // A symlink named meeting.mp3 could point anywhere (e.g. a private key): check and show the real target.
+  const unsupported = name => new Error(`不支持的音频格式：${extOf(name) || '无扩展名'}（支持 ${Object.keys(AUDIO_TYPES).join(' ')}）`);
+  if (!AUDIO_TYPES[extOf(path)]) throw unsupported(path);
+  const real = await realpath(path);
+  if (!AUDIO_TYPES[extOf(real)]) throw unsupported(real);
+  const handle = await open(real, 'r');
   try {
     const stat = await handle.stat();
     if (!stat.isFile()) throw new Error('不是普通文件');
     if (stat.size > maxBytes) throw new Error(`文件 ${(stat.size / 1048576).toFixed(1)} MiB 超过上传上限 ${(maxBytes / 1048576).toFixed(1)} MiB`);
     if (!stat.size) throw new Error('文件为空');
-    await approve(stat.size);
+    await approve(stat.size, real);
     const bytes = await handle.readFile();
     if (bytes.byteLength > maxBytes) throw new Error('文件在授权后变大，超过上传上限');
     return bytes;
@@ -45,7 +50,7 @@ export async function transcribe({ bytes, name, language, prompt }, { settings, 
   const response = await fetcher(`${origin}${config.path}`, { method: 'POST', redirect: 'error', body: form,
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout, headers: { ...config.headers, Authorization: `Bearer ${key}` } });
   if (!response.ok) throw httpError('语音转写', response.status);
-  const text = await response.text();
+  const text = await readCapped(response, '语音转写');
   if (text.includes(key)) throw new Error('响应包含凭据，已阻止回传');
   let data; try { data = JSON.parse(text); } catch { data = { text }; }
   if (typeof data?.text !== 'string' || !data.text.trim()) throw new Error('语音转写返回 200 但没有转写文本');
@@ -60,14 +65,18 @@ export async function audioStatus({ settings, fetcher = fetch, signal } = {}) {
   const response = await fetcher(`${gatewayBase(config.baseUrl, AUDIO_BASE)}${config.statusPath}`, { method: 'GET', redirect: 'error',
     signal: signal ? AbortSignal.any([signal, timeout]) : timeout, headers: { ...config.headers, Authorization: `Bearer ${key}` } });
   if (!response.ok) throw httpError('语音状态', response.status);
-  return { note: '仅代表网关本地服务健康，不代表上游一定成功', status: await response.json() };
+  const text = await readCapped(response, '语音状态');
+  if (text.includes(key)) throw new Error('响应包含凭据，已阻止回传');
+  let status; try { status = JSON.parse(text); } catch { throw new Error('语音状态返回的不是 JSON'); }
+  return { note: '仅代表网关本地服务健康，不代表上游一定成功', status };
 }
 /** Ask the user, in DSH's native question box, to allow uploading this one file. */
-async function approve(ctx, exec, path, size) {
+async function approve(ctx, exec, path, size, cwd) {
+  const outside = cwd && relative(cwd, path).startsWith('..') ? '\n⚠ 该文件不在当前工作目录内。' : '';
   const answer = await ctx.userQuestions.ask({ agent: exec.agent, signal: exec.signal, questions: [{
     id: 'upload', header: '允许上传音频？',
     question: `把本地文件上传到语音转写网关？`,
-    detail: `${path}\n${(size / 1048576).toFixed(2)} MiB，上传后由网关和上游转写服务处理。`,
+    detail: `${path}\n${(size / 1048576).toFixed(2)} MiB，上传后由网关和上游转写服务处理。${outside}`,
     options: [{ label: '允许上传', description: '只上传这一个文件' }, { label: '拒绝', description: '不读取也不上传' }],
   }] });
   if (!answer.answers.find(a => a.id === 'upload')?.selected.includes('允许上传')) throw new Error('用户未授权上传该文件');
@@ -81,7 +90,7 @@ export function applyTranscribe(ctx) {
       const cwd = await ctx.workingDirectory.ensure(exec.agent, exec.signal);
       const path = isAbsolute(String(args.file_path)) ? String(args.file_path) : resolve(cwd, String(args.file_path));
       const max = audioSettings().config.maxBytes;
-      const bytes = await readAudio(path, max, size => approve(ctx, exec, path, size)); // read only after approval
+      const bytes = await readAudio(path, max, (size, real) => approve(ctx, exec, real, size, cwd)); // read only after approval
       const result = await transcribe({ bytes, name: basename(path), language: args.language, prompt: args.prompt }, { signal: exec.signal });
       return JSON.stringify(result);
     },

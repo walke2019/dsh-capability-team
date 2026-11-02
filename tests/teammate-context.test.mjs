@@ -78,3 +78,22 @@ test('能力的 skills 配置校验', () => {
   const cfg = effectiveConfig({ capabilities: { qa: { skills: ['playwright*'] } } });
   assert.deepEqual(cfg.capabilities.qa.skills, ['playwright*']);
 });
+
+test('空白会话被复用并切到其他预设：主控工具撤下且调用被拒；切回团队预设时重新装上', async () => {
+  const handlers = {}; const live = new Map(); let calls = 0;
+  const lead = { id: 's1', ctx: { preset: 'capability-team', tools: { register: d => { live.set(d.name, d); return () => live.delete(d.name); } } }, session: { header: {} } };
+  const host = { agentPresets: { composedPreset: c => c.preset }, tools: { register: () => () => {} }, agents: { list: () => [], get: id => (id === 's1' ? lead : undefined) }, on: (n, fn) => { handlers[n] = fn; } };
+  const { ctx } = scopeTools(host);
+  ctx.tools.register({ name: 'capability_dispatch_plan', execute: async () => { calls++; return 'ok'; } });
+  handlers['agent/created']({ agent: lead });
+  const tool = live.get('capability_dispatch_plan');
+  assert.equal(await tool.execute({}, { agent: lead }), 'ok');
+  lead.ctx.preset = 'other';
+  await assert.rejects(tool.execute({}, { agent: lead }), /仅限能力协作团队/, '调用时重新校验预设');
+  handlers['agent-preset/selected']('s1', 'other');
+  assert.equal(live.has('capability_dispatch_plan'), false, '切走后撤下');
+  lead.ctx.preset = 'capability-team';
+  handlers['agent-preset/selected']('s1', 'capability-team');
+  assert.equal(live.has('capability_dispatch_plan'), true, '切回后重新装上');
+  assert.equal(calls, 1);
+});

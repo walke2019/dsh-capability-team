@@ -2,7 +2,9 @@ import { omni, searchSchemas } from './shared/search.js';
 import { applyTranscribe } from './shared/transcribe.js';
 import { refreshCredentials, resolveIntegrations, setCredentialResolver } from './shared/integrations-config.js';
 export const inject = ['tools','workingDirectory','userQuestions'];
-export const Config = { type: 'object', additionalProperties: false, properties: { enabled: { type: 'boolean', default: true } } };
+// No `Config` export: cordis validates an exported Config through Standard Schema (`Config['~standard']`),
+// and a plain JSON-Schema object makes every load fail. `apply` validates the config itself.
+export const ConfigSchema = { type: 'object', additionalProperties: false, properties: { enabled: { type: 'boolean', default: true } } };
 const instances = new WeakSet();
 const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] };
 export function apply(ctx, config = {}) {
@@ -32,7 +34,8 @@ export function apply(ctx, config = {}) {
   ctx.inject?.(['credentials'], scoped => {
     setCredentialResolver(async name => { const credential = await scoped.credentials.resolve(name); return typeof credential === 'string' ? credential : credential?.value; });
     scoped.effect(() => () => setCredentialResolver(null));
-    refreshed = refreshCredentials().then(sync, () => {});
+    // Listeners must never reject: an unhandled rejection stops the DSH host.
+    refreshed = refreshCredentials().then(sync).catch(error => { ctx.logger?.warn?.(`omni-search: tool schema refresh failed: ${error?.message ?? error}`); });
   });
   applyTranscribe(ctx);
   // `ready()` settles once credential-provided settings have been applied to the tool schemas.

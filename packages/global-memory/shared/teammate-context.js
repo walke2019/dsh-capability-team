@@ -20,14 +20,26 @@ const isTeammateAgent = agent => agent?.session?.header?.parentSession !== undef
 export function scopeTools(ctx) {
   const lead = [], teammate = [];
   const installed = new WeakMap();
+  // Registrations live on the agent's own ctx, which outlives a preset switch (a blank session reused for another
+  // preset is recomposed without agent/created or agent/disposed), so each one keeps its disposer and every call
+  // re-checks the preset: these tools must never act outside the capability-team preset.
+  const gated = (def, agent) => ({ ...def, async execute(args, exec) {
+    if (!ownsCapabilityTeam(ctx, exec?.agent ?? agent)) throw new Error('该工具仅限能力协作团队预设使用');
+    return def.execute(args, exec);
+  } });
+  const uninstall = agent => {
+    const done = installed.get(agent);
+    if (!done) return;
+    installed.delete(agent);
+    for (const dispose of done.values()) { try { dispose?.(); } catch { /* already removed */ } }
+  };
   const install = agent => {
     if (!agent?.ctx?.tools || !ownsCapabilityTeam(ctx, agent)) return;
-    const done = installed.get(agent) ?? new Set();
+    const done = installed.get(agent) ?? new Map();
     installed.set(agent, done);
     for (const def of isTeammateAgent(agent) ? teammate : lead) {
       if (done.has(def.name)) continue;
-      done.add(def.name);
-      try { agent.ctx.tools.register(def); } catch { /* already present for this agent */ }
+      try { done.set(def.name, agent.ctx.tools.register(gated(def, agent))); } catch { done.set(def.name, undefined); /* already present for this agent */ }
     }
   };
   const tools = new Proxy(ctx.tools, {
@@ -44,6 +56,12 @@ export function scopeTools(ctx) {
   const scoped = new Proxy(ctx, { get: (target, prop) => (prop === 'tools' ? tools : target[prop]) });
   ctx.on('agent/created', ({ agent }) => install(agent));
   ctx.on('agent/pre-step', (payload, next) => { install(payload?.agent); return next(); });
+  ctx.on('agent/disposed', ({ agent }) => uninstall(agent));
+  ctx.on('agent-preset/selected', sessionId => {
+    let agent; try { agent = ctx.agents?.get?.(sessionId); } catch { return; }
+    if (!agent) return;
+    if (ownsCapabilityTeam(ctx, agent)) install(agent); else uninstall(agent);
+  });
   // Plugin tools register synchronously during apply; existing agents are backfilled right after it returns.
   const installExisting = () => { let agents = []; try { agents = ctx.agents?.list?.() ?? []; } catch { /* host without agents service */ } for (const agent of agents) install(agent); };
   queueMicrotask(installExisting);

@@ -19,6 +19,8 @@ export const MEMORY_KINDS = ['handoff', 'result', 'pitfall', 'decision', 'note']
 export const MEMORY_LIMITS = { maxText: 2000, maxPerFile: 2000, halfLifeDays: 30, pruneDays: 180, duplicateCosine: 0.92, injectChars: 2400 };
 const DAY = 86400000;
 /** Tokens for BM25: lowercase Latin/digit words and CJK unigrams + bigrams. */
+/** Superseded JSONL lines tolerated beyond twice the live count before a file is rewritten. */
+const COMPACT_SLACK = 200;
 export function tokenize(text) {
   const out = [];
   const s = String(text ?? '').toLowerCase();
@@ -75,6 +77,7 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
   const dir = join(root, 'memory');
   const cache = new Map(); // file key → memories
   const seen = new Map(); // file key → size:mtime of the file as last read or written by this process
+  const lines = new Map(); // file key → JSONL lines in the file (live records plus superseded appends)
   const pathOf = key => join(dir, `${key}.jsonl`);
   const stamp = async key => { try { const s = await stat(pathOf(key)); return `${s.size}:${s.mtimeMs}`; } catch { return 'none'; } };
   async function load(key) {
@@ -83,12 +86,15 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
     let list = [];
     try {
       const latest = new Map();
+      let count = 0;
       for (const line of (await readFile(pathOf(key), 'utf8')).split('\n')) {
         if (!line.trim()) continue;
+        count++;
         try { const m = JSON.parse(line); latest.set(m.id, m); } catch { /* a torn last line is skipped */ }
       }
       list = [...latest.values()].filter(m => !m.deleted);
-    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      lines.set(key, count);
+    } catch (error) { if (error.code !== 'ENOENT') throw error; lines.set(key, 0); }
     const previous = cache.get(key);
     if (previous) { previous.length = 0; previous.push(...list); list = previous; } // keep callers' array identity
     cache.set(key, list);
@@ -100,9 +106,13 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
     await withFileLock(pathOf(key), async () => {
       const before = await stamp(key);
       await appendFile(pathOf(key), JSON.stringify(record) + '\n');
+      lines.set(key, (lines.get(key) ?? 0) + 1);
       // Only our own append happened since the last read: the cache is still current.
       if (seen.get(key) === before) seen.set(key, await stamp(key));
     });
+    // Every update (hits on recall, merges, vectors) appends the whole record again; without this the file grows
+    // without bound even though the live set is capped. Rewrite once superseded lines outnumber live ones.
+    if ((lines.get(key) ?? 0) > 2 * (cache.get(key)?.length ?? 0) + COMPACT_SLACK) await compact(key);
   }
   /** Rewrite the file from its current content (re-read under the lock, so other processes' appends survive). */
   async function compact(key, select = list => list) {
@@ -110,10 +120,11 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
     return withFileLock(pathOf(key), async () => {
       seen.delete(key);
       const list = await load(key);
-      const keep = select(list);
+      const keep = [...select(list)]; // a copy: `list` is cleared and refilled below
       const temp = `${pathOf(key)}.${randomUUID()}.tmp`;
       await writeFile(temp, keep.map(m => JSON.stringify(m)).join('\n') + (keep.length ? '\n' : ''));
       await rename(temp, pathOf(key));
+      lines.set(key, keep.length);
       list.length = 0; list.push(...keep);
       seen.set(key, await stamp(key));
       return keep;

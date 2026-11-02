@@ -168,3 +168,19 @@ test('记忆枢纽：交接自动入库，接到任务时自动召回，队友�
   const file = await readFile(join(root, 'memory', (await import('node:crypto')).createHash('sha256').update(P).digest('hex').slice(0, 32) + '.jsonl'), 'utf8');
   assert.ok(file.includes('build:client'));
 });
+
+test('记忆文件不会因召回无限增长：重复追加超过阈值后自动压缩，且不丢记录', async () => {
+  const { mkdtemp, readdir, readFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os'); const { join } = await import('node:path');
+  const { createMemoryStore } = await import('../memory-store.js');
+  const root = await mkdtemp(join(tmpdir(), 'mem-compact-'));
+  const store = createMemoryStore(root);
+  const scope = { kind: 'project', project: '/p' };
+  for (let i = 0; i < 20; i++) await store.write({ scope, kind: 'note', text: `distinct memory number ${i} about topic ${i * 7}` });
+  for (let r = 0; r < 300; r++) { const found = await store.search({ project: '/p', query: 'memory topic', k: 8 }); await store.markUsed(found.map(x => x.memory)); }
+  const [file] = (await readdir(join(root, 'memory'))).filter(name => name.endsWith('.jsonl'));
+  const lineCount = (await readFile(join(root, 'memory', file), 'utf8')).split('\n').filter(Boolean).length;
+  assert.ok(lineCount <= 2 * 20 + 201, `文件行数应受控，实际 ${lineCount}`);
+  const fresh = await createMemoryStore(root).search({ project: '/p', query: 'distinct memory', k: 100 });
+  assert.equal(fresh.length, 20, '压缩后新进程仍能读到全部记录');
+});

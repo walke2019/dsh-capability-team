@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { keyOf, keyPresence, refreshCredentials, resolveIntegrations, setCredentialResolver, validateIntegrations } from '../integrations-config.js';
@@ -74,4 +74,18 @@ test('语音：授权前不读文件，超限不读；multipart 上传真实字�
   await assert.rejects(transcribe({ bytes, name: 'clip.wav' }, { settings, fetcher: async () => reply(413, {}) }), /413（内容超过服务上限）/);
   const status = await audioStatus({ settings, fetcher: async () => reply(200, { mode: 'direct' }) });
   assert.match(status.note, /不代表上游/);
+});
+
+test('语音：符号链接按真实目标检查格式并在确认框显示真实路径；状态接口不回传凭据或响应片段', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'audio-link-'));
+  const secret = join(dir, 'id_rsa'); await writeFile(secret, 'PRIVATE KEY');
+  await symlink(secret, join(dir, 'meeting.mp3'));
+  await assert.rejects(readAudio(join(dir, 'meeting.mp3'), 1024, async () => assert.fail('不应询问')), /不支持的音频格式/);
+  const real = join(dir, 'real.wav'); await writeFile(real, 'RIFF');
+  await symlink(real, join(dir, 'alias.mp3'));
+  let shown; await readAudio(join(dir, 'alias.mp3'), 1024, async (_size, path) => { shown = path; });
+  assert.equal(shown, real);
+  const settings = { key: 'sk-live-SECRET123', keyEnv: 'K', config: { baseUrl: 'https://gw.example', statusPath: '/s', headers: {} } };
+  await assert.rejects(audioStatus({ settings, fetcher: async () => reply(200, { client: { auth: 'Bearer sk-live-SECRET123' } }) }), /包含凭据/);
+  await assert.rejects(audioStatus({ settings, fetcher: async () => reply(200, 'not-json-body-xyz') }), error => /不是 JSON/.test(error.message) && !error.message.includes('not-json'));
 });

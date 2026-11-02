@@ -43,7 +43,8 @@ export function apply(host, config = {}) {
   const taskControl = createTaskControl(ctx, team, { audit: createTaskAudit(team.root), onChanged: () => observability.notifyTaskControl(),
     predecessorOf: (leadId, name) => rotation.predecessorOf(leadId, name) });
   const planGate = createPlanGate(ctx, team);
-  const memory = createMemoryHub(ctx, team, { secrets: () => knownSecretValues() });
+  // Re-read the credential store before redacting, so a key added in Settings since the last refresh is redacted too.
+  const memory = createMemoryHub(ctx, team, { secrets: async () => { await refreshCredentials().catch(() => {}); return knownSecretValues(); } });
   const rotation = createRotation(ctx, team, { onHandoff: handoff => memory.ingestHandoff(handoff) });
   const board = createBoardDispatch(ctx, team);
   const prefs = createModelPrefs(team.root);

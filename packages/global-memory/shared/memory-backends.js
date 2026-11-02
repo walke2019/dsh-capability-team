@@ -62,7 +62,14 @@ export function createMemoryBackend(options = {}) {
     if (!Object.hasOwn(MEMORY_BACKEND_REGISTRY, name)) name = 'local';
     if (!instances.has(name)) {
       const queuePath = typeof options.queuePath === 'function' ? options.queuePath(name) : options.queuePath;
-      instances.set(name, MEMORY_BACKEND_REGISTRY[name]({ ...options, queuePath }));
+      try { instances.set(name, MEMORY_BACKEND_REGISTRY[name]({ ...options, queuePath })); }
+      catch (error) {
+        // A corrupt queue file or bad backend settings must not fail every memory search/write; fall back to local.
+        pickError = `${name} 后端初始化失败，已改用本地：${error?.message ?? error}`;
+        if (name === 'local') throw error;
+        if (!instances.has('local')) instances.set('local', MEMORY_BACKEND_REGISTRY.local({ ...options, queuePath: typeof options.queuePath === 'function' ? options.queuePath('local') : options.queuePath }));
+        return instances.get('local');
+      }
     }
     return instances.get(name);
   };

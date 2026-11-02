@@ -20,7 +20,7 @@ export function createRuntime(ctx, config, service, store) {
     const state = { generation: 0, taskKey: null, block: '', pending: null, disposers: [] };
     states.set(agent.id, state);
     try {
-      state.disposers.push(agent.ctx.systemPrompt.context({ name: CONTEXT, order: 97, text: () => '', interpolate: false }));
+      state.disposers.push(agent.ctx.systemPrompt.context({ name: CONTEXT, order: 97, text: () => state.block, interpolate: false }));
       state.disposers.push(...registerTools(agent, service, identity, a => { if (!allowed(a)) { remove(a); return false; } return true; }));
     } catch (error) { remove(agent); throw error; }
     return state;
@@ -82,7 +82,7 @@ export function createRuntime(ctx, config, service, store) {
     if (!allowed(agent) || context.signal?.aborted || states.get(agent.id) !== state) return result;
     return { ...result, contexts: result.contexts?.map(c => c.name === CONTEXT ? { ...c, text: state.block } : c) };
   }
-  const listeners = [ctx.on('agent/created', ({ agent }) => install(agent)), ctx.on('agent/pre-step', ({ agent }) => install(agent)), ctx.on('agent/disposed', ({ agent }) => remove(agent)), ctx.on('agent/inbox/claimed', claimed), ctx.on('system-prompt/assemble', assemble)];
+  const listeners = [ctx.on('agent/created', ({ agent }) => install(agent)), ctx.on('agent/pre-step', (payload, next) => { install(payload?.agent); return next(); }), ctx.on('agent/disposed', ({ agent }) => remove(agent)), ctx.on('agent/inbox/claimed', claimed), ctx.on('system-prompt/assemble', assemble)];
   for (const agent of ctx.agents.list()) install(agent);
   const cleanup = () => { disposed = true; for (const id of [...states.keys()]) remove({ id }); listeners.forEach(fn => fn?.()); identity.clear(); };
   ctx.effect(() => cleanup);

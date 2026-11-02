@@ -37,3 +37,18 @@ test('本预设主控与成员按根会话识别，缺原生API时关闭', () =>
   }
   assert.equal(ownsCapabilityTeam({}, agent('capability-team')), false);
 });
+
+test('会话投影按 SessionHeader.agentPreset 判定，并在开局前切换预设时重新判定', async () => {
+  const { isolatedProjection } = await import('../preset-guard.js');
+  const definition = { stateVersion: 1, init: () => ({ n: 0 }), apply: s => ({ ...s, n: s.n + 1 }), wire: { view: s => s } };
+  const projection = isolatedProjection({ agents: { get: () => undefined } }, definition);
+  let team = projection.init({ id: 's', agentPreset: 'capability-team' });
+  assert.equal(team.capabilityPreset, true, '新建团队会话时 agent 尚未发布，按头部字段判定');
+  team = projection.apply(team, { type: 'x' }); assert.equal(team.n, 1);
+  let other = projection.init({ id: 't', agentPreset: 'default' });
+  other = projection.apply(other, { type: 'x' }); assert.equal(other.n, 0, '其他预设不投影');
+  other = projection.apply(other, { type: 'agent-preset/selected', data: { agentPreset: 'capability-team' } });
+  other = projection.apply(other, { type: 'x' }); assert.equal(other.n, 1, '切到团队预设后开始投影');
+  other = projection.apply(other, { type: 'agent-preset/selected', data: { agentPreset: 'default' } });
+  other = projection.apply(other, { type: 'x' }); assert.equal(other.capabilityPreset, false);
+});

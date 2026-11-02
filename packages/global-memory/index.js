@@ -7,7 +7,8 @@ import { createEmbedder } from './shared/memory-embed.js';
 import { createMemoryBackend } from './shared/memory-backends.js';
 import { defaultRoot } from './shared/theme.js';
 import { setCredentialResolver, knownSecretValues, refreshCredentials } from './shared/integrations-config.js';
-export { Config } from './config.js';
+// No `Config` export: cordis validates an exported Config through Standard Schema (`Config['~standard']`), and the
+// plain JSON-Schema object in config.js would make every load fail. `configuration()` validates the input instead.
 export const inject = ['agents','systemPrompt','tools','workingDirectory','agentPresets'];
 const instances = new WeakSet();
 export function apply(ctx, input = {}) {
