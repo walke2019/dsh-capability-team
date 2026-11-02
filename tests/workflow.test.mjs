@@ -75,7 +75,7 @@ test('direct：有理由且执行次数有限，超出后要求改为指派', as
   assert.match(h.call(h.lead, 'pwsh'), /主控只负责分派/);
 });
 
-test('direct + userRequested：模型声明不是可信确认，仍受执行预算限制', async () => {
+test('direct + userRequested：没有确认通道时模型声明不生效，仍受执行预算限制', async () => {
   const h = harness();
   h.user();
   const out = JSON.parse(await h.plan({ analysis: '用户要求主控亲自修复', mode: 'direct', reason: '用户说“你自己改，不要派人”', userRequested: true }));

@@ -36,7 +36,9 @@
           plan.confirmed?.by === 'user' ? badge(t('confirm.confirmedBy'), 'success', 'confirmed') : null],
         body: body.length ? body : null });
       // While the call waits for the user, the confirmation card sits right under it, already open.
-      if (s.state !== 'running' || mode !== 'delegate') return card;
+      if (s.state !== 'running') return card;
+      if (mode === 'direct' && s.args.userRequested === true) return h('div', { className: 'ctm-dc-wrap' }, card, h(DirectConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
+      if (mode !== 'delegate') return card;
       return h('div', { className: 'ctm-dc-wrap' }, card, h(DispatchConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
     }
 

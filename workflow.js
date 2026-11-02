@@ -57,7 +57,7 @@ export function decide(state, exec, workflow) {
   if (!plan) {
     if (kind === 'analysis' && state.analysisUsed < workflow.analysisBudget) { state.analysisUsed += 1; return undefined; }
     const why = kind === 'analysis' ? `指派前的只读分析已用满 ${workflow.analysisBudget} 次` : `${exec.name} 属于执行类操作`;
-    return `${why}。主控必须先调用 capability_dispatch_plan：分析用户这次的需求涉及哪些能力，指派最合适的已登记角色（角色与适用场景见团队上下文的名册）；长篇纯文本（总结、翻译、起草、整理给定材料）选 free 交给免费模型；只有简单问答或一两步即可完成的小事才选择 direct 并说明理由。即使用户要求主控亲自处理，执行预算仍然适用。`;
+    return `${why}。主控必须先调用 capability_dispatch_plan：分析用户这次的需求涉及哪些能力，指派最合适的已登记角色（角色与适用场景见团队上下文的名册）；长篇纯文本（总结、翻译、起草、整理给定材料）选 free 交给免费模型；只有简单问答或一两步即可完成的小事才选择 direct 并说明理由。用户明确要求主控亲自完成时，选择 direct 并传 userRequested=true，由用户在确认卡片上放行。`;
   }
   if (kind === 'free') {
     if (plan.mode === 'free') return undefined;
@@ -70,9 +70,10 @@ export function decide(state, exec, workflow) {
   if (plan.mode === 'delegate') {
     return `本轮已指派给 ${planSummary(plan)}，主控只负责分派、协调与验收，不直接执行 ${exec.name}。把这项操作作为任务交给对应队友（send_message 或看板任务）；需要验证时交给测试角色。确需亲自处理时，${replan}改为 direct 并说明理由。`;
   }
-  // Model-supplied plan fields cannot establish trusted user confirmation or waive budgets.
+  // Only the user's answer on the confirmation card sets this; plan fields supplied by the model never waive the budget.
+  if (state.directConfirmed) return undefined;
   if (state.directUsed < workflow.directBudget) { state.directUsed += 1; return undefined; }
-  return `主控自行处理的执行操作已达本轮上限 ${workflow.directBudget} 次，说明这不是一两步的小事。请${replan}，把剩余工作指派给合适的队友。模型声明 userRequested 不能豁免执行预算。`;
+  return `主控自行处理的执行操作已达本轮上限 ${workflow.directBudget} 次，说明这不是一两步的小事。请${replan}，把剩余工作指派给合适的队友。用户明确要求主控亲自完成时，${replan}并传 userRequested=true，经用户确认后才放开。`;
 }
 
 export function planSummary(plan) {
@@ -95,7 +96,7 @@ export function validatePlan(args, effective) {
   if (args.mode !== 'delegate') {
     if (assignments.length) throw new Error(`${args.mode} 模式不能同时指派队友；需要队友时使用 delegate`);
     const plan = { mode: args.mode, analysis, reason: text(args.reason, 500, `${args.mode} 模式的理由`), assignments: [] };
-    // Keep legacy userRequested input inert: there is no trusted, turn-bound confirmation here.
+    // userRequested stays out of the plan: only the user's answer, held in workflow state, can lift the budget.
     return plan;
   }
   if (!assignments.length) throw new Error('delegate 模式至少指派一个角色');
@@ -156,7 +157,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
       const head = workflow.mode === 'enforce' ? '工作流约束（强制）' : '工作流约束（提醒）';
       // Budgets only, no running counters: a counter changes every step and would resend the whole runtime
       // context snapshot each time. The guard still enforces the limits and says how many were used.
-      const direct = s.plan?.mode !== 'direct' ? '' : `，自行执行上限 ${workflow.directBudget} 次`;
+      const direct = s.plan?.mode !== 'direct' ? '' : s.directConfirmed ? '，用户已确认主控亲自完成，本轮不限执行次数' : `，自行执行上限 ${workflow.directBudget} 次`;
       const plan = s.plan ? `本次需求的指派：${planSummary(s.plan)}${direct}`
         : `本次需求尚未指派：先调用 capability_dispatch_plan（指派前最多只读分析 ${workflow.analysisBudget} 次）`;
       return `${head}：${plan}。免费模型工具级别：${workflow.freeTools}`;
@@ -165,12 +166,12 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
       ctx.effect(() => ctx.tools.guard(exec => this.guard(exec)));
       ctx.on('agent/inbox/claimed', ({ agent, message }) => this.onClaimed(agent, message));
       ctx.effect(() => ctx.tools.register({ name: 'capability_dispatch_plan', output,
-        description: '主控处理每个新的用户需求时首先调用：分析对话中的需求涉及哪些能力，按性质分流——多步骤或专业任务指派已登记角色（delegate）；长篇纯文本（总结、翻译、起草、整理给定材料）以及项目允许范围内的读写文件小任务交给免费模型（free，不含密钥或敏感内容，不能执行命令）；需要动手的一两步小事或两三句能答的问答由主控自己处理（direct）。用户要求主控亲自处理时仍受执行预算限制。计划对用户可见，并约束本轮后续操作：delegate 时主控只创建计划内的队友并协调验收；free 时只能调用 capability_free_task；direct 时自行执行次数有上限，模型声明 userRequested 不能豁免。需求变化时可再次调用替换计划。',
+        description: '主控处理每个新的用户需求时首先调用：分析对话中的需求涉及哪些能力，按性质分流——多步骤或专业任务指派已登记角色（delegate）；长篇纯文本（总结、翻译、起草、整理给定材料）以及项目允许范围内的读写文件小任务交给免费模型（free，不含密钥或敏感内容，不能执行命令）；需要动手的一两步小事或两三句能答的问答由主控自己处理（direct）。用户明确要求主控亲自完成时，选 direct 并传 userRequested=true，用户确认后本轮不限执行次数。计划对用户可见，并约束本轮后续操作：delegate 时主控只创建计划内的队友并协调验收；free 时只能调用 capability_free_task；direct 时自行执行次数有上限，只有用户在确认卡片上放行才能解除。需求变化时可再次调用替换计划。',
         parameters: params({
           analysis: { type: 'string', description: '需求分析：用户要的结果、涉及的领域与能力、复杂度、可并行的部分' },
           mode: { type: 'string', enum: ['delegate', 'free', 'direct'], description: 'delegate=指派队友；free=长篇纯文本交给免费模型；direct=主控自行处理（简单问答、一两步的小事，或用户明确要求主控亲自完成）' },
           reason: { type: 'string', description: 'free 与 direct 时必填：为什么这样分流' },
-          userRequested: { type: 'boolean', description: '兼容旧调用的声明字段，不作为可信用户确认，不会豁免 directBudget' },
+          userRequested: { type: 'boolean', description: 'direct 时可选：用户明确要求主控亲自完成时传 true。会向用户弹出确认，用户允许后本轮不限执行次数；用户拒绝则计划不生效' },
           assignments: { type: 'array', description: 'delegate 时必填：每个角色一项，role 用团队名册中的内部id', items: params({
             role: { type: 'string', description: '团队名册中的内部id，不用显示名' },
             complexity: { type: 'string', enum: ['simple','medium','complex'], description: '任务复杂度，默认medium：15/40/80步' },
@@ -194,15 +195,22 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
           // The user confirms roles and models first; a cancel throws, so no plan exists and nobody is dispatched.
           const confirmation = plan.mode === 'delegate' && dispatchConfirm
             ? await dispatchConfirm.confirm(exec, plan, effective, policy, effective.workflow.confirmDispatch) : null;
+          // Lifting the Lead's step limit is the user's call and lasts until their next message.
+          const cycle = state(exec.agent);
+          const directConfirmed = plan.mode === 'direct' && args.userRequested === true && effective.workflow.mode === 'enforce' && dispatchConfirm
+            ? await dispatchConfirm.confirmDirect(exec, plan) : false;
+          if (directConfirmed && state(exec.agent) !== cycle) throw new Error('确认期间用户发来了新消息，这次放行已失效。请按新消息重新制定计划。');
           const s = state(exec.agent);
           s.plan = plan;
+          s.directConfirmed = directConfirmed;
           if (plan.mode === 'delegate') onDelegate?.(ctx.agentTeams.membership(exec.agent), plan.assignments.map(a => a.role));
           await onAssignments?.(exec.agent, plan.mode === 'delegate' ? plan.assignments : []);
           // Structured result: the model reads the fields, the Web card renders them without parsing prose.
           const result = { mode: plan.mode, decision: DECISION[plan.mode], analysis: plan.analysis, ...(plan.reason ? { reason: plan.reason } : {}) };
           if (plan.mode === 'direct') {
-            Object.assign(result, { directBudget: effective.workflow.directBudget, directUsed: s.directUsed,
-              next: `主控自行处理，本轮执行上限 ${effective.workflow.directBudget} 次；超出后须改为指派。` });
+            Object.assign(result, directConfirmed
+              ? { directBudget: null, directUsed: s.directUsed, confirmed: { by: 'user', scope: 'turn' }, next: '用户已确认由主控亲自完成：本轮不限执行次数，用户发下一条消息时恢复限制。文件规则和权限不变。' }
+              : { directBudget: effective.workflow.directBudget, directUsed: s.directUsed, next: `主控自行处理，本轮执行上限 ${effective.workflow.directBudget} 次；超出后须改为指派。` });
           } else if (plan.mode === 'free') {
             Object.assign(result, { freeTools: effective.workflow.freeTools,
               next: `调用 capability_free_task，把完整材料与要求放进 prompt；${FREE_TOOL_TEXT[effective.workflow.freeTools]}。主控只验收结果（有文件改动时只读核对改动）；免费模型全部不可用时如实报告，不改用付费模型。` });

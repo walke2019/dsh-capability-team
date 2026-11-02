@@ -72,13 +72,13 @@ Set `planFirst` on a capability to require teammate plan approval before executi
 
 ## Dispatch workflow
 
-The lead uses `capability_dispatch_plan` to classify requests as `delegate`, `free`, or `direct`. Delegation requires roles, concrete tasks, and acceptance criteria; free work is limited to configured free models and permitted tools; direct work is capped by `directBudget`. The legacy `userRequested` field is an untrusted model declaration, not user confirmation, and never exempts a direct plan from the cap.
+The lead uses `capability_dispatch_plan` to classify requests as `delegate`, `free`, or `direct`. Delegation requires roles, concrete tasks, and acceptance criteria; free work is limited to configured free models and permitted tools; direct work is capped by `directBudget`. When the user explicitly asks the lead to do the work itself, the lead passes `userRequested: true` and the user sees an allow or refuse card, with DSH's question box as the fallback. Allowing removes the cap until the user's next message; file rules and permissions still apply. The field alone only triggers the question and never lifts the cap.
 
 | Workflow field | Meaning |
 |---|---|
 | `mode` | `enforce`, `remind`, or `off`. |
 | `analysisBudget` | Read-only analysis allowance before planning. |
-| `directBudget` | Maximum lead executions in direct mode, including plans declaring `userRequested: true`. |
+| `directBudget` | Maximum lead executions in direct mode, unless the user allowed lifting it for the current turn on the confirmation card. |
 | `freeTools` / `freeModels` | Free-task tool level and model ordering. |
 | `confirmDispatch` | Dispatch confirmation policy: `on-change`, `always`, or `never`. |
 | `enforceWriteScopes` | Refuse changes beyond active task write scopes. |

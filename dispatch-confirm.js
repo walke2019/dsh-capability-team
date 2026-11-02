@@ -95,6 +95,7 @@ export function pendingView(leadId, callId) {
   const request = leads.get(leadId)?.pending.get(callId);
   if (!request) return { schemaVersion: 1, status: 'none' };
   request.lastSeenAt = Date.now(); // heartbeat: the card keeps polling while it is on screen
+  if (request.kind === 'direct') return { schemaVersion: 1, status: 'pending', kind: 'direct', callId, analysis: request.plan.analysis, reason: request.plan.reason };
   return { schemaVersion: 1, status: 'pending', callId, catalogVersion: request.catalogVersion, maxFallbacks: MAX_ROUTE_FALLBACKS, routes: request.offered };
 }
 /** Resolve a pending request with the card's answer; throws (with status) when it cannot. */
@@ -103,7 +104,7 @@ export function answerPending(leadId, callId, answer) {
   if (!request) throw Object.assign(new Error('没有等待确认的分派'), { status: 404, code: 'NOT_FOUND' });
   if (answer?.catalogVersion !== undefined && answer.catalogVersion !== request.catalogVersion) throw Object.assign(new Error('可用模型已变化，请刷新后重新确认'), { status: 409, code: 'CONFLICT' });
   let result;
-  try { result = validateAnswer(request.offered, answer); } catch (error) { throw Object.assign(error, { status: 422, code: 'INVALID' }); }
+  try { result = request.validate(answer); } catch (error) { throw Object.assign(error, { status: 422, code: 'INVALID' }); }
   request.resolve(result);
   return { schemaVersion: 1, status: 'resolved', decision: result.decision };
 }
@@ -128,17 +129,31 @@ async function askNative(userQuestions, exec, offered, signal) {
   });
   return { decision: 'confirm', scope: choice === '保存为项目默认' ? 'project' : 'task', routes };
 }
+/** The Lead's request to work without its step limit has one question: allow or refuse. */
+export function validateDirectAnswer(answer) {
+  if (answer?.decision !== 'confirm' && answer?.decision !== 'cancel') throw new Error('decision 须为 confirm 或 cancel');
+  return { decision: answer.decision };
+}
+async function askDirectNative(userQuestions, exec, plan, signal) {
+  const answer = await userQuestions.ask({ agent: exec.agent, signal, questions: [{
+    id: 'direct', header: '主控亲自完成',
+    question: '允许主控亲自完成这项工作吗？允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。',
+    detail: `需求分析：${plan.analysis}\n理由：${plan.reason}`,
+    options: [{ label: '允许' }, { label: '不允许' }],
+  }] });
+  return { decision: answer.answers.find(a => a.id === 'direct')?.selected?.[0] === '允许' ? 'confirm' : 'cancel' };
+}
 const minutesOf = ms => Number((ms / 60000).toFixed(1));
 /**
  * Register a pending request and wait for its answer from the card or the native question box. Every exit
  * (answer, cancel, timeout, abort) clears the abort listener, both timers and the pending entry, and aborts an
  * open native question box so no stale dialog is left behind.
  */
-function waitForAnswer(ctx, state, exec, callId, offered, catalogVersion, { graceMs, heartbeatMs, timeoutMs }) {
+function waitForAnswer(ctx, state, exec, callId, spec, { graceMs, heartbeatMs, timeoutMs }) {
   const startedAt = Date.now();
   const native = new AbortController(); // ends the native question box when the request ends any other way
   let settled = false, deadline, check, onAbort, nativeError;
-  const request = { offered, catalogVersion, lastSeenAt: undefined, nativeAsked: false };
+  const request = { ...spec, lastSeenAt: undefined, nativeAsked: false };
   const cleanup = () => {
     clearTimeout(deadline); clearInterval(check);
     if (onAbort) exec.signal?.removeEventListener?.('abort', onAbort);
@@ -149,12 +164,12 @@ function waitForAnswer(ctx, state, exec, callId, offered, catalogVersion, { grac
     const finish = (fn, value) => { if (settled) return; settled = true; cleanup(); fn(value); };
     request.resolve = value => finish(resolve, value);
     const fail = error => finish(reject, error);
-    if (exec.signal?.aborted) { fail(new Error('分派确认已中止')); return; }
+    if (exec.signal?.aborted) { fail(new Error(`${spec.subject}已中止`)); return; }
     state.pending.set(callId, request);
-    onAbort = () => fail(new Error('分派确认已中止'));
+    onAbort = () => fail(new Error(`${spec.subject}已中止`));
     exec.signal?.addEventListener?.('abort', onAbort, { once: true });
-    deadline = setTimeout(() => fail(new Error(`分派确认超时（${minutesOf(timeoutMs)} 分钟无人确认），未创建或通知任何队友。`
-      + `${nativeError ? `原生问答框也不可用（${nativeError.code ?? nativeError.message}）。` : ''}请询问用户是否重新分派。`)), timeoutMs);
+    deadline = setTimeout(() => fail(new Error(`${spec.subject}超时（${minutesOf(timeoutMs)} 分钟无人确认），${spec.consequence}。`
+      + `${nativeError ? `原生问答框也不可用（${nativeError.code ?? nativeError.message}）。` : ''}${spec.retry}`)), timeoutMs);
     deadline.unref?.();
     // The card proves it is on screen by polling; it never showed up within graceMs, or its heartbeat is older
     // than heartbeatMs → the host has no card or the user left it, so ask once in the native question box.
@@ -163,9 +178,9 @@ function waitForAnswer(ctx, state, exec, callId, offered, catalogVersion, { grac
       if (settled || request.nativeAsked || !ctx.userQuestions?.ask || !cardGone()) return;
       request.nativeAsked = true; // asked at most once: a second dialog for the same plan would only confuse
       clearInterval(check);
-      askNative(ctx.userQuestions, exec, offered, native.signal).then(answer => {
+      spec.ask(native.signal).then(answer => {
         if (settled) return;
-        try { request.resolve(validateAnswer(offered, answer)); } catch (error) { fail(error); }
+        try { request.resolve(spec.validate(answer)); } catch (error) { fail(error); }
       }, error => {
         // The question box failed (e.g. NO_PROVIDER when no client is attached, or it was dismissed by the host).
         // That is not the user's answer: the card can still answer while the request is pending (the user may
@@ -188,6 +203,14 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
     return result.revision;
   }
   return {
+    /** Ask the user whether the Lead may finish this turn without its step limit; throws unless they allow it. */
+    async confirmDirect(exec, plan) {
+      const callId = exec.callId ?? `direct-${Date.now()}`;
+      const result = await waitForAnswer(ctx, stateOf(exec.agent.id), exec, callId, { kind: 'direct', plan, subject: '主控亲自完成确认', consequence: '执行限制没有放开', retry: '请询问用户是否重新确认。',
+        validate: validateDirectAnswer, ask: signal => askDirectNative(ctx.userQuestions, exec, plan, signal) }, { graceMs, heartbeatMs, timeoutMs });
+      if (result.decision === 'cancel') throw new Error('用户没有放开主控的执行限制，本次计划未生效。请询问用户要如何调整，或重新制定计划。');
+      return true;
+    },
     /**
      * Ask the user to confirm a delegate plan. Resolves with the confirmed routes (applied to this Lead),
      * or throws when the user cancels. `mode` is workflow.confirmDispatch.
@@ -211,7 +234,8 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
       if (mode === 'never' || (mode === 'on-change' && unchanged)) return { asked: false, routes: offered };
       const catalogVersion = createHash('sha256').update(JSON.stringify(offered.map(r => r.candidates))).digest('hex').slice(0, 16);
       const callId = exec.callId ?? `dispatch-${Date.now()}`;
-      const result = await waitForAnswer(ctx, state, exec, callId, offered, catalogVersion, { graceMs, heartbeatMs, timeoutMs });
+      const result = await waitForAnswer(ctx, state, exec, callId, { offered, catalogVersion, subject: '分派确认', consequence: '未创建或通知任何队友', retry: '请询问用户是否重新分派。',
+        validate: answer => validateAnswer(offered, answer), ask: signal => askNative(ctx.userQuestions, exec, offered, signal) }, { graceMs, heartbeatMs, timeoutMs });
       if (result.decision === 'cancel') throw new Error('用户取消了这次分派，未创建或通知任何队友。请询问用户要如何调整。');
       if (result.scope === 'project') await saveDefaults(exec, result.routes);
       if (project) void prefs.record(project, result.routes).catch(() => {});

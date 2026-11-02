@@ -48,7 +48,8 @@ window.__ModuleLoader__.load({
       'plan.assignments': '指派',
       'plan.next': '下一步',
       'plan.budget': '本轮自行执行上限 {n} 次',
-      'plan.unlimited': '用户要求主控亲自完成，本轮不限执行次数',
+      'plan.unlimited': '你已确认由主控亲自完成，本轮不限执行次数',
+      'direct.title': '允许主控亲自完成？', 'direct.hint': '允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。', 'direct.allow': '允许', 'direct.deny': '不允许', 'direct.loading': '正在读取待确认的请求…', 'direct.sent': '已允许，主控继续执行。', 'direct.cancelled': '已拒绝，执行限制不变。', 'direct.stale': '确认请求已失效（可能插件已重载或已超时），请中断本轮后重试。',
       'mode.delegate': '指派队友',
       'mode.free': '免费模型',
       'mode.direct': '主控处理',
@@ -307,7 +308,8 @@ window.__ModuleLoader__.load({
       'plan.assignments': 'Assignments',
       'plan.next': 'Next step',
       'plan.budget': 'Up to {n} direct actions this turn',
-      'plan.unlimited': 'The user asked the Lead to do this itself; no direct-action cap this turn',
+      'plan.unlimited': 'You confirmed the Lead does this itself; no direct-action cap this turn',
+      'direct.title': 'Let the Lead do this itself?', 'direct.hint': 'Allowing removes the step limit for this turn. It returns with your next message. File rules and permissions stay on.', 'direct.allow': 'Allow', 'direct.deny': 'Do not allow', 'direct.loading': 'Loading the pending request…', 'direct.sent': 'Allowed. The Lead continues.', 'direct.cancelled': 'Refused. The step limit stays on.', 'direct.stale': 'This confirmation request is no longer valid (the plugin may have reloaded or it timed out). Interrupt this turn and try again.',
       'mode.delegate': 'Delegate',
       'mode.free': 'Free model',
       'mode.direct': 'Lead handles',
@@ -1078,7 +1080,9 @@ window.__ModuleLoader__.load({
           plan.confirmed?.by === 'user' ? badge(t('confirm.confirmedBy'), 'success', 'confirmed') : null],
         body: body.length ? body : null });
       // While the call waits for the user, the confirmation card sits right under it, already open.
-      if (s.state !== 'running' || mode !== 'delegate') return card;
+      if (s.state !== 'running') return card;
+      if (mode === 'direct' && s.args.userRequested === true) return h('div', { className: 'ctm-dc-wrap' }, card, h(DirectConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
+      if (mode !== 'delegate') return card;
       return h('div', { className: 'ctm-dc-wrap' }, card, h(DispatchConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
     }
 
@@ -1153,15 +1157,8 @@ window.__ModuleLoader__.load({
     const CONFIRM_PATH = 'api/capability-team.dispatch-confirm';
     const CONFIRM_HEARTBEAT_MS = 5000; // keep polling while pending so the tool knows the card is still on screen
     const rkey = r => (r ? `${r.provider}/${r.model}` : '');
-    function DispatchConfirmCard({ sessionId, callId, t }) {
+    function usePendingConfirm(sessionId, callId, reload) {
       const [view, setView] = React.useState(null); // null loading · {status:'stale'|'gone'} · pending view
-      const [edits, setEdits] = React.useState({}); // role → { primary, fallbacks }
-      const [scope, setScope] = React.useState('task');
-      const [busy, setBusy] = React.useState(false);
-      const [error, setError] = React.useState(null);
-      const [sent, setSent] = React.useState(null);
-      const [reload, setReload] = React.useState(0);
-      const [expanded, setExpanded] = React.useState({}); // role → task text shown in full
       React.useEffect(() => {
         if (!sessionId || !callId) return undefined;
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
@@ -1189,6 +1186,46 @@ window.__ModuleLoader__.load({
         load();
         return () => { live = false; ctrl?.abort(); if (timer) clearTimeout(timer); };
       }, [sessionId, callId, reload]);
+      return [view, setView];
+    }
+    // Shown when the Lead asks to finish the user's request itself: allowing lifts its step limit until the next message.
+    function DirectConfirmCard({ sessionId, callId, t }) {
+      const [view] = usePendingConfirm(sessionId, callId, 0);
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      const [sent, setSent] = React.useState(null);
+      if (sent) return h('div', { className: 'ctm-dc', 'data-state': 'sent' }, h('span', { className: 'ctm-sub' }, t(sent === 'cancel' ? 'direct.cancelled' : 'direct.sent')));
+      if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('direct.loading')));
+      if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('direct.stale')));
+      if (view.status !== 'pending') return null;
+      const submit = async decision => {
+        setBusy(true); setError(null);
+        try {
+          const res = await fetch(apiUrl(CONFIRM_PATH), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId, callId, decision }) });
+          if (res.ok) setSent(decision); else setError(t('confirm.error.other'));
+        } catch { setError(t('confirm.error.other')); }
+        finally { setBusy(false); }
+      };
+      return h('div', { className: 'ctm-dc', role: 'group', 'aria-label': t('direct.title') },
+        h('div', { className: 'ctm-dc-head' },
+          h('strong', { className: 'ctm-dc-title' }, t('direct.title')),
+          h('span', { className: 'ctm-sub' }, t('direct.hint'))),
+        view.reason ? h('p', { className: 'ctm-text' }, view.reason) : null,
+        h('div', { className: 'ctm-dc-foot' },
+          error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
+          h('div', { className: 'ctm-dc-buttons' },
+            h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('direct.deny')),
+            h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: busy, onClick: () => submit('confirm') }, t('direct.allow')))));
+    }
+    function DispatchConfirmCard({ sessionId, callId, t }) {
+      const [reload, setReload] = React.useState(0);
+      const [view, setView] = usePendingConfirm(sessionId, callId, reload);
+      const [edits, setEdits] = React.useState({}); // role → { primary, fallbacks }
+      const [scope, setScope] = React.useState('task');
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      const [sent, setSent] = React.useState(null);
+      const [expanded, setExpanded] = React.useState({}); // role → task text shown in full
       if (sent) return h('div', { className: 'ctm-dc', 'data-state': 'sent' }, h('span', { className: 'ctm-sub' }, t(sent === 'cancel' ? 'confirm.cancelled' : 'confirm.sent')));
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('confirm.loading')));
       if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('confirm.stale')));
@@ -3844,7 +3881,7 @@ window.__ModuleLoader__.load({
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DirectConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {

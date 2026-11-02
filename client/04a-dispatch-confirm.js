@@ -5,15 +5,8 @@
     const CONFIRM_PATH = 'api/capability-team.dispatch-confirm';
     const CONFIRM_HEARTBEAT_MS = 5000; // keep polling while pending so the tool knows the card is still on screen
     const rkey = r => (r ? `${r.provider}/${r.model}` : '');
-    function DispatchConfirmCard({ sessionId, callId, t }) {
+    function usePendingConfirm(sessionId, callId, reload) {
       const [view, setView] = React.useState(null); // null loading · {status:'stale'|'gone'} · pending view
-      const [edits, setEdits] = React.useState({}); // role → { primary, fallbacks }
-      const [scope, setScope] = React.useState('task');
-      const [busy, setBusy] = React.useState(false);
-      const [error, setError] = React.useState(null);
-      const [sent, setSent] = React.useState(null);
-      const [reload, setReload] = React.useState(0);
-      const [expanded, setExpanded] = React.useState({}); // role → task text shown in full
       React.useEffect(() => {
         if (!sessionId || !callId) return undefined;
         const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
@@ -41,6 +34,46 @@
         load();
         return () => { live = false; ctrl?.abort(); if (timer) clearTimeout(timer); };
       }, [sessionId, callId, reload]);
+      return [view, setView];
+    }
+    // Shown when the Lead asks to finish the user's request itself: allowing lifts its step limit until the next message.
+    function DirectConfirmCard({ sessionId, callId, t }) {
+      const [view] = usePendingConfirm(sessionId, callId, 0);
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      const [sent, setSent] = React.useState(null);
+      if (sent) return h('div', { className: 'ctm-dc', 'data-state': 'sent' }, h('span', { className: 'ctm-sub' }, t(sent === 'cancel' ? 'direct.cancelled' : 'direct.sent')));
+      if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('direct.loading')));
+      if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('direct.stale')));
+      if (view.status !== 'pending') return null;
+      const submit = async decision => {
+        setBusy(true); setError(null);
+        try {
+          const res = await fetch(apiUrl(CONFIRM_PATH), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId, callId, decision }) });
+          if (res.ok) setSent(decision); else setError(t('confirm.error.other'));
+        } catch { setError(t('confirm.error.other')); }
+        finally { setBusy(false); }
+      };
+      return h('div', { className: 'ctm-dc', role: 'group', 'aria-label': t('direct.title') },
+        h('div', { className: 'ctm-dc-head' },
+          h('strong', { className: 'ctm-dc-title' }, t('direct.title')),
+          h('span', { className: 'ctm-sub' }, t('direct.hint'))),
+        view.reason ? h('p', { className: 'ctm-text' }, view.reason) : null,
+        h('div', { className: 'ctm-dc-foot' },
+          error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
+          h('div', { className: 'ctm-dc-buttons' },
+            h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('direct.deny')),
+            h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: busy, onClick: () => submit('confirm') }, t('direct.allow')))));
+    }
+    function DispatchConfirmCard({ sessionId, callId, t }) {
+      const [reload, setReload] = React.useState(0);
+      const [view, setView] = usePendingConfirm(sessionId, callId, reload);
+      const [edits, setEdits] = React.useState({}); // role → { primary, fallbacks }
+      const [scope, setScope] = React.useState('task');
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState(null);
+      const [sent, setSent] = React.useState(null);
+      const [expanded, setExpanded] = React.useState({}); // role → task text shown in full
       if (sent) return h('div', { className: 'ctm-dc', 'data-state': 'sent' }, h('span', { className: 'ctm-sub' }, t(sent === 'cancel' ? 'confirm.cancelled' : 'confirm.sent')));
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('confirm.loading')));
       if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('confirm.stale')));
