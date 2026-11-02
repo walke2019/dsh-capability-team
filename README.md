@@ -57,8 +57,12 @@ A configurable, capability-routed multi-agent team preset that extends DSH’s n
 
 ### Prerequisites
 
-- DSH Desktop or `dsh web` with the native agent-team service enabled.
+- DSH Desktop or `dsh web` shipping the native experimental Agent Teams packages (verified against 0.2.1-rc.5).
 - Node.js 22 or newer.
+
+Enable the official `@deepseek-ai/dsh-experimental-agent-team-profile` bundle in the host profile to supply the native Team service, scoped tools, and Team UI. This bundle does not insert those global components: Cordis selects the last entry for a repeated ID rather than preserving earlier configuration, so inserting defaults here could reset host customizations. Without the official components, Team support remains unavailable; check the existing runtime diagnostics and enable the official bundle rather than assuming this preset installs it. Standard agents do not receive Team tools because the native installer requires Team membership.
+
+Optional installed-runtime regression: set `DSH_NATIVE_ASAR` to a readable Desktop `app.asar`, then run `node --test tests/team-mount.test.mjs`. It executes the installed YAML parser, patch composer, loader group update, and native tool-installer membership gate without modifying or restarting the host. Without that variable the two native checks are explicitly skipped; they are not a full host boot or browser test.
 
 ### Install and enable
 

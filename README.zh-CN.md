@@ -57,8 +57,12 @@
 
 ### 前置条件
 
-- 启用原生智能体团队服务的 DSH Desktop 或 `dsh web`。
+- 包含原生实验性 Agent Teams 包的 DSH Desktop 或 `dsh web`（已对照 0.2.1-rc.5 验证）。
 - Node.js 22 或更高版本。
+
+请在宿主 profile 中启用官方 `@deepseek-ai/dsh-experimental-agent-team-profile` bundle，由其提供原生团队服务、按成员作用域安装的工具及团队 UI。本 bundle 不插入这些全局组件：Cordis 对重复 ID 选择最后一项，不保留早期配置，在此插入默认值可能重置宿主自定义参数。缺少官方组件时，团队能力仍未就绪；请查看已有运行时诊断并启用官方 bundle，不要假设本预设自动安装。原生工具安装器要求团队成员身份，因此 standard 智能体不会获得团队工具。
+
+可选的已安装运行时回归：将 `DSH_NATIVE_ASAR` 指向可读的 Desktop `app.asar`，运行 `node --test tests/team-mount.test.mjs`。测试执行已安装的 YAML 解析器、patch 合成、loader group update 及原生工具安装器成员门禁，不修改或重启宿主。不设置该变量时，两项原生检查明确跳过；这不是完整宿主启动或浏览器测试。
 
 ### 安装与启用
 

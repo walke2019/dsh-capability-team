@@ -3,3 +3,6 @@ node_modules/
 .env
 .env.*
 packages/*/artifacts/
+docs/demo/
+/.claude/launch.json
+/local-dsh-capability-team-*.tgz
