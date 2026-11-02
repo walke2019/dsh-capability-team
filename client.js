@@ -48,6 +48,7 @@ window.__ModuleLoader__.load({
       'plan.assignments': '指派',
       'plan.next': '下一步',
       'plan.budget': '本轮自行执行上限 {n} 次',
+      'plan.unlimited': '用户要求主控亲自完成，本轮不限执行次数',
       'mode.delegate': '指派队友',
       'mode.free': '免费模型',
       'mode.direct': '主控处理',
@@ -262,6 +263,8 @@ window.__ModuleLoader__.load({
       'control.pending': '处理中…',
       'list.more': '更多（剩余 {n} 条）',
       'list.collapse': '收起',
+      'stage.title': '像素办公室', 'stage.summary': '{n} / {m} 人在岗', 'stage.collapse': '收起办公室', 'stage.expand': '展开办公室',
+      'stage.open': '打开会话', 'stage.empty': '队伍尚未成型，发出第一个需求后队友会入座',
     };
 
     const en = {
@@ -304,6 +307,7 @@ window.__ModuleLoader__.load({
       'plan.assignments': 'Assignments',
       'plan.next': 'Next step',
       'plan.budget': 'Up to {n} direct actions this turn',
+      'plan.unlimited': 'The user asked the Lead to do this itself; no direct-action cap this turn',
       'mode.delegate': 'Delegate',
       'mode.free': 'Free model',
       'mode.direct': 'Lead handles',
@@ -518,6 +522,8 @@ window.__ModuleLoader__.load({
       'control.pending': 'Working…',
       'list.more': 'More ({n} remaining)',
       'list.collapse': 'Collapse',
+      'stage.title': 'Pixel office', 'stage.summary': '{n} / {m} seated', 'stage.collapse': 'Collapse office', 'stage.expand': 'Expand office',
+      'stage.open': 'Open session', 'stage.empty': 'No team yet. Teammates take their seats once you send the first request.',
     };
 
     const CSS = `
@@ -872,6 +878,50 @@ window.__ModuleLoader__.load({
 @media (prefers-reduced-motion:reduce){.ctm-switch,.ctm-switch::after,.ctm-ov-group>summary::before,.ctm-bd-open-btn{transition:none!important}}
 `;
 
+    // Pixel office stage. Floor/desk colours are plain values (canvas reads them through getComputedStyle, which does not
+    // resolve color-mix inside custom properties); everything else uses host tokens like the rest of the pane.
+    const STAGE_CSS = `
+.ctm-stage{--ctm-stage-floor-a:#1c1d26;--ctm-stage-floor-b:#202130;--ctm-stage-grout:rgba(0,0,0,.22);--ctm-stage-wall:#2a2b3a;--ctm-stage-desk:#3b2f26;--ctm-stage-desk-top:#5a4535;--ctm-stage-plate:rgba(10,10,14,.82);display:flex;flex-direction:column;gap:6px;min-width:0;container:ctm-stage/inline-size}
+@media (prefers-color-scheme:light){.ctm-stage{--ctm-stage-floor-a:#d9d7e6;--ctm-stage-floor-b:#cfcde0;--ctm-stage-grout:rgba(0,0,0,.08);--ctm-stage-wall:#b9b7cc;--ctm-stage-desk:#8a6a52;--ctm-stage-desk-top:#b08a6a;--ctm-stage-plate:rgba(14,14,20,.84)}}
+.ctm-stage-head{display:flex;align-items:center;gap:8px;min-width:0}
+.ctm-stage-head .ctm-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctm-stage-toggle{margin-left:auto;flex:none}
+.ctm-stage-office{position:relative;width:100%;height:clamp(220px,34vh,340px);border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;overflow:hidden;background:var(--ctm-stage-floor-a);user-select:none}
+.ctm-stage-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
+.ctm-stage-overlay{position:absolute;inset:0;pointer-events:none}
+.ctm-stage-overlay>*{pointer-events:auto}
+.ctm-stage-empty{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);margin:0;padding:6px 12px;border-radius:8px;background:var(--ctm-stage-plate);color:#d8d8e0;text-align:center;max-width:80%}
+.ctm-stage-plate{position:absolute;z-index:1;transform:translate(-50%,0);display:flex;flex-direction:column;gap:3px;min-width:72px;max-width:var(--pw,150px);padding:3px 7px;border:.5px solid rgba(255,255,255,.14);border-radius:7px;background:var(--ctm-stage-plate);color:#f4f4f6;backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,.35);font-size:11px;line-height:15px;text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.ctm-stage-plate:hover{border-color:rgba(255,255,255,.4);z-index:3}
+.ctm-stage-plate:focus-visible{outline:1px solid var(--ctm-accent);outline-offset:1px}
+.ctm-stage-plate[aria-selected=true]{border-color:var(--ctm-accent);box-shadow:0 0 0 1px var(--ctm-accent),0 2px 12px rgba(0,0,0,.4);z-index:3}
+.ctm-stage-plate[data-status=inactive]{opacity:.62;border-style:dashed}
+.ctm-stage-plate-name{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;line-height:16px;white-space:nowrap;min-width:0}
+.ctm-stage-plate-name>span{flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-plate-more{display:none;flex-direction:column;gap:3px;min-width:0}
+.ctm-stage-plate-more .ctm-sub{color:#c3c3cb}
+.ctm-stage-plate:hover .ctm-stage-plate-more,.ctm-stage-plate[aria-selected=true] .ctm-stage-plate-more{display:flex}
+.ctm-stage-plate .ctm-model-badge{align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctm-stage-plate .ctm-model-badge[data-flash]{animation:ctm-stage-flash .35s 4}
+.ctm-stage-plate-task{color:#d2d2da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-open{align-self:flex-start;padding:1px 8px;font-size:11px;border-color:rgba(255,255,255,.28);color:#f4f4f6}
+.ctm-stage-dot{flex:none;width:7px;height:7px;border-radius:50%;background:#9a9aa5}
+.ctm-stage-dot[data-s=running]{background:var(--dsw-alias-state-success-primary,#3ddc84);box-shadow:0 0 6px var(--dsw-alias-state-success-primary,#3ddc84);animation:ctm-stage-blink 1.4s infinite}
+.ctm-stage-dot[data-s=provisioning]{background:var(--ctm-accent)}
+.ctm-stage-dot[data-s=failed]{background:var(--dsw-alias-state-error-primary,#ff5c5c)}
+.ctm-stage-meter{flex:1 1 24px;min-width:18px;max-width:48px;height:5px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.ctm-stage-meter>i{display:block;height:100%;width:var(--p);background:var(--ctm-accent);transition:width .5s ease}
+.ctm-stage-meter[data-tone=warn]>i{background:var(--dsw-alias-state-warn-primary,#f5a524)}
+.ctm-stage-meter[data-tone=error]>i{background:var(--dsw-alias-state-error-primary,#ff5c5c)}
+.ctm-stage-icon{position:absolute;transform:translate(-50%,-100%);font-size:14px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));animation:ctm-stage-float 1.6s ease-in-out infinite}
+.ctm-stage-bubble{position:absolute;z-index:2;transform:translate(-50%,-100%);max-width:180px;padding:3px 8px;border-radius:8px;background:var(--ctm-stage-plate);border:.5px solid rgba(255,255,255,.18);color:#f4f4f6;font-size:11px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@container ctm-stage (max-width:599px){.ctm-stage-plate{min-width:64px;padding:2px 6px}.ctm-stage-bubble{max-width:140px}}
+@keyframes ctm-stage-blink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes ctm-stage-float{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 3px))}}
+@keyframes ctm-stage-flash{0%,100%{filter:none}50%{filter:brightness(1.8)}}
+@media (prefers-reduced-motion:reduce){.ctm-stage-icon,.ctm-stage-dot[data-s=running],.ctm-stage-plate .ctm-model-badge[data-flash]{animation:none}.ctm-stage-meter>i,.ctm-stage-plate{transition:none}}
+`;
+
     // ---------- pure helpers ----------
     const apiUrl = (path, params) => {
       const cleanPath = String(path ?? '').replace(/^\/+/, '');
@@ -1019,7 +1069,7 @@ window.__ModuleLoader__.load({
         ]))));
         const facts = [];
         if (plan.freeTools) facts.push(chip(t('free.tools'), t(`tools.${plan.freeTools}`), 'tools'));
-        if (plan.directBudget !== undefined) facts.push(h('span', { className: 'ctm-sub', key: 'budget' }, fmt(t('plan.budget'), { n: plan.directBudget })));
+        if (plan.directBudget !== undefined) facts.push(h('span', { className: 'ctm-sub', key: 'budget' }, plan.directBudget === null ? t('plan.unlimited') : fmt(t('plan.budget'), { n: plan.directBudget })));
         if (plan.next) sections.push(section(t('plan.next'), facts.length ? h('div', { className: 'ctm-chips' }, ...facts) : null, h('div', { className: 'ctm-text ctm-sub' }, plan.next)));
       }
       const body = sections.filter(Boolean);
@@ -1643,19 +1693,19 @@ window.__ModuleLoader__.load({
     /** Per-member token usage, each role's budget when its capability sets maxTokens, and model time per step. */
     function UsageGroups({ rows: members, roles, t }) {
       const byId = new Map(roles.map(r => [r.id, r]));
-      const top = Math.max(1, ...members.map(m => m.totals ? billable(m.totals) : 0));
+      const top = Math.max(1, ...members.map(m => isUnknownUsage(m) ? 0 : billable(m.totals)));
       return h('div', { className: 'ctm-ov-block' },
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('usage.hint')),
         members.length ? h('span', { className: 'ctm-label' }, fmt(t('usage.total'), { n: usageTotal(members) == null ? t('usage.unknown') : compact(usageTotal(members)) })) : null,
         ...(members.length ? members.map((m, index) => {
           const role = byId.get(m.name) ?? byId.get(baseName(m.name));
-          const hasTotals = m.totals && typeof m.totals === 'object';
-          const used = hasTotals ? billable(m.totals) : null;
+          // Same contract as usageTotal and cardMeters: the server sends zeroed totals with coverage 'unknown'.
+          const used = isUnknownUsage(m) ? null : billable(m.totals);
           const max = role?.maxTokens;
           const ratio = max && used !== null ? Math.min(1, used / max) : (used !== null ? used / top : 0);
           const tone = max && used !== null && used >= max ? 'error' : max && ratio >= 0.8 ? 'warn' : undefined;
           const timing = statsLine(m.stats, t);
-          const ctxm = m.coverage === 'unknown' ? null : contextMetrics(m.totals, m.stats);
+          const ctxm = used === null ? null : contextMetrics(m.totals, m.stats);
           const freshness = m.refreshedAt ? fmt(t('usage.asOf'), { time: timeOfDay(m.refreshedAt) }) : null;
           return h('details', { key: m.id ?? index, className: 'ctm-ov-group', open: index === 0 },
             h('summary', null,
@@ -2651,6 +2701,305 @@ window.__ModuleLoader__.load({
             : h('span', { className: 'ctm-sub' }, t('control.audit.empty'))));
     }
 
+    // ---------- office stage: deterministic palettes and pixel sprites (canvas draws shapes only; every text is DOM) ----------
+    const STAGE_SKINS = ['#f3d3a2', '#f6e1c3', '#e8b98a', '#d9a06e', '#fbe3cc'];
+    /** Desk prop per capability; unknown capabilities get a bare desk. */
+    const STAGE_PROPS = { orchestrator: 'map', 'technical-director': 'scroll', backend: 'gear', frontend: 'palette', research: 'glass', writer: 'brush', qa: 'flask' };
+    function stageHash(str) { let n = 2166136261; for (const ch of String(str)) { n ^= ch.charCodeAt(0); n = Math.imul(n, 16777619) >>> 0; } return n; }
+    /** Theme-agnostic look: the role id picks the hues, the capability picks the prop, so any theme's names render consistently. */
+    function stagePalette(id, capability) {
+      const n = stageHash(id), hue = n % 360, hue2 = (hue + 150 + ((n >>> 8) % 60)) % 360;
+      const hsl = (h, s, l) => `hsl(${h} ${s}% ${l}%)`;
+      return { robe: hsl(hue, 55, 46), leg: hsl(hue, 45, 28), hat: hsl(hue2, 55, 42), accent: hsl((hue + 180) % 360, 75, 68),
+        skin: STAGE_SKINS[(n >>> 16) % STAGE_SKINS.length], prop: STAGE_PROPS[capability] ?? 'none' };
+    }
+    /** Desk with monitor and the capability prop. `px(x, y, w, h, color)` paints one device-independent rectangle. */
+    function stageDrawDesk(px, s, S, desk, deskTop) {
+      const x = s.home.x, y = s.home.y, present = s.data.status !== 'inactive';
+      px(x - 12 * S, y + S, 24 * S, 7 * S, desk); px(x - 12 * S, y, 24 * S, 5 * S, deskTop); px(x - 12 * S, y, 24 * S, S, 'rgba(255,255,255,.12)');
+      px(x - 4 * S, y - 5 * S, 8 * S, 5 * S, '#1a1b22');
+      const screen = !present ? '#2b3340' : s.data.status === 'failed' ? '#8f2f2f' : s.phase === 'typing' ? '#3a9ad9' : '#4b5563';
+      px(x - 3 * S, y - 4 * S, 6 * S, 3 * S, screen);
+      if (s.phase === 'typing' && s.frame % 2) px(x - 2 * S, y - 3 * S, 2 * S, S, '#bfe6ff');
+      px(x - S, y, 2 * S, S, '#111');
+      const a = s.palette.accent;
+      switch (s.palette.prop) {
+        case 'map': px(x + 5 * S, y + S, 6 * S, 3 * S, '#d9c38a'); px(x + 6 * S, y + 2 * S, 2 * S, S, '#b3412f'); break;
+        case 'scroll': px(x + 6 * S, y + S, 5 * S, 2 * S, '#e8dcbf'); px(x + 6 * S, y + 3 * S, 5 * S, S, '#cdbf9a'); break;
+        case 'gear': px(x + 6 * S, y, 4 * S, 4 * S, '#9aa3ad'); px(x + 7 * S, y + S, 2 * S, 2 * S, '#3b4149'); px(x + 5 * S, y + S, S, 2 * S, '#9aa3ad'); px(x + 10 * S, y + S, S, 2 * S, '#9aa3ad'); break;
+        case 'palette': px(x + 5 * S, y + S, 6 * S, 3 * S, '#e8dcbf'); px(x + 6 * S, y + 2 * S, S, S, '#e0493f'); px(x + 8 * S, y + 2 * S, S, S, '#3a9ad9'); px(x + 10 * S, y + 2 * S, S, S, '#3ddc84'); break;
+        case 'glass': px(x + 6 * S, y, 3 * S, 3 * S, '#c9ced6'); px(x + 7 * S, y + S, S, S, '#a9d4ff'); px(x + 9 * S, y + 3 * S, 2 * S, S, '#8a5a2b'); break;
+        case 'brush': px(x + 6 * S, y + S, 2 * S, 3 * S, '#2b2b2b'); px(x + 9 * S, y + S, 2 * S, 3 * S, '#f1ead6'); break;
+        case 'flask': px(x + 7 * S, y - S, 2 * S, 2 * S, '#c9ced6'); px(x + 6 * S, y + S, 4 * S, 3 * S, '#d8dde3'); px(x + 7 * S, y + 2 * S, 2 * S, 2 * S, a); break;
+        default: break;
+      }
+      px(x - 10 * S, y + S, 3 * S, 2 * S, '#c84b3c'); px(x - 9 * S, y, S, S, '#f0e9d8');
+    }
+    /** 12×16 pixel person; `lead` wears the crown, `failed` shows a red mark, walking alternates the legs. */
+    function stageDrawPerson(px, s, S) {
+      const c = s.palette, f = s.facing, walking = s.phase === 'walking';
+      const bob = (s.phase === 'typing' || s.phase === 'idle') && s.frame === 2 ? S : 0;
+      const x = s.x, y0 = s.y - 16 * S + bob;
+      const X = u => x + (f > 0 ? u : (12 - u - 1)) * S - 6 * S, Y = v => y0 + v * S;
+      const R = (u, v, w, h, col) => px(f > 0 ? X(u) : X(u + w - 1), Y(v), w * S, h * S, col);
+      const legA = walking ? (s.frame % 2 ? 1 : 0) : 0;
+      R(4 - legA, 12, 2, 4, c.leg); R(7 + legA, 12, 2, 4, c.leg); R(4 - legA, 15, 2, 1, '#222'); R(7 + legA, 15, 2, 1, '#222');
+      R(3, 6, 7, 6, c.robe); R(6, 6, 1, 6, c.accent);
+      const armL = s.phase === 'typing' && s.frame === 1 ? 1 : 0, armR = s.phase === 'typing' && s.frame === 3 ? 1 : 0;
+      R(2, 7 - armL, 1, 4, c.robe); R(10, 7 - armR, 1, 4, c.robe); R(2, 10 - armL, 1, 1, c.skin); R(10, 10 - armR, 1, 1, c.skin);
+      R(4, 3, 5, 3, c.skin); R(5, 4, 1, 1, '#222'); R(8, 4, 1, 1, '#222');
+      R(3, 0, 7, 3, c.hat); R(3, 2, 7, 1, c.accent);
+      if (s.data.lead) { R(4, -1, 1, 1, '#ffd766'); R(6, -2, 1, 2, '#ffd766'); R(8, -1, 1, 1, '#ffd766'); }
+      if (s.data.status === 'failed') R(11, 2, 1, 1, '#ff5c5c');
+    }
+    /** A dispatch scroll flying from the Lead's desk to a teammate. */
+    function stageDrawCourier(px, c, S) {
+      px(c.x - 3 * S, c.y - 2 * S, 6 * S, 4 * S, '#f3e7c6'); px(c.x - 3 * S, c.y - 2 * S, 6 * S, S, '#d9c38a'); px(c.x - S, c.y - S, 2 * S, 2 * S, '#c84b3c');
+    }
+    /** Floor, wall and windows; reads the stage's colour tokens so light and dark themes both get a readable office. */
+    function stageDrawRoom(ctx, px, w, h, S, colors) {
+      ctx.fillStyle = colors.floorA; ctx.fillRect(0, 0, w, h);
+      const tile = 8 * S;
+      for (let y = 0; y < h; y += tile) for (let x = ((y / tile) % 2) * tile; x < w; x += tile * 2) px(x, y, tile, tile, colors.floorB);
+      for (let y = 0; y < h; y += tile) px(0, y, w, 1, colors.grout);
+      for (let x = 0; x < w; x += tile) px(x, 0, 1, h, colors.grout);
+      px(0, 0, w, 10 * S, colors.wall); px(0, 10 * S, w, 1, 'rgba(0,0,0,.35)');
+      for (let x = 6 * S; x < w; x += 42 * S) { px(x, 2 * S, 10 * S, 6 * S, '#7fb2e5'); px(x + S, 3 * S, 8 * S, 4 * S, '#a9d4ff'); }
+    }
+
+    // ---------- office stage: layout, DOM plates and the render loop (imperative; React only owns the host element) ----------
+    /**
+     * Sprites arrive from `stageSprites` (08d) and are diffed in `sync`: new members walk in from the door, a task that
+     * turns in_progress sends a courier from the Lead's desk, a changed route flashes the model badge. The first frame is
+     * painted synchronously because a hidden side pane never fires requestAnimationFrame.
+     */
+    class OfficeScene {
+      constructor(stage, canvas, overlay, { t, onOpen }) {
+        this.stage = stage; this.canvas = canvas; this.overlay = overlay; this.ctx = canvas.getContext('2d'); this.t = t; this.onOpen = onOpen;
+        this.sprites = new Map(); this.plates = new Map(); this.icons = new Map(); this.bubbles = new Map(); this.couriers = [];
+        this.w = 0; this.h = 0; this.S = 3; this.plateW = 120; this.selected = null; this.synced = false; this.dirty = true; this.visible = true;
+        this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.px = (x, y, w, h, c) => { this.ctx.fillStyle = c; this.ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+        if (typeof ResizeObserver === 'function') { this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(stage); }
+        this.visibleAt = 0; // on-screen check is a cheap rect read once a second (IntersectionObserver is unreliable inside some embedded panes)
+        this.onVisibility = () => { this.last = 0; if (!document.hidden) this.draw(); };
+        document.addEventListener('visibilitychange', this.onVisibility);
+        this.last = 0; this.schedule();
+      }
+      /** rAF when the host delivers frames; a timer fallback keeps motion going (at low fps) in panes that stall rAF while visible. */
+      schedule() {
+        cancelAnimationFrame(this.raf); clearTimeout(this.timer);
+        this.raf = requestAnimationFrame(now => this.loop(now));
+        this.timer = setTimeout(() => this.loop(performance.now()), this.busy() ? 120 : 1000);
+      }
+      el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+      destroy() {
+        cancelAnimationFrame(this.raf); clearTimeout(this.timer); this.ro?.disconnect(); document.removeEventListener('visibilitychange', this.onVisibility);
+        for (const id of [...this.sprites.keys()]) this.remove(id);
+      }
+
+      /* ---------- diff from the adapter ---------- */
+      sync(list) {
+        const seen = new Set();
+        for (const data of list) {
+          seen.add(data.id);
+          const prev = this.sprites.get(data.id);
+          if (!prev) { this.add(data, this.synced && data.status !== 'inactive'); continue; }
+          const was = prev.data; prev.data = data;
+          if (was.status === 'inactive' && data.status !== 'inactive' && !this.reduced) this.walkIn(prev);
+          else if (prev.phase !== 'walking') prev.phase = phaseOf(data);
+          if (data.task?.status === 'in_progress' && (was.task?.id !== data.task.id || was.task?.status !== 'in_progress') && !data.lead) this.courier(data.id);
+          if (was.route !== data.route && data.route) this.flash(data.id);
+          this.renderPlate(data.id);
+        }
+        for (const id of [...this.sprites.keys()]) if (!seen.has(id)) this.remove(id);
+        this.synced = true; this.dirty = true; this.positionOverlay(); this.draw();
+      }
+      add(data, enter) {
+        const s = { data, palette: stagePalette(data.id, data.capability), x: 0, y: 0, home: { x: 0, y: 0 }, facing: 1, phase: phaseOf(data), path: [], frame: 0, ft: 0, flash: 0 };
+        this.sprites.set(data.id, s);
+        const plate = this.el('div', 'ctm-stage-plate'); plate.dataset.id = data.id; plate.tabIndex = 0; plate.setAttribute('role', 'button');
+        plate.addEventListener('click', () => this.select(this.selected === data.id ? null : data.id));
+        plate.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); plate.click(); } });
+        this.overlay.append(plate); this.plates.set(data.id, plate);
+        const icon = this.el('div', 'ctm-stage-icon'); icon.hidden = true; this.overlay.append(icon); this.icons.set(data.id, icon);
+        const bubble = this.el('div', 'ctm-stage-bubble'); bubble.hidden = true; this.overlay.append(bubble); this.bubbles.set(data.id, bubble);
+        this.resize(); if (enter && !this.reduced) this.walkIn(s); this.renderPlate(data.id);
+      }
+      remove(id) {
+        this.sprites.delete(id); for (const map of [this.plates, this.icons, this.bubbles]) { map.get(id)?.remove(); map.delete(id); }
+        if (this.selected === id) this.select(null); this.resize();
+      }
+      select(id) { this.selected = id && this.sprites.has(id) ? id : null; for (const [k, p] of this.plates) p.setAttribute('aria-selected', String(k === this.selected)); }
+      walkIn(s) { s.x = -12 * this.S; s.y = s.home.y + 9 * this.S; s.facing = 1; s.path = [{ x: s.home.x, y: s.y }, { x: s.home.x, y: s.home.y }]; s.phase = 'walking'; }
+      courier(id) {
+        const lead = [...this.sprites.values()].find(x => x.data.lead), to = this.sprites.get(id); if (!lead || !to || this.reduced) return;
+        this.couriers.push({ x: lead.home.x, y: lead.home.y, from: { ...lead.home }, to: { x: to.home.x - 10 * this.S, y: to.home.y + 2 * this.S }, t: 0, dur: .9 + Math.hypot(to.home.x - lead.home.x, to.home.y - lead.home.y) / 420 });
+      }
+      flash(id) { const b = this.plates.get(id)?.querySelector('.ctm-model-badge'); if (b) { b.removeAttribute('data-flash'); void b.offsetWidth; b.dataset.flash = ''; } }
+
+      /* ---------- layout ---------- */
+      resize() {
+        // Measure the CSS height without our own floor, so growing the stage for a tall roster never oscillates.
+        this.stage.style.minHeight = '';
+        const r = this.stage.getBoundingClientRect(); if (!r.width || !r.height) return;
+        const base = Math.round(r.height), all = [...this.sprites.values()], others = all.filter(s => !s.data.lead);
+        this.w = Math.round(r.width);
+        const cols = this.w < 520 ? 3 : this.w < 1250 ? 6 : 7, rows = 1 + Math.ceil(others.length / cols), plateH = 26, bottom = 14;
+        const fit = S => 10 * S + 8 + bottom + rows * (22 * S + plateH) + (rows - 1) * 2;
+        let S = this.w < 520 ? 2 : this.w < 980 ? 3 : 4; while (S > 2 && fit(S) > base) S--;
+        this.S = S;
+        const need = fit(S); this.h = Math.max(base, need);
+        if (need > base) this.stage.style.minHeight = need + 'px'; // tiny panes: grow a few px rather than overlap rows
+        const dpr = Math.min(3, window.devicePixelRatio || 1);
+        this.canvas.width = Math.round(this.w * dpr); this.canvas.height = Math.round(this.h * dpr);
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.ctx.imageSmoothingEnabled = false;
+        const top = 10 * S + 8, contentH = 22 * S + plateH, cellH = rows > 1 ? (this.h - top - bottom - contentH) / (rows - 1) : 0;
+        const spread = Math.min(1, Math.max(.6, this.w / (cols * 150))), cellW = this.w / cols * spread, left = (this.w - cellW * cols) / 2;
+        this.plateW = Math.min(this.w >= 1100 ? 160 : 150, Math.floor(cellW * .85));
+        const place = (s, cx, cy) => { s.home = { x: Math.round(cx), y: Math.round(cy) }; if (s.phase !== 'walking') { s.x = s.home.x; s.y = s.home.y; } };
+        for (const s of all.filter(x => x.data.lead)) place(s, this.w / 2, top + 16 * S);
+        others.forEach((s, i) => {
+          const row = Math.floor(i / cols), inRow = Math.min(cols, others.length - row * cols), offset = left + (cols - inRow) * cellW / 2;
+          place(s, offset + (i % cols + .5) * cellW, top + 16 * S + cellH * (row + 1));
+        });
+        for (const p of this.plates.values()) p.style.setProperty('--pw', this.plateW + 'px');
+        this.dirty = true; this.positionOverlay(); this.draw();
+      }
+      positionOverlay() {
+        const S = this.S, headY = 16 * S, half = this.plateW / 2 + 2;
+        for (const [id, s] of this.sprites) {
+          const p = this.plates.get(id), i = this.icons.get(id), b = this.bubbles.get(id);
+          const px = Math.max(half, Math.min(this.w - half, s.home.x));
+          p.style.left = px + 'px'; p.style.top = (s.home.y + 7 * S) + 'px';
+          i.style.left = s.x + 'px'; i.style.top = (s.y - headY - 2) + 'px';
+          b.style.left = Math.max(70, Math.min(this.w - 70, s.x)) + 'px'; b.style.top = (s.y - headY - (s.data.icon ? 20 : 4)) + 'px';
+        }
+      }
+
+      /* ---------- DOM plates ---------- */
+      renderPlate(id) {
+        const s = this.sprites.get(id), p = this.plates.get(id); if (!s || !p) return;
+        const d = s.data, t = this.t; p.innerHTML = ''; p.dataset.status = d.status;
+        const name = this.el('div', 'ctm-stage-plate-name');
+        const dot = this.el('i', 'ctm-stage-dot'); dot.dataset.s = d.status; dot.title = d.statusLabel;
+        name.append(dot, this.el('span', '', d.name));
+        if (d.ctxRatio != null) { const m = this.el('div', 'ctm-stage-meter'); m.dataset.tone = d.ctxRatio >= .9 ? 'error' : d.ctxRatio >= .75 ? 'warn' : ''; m.style.setProperty('--p', Math.round(d.ctxRatio * 100) + '%'); m.title = `${t('live.contextPressure')} ${Math.round(d.ctxRatio * 100)}%`; m.append(this.el('i')); name.append(m); }
+        const more = this.el('div', 'ctm-stage-plate-more');
+        more.append(this.el('small', 'ctm-sub', [d.capability, d.statusLabel].filter(Boolean).join(' · ')));
+        if (d.route) { const b = this.el('span', 'ctm-model-badge', d.routeAlias); b.dataset.grade = d.grade; b.title = d.route; more.append(b); }
+        more.append(this.el('div', 'ctm-stage-plate-task', d.task ? `#${d.task.id} ${d.task.subject ?? ''}` : t('live.noTask')));
+        if (d.openable && this.onOpen) { const btn = this.el('button', 'ctm-btn ctm-stage-open', t('stage.open')); btn.type = 'button'; btn.addEventListener('click', e => { e.stopPropagation(); this.onOpen(d.memberId); }); more.append(btn); }
+        p.append(name, more);
+        p.title = `${d.name} · ${d.statusLabel}${d.route ? ' · ' + d.route : ''}`; p.setAttribute('aria-label', p.title);
+        const icon = this.icons.get(id); icon.textContent = d.icon ?? ''; icon.hidden = !d.icon;
+        const bubble = this.bubbles.get(id); bubble.textContent = d.bubble ?? ''; bubble.title = d.bubble ?? ''; bubble.hidden = !d.bubble;
+      }
+
+      /* ---------- loop ---------- */
+      busy() { return this.couriers.length > 0 || [...this.sprites.values()].some(s => s.phase === 'walking'); }
+      loop(now) {
+        this.schedule();
+        if (!this.last) this.last = now;
+        const idle = !this.busy(), minFrame = idle ? 66 : 0; if (now - this.last < minFrame) return;
+        const dt = Math.min(.05, (now - this.last) / 1000); this.last = now;
+        if (now - this.visibleAt > 1000) { const r = this.stage.getBoundingClientRect(); this.visible = r.width > 0 && r.bottom > 0 && r.top < (window.innerHeight || Infinity); this.visibleAt = now; }
+        if ((document.hidden || !this.visible) && !this.dirty) return; // hidden or scrolled-away hosts still get one repaint per change
+        this.update(dt); this.draw();
+      }
+      update(dt) {
+        for (const s of this.sprites.values()) {
+          s.ft += dt; const rate = s.phase === 'walking' ? .12 : s.phase === 'typing' ? .22 : .5;
+          if (s.ft > rate) { s.ft = 0; s.frame = (s.frame + 1) % 4; }
+          if (s.phase === 'walking' && s.path.length) {
+            const p = s.path[0], dx = p.x - s.x, dy = p.y - s.y, dist = Math.hypot(dx, dy), step = 70 * dt;
+            if (Math.abs(dx) > .5) s.facing = dx > 0 ? 1 : -1;
+            if (dist <= step) { s.x = p.x; s.y = p.y; s.path.shift(); if (!s.path.length) s.phase = phaseOf(s.data); } else { s.x += dx / dist * step; s.y += dy / dist * step; }
+          }
+        }
+        for (const c of this.couriers) { c.t += dt / c.dur; const k = Math.min(1, c.t), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; c.x = c.from.x + (c.to.x - c.from.x) * e; c.y = c.from.y + (c.to.y - c.from.y) * e - Math.sin(k * Math.PI) * 24; }
+        this.couriers = this.couriers.filter(c => c.t < 1);
+        if (this.busy()) this.positionOverlay();
+      }
+      draw() {
+        const { ctx, w, h, S } = this; if (!w) return;
+        const css = getComputedStyle(this.stage), v = (k, d) => css.getPropertyValue(k).trim() || d;
+        stageDrawRoom(ctx, this.px, w, h, S, { floorA: v('--ctm-stage-floor-a', '#1c1d26'), floorB: v('--ctm-stage-floor-b', '#202130'), grout: v('--ctm-stage-grout', 'rgba(0,0,0,.22)'), wall: v('--ctm-stage-wall', '#2a2b3a') });
+        const desk = v('--ctm-stage-desk', '#3b2f26'), deskTop = v('--ctm-stage-desk-top', '#5a4535'), ents = [];
+        for (const s of this.sprites.values()) {
+          ents.push({ y: s.home.y + 3 * S, f: () => stageDrawDesk(this.px, s, S, desk, deskTop) });
+          if (s.data.status !== 'inactive') ents.push({ y: s.y + (s.phase === 'walking' ? 6 * S : 0), f: () => stageDrawPerson(this.px, s, S) });
+        }
+        for (const c of this.couriers) ents.push({ y: 1e9, f: () => stageDrawCourier(this.px, c, S) });
+        ents.sort((a, b) => a.y - b.y).forEach(e => e.f());
+        this.dirty = false;
+      }
+    }
+    function phaseOf(data) { return data.status === 'running' ? 'typing' : 'idle'; }
+
+    // ---------- office stage: boardCards + live projections → sprite data, and the React host component ----------
+    const STAGE_TOOL_GLYPHS = [['send_message', '📨'], ['team_task', '📋'], ['read', '📖'], ['write', '✍️'], ['edit', '✍️'], ['bash', '⌨️'], ['pwsh', '⌨️'], ['shell', '⌨️'], ['grep', '🔍'], ['glob', '🔍'], ['search', '🔍'], ['fetch', '🌐'], ['web', '🌐']];
+    function stageToolGlyph(tool) {
+      const name = String(tool ?? '').toLowerCase(); if (!name) return '';
+      return STAGE_TOOL_GLYPHS.find(([key]) => name.includes(key))?.[1] ?? '⚙️';
+    }
+    /**
+     * Pure mapping, one entry per board card. Status/task/model come from boardCards (the same source as the cards
+     * below the stage); the current tool and context pressure come from the member's own live projections.
+     */
+    function stageSprites(cards, { live, t = k => k, currentMemberId = null, canOpen = false } = {}) {
+      return (cards ?? []).map(card => {
+        const memberId = card.member?.id ?? null;
+        const proj = memberId && live?.projections ? live.projections(memberId) : undefined;
+        const act = proj?.capabilityTeamActivity, cur = act?.schemaVersion === 1 ? act.current : null;
+        const working = card.status === 'running' && act?.phase === 'tool' && cur && cur.status === 'running';
+        const cp = proj?.contextPressure, projected = cp?.projectedTokens ?? cp?.pressureTokens;
+        const ctxRatio = typeof projected === 'number' && typeof cp?.contextWindow === 'number' && cp.contextWindow > 0 ? Math.min(1, Math.max(0, projected / cp.contextWindow)) : null;
+        const badge = card.model ? modelBadgeInfo(card.model, t) : null;
+        return {
+          id: card.id, memberId, name: card.name, capability: card.role?.capability ?? (card.lead ? 'orchestrator' : ''), lead: !!card.lead,
+          status: card.status, statusLabel: label(t, `live.${card.status}`, card.status),
+          task: card.task ? { id: card.task.id, subject: card.task.subject, status: card.task.status } : null,
+          route: card.model ?? null, routeAlias: badge?.alias ?? card.model ?? '', grade: badge?.grade ?? 'default',
+          icon: working ? stageToolGlyph(cur.tool) : '',
+          bubble: working ? [cur.summary, cur.target ? `(${cur.target})` : ''].filter(Boolean).join(' ') : '',
+          ctxRatio,
+          openable: !!(canOpen && !card.lead && memberId && memberId !== currentMemberId && card.status !== 'provisioning' && card.status !== 'failed'),
+        };
+      });
+    }
+    const STAGE_COLLAPSED_KEY = 'dsh-capability-team-stage-collapsed';
+    /**
+     * React host for the pixel office. It renders the header and an empty host div; OfficeScene owns everything inside
+     * the host (canvas + DOM plates) so React never reconciles those nodes. Without a DOM (unit tests, SSR) it renders
+     * the header only.
+     */
+    function OfficeStage({ cards, live, t, open, currentMemberId }) {
+      const readCollapsed = () => { try { return window.localStorage?.getItem(STAGE_COLLAPSED_KEY) === '1'; } catch { return false; } };
+      const [collapsed, setCollapsed] = React.useState(readCollapsed());
+      const host = React.useRef(null), sceneRef = React.useRef(null);
+      const sprites = stageSprites(cards, { live, t, currentMemberId, canOpen: !!open });
+      const seated = sprites.filter(s => s.status !== 'inactive').length;
+      const toggle = () => setCollapsed(prev => { const next = !prev; try { window.localStorage?.setItem(STAGE_COLLAPSED_KEY, next ? '1' : '0'); } catch { /* storage unavailable */ } return next; });
+      React.useEffect(() => {
+        const el = host.current;
+        if (!el || typeof document === 'undefined' || typeof requestAnimationFrame !== 'function') { sceneRef.current?.destroy(); sceneRef.current = null; return; }
+        if (!sceneRef.current) { sceneRef.current = new OfficeScene(el, el.querySelector('canvas'), el.querySelector('.ctm-stage-overlay'), { t, onOpen: open ? id => open(id) : null }); }
+        sceneRef.current.t = t; sceneRef.current.sync(sprites);
+      });
+      React.useEffect(() => () => { sceneRef.current?.destroy(); sceneRef.current = null; }, []);
+      return h('section', { className: 'ctm-stage', 'aria-label': t('stage.title'), ...(collapsed ? { 'data-collapsed': '' } : {}) },
+        h('div', { className: 'ctm-stage-head' },
+          h('span', { className: 'ctm-label' }, t('stage.title')),
+          h('span', { className: 'ctm-sub' }, fmt(t('stage.summary'), { n: seated, m: sprites.length })),
+          h('button', { type: 'button', className: 'ctm-btn ctm-stage-toggle', 'aria-expanded': !collapsed, onClick: toggle }, t(collapsed ? 'stage.expand' : 'stage.collapse'))),
+        collapsed ? null : h('div', { className: 'ctm-stage-office', ref: host },
+          h('canvas', { className: 'ctm-stage-canvas', 'aria-hidden': true }),
+          h('div', { className: 'ctm-stage-overlay' }),
+          sprites.length ? null : h('p', { className: 'ctm-stage-empty ctm-sub' }, t('stage.empty'))));
+    }
+    OfficeStage.sprites = stageSprites; OfficeStage.palette = stagePalette; // test hooks for the pure helpers
+
     function TeamBoard({ roles, activity, allocations, since, t, open, live, usage, runtimeState, currentMemberId, leadSessionId }) {
       const cards = boardCards(roles, activity, allocations);
       const lead = cards.filter(c => c.lead);
@@ -2815,6 +3164,7 @@ window.__ModuleLoader__.load({
           running ? badge(fmt(t('live.runningCount'), { n: running }), 'brand', 'run') : null,
           activity?.at ? h('span', { className: 'ctm-sub ctm-bd-at' }, h('i', { className: 'ctm-bd-pulse', 'aria-hidden': true }), t('live.polling')) : null),
         activity?.unavailable ? h('p', { className: 'ctm-ov-note ctm-warn' }, activity.unavailable) : null,
+        h(OfficeStage, { cards, live, t, open, currentMemberId }),
         h('div', { className: 'ctm-bd-canvas', ref: canvas },
           h(BoardLinks, { links }),
           lead.length ? h('div', { className: 'ctm-bd-lead' }, ...lead.map(card)) : null,
@@ -3502,7 +3852,7 @@ window.__ModuleLoader__.load({
         ctx.effect(() => {
           const tag = document.createElement('style');
           tag.dataset.plugin = '@local/dsh-capability-team';
-          tag.textContent = CSS;
+          tag.textContent = CSS + STAGE_CSS;
           document.head.appendChild(tag);
           return () => tag.remove();
         }, 'capability-team: styles');

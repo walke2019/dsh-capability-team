@@ -98,6 +98,17 @@ export const VENDOR_RULES = Object.freeze([
 export const TIER_ORDER = Object.freeze(['low', 'medium', 'upper', 'high']);
 const down = tier => TIER_ORDER[Math.max(0, TIER_ORDER.indexOf(tier) - 1)];
 
+/**
+ * Why a model can never serve as a team member's route unless a project lists it in `tiers` itself: non-chat
+ * models cannot call tools and free/trial variants are unreliable. Old versions and unknown vendors are not
+ * refused here: they are merely left ungraded, and a user may pick them explicitly.
+ */
+export function unroutableReason(modelId) {
+  if (FREE.test(String(modelId).toLowerCase())) return '免费或试用变体';
+  const norm = normalizeModelId(modelId);
+  if (NON_CHAT.test(norm) || VENDOR_RULES.find(r => r.match.test(norm))?.exclude?.test(norm)) return '非聊天或不支持工具调用的模型';
+  return undefined;
+}
 /** Classify one id on its own; generation (legacy) is decided against the whole catalog in autoMatch. */
 export function classify(modelId, { rules = VENDOR_RULES, allowFree = false } = {}) {
   const raw = String(modelId).toLowerCase();

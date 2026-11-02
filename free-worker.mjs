@@ -35,6 +35,14 @@ export function inlineConfig(model, tools) {
 // Provider failures OpenCode retries forever; seeing one means this model cannot succeed now.
 const UNAVAILABLE = /Free usage limit reached|Unauthorized|Model not found|Insufficient|quota|rate limit/i;
 
+// Only what a process needs to start and reach the network. The host's environment holds vendor and integration
+// keys, and OpenCode discovers provider keys from it, so inheriting it would hand them to the free-model run.
+const ENV_ALLOW = /^(PATH|PATHEXT|HOME|HOMEDRIVE|HOMEPATH|USERPROFILE|USER|USERNAME|LOGNAME|SHELL|APPDATA|LOCALAPPDATA|PROGRAMDATA|PROGRAMFILES|PROGRAMFILES\(X86\)|SYSTEMROOT|SYSTEMDRIVE|WINDIR|COMSPEC|TEMP|TMP|TMPDIR|LANG|LANGUAGE|LC_[A-Z]+|TZ|TERM|XDG_[A-Z_]+|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|NODE_EXTRA_CA_CERTS|SSL_CERT_FILE|SSL_CERT_DIR)$/i;
+const ENV_SECRET = /(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)/i;
+export function workerEnv(env = process.env) {
+  // OPENCODE_* configures the worker itself, but even there a credential stays behind.
+  return Object.fromEntries(Object.entries(env).filter(([k]) => ENV_ALLOW.test(k) || (/^OPENCODE_/i.test(k) && !ENV_SECRET.test(k))));
+}
 function runOnce(exe, prompt, model, allowed, { cwd, signal, launch, tools }) {
   // Validate the user's input limit before adding our internal instructions.
   const args = freeArgs(prompt, model, allowed);
@@ -42,7 +50,7 @@ function runOnce(exe, prompt, model, allowed, { cwd, signal, launch, tools }) {
   return new Promise((resolve, reject) => {
     const child = launch(exe, [...args.slice(0, -2), '--agent', AGENT, '--pure', '--print-logs', '--log-level', 'ERROR', ...args.slice(-2)], {
       cwd, shell: false, windowsHide: true,
-      env: { ...process.env, OPENCODE_CONFIG_CONTENT: JSON.stringify(inlineConfig(model, tools)), OPENCODE_PERMISSION: JSON.stringify(PERMISSIONS[tools]) },
+      env: { ...workerEnv(), OPENCODE_CONFIG_CONTENT: JSON.stringify(inlineConfig(model, tools)), OPENCODE_PERMISSION: JSON.stringify(PERMISSIONS[tools]) },
       stdio: ['ignore', 'pipe', 'pipe'], signal,
     });
     let output = ''; let errors = ''; let oversized = false; let timedOut = false; let unavailable;

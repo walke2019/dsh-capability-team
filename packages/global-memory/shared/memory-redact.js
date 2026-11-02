@@ -7,11 +7,15 @@ const PATTERNS = [
   /\b(?:ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}\b/g,
   /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/g,
   /\bAKIA[0-9A-Z]{16}\b/g,
+  /\b(?:tvly|xai|gsk|glpat)-[A-Za-z0-9_-]{16,}\b/g,
+  /\b(?:jina|hf|npm)_[A-Za-z0-9_]{16,}\b/g,
+  /\bBSA[A-Za-z0-9_-]{20,}\b/g,
   /\bAIza[0-9A-Za-z_-]{35}\b/g,
   /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
   /\b(Bearer|Basic)\s+[A-Za-z0-9._~+\/=-]{16,}/gi,
   /\b([a-z][a-z0-9+.-]*:\/\/)[^\s:@\/]+:[^\s@\/]+@/gi,
-  /\b((?:api[_-]?key|access[_-]?token|secret|password|passwd|pwd|token|auth)["']?\s*[:=]\s*["']?)[^\s"',;]{8,}/gi,
+  // Any name ending in one of these, so OPENVIKING_API_KEY=… and GH_TOKEN=… match as well as key=…
+  /\b((?:[\w-]*(?:key|token|secret|password|passwd|pwd)|auth)["']?\s*[:=]\s*["']?)[^\s"',;]{8,}/gi,
 ];
 export const REDACTED = '[已隐去凭据]';
 /** Text with likely secrets replaced; `extra` are exact values (e.g. keys from the credential store). */

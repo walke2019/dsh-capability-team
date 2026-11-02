@@ -38,6 +38,7 @@
       'plan.assignments': 'Assignments',
       'plan.next': 'Next step',
       'plan.budget': 'Up to {n} direct actions this turn',
+      'plan.unlimited': 'The user asked the Lead to do this itself; no direct-action cap this turn',
       'mode.delegate': 'Delegate',
       'mode.free': 'Free model',
       'mode.direct': 'Lead handles',
@@ -252,4 +253,6 @@
       'control.pending': 'Working…',
       'list.more': 'More ({n} remaining)',
       'list.collapse': 'Collapse',
+      'stage.title': 'Pixel office', 'stage.summary': '{n} / {m} seated', 'stage.collapse': 'Collapse office', 'stage.expand': 'Expand office',
+      'stage.open': 'Open session', 'stage.empty': 'No team yet. Teammates take their seats once you send the first request.',
     };

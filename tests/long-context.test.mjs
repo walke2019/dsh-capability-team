@@ -4,13 +4,14 @@ import { createLongContext, promptTokens } from '../long-context.js';
 import { effectiveConfig, resolveRole } from '../config.js';
 import { applyModelPolicy } from '../model-policy.js';
 import { changedRoutes } from '../allocation.js';
-const tiers = { upper: ['main', 'wide', 'other'] };
+const tiers = { upper: ['main', 'wide', 'other'], low: ['small'] };
 const capability = { provider: 'a', model: 'main', tier: 'upper', fallbacks: [{ provider: 'b', model: 'other' }] };
 const config = longContext => effectiveConfig({ tiers, capabilities: { backend: { ...capability, longContext } } });
 const role = longContext => resolveRole({ role: 'teammate', name: 'lv-bu' }, config(longContext));
 test('配置：只允许同档、不同于主模型，阈值有上下限，null 取消', () => {
   assert.deepEqual(role({ thresholdTokens: 100000, provider: 'c', model: 'wide' }).longContext, { thresholdTokens: 100000, provider: 'c', model: 'wide' });
-  assert.throws(() => config({ thresholdTokens: 100000, provider: 'c', model: 'nope' }), /不在同一档位/);
+  assert.throws(() => config({ thresholdTokens: 100000, provider: 'c', model: 'small' }), /不在同一档位/, '已归入其他档位的模型不能跨档');
+  assert.equal(role({ thresholdTokens: 100000, provider: 'c', model: 'nope' }).longContext.model, 'nope', '未分级的模型按所指定能力的档位登记');
   assert.throws(() => config({ thresholdTokens: 100000, provider: 'a', model: 'main' }), /不能与主模型相同/);
   assert.throws(() => config({ thresholdTokens: 10, provider: 'c', model: 'wide' }), /thresholdTokens/);
   assert.equal(role(null).longContext, undefined);

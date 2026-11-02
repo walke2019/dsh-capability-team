@@ -64,5 +64,6 @@ export function createHarness(remote = { commands: {} }, sessions, { runEffects 
     }
     return acc;
   };
-  return { view, render, find, findAll, resetCursor: () => { cursor = 0; } };
+  // resetState clears the shared hook slots so a component rendered on its own does not inherit another component's state.
+  return { view, render, find, findAll, resetCursor: () => { cursor = 0; }, resetState: () => { states = []; cursor = 0; } };
 }

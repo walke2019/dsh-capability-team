@@ -27,7 +27,7 @@
         ]))));
         const facts = [];
         if (plan.freeTools) facts.push(chip(t('free.tools'), t(`tools.${plan.freeTools}`), 'tools'));
-        if (plan.directBudget !== undefined) facts.push(h('span', { className: 'ctm-sub', key: 'budget' }, fmt(t('plan.budget'), { n: plan.directBudget })));
+        if (plan.directBudget !== undefined) facts.push(h('span', { className: 'ctm-sub', key: 'budget' }, plan.directBudget === null ? t('plan.unlimited') : fmt(t('plan.budget'), { n: plan.directBudget })));
         if (plan.next) sections.push(section(t('plan.next'), facts.length ? h('div', { className: 'ctm-chips' }, ...facts) : null, h('div', { className: 'ctm-text ctm-sub' }, plan.next)));
       }
       const body = sections.filter(Boolean);

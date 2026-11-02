@@ -74,19 +74,19 @@
     /** Per-member token usage, each role's budget when its capability sets maxTokens, and model time per step. */
     function UsageGroups({ rows: members, roles, t }) {
       const byId = new Map(roles.map(r => [r.id, r]));
-      const top = Math.max(1, ...members.map(m => m.totals ? billable(m.totals) : 0));
+      const top = Math.max(1, ...members.map(m => isUnknownUsage(m) ? 0 : billable(m.totals)));
       return h('div', { className: 'ctm-ov-block' },
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('usage.hint')),
         members.length ? h('span', { className: 'ctm-label' }, fmt(t('usage.total'), { n: usageTotal(members) == null ? t('usage.unknown') : compact(usageTotal(members)) })) : null,
         ...(members.length ? members.map((m, index) => {
           const role = byId.get(m.name) ?? byId.get(baseName(m.name));
-          const hasTotals = m.totals && typeof m.totals === 'object';
-          const used = hasTotals ? billable(m.totals) : null;
+          // Same contract as usageTotal and cardMeters: the server sends zeroed totals with coverage 'unknown'.
+          const used = isUnknownUsage(m) ? null : billable(m.totals);
           const max = role?.maxTokens;
           const ratio = max && used !== null ? Math.min(1, used / max) : (used !== null ? used / top : 0);
           const tone = max && used !== null && used >= max ? 'error' : max && ratio >= 0.8 ? 'warn' : undefined;
           const timing = statsLine(m.stats, t);
-          const ctxm = m.coverage === 'unknown' ? null : contextMetrics(m.totals, m.stats);
+          const ctxm = used === null ? null : contextMetrics(m.totals, m.stats);
           const freshness = m.refreshedAt ? fmt(t('usage.asOf'), { time: timeOfDay(m.refreshedAt) }) : null;
           return h('details', { key: m.id ?? index, className: 'ctm-ov-group', open: index === 0 },
             h('summary', null,

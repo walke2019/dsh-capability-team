@@ -151,14 +151,17 @@ test('记忆枢纽：交接自动入库，接到任务时自动召回，队友�
   handlers['agent/created']({ agent: fe });
   await hub.ingestHandoff({ session: 'fe1', role: 'diao-chan', member: 'diao-chan', lead: 'lead', written: { done: '任务控制面板完成', remaining: '本地化分隔符', pitfalls: 'client.js 是生成文件，改 client/ 下的源文件' } });
   handlers['agent/inbox/claimed']({ agent: fe, message: { content: [{ type: 'text', text: '继续完成本地化和任务控制面板' }] } });
-  await new Promise(resolve => setTimeout(resolve, 20));
+  // Recall and report ingestion are fire-and-forget, so wait for their effect instead of guessing a duration.
+  const until = async read => { const deadline = Date.now() + 5000; for (;;) { const value = await read(); if (value || Date.now() > deadline) return value; await new Promise(resolve => setTimeout(resolve, 10)); } };
+  await until(() => /本地化分隔符/.test(fe.context.text()));
   const text = fe.context.text();
   assert.match(text, /记忆枢纽/);
   assert.match(text, /本地化分隔符/);
   handlers['session/event']({ id: 'fe1' }, { type: 'tool/call', data: { name: 'send_message', callId: 'c1', arguments: JSON.stringify({ target: 'lead', message: '最终结果：'.padEnd(220, '好') }) } });
   handlers['session/event']({ id: 'fe1' }, { type: 'tool/result', data: { message: { toolCallId: 'c1', isError: false } } });
-  await new Promise(resolve => setTimeout(resolve, 20));
-  const found = JSON.parse(await tools.capability_memory_search.execute({ query: '最终结果', kinds: ['result'] }, { agent: fe }));
+  const search = async () => JSON.parse(await tools.capability_memory_search.execute({ query: '最终结果', kinds: ['result'] }, { agent: fe }));
+  await until(async () => (await search()).results.length > 0);
+  const found = await search();
   assert.equal(found.mode, 'text');
   assert.match(found.note, /未配置嵌入/);
   assert.equal(found.results.length, 1);

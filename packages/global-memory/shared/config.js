@@ -5,6 +5,7 @@ import { validateFileLimits } from './file-limits.js';
 import { validateRotation } from './session-rotation.js';
 import { validateSkillsPolicy } from './teammate-context.js';
 import { validateTokenRules } from './token-discipline.js';
+import { unroutableReason } from './defaults.js';
 const ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const LINE_CONTROL = /[\x00-\x1f\x7f]/;
 const TEXT_CONTROL = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
@@ -102,8 +103,9 @@ function onlyKeys(value, allowed, label) {
   if (extra.length) throw new Error(`${label}含未知字段 ${extra.join(', ')}`);
 }
 /** Validate one complete effective configuration and return a normalized copy. */
-export function validateConfig(config) {
+export function validateConfig(config, { trustedRoutes } = {}) {
   const name = text(config.name ?? seed.name, 80, '配置名称');
+  const tierDrift = [];
   const tiers = {};
   for (const [id, models] of entries(config.tiers, '档位')) {
     if (!Array.isArray(models) || models.length > 200) throw new Error(`档位 ${id} 须为不超过200项的模型ID数组`);
@@ -134,11 +136,12 @@ export function validateConfig(config) {
       continue;
     }
     const model = text(c.model, 200, `能力 ${id} 的模型ID`);
-    if (!tiers[c.tier].includes(model)) throw new Error(`能力 ${id} 的模型 ${model} 不在档位 ${c.tier} 中；先经用户确认把该模型加入档位，不按名称猜测`);
+    const trust = { trusted: trustedRoutes?.get(id), capability: id, drift: tierDrift };
+    adoptIntoTier(tiers, c.tier, model, `能力 ${id} 的模型`, trust);
     const provider = text(c.provider, 200, `能力 ${id} 的渠道`);
     capabilities[id] = { ...common, provider, model,
-      fallbacks: validateFallbacks(c.fallbacks ?? [], { provider, model }, tiers[c.tier], `能力 ${id}`),
-      ...(c.longContext === undefined || c.longContext === null ? {} : { longContext: validateLongContext(c.longContext, { provider, model }, tiers[c.tier], `能力 ${id} 的长上下文路由`) }) };
+      fallbacks: validateFallbacks(c.fallbacks ?? [], { provider, model }, tiers, c.tier, `能力 ${id}`, trust),
+      ...(c.longContext === undefined || c.longContext === null ? {} : { longContext: validateLongContext(c.longContext, { provider, model }, tiers, c.tier, `能力 ${id} 的长上下文路由`, trust) }) };
   }
   if (!capabilities.orchestrator) throw new Error('必须保留 orchestrator 能力');
   const roles = {}; const names = new Set();
@@ -152,13 +155,34 @@ export function validateConfig(config) {
     roles[id] = { displayName, capability: r.capability, ...(r.description === undefined ? {} : { description: text(r.description, 2000, `角色 ${id} 的职责描述`, true) }) };
   }
   if (!roles.lead) throw new Error('必须保留 lead 角色');
-  return { name, failover: validateFailover(config.failover ?? seed.failover), workflow: validateWorkflow(config.workflow ?? seed.workflow), tiers, capabilities, roles };
+  return { name, failover: validateFailover(config.failover ?? seed.failover), workflow: validateWorkflow(config.workflow ?? seed.workflow), tiers, capabilities, roles, ...(tierDrift.length ? { tierDrift } : {}) };
+}
+/**
+ * An explicitly chosen model may not sit in another tier (no cross-tier routes), but a model the automatic
+ * classifier left ungraded is accepted and recorded in the chosen tier: the user's choice is its grading.
+ * Besides that, only models no team member can use (unroutableReason), disabled routes and the live catalog
+ * check limit what can be chosen; a project can still enable such a model by listing it in `tiers` itself.
+ * A route already stored for this capability (trust.trusted) was valid when saved, while grading is recomputed
+ * from a catalog that keeps changing: it stays usable and is reported in `tierDrift`, never a load failure.
+ */
+function adoptIntoTier(tiers, tier, model, label, trust) {
+  if (tiers[tier].includes(model)) return;
+  const trusted = trust?.trusted?.has(model);
+  const elsewhere = Object.keys(tiers).find(t => t !== tier && tiers[t].includes(model));
+  if (elsewhere) {
+    if (!trusted) throw new Error(`${label} ${model} 已归入 ${elsewhere} 档，与 ${tier} 档不在同一档位中；不允许跨档或自动降档，需先调整档位`);
+    trust.drift.push({ capability: trust.capability, model, tier, gradedAs: elsewhere });
+    return;
+  }
+  const refused = trusted ? undefined : unroutableReason(model);
+  if (refused) throw new Error(`${label} ${model} 是${refused}，不能作为角色路由；确需使用时先把它明确写进 ${tier} 档的 tiers 列表`);
+  tiers[tier].push(model);
 }
 /** Same-tier route taken once a session's next prompt reaches thresholdTokens; never another tier. */
-function validateLongContext(lc, primary, tierModels, label) {
+function validateLongContext(lc, primary, tiers, tier, label, trust) {
   onlyKeys(lc, ['thresholdTokens', 'provider', 'model'], label);
   const route = { provider: text(lc.provider, 200, `${label}的渠道`), model: text(lc.model, 200, `${label}的模型ID`) };
-  if (!tierModels.includes(route.model)) throw new Error(`${label} ${route.provider}/${route.model} 不在同一档位中；不允许跨档或自动降档`);
+  adoptIntoTier(tiers, tier, route.model, label, trust);
   if (route.provider === primary.provider && route.model === primary.model) throw new Error(`${label}不能与主模型相同`);
   return { thresholdTokens: count(lc.thresholdTokens, 8000, 10000000, `${label}的 thresholdTokens`), ...route };
 }
@@ -214,13 +238,13 @@ function validateWorkflow(w) {
   return out;
 }
 /** Ordered same-tier backups: never another tier, never the primary twice. */
-function validateFallbacks(list, primary, tierModels, label) {
+function validateFallbacks(list, primary, tiers, tier, label, trust) {
   if (!Array.isArray(list) || list.length > MAX_FALLBACKS) throw new Error(`${label} 的备选须为不超过${MAX_FALLBACKS}项的数组`);
   const seen = new Set([`${primary.provider}\u0000${primary.model}`]);
   return list.map((f, i) => {
     onlyKeys(f, ['provider', 'model'], `${label} 的第${i + 1}个备选`);
     const route = { provider: text(f.provider, 200, `${label} 备选渠道`), model: text(f.model, 200, `${label} 备选模型ID`) };
-    if (!tierModels.includes(route.model)) throw new Error(`${label} 的备选 ${route.provider}/${route.model} 不在同一档位中；不允许跨档或自动降档`);
+    adoptIntoTier(tiers, tier, route.model, `${label} 的备选`, trust);
     const key = `${route.provider}\u0000${route.model}`;
     if (seen.has(key)) throw new Error(`${label} 的备选 ${route.provider}/${route.model} 与主模型或其他备选重复`);
     seen.add(key);
@@ -259,16 +283,41 @@ function layer(base = {}, over = {}) {
   }
   return out;
 }
-/** Merge project overrides onto the base configuration and validate the result. */
-export function effectiveConfig(overrides = {}, base = seed) {
+/** Capability id → models its stored override routes to. Only these may outlive a change in catalog grading. */
+function storedRoutes(overrides) {
+  return new Map(Object.entries(overrides?.capabilities ?? {}).filter(([, c]) => isMap(c)).map(([id, c]) => [id, new Set([
+    c.model, ...(Array.isArray(c.fallbacks) ? c.fallbacks.map(f => f?.model) : []), c.longContext?.model,
+  ].filter(m => typeof m === 'string'))]));
+}
+/**
+ * A stored primary without its own fallbacks inherits the automatic ones, which are recomputed from the catalog.
+ * Drop those the override makes invalid (the primary itself, or a model of another tier) instead of failing.
+ */
+function withoutStaleInherited(capabilities, overrides, tiers) {
+  const out = { ...capabilities };
+  for (const [id, over] of Object.entries(overrides ?? {})) {
+    const c = out[id];
+    if (!isMap(over) || !isMap(c) || over.fallbacks !== undefined || typeof over.model !== 'string' || !Array.isArray(c.fallbacks)) continue;
+    const inTier = Array.isArray(tiers[c.tier]) ? tiers[c.tier] : [];
+    out[id] = { ...c, fallbacks: c.fallbacks.filter(f => !(f?.model === c.model && f?.provider === c.provider) && inTier.includes(f?.model)) };
+  }
+  return out;
+}
+/**
+ * Merge project overrides onto the base configuration and validate the result.
+ * `trustedFrom` names the overrides whose stored routes are tolerated when the catalog has regraded them: loading
+ * passes the file itself and saving passes the previous file, so a new or changed route is still checked strictly.
+ */
+export function effectiveConfig(overrides = {}, base = seed, { trustedFrom } = {}) {
+  const tiers = layer(base.tiers, overrides.tiers);
   return validateConfig({
     name: overrides.name ?? base.name,
     failover: { ...base.failover, ...(overrides.failover ?? {}) },
     workflow: { ...(base.workflow ?? seed.workflow), ...(overrides.workflow ?? {}) },
-    tiers: layer(base.tiers, overrides.tiers),
-    capabilities: layer(base.capabilities, overrides.capabilities),
+    tiers,
+    capabilities: withoutStaleInherited(layer(base.capabilities, overrides.capabilities), overrides.capabilities, tiers),
     roles: layer(base.roles, overrides.roles),
-  });
+  }, trustedFrom ? { trustedRoutes: storedRoutes(trustedFrom) } : {});
 }
 /** Base configuration from preset config: bindings may rename or add seed roles. */
 export function baseConfig(config = {}) {

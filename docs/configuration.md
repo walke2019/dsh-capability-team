@@ -33,7 +33,7 @@ The initial `seed` in `config.js` contains tiers, capabilities and role bindings
 - **Capabilities** define duty, required tier, vendor preference, search access, and optional model, fallback, budget, and permission policies.
 - **Roles** bind stable internal IDs to display names and capabilities. Display names are presentation only.
 
-The default capability set includes orchestrator, technical director, backend, frontend, research, writer, and QA. The lead must be bound to orchestrator; display names must be unique; assigned models must belong to their configured tier; unknown fields are rejected. `whenToUse` describes when a role should be assigned.
+The default capability set includes orchestrator, technical director, backend, frontend, research, writer, and QA. The lead must be bound to orchestrator; display names must be unique; unknown fields are rejected. Any catalog model that is not disabled can be assigned: a model the automatic match left ungraded is recorded in the tier of the capability it is assigned to. Two limits apply: a model graded into another tier cannot be used across tiers, and non-chat models and free variants cannot be role routes unless explicitly listed in `tiers`. A saved route does not break when the catalog changes: if a model is regraded, the route keeps working and is listed in `effective.tierDrift` from `capability_team_read`, while new or changed routes are still checked by these rules. `whenToUse` describes when a role should be assigned.
 
 ## Automatic model matching
 

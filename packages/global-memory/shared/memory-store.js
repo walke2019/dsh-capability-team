@@ -82,7 +82,9 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
   const stamp = async key => { try { const s = await stat(pathOf(key)); return `${s.size}:${s.mtimeMs}`; } catch { return 'none'; } };
   async function load(key) {
     // Another process may have appended or compacted since: re-read when the file changed under us.
-    if (cache.has(key) && seen.get(key) === await stamp(key)) return cache.get(key);
+    // Stamped before reading, so an append that lands during the read makes the next load read again.
+    const current = await stamp(key);
+    if (cache.has(key) && seen.get(key) === current) return cache.get(key);
     let list = [];
     try {
       const latest = new Map();
@@ -98,7 +100,7 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
     const previous = cache.get(key);
     if (previous) { previous.length = 0; previous.push(...list); list = previous; } // keep callers' array identity
     cache.set(key, list);
-    seen.set(key, await stamp(key));
+    seen.set(key, current);
     return list;
   }
   async function persist(key, record) {
@@ -131,7 +133,12 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
     });
   }
   const keyOf = scope => (scope.kind === 'global' ? 'global' : fileKey(scope.project));
-  return {
+  // One operation at a time per store: a write adds its record to the cached list before appending it, so a reload
+  // in between would drop the record from the cache while the append then marks that cache as current. The record
+  // would stay on disk but be invisible to every search until the file next changed.
+  let tail = Promise.resolve();
+  const serial = fn => { const run = tail.then(fn); tail = run.catch(() => {}); return run; };
+  const raw = {
     /** Insert, or merge into a near-duplicate in the same scope (same normalized text, or cosine ≥ threshold). */
     async write({ scope, kind, text, tags = [], source = {}, vector = null, model = null, key: topic = null }) {
       if (!MEMORY_KINDS.includes(kind)) throw new Error(`记忆类型须为 ${MEMORY_KINDS.join(' / ')}`);
@@ -205,4 +212,7 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
       return lines.join('\n');
     },
   };
+  const store = { ...raw };
+  for (const name of ['write', 'search', 'markUsed', 'unembedded', 'setVector', 'prune', 'remove']) store[name] = (...args) => serial(() => raw[name](...args));
+  return store;
 }

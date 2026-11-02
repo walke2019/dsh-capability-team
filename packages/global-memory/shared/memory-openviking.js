@@ -43,7 +43,9 @@ export function createOpenViking({ settings, queuePath, label = '', warn = () =>
     /** Queue one memory for the next commit; the text is already redacted by the hub. */
     enqueue(memory, who) {
       if (!api.enabled) return false;
-      const where = [who?.project ? `项目 ${who.project}` : null, memory.scope?.kind === 'role' ? `角色 ${memory.scope.role}` : null].filter(Boolean).join(' · ');
+      // Only the project's folder name goes upstream: the full path exposes this machine's layout and user name.
+      const projectName = String(who?.project ?? '').split(/[\\/]/).filter(Boolean).pop();
+      const where = [projectName ? `项目 ${projectName}` : null, memory.scope?.kind === 'role' ? `角色 ${memory.scope.role}` : null].filter(Boolean).join(' · ');
       queue.push({ role: 'user', content: `【${prefix}${memory.kind === 'pitfall' ? '踩坑' : memory.kind === 'decision' ? '决定' : '记忆'}${where ? ` · ${where}` : ''}】${memory.text}` });
       api.lastError = null;
       if (!timer) timer = schedule(() => { timer = null; void api.flush().catch(() => {}); }, FLUSH_MS);

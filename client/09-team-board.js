@@ -162,6 +162,7 @@
           running ? badge(fmt(t('live.runningCount'), { n: running }), 'brand', 'run') : null,
           activity?.at ? h('span', { className: 'ctm-sub ctm-bd-at' }, h('i', { className: 'ctm-bd-pulse', 'aria-hidden': true }), t('live.polling')) : null),
         activity?.unavailable ? h('p', { className: 'ctm-ov-note ctm-warn' }, activity.unavailable) : null,
+        h(OfficeStage, { cards, live, t, open, currentMemberId }),
         h('div', { className: 'ctm-bd-canvas', ref: canvas },
           h(BoardLinks, { links }),
           lead.length ? h('div', { className: 'ctm-bd-lead' }, ...lead.map(card)) : null,

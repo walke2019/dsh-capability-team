@@ -42,6 +42,7 @@
       'plan.assignments': '指派',
       'plan.next': '下一步',
       'plan.budget': '本轮自行执行上限 {n} 次',
+      'plan.unlimited': '用户要求主控亲自完成，本轮不限执行次数',
       'mode.delegate': '指派队友',
       'mode.free': '免费模型',
       'mode.direct': '主控处理',
@@ -256,4 +257,6 @@
       'control.pending': '处理中…',
       'list.more': '更多（剩余 {n} 条）',
       'list.collapse': '收起',
+      'stage.title': '像素办公室', 'stage.summary': '{n} / {m} 人在岗', 'stage.collapse': '收起办公室', 'stage.expand': '展开办公室',
+      'stage.open': '打开会话', 'stage.empty': '队伍尚未成型，发出第一个需求后队友会入座',
     };

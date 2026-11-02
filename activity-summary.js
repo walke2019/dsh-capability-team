@@ -2,13 +2,19 @@
 import path from 'node:path';
 export const safeId = (value, max = 256) => typeof value === 'string' && value.length <= max && /^[\w.:-]+$/.test(value) ? value : null;
 export const safeTime = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
+/** Path rules follow the session's own working directory, which is a Windows path on a Windows host (drive or UNC). */
+const isWindowsPath = value => typeof value === 'string' && /^(?:[A-Za-z]:[\\/]|\\\\)/.test(value);
 export function safeTarget(value, cwd, max = 240, root = cwd) {
-  if (typeof value !== 'string' || !value || value.length > 4096 || /[\x00-\x1f\x7f?#]/.test(value) || /:\/\//.test(value) || value.includes('\\')) return null;
-  if (typeof cwd !== 'string' || !path.posix.isAbsolute(cwd)) return null;
-  const resolved = path.posix.resolve(cwd, value);
-  if (typeof root !== 'string' || !path.posix.isAbsolute(root)) return null;
-  const relative = path.posix.relative(root, resolved);
-  if (!relative || relative === '..' || relative.startsWith('../') || path.posix.isAbsolute(relative)) return null;
+  if (typeof value !== 'string' || !value || value.length > 4096 || /[\x00-\x1f\x7f?#]/.test(value) || /:\/\//.test(value)) return null;
+  const windows = isWindowsPath(cwd);
+  const flavor = windows ? path.win32 : path.posix;
+  // A backslash separates segments only on Windows; on POSIX it is a literal character that could disguise a traversal.
+  if (!windows && value.includes('\\')) return null;
+  if (typeof cwd !== 'string' || !flavor.isAbsolute(cwd)) return null;
+  if (typeof root !== 'string' || !flavor.isAbsolute(root) || isWindowsPath(root) !== windows) return null;
+  const resolved = flavor.resolve(cwd, value);
+  const relative = flavor.relative(root, resolved).split(flavor.sep).join('/');
+  if (!relative || relative === '..' || relative.startsWith('../') || flavor.isAbsolute(relative)) return null;
   if (relative.split('/').some(part => /^(\.env.*|\.ssh|\.aws|\.gnupg|\.?credentials.*|\.?secrets?.*|.*(?:api[-_]?key|token|password|credential).*|.*\.(pem|key|p12|pfx)|id_(rsa|ed25519).*)$/i.test(part))) return '[敏感路径]';
   return relative.length <= max ? relative : null;
 }

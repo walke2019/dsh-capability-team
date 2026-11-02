@@ -45,11 +45,19 @@ test('拒绝越界：主控能力、重复名、未分档模型、未知字段',
   const bad = patch => () => effectiveConfig(patch, base);
   assert.throws(bad({ roles: { x: { displayName: '甲', capability: 'orchestrator' } } }), /orchestrator/);
   assert.throws(bad({ roles: { 'lv-bu': { displayName: '孙权' } } }), /重复/);
-  assert.throws(bad({ capabilities: { qa: { model: 'unknown', fallbacks: [] } } }), /不在档位/);
+  // An ungraded model is adopted into the tier of the capability the user assigns it to; a model graded into
+  // another tier is a cross-tier route and stays rejected.
+  const qaTier = base.capabilities.qa.tier;
+  const adopted = effectiveConfig({ capabilities: { qa: { provider: 'relay', model: 'house-model-y', fallbacks: [{ provider: 'relay', model: 'house-model-z' }] } } }, base);
+  assert.ok(adopted.tiers[qaTier].includes('house-model-y') && adopted.tiers[qaTier].includes('house-model-z'), '未分级的主模型与备选都登记进该能力的档位');
+  const [otherTier, [foreign]] = Object.entries(base.tiers).find(([t, list]) => t !== qaTier && list.length);
+  assert.throws(bad({ capabilities: { qa: { provider: 'relay', model: foreign, fallbacks: [] } } }), new RegExp(`已归入 ${otherTier} 档`));
+  assert.throws(bad({ capabilities: { qa: { fallbacks: [{ provider: 'relay', model: foreign }] } } }), /不在同一档位/);
   assert.throws(bad({ roles: { lead: { displayName: 'A', permissions: 'all' } } }), /未知字段/);
   assert.throws(bad({ roles: { lead: false } }), /lead/);
   assert.throws(bad({ roles: { Bad_Id: { displayName: 'A', capability: 'qa' } } }), /小写/);
-  assert.throws(() => validateConfig({ ...base, tiers: { ...base.tiers, upper: [] } }), /不在档位/);
+  // Emptying a tier list keeps the models that capabilities still route to: an explicit route grades itself.
+  assert.ok(validateConfig({ ...base, tiers: { ...base.tiers, upper: [] } }).tiers.upper.length > 0);
 });
 test('失败的校验或确认不写入文件', async () => {
   const root = await temp();

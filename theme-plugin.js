@@ -138,6 +138,7 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
       return { project, revision, name: effective.name, roles: policyRoleView(roleView(effective), policy.disabledRoutes), workflow: effective.workflow,
         modelPolicy: { ...modelPolicyRows(effective.tiers, roleView(effective), policy.disabledRoutes, [...(team.detection().pools ?? []), ...(team.detection().unknown ?? [])]), revision: policy.revision },
         autoMatch: team.detection().report, catalogErrors: team.detection().errors ?? [], actualRequest: null,
+        ...(effective.tierDrift ? { tierDrift: effective.tierDrift } : {}),
         modelNotice: '角色模型为配置目标；实际使用的模型以工作台显示为准（取自各会话最近一次请求）。队友第一次请求之前，官方团队界面显示的是继承来的模型。' };
     });
     const removeContext = agent.ctx.systemPrompt.context({ name: 'capability-team:roster', order: 98, required: true,

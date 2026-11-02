@@ -51,7 +51,8 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       return saved;
     },
     async search(who, { query, k = 6, kinds }) {
-      const q = String(query ?? '').slice(0, 2000);
+      // The query goes to the embedding service and the shared backend, so it is filtered like a stored memory.
+      const q = redactSecrets(String(query ?? '').slice(0, 4000), await Promise.resolve(secrets()).catch(() => [])).slice(0, 2000);
       const limit = Math.min(Math.max(1, k), 20);
       const [embedded, shared] = await Promise.all([q ? embedOne(q, 'query') : null, kinds ? [] : backend.recall(q)]);
       void backfill(who.project).catch(() => {});

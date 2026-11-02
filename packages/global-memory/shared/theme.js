@@ -57,11 +57,11 @@ export function readOverridesSync(project, root = defaultRoot()) {
 }
 export async function loadProject(project, base = seed, root) {
   const overrides = await readOverrides(project, root);
-  return { project, revision: overrides.revision, overrides, effective: effectiveConfig(overrides, base) };
+  return { project, revision: overrides.revision, overrides, effective: effectiveConfig(overrides, base, { trustedFrom: overrides }) };
 }
 export function loadProjectSync(project, base = seed, root) {
   const overrides = readOverridesSync(project, root);
-  return { project, revision: overrides.revision, overrides, effective: effectiveConfig(overrides, base) };
+  return { project, revision: overrides.revision, overrides, effective: effectiveConfig(overrides, base, { trustedFrom: overrides }) };
 }
 function alive(pid) {
   try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; }
@@ -99,7 +99,7 @@ export async function saveProject(project, patch, expectedRevision, { base = see
     const previous = await loadProject(project, base, root);
     if (!Number.isSafeInteger(expectedRevision) || previous.revision !== expectedRevision) throw new Error(`团队配置版本冲突（当前 ${previous.revision}），请重新读取并重新确认`);
     const nextOverrides = applyPatch(previous.overrides, patch);
-    const effective = effectiveConfig(nextOverrides, base);
+    const effective = effectiveConfig(nextOverrides, base, { trustedFrom: previous.overrides });
     if (check) await check(previous.effective, effective);
     const stored = { ...nextOverrides, revision: previous.revision + 1, project: resolve(project) };
     await writeFile(tmp, JSON.stringify(stored, null, 2), { encoding: 'utf8', flag: 'wx' });

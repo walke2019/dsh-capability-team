@@ -186,7 +186,7 @@
         ctx.effect(() => {
           const tag = document.createElement('style');
           tag.dataset.plugin = '@local/dsh-capability-team';
-          tag.textContent = CSS;
+          tag.textContent = CSS + STAGE_CSS;
           document.head.appendChild(tag);
           return () => tag.remove();
         }, 'capability-team: styles');
