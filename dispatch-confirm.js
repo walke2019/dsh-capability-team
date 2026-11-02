@@ -46,8 +46,9 @@ export function planRoutes(plan, effective, disabledRoutes, catalog) {
   return plan.assignments.map(a => {
     const c = effective.capabilities[a.capability];
     const tierModels = effective.tiers[c.tier] ?? [];
-    const candidates = catalog.entries.filter(e => tierModels.includes(e.model) && !disabled(routeKey(e)))
-      .map(e => ({ provider: e.provider, model: e.model }));
+    const candidates = catalog.entries.filter(e => !disabled(routeKey(e)))
+      .map(e => ({ provider: e.provider, model: e.model, sameTier: tierModels.includes(e.model) }))
+      .sort((a, b) => Number(b.sameTier) - Number(a.sameTier));
     const allowed = [...(c.provider ? [{ provider: c.provider, model: c.model }] : []), ...(c.fallbacks ?? [])].filter(r => !disabled(routeKey(r)));
     return { role: a.role, displayName: a.displayName, capability: a.capability, tier: c.tier, task: a.task,
       primary: allowed[0] ?? null, fallbacks: allowed.slice(1, 1 + MAX_ROUTE_FALLBACKS), candidates };
@@ -63,18 +64,20 @@ export function validateAnswer(offered, answer) {
   const given = new Map((Array.isArray(answer.routes) ? answer.routes : []).map(r => [r?.role, r]));
   const routes = offered.map(o => {
     const r = given.get(o.role);
-    if (!r) { const ref = o.base ?? o; return { role: o.role, capability: o.capability, primary: o.primary, fallbacks: o.fallbacks, changed: keyOf(o) !== keyOf(ref) }; }
-    const allowed = route => o.candidates.some(c => sameRoute(c, route)) || sameRoute(route, o.primary) || o.fallbacks.some(f => sameRoute(f, route));
-    const primary = typeof r.primary === 'string' ? parseRoute(r.primary) : r.primary;
-    if (!primary?.provider || !primary?.model || !allowed(primary)) throw new Error(`${o.displayName ?? o.role} 的主模型 ${primary ? routeKey(primary) : String(r.primary)} 不在同档可用模型中`);
-    const list = (Array.isArray(r.fallbacks) ? r.fallbacks : []).map(f => (typeof f === 'string' ? parseRoute(f) : f));
+    const chosen = r ?? { primary: o.primary, fallbacks: o.fallbacks };
+    const allowed = route => o.candidates.some(c => sameRoute(c, route));
+    const primary = typeof chosen.primary === 'string' ? parseRoute(chosen.primary) : chosen.primary;
+    if (!primary?.provider || !primary?.model || !allowed(primary)) throw new Error(`${o.displayName ?? o.role} 的主模型 ${primary ? routeKey(primary) : String(chosen.primary)} 不在目录可用模型中`);
+    const list = (Array.isArray(chosen.fallbacks) ? chosen.fallbacks : []).map(f => (typeof f === 'string' ? parseRoute(f) : f));
     if (list.length > MAX_ROUTE_FALLBACKS) throw new Error(`${o.displayName ?? o.role} 的回退模型最多 ${MAX_ROUTE_FALLBACKS} 个`);
     const seen = new Set([routeKey(primary)]);
     for (const f of list) {
-      if (!f?.provider || !f?.model || !allowed(f)) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${f ? routeKey(f) : '?'} 不在同档可用模型中`);
+      if (!f?.provider || !f?.model || !allowed(f)) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${f ? routeKey(f) : '?'} 不在目录可用模型中`);
       if (seen.has(routeKey(f))) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${routeKey(f)} 与主模型或其他回退重复`);
       seen.add(routeKey(f));
     }
+    if (scope === 'project' && [primary, ...list].some(route => o.candidates.find(c => sameRoute(c, route))?.sameTier === false))
+      throw new Error('跨档选择仅本次生效，不能保存为项目默认；请选择仅本次任务');
     // Compared with the configured route, so a preselected habit still counts as a change when saved as default.
     const ref = o.base ?? o;
     const changed = !sameRoute(primary, ref.primary) || keyOf({ primary, fallbacks: list }) !== keyOf(ref);

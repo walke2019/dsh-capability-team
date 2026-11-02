@@ -82,14 +82,17 @@
       if (view.native) return h('div', { className: 'ctm-dc', 'data-state': 'native' }, h('span', { className: 'ctm-sub' }, t('confirm.native')));
       const max = view.maxFallbacks ?? 3;
       const current = r => edits[r.role] ?? { primary: rkey(r.primary), fallbacks: r.fallbacks.map(rkey) };
-      const update = (r, change) => setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } }));
+      const isCrossTier = (r, route) => r.candidates.some(candidate => rkey(candidate) === route && candidate.sameTier === false);
+      const hasCrossTier = view.routes.some(r => [current(r).primary, ...current(r).fallbacks].some(route => isCrossTier(r, route)));
+      const effectiveScope = hasCrossTier ? 'task' : scope;
+      const update = (r, change) => { setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } })); setScope('task'); };
       const move = (list, i, d) => { const next = [...list]; const j = i + d; if (j < 0 || j >= next.length) return list; [next[i], next[j]] = [next[j], next[i]]; return next; };
       const submit = async decision => {
         setBusy(true); setError(null);
         try {
           const routes = view.routes.map(r => ({ role: r.role, ...current(r) }));
           const res = await fetch(apiUrl(CONFIRM_PATH), { method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ sessionId, callId, decision, scope, catalogVersion: view.catalogVersion, routes }) });
+            body: JSON.stringify({ sessionId, callId, decision, scope: effectiveScope, catalogVersion: view.catalogVersion, routes }) });
           if (res.ok) { setSent(decision); return; }
           const body = await res.json().catch(() => ({}));
           if (res.status === 409) { setError(t('confirm.error.conflict')); setEdits({}); setView(null); setReload(n => n + 1); return; }
@@ -101,6 +104,7 @@
       const row = r => {
         const c = current(r);
         const options = [...new Set([c.primary, ...r.candidates.map(rkey)])].filter(Boolean);
+        const recommended = r.candidates.filter(candidate => candidate.sameTier).map(rkey);
         const spare = options.filter(k => k !== c.primary && !c.fallbacks.includes(k));
         const who = r.displayName ?? r.role;
         const long = r.task && (r.task.length > 120 || r.task.includes('\n'));
@@ -119,21 +123,21 @@
             long ? h('button', { type: 'button', className: 'ctm-dc-link', onClick: () => setExpanded(prev => ({ ...prev, [r.role]: !prev[r.role] })) },
               t(expanded[r.role] ? 'confirm.collapse' : 'confirm.expand')) : null) : null,
           h('div', { className: 'ctm-dc-grid' },
-            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.primary')),
-            h(ModelPicker, { value: c.primary, options, disabled: busy, t, label: `${who} ${t('confirm.primary')}`, placeholder: t('picker.search'),
+            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.primary'), isCrossTier(r, c.primary) ? badge(t('confirm.crossTier'), 'warn', 'cross-tier') : null),
+            h(ModelPicker, { value: c.primary, options, recommended, disabled: busy, t, label: `${who} ${t('confirm.primary')}`, placeholder: t('picker.search'),
               onChange: k => update(r, { primary: k, fallbacks: c.fallbacks.filter(f => f !== k) }) }),
             h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.fallbacks'), h('span', { className: 'ctm-dc-count' }, `${c.fallbacks.length}/${max}`)),
             h('div', { className: 'ctm-dc-fallbacks' },
               c.fallbacks.length ? h('ol', { className: 'ctm-dc-list' }, ...c.fallbacks.map((f, i) => h('li', { key: f, className: 'ctm-dc-item' },
                 h('span', { className: 'ctm-dc-index', 'aria-hidden': true }, String(i + 1)),
-                h('span', { className: 'ctm-dc-route', title: f }, f, r.learned?.unhealthy?.[f] ? badge(fmt(t('confirm.failing'), { n: r.learned.unhealthy[f] }), 'warn', 'bad') : null),
+                h('span', { className: 'ctm-dc-route', title: f }, f, isCrossTier(r, f) ? badge(t('confirm.crossTierFallback'), 'warn', 'cross-tier') : null, r.learned?.unhealthy?.[f] ? badge(fmt(t('confirm.failing'), { n: r.learned.unhealthy[f] }), 'warn', 'bad') : null),
                 h('span', { className: 'ctm-dc-actions' },
                   iconButton('↑', 'confirm.up', f, i === 0, () => update(r, { fallbacks: move(c.fallbacks, i, -1) })),
                   iconButton('↓', 'confirm.down', f, i === c.fallbacks.length - 1, () => update(r, { fallbacks: move(c.fallbacks, i, 1) })),
                   iconButton('×', 'confirm.remove', f, false, () => update(r, { fallbacks: c.fallbacks.filter(x => x !== f) }))))))
                 : h('span', { className: 'ctm-sub' }, t('confirm.noFallbacks')),
               c.fallbacks.length < max && spare.length
-                ? h(ModelPicker, { value: '', options: spare, disabled: busy, t, label: t('confirm.addFallback'), placeholder: t('confirm.addFallback'),
+                ? h(ModelPicker, { value: '', options: spare, recommended, disabled: busy, t, label: t('confirm.addFallback'), placeholder: t('confirm.addFallback'),
                   onChange: k => update(r, { fallbacks: [...c.fallbacks, k] }) })
                 : c.fallbacks.length >= max ? h('span', { className: 'ctm-sub' }, fmt(t('confirm.max'), { n: max })) : null)),
           r.learned?.unhealthy?.[c.primary] ? h('p', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.primaryFailing'), { route: c.primary, n: r.learned.unhealthy[c.primary] })) : null,
@@ -147,9 +151,10 @@
         h('div', { className: 'ctm-dc-foot' },
           h('div', { className: 'ctm-dc-scope', role: 'radiogroup', 'aria-label': t('confirm.scope') },
             h('span', { className: 'ctm-label' }, t('confirm.scope')),
-            h('div', { className: 'ctm-dc-seg' }, ...['task', 'project'].map(s => h('button', { key: s, type: 'button', role: 'radio', 'aria-checked': scope === s,
-              className: 'ctm-dc-segbtn', disabled: busy, onClick: () => setScope(s) }, t(`confirm.scope.${s}`)))),
-            scope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
+            h('div', { className: 'ctm-dc-seg' }, ...['task', 'project'].map(s => h('button', { key: s, type: 'button', role: 'radio', 'aria-checked': effectiveScope === s,
+              className: 'ctm-dc-segbtn', disabled: busy || (s === 'project' && hasCrossTier), onClick: () => setScope(s) }, t(`confirm.scope.${s}`)))),
+            hasCrossTier ? h('span', { className: 'ctm-sub ctm-warn' }, t('confirm.crossTierTaskOnly')) : null,
+            effectiveScope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
           error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
           h('div', { className: 'ctm-dc-buttons' },
             h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('confirm.cancel')),

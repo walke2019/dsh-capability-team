@@ -61,6 +61,33 @@ test('显示角色、主模型与回退；确认按钮发送编辑后的路由',
   assert.ok(text(h.render(props)).includes('confirm.sent'));
 });
 
+test('cross-tier primary and fallback show warnings and force task scope', async () => {
+  const outside = { provider: 'provider-b', model: 'outside', sameTier: false };
+  const view = { ...pending, routes: [{ ...pending.routes[0], candidates: [...pending.routes[0].candidates.map(c => ({ ...c, sameTier: true })), outside] }] };
+  const h = load(async (_url, init) => json(200, init.method === 'POST' ? {} : view));
+  h.render(props); await flush();
+  let tree = h.render(props);
+  find(tree, n => n.props.role === 'radio' && text(n).startsWith('confirm.scope.project')).props.onClick();
+  tree = h.render(props);
+  const primary = findAll(tree, n => n.type === h.exposed.ModelPicker)[0];
+  assert.ok(primary.props.options.includes('provider-b/outside'));
+  assert.ok(primary.props.recommended.includes('provider-a/m1'));
+  assert.ok(!primary.props.recommended.includes('provider-b/outside'));
+  primary.props.onChange('provider-b/outside'); tree = h.render(props);
+  assert.ok(text(tree).includes('confirm.crossTierTaskOnly'));
+  assert.equal(find(tree, n => n.props.role === 'radio' && text(n).startsWith('confirm.scope.project')).props.disabled, true);
+  assert.equal(find(tree, n => n.props.role === 'radio' && text(n).startsWith('confirm.scope.task')).props['aria-checked'], true);
+  findAll(tree, n => n.type === h.exposed.ModelPicker)[0].props.onChange('provider-a/m1');
+  tree = h.render(props);
+  find(tree, n => n.type === h.exposed.ModelPicker && String(n.props.label).startsWith('confirm.addFallback')).props.onChange('provider-b/outside');
+  tree = h.render(props);
+  assert.ok(text(tree).includes('confirm.crossTierFallback'));
+  find(tree, n => n.type === 'button' && text(n).startsWith('confirm.ok')).props.onClick(); await flush();
+  assert.equal(JSON.parse(h.calls.find(c => c.init.method === 'POST').init.body).scope, 'task');
+  assert.ok(h.exposed.filterRoutes(['provider-a/m1', 'provider-b/outside'], 'b outside').includes('provider-b/outside'));
+  h.unmount();
+});
+
 test('回退模型满 3 个后不再提供添加', async () => {
   const full = { ...pending, routes: [{ ...pending.routes[0], fallbacks: ['m2', 'm3', 'm4'].map(model => ({ provider: 'provider-a', model })) }] };
   const h = load(async () => json(200, full));
@@ -155,13 +182,13 @@ test('模型选择器：多词搜索、按渠道分组、键盘选择', async ()
   new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => spec.factory(() => React) }, __ctmTestHook: x => { picker = x.ModelPicker; } } });
   let chosen;
   const t = k => `${k}[{n}/{total}]`;
-  const render = () => { cursor = 0; return picker({ value: 'provider-a/gpt-6.1-sol', options, onChange: k => { chosen = k; }, label: 'model', placeholder: 'search', t }); };
+  const render = () => { cursor = 0; return picker({ value: 'provider-a/gpt-6.1-sol', options, recommended: ['provider-a/gpt-6.1-sol'], onChange: k => { chosen = k; }, label: 'model', placeholder: 'search', t }); };
   let tree = render();
   const input = () => find(tree, n => n.type === 'input');
   input().props.onFocus();
   tree = render();
   assert.equal(input().props['aria-expanded'], true);
-  assert.deepEqual(findAll(tree, n => n.props?.role === 'presentation').map(text), ['provider-a', 'deepseek-official', 'provider-a'], '按渠道分组');
+  assert.deepEqual(findAll(tree, n => n.props?.role === 'presentation').map(text), ['picker.sameTier[{n}/{total}]', 'deepseek-official', 'provider-a'], '同档推荐优先，其余按渠道分组');
   input().props.onChange({ target: { value: 'deep' } });
   tree = render();
   assert.ok(text(tree).includes('picker.count[1/4]'));

@@ -26,6 +26,7 @@ window.__ModuleLoader__.load({
       'workflow.fileLimits': '文件铁律', 'workflow.fileLimits.value': '源文件 ≤{source} 行 · 测试 ≤{test} 行 · 整读 ≤{read} 行 · 汇报 ≤{report} 字', 'workflow.fileLimits.off': '关闭',
       'workflow.tokens': 'Token 规则', 'workflow.tokens.value': '空闲时上下文 ≥{ratio}% 自动压缩 · 命令/搜索输出超过 {chars} 字只留头尾',
       'confirm.habit': '按你的习惯 {n}/{of}', 'confirm.failing': '最近失败 {n} 次', 'confirm.primaryFailing': '主模型 {route} 最近失败 {n} 次，建议换一个。', 'confirm.habitSettled': '最近 3 次你都这样选，可以改为“保存为项目默认”。', 'plan.boardScope': '写入范围 {list}', 'plan.boardAfter': '等待 {list}', 'workflow.enforceWriteScopes': '写入范围', 'workflow.enforceWriteScopes.on': '强制（范围外修改会被拒绝）', 'workflow.enforceWriteScopes.off': '仅提示', 'cards.prefs': '模型偏好', 'cards.prefs.summary': '已学到 {n} 个能力的偏好', 'cards.prefs.cleared': '已清空学到的偏好',
+      'picker.sameTier': '同档推荐', 'confirm.crossTier': '跨档', 'confirm.crossTierFallback': '跨档：故障时会切换到这个模型', 'confirm.crossTierTaskOnly': '跨档选择仅本次生效',
       'confirm.expand': '展开', 'confirm.collapse': '收起', 'picker.search': '输入搜索模型…', 'picker.count': '{n} / {total} 个模型', 'picker.empty': '没有匹配的模型', 'picker.noProvider': '其他',
       'cards.memorySearch': '记忆检索', 'cards.memorySearch.summary': '“{q}” · {n} 条 · {mode}', 'cards.memory.mode.hybrid': '全文+向量', 'cards.memory.mode.text': '仅全文', 'cards.memoryWrite': '写入记忆', 'cards.memoryWrite.saved': '已保存', 'cards.memoryWrite.merged': '已合并到相同记忆', 'cards.memory.kind.handoff': '交接', 'cards.memory.kind.result': '结果', 'cards.memory.kind.pitfall': '踩坑', 'cards.memory.kind.decision': '决定', 'cards.memory.kind.note': '笔记',
       'usage.avgPrompt': '每步平均输入 {n}', 'usage.cacheShare': '缓存读取占 {p}%', 'usage.heavyContext': '每步上下文偏大，建议轮换会话', 'usage.contextHint': '每步平均输入 =（未缓存输入 + 缓存读取 + 缓存写入）÷ 步数。数值越大，每一步重发的上下文越多。',
@@ -293,6 +294,7 @@ window.__ModuleLoader__.load({
       'workflow.fileLimits': 'File rules', 'workflow.fileLimits.value': 'Source ≤{source} lines · tests ≤{test} · whole read ≤{read} · report ≤{report} chars', 'workflow.fileLimits.off': 'Off',
       'workflow.tokens': 'Token rules', 'workflow.tokens.value': 'Compact idle members above {ratio}% · trim command/search output over {chars} chars',
       'confirm.habit': 'Your usual choice {n}/{of}', 'confirm.failing': 'Failed {n}× recently', 'confirm.primaryFailing': 'Model {route} failed {n}× recently; consider another one.', 'confirm.habitSettled': 'You chose this the last 3 times; consider "Save as project default".', 'plan.boardScope': 'writes {list}', 'plan.boardAfter': 'after {list}', 'workflow.enforceWriteScopes': 'Write scopes', 'workflow.enforceWriteScopes.on': 'Enforced (edits outside are refused)', 'workflow.enforceWriteScopes.off': 'Advisory', 'cards.prefs': 'Model preferences', 'cards.prefs.summary': 'Learned preferences for {n} capabilities', 'cards.prefs.cleared': 'Learned preferences cleared',
+      'picker.sameTier': 'Same-tier recommendations', 'confirm.crossTier': 'Cross-tier', 'confirm.crossTierFallback': 'Cross-tier: used when failing over', 'confirm.crossTierTaskOnly': 'Cross-tier selections apply to this task only',
       'confirm.expand': 'Show more', 'confirm.collapse': 'Show less', 'picker.search': 'Type to search models…', 'picker.count': '{n} of {total} models', 'picker.empty': 'No matching models', 'picker.noProvider': 'Other',
       'cards.memorySearch': 'Memory search', 'cards.memorySearch.summary': '"{q}" · {n} · {mode}', 'cards.memory.mode.hybrid': 'text + vector', 'cards.memory.mode.text': 'text only', 'cards.memoryWrite': 'Save memory', 'cards.memoryWrite.saved': 'Saved', 'cards.memoryWrite.merged': 'Merged into an existing memory', 'cards.memory.kind.handoff': 'Handoff', 'cards.memory.kind.result': 'Result', 'cards.memory.kind.pitfall': 'Pitfall', 'cards.memory.kind.decision': 'Decision', 'cards.memory.kind.note': 'Note',
       'usage.avgPrompt': 'Avg input per step {n}', 'usage.cacheShare': 'Cache reads {p}%', 'usage.heavyContext': 'Large context per step; consider rotating the session', 'usage.contextHint': 'Average input per step = (uncached input + cache reads + cache writes) ÷ steps. Higher means more context is resent every step.',
@@ -1253,14 +1255,17 @@ window.__ModuleLoader__.load({
       if (view.native) return h('div', { className: 'ctm-dc', 'data-state': 'native' }, h('span', { className: 'ctm-sub' }, t('confirm.native')));
       const max = view.maxFallbacks ?? 3;
       const current = r => edits[r.role] ?? { primary: rkey(r.primary), fallbacks: r.fallbacks.map(rkey) };
-      const update = (r, change) => setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } }));
+      const isCrossTier = (r, route) => r.candidates.some(candidate => rkey(candidate) === route && candidate.sameTier === false);
+      const hasCrossTier = view.routes.some(r => [current(r).primary, ...current(r).fallbacks].some(route => isCrossTier(r, route)));
+      const effectiveScope = hasCrossTier ? 'task' : scope;
+      const update = (r, change) => { setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } })); setScope('task'); };
       const move = (list, i, d) => { const next = [...list]; const j = i + d; if (j < 0 || j >= next.length) return list; [next[i], next[j]] = [next[j], next[i]]; return next; };
       const submit = async decision => {
         setBusy(true); setError(null);
         try {
           const routes = view.routes.map(r => ({ role: r.role, ...current(r) }));
           const res = await fetch(apiUrl(CONFIRM_PATH), { method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ sessionId, callId, decision, scope, catalogVersion: view.catalogVersion, routes }) });
+            body: JSON.stringify({ sessionId, callId, decision, scope: effectiveScope, catalogVersion: view.catalogVersion, routes }) });
           if (res.ok) { setSent(decision); return; }
           const body = await res.json().catch(() => ({}));
           if (res.status === 409) { setError(t('confirm.error.conflict')); setEdits({}); setView(null); setReload(n => n + 1); return; }
@@ -1272,6 +1277,7 @@ window.__ModuleLoader__.load({
       const row = r => {
         const c = current(r);
         const options = [...new Set([c.primary, ...r.candidates.map(rkey)])].filter(Boolean);
+        const recommended = r.candidates.filter(candidate => candidate.sameTier).map(rkey);
         const spare = options.filter(k => k !== c.primary && !c.fallbacks.includes(k));
         const who = r.displayName ?? r.role;
         const long = r.task && (r.task.length > 120 || r.task.includes('\n'));
@@ -1290,21 +1296,21 @@ window.__ModuleLoader__.load({
             long ? h('button', { type: 'button', className: 'ctm-dc-link', onClick: () => setExpanded(prev => ({ ...prev, [r.role]: !prev[r.role] })) },
               t(expanded[r.role] ? 'confirm.collapse' : 'confirm.expand')) : null) : null,
           h('div', { className: 'ctm-dc-grid' },
-            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.primary')),
-            h(ModelPicker, { value: c.primary, options, disabled: busy, t, label: `${who} ${t('confirm.primary')}`, placeholder: t('picker.search'),
+            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.primary'), isCrossTier(r, c.primary) ? badge(t('confirm.crossTier'), 'warn', 'cross-tier') : null),
+            h(ModelPicker, { value: c.primary, options, recommended, disabled: busy, t, label: `${who} ${t('confirm.primary')}`, placeholder: t('picker.search'),
               onChange: k => update(r, { primary: k, fallbacks: c.fallbacks.filter(f => f !== k) }) }),
             h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.fallbacks'), h('span', { className: 'ctm-dc-count' }, `${c.fallbacks.length}/${max}`)),
             h('div', { className: 'ctm-dc-fallbacks' },
               c.fallbacks.length ? h('ol', { className: 'ctm-dc-list' }, ...c.fallbacks.map((f, i) => h('li', { key: f, className: 'ctm-dc-item' },
                 h('span', { className: 'ctm-dc-index', 'aria-hidden': true }, String(i + 1)),
-                h('span', { className: 'ctm-dc-route', title: f }, f, r.learned?.unhealthy?.[f] ? badge(fmt(t('confirm.failing'), { n: r.learned.unhealthy[f] }), 'warn', 'bad') : null),
+                h('span', { className: 'ctm-dc-route', title: f }, f, isCrossTier(r, f) ? badge(t('confirm.crossTierFallback'), 'warn', 'cross-tier') : null, r.learned?.unhealthy?.[f] ? badge(fmt(t('confirm.failing'), { n: r.learned.unhealthy[f] }), 'warn', 'bad') : null),
                 h('span', { className: 'ctm-dc-actions' },
                   iconButton('↑', 'confirm.up', f, i === 0, () => update(r, { fallbacks: move(c.fallbacks, i, -1) })),
                   iconButton('↓', 'confirm.down', f, i === c.fallbacks.length - 1, () => update(r, { fallbacks: move(c.fallbacks, i, 1) })),
                   iconButton('×', 'confirm.remove', f, false, () => update(r, { fallbacks: c.fallbacks.filter(x => x !== f) }))))))
                 : h('span', { className: 'ctm-sub' }, t('confirm.noFallbacks')),
               c.fallbacks.length < max && spare.length
-                ? h(ModelPicker, { value: '', options: spare, disabled: busy, t, label: t('confirm.addFallback'), placeholder: t('confirm.addFallback'),
+                ? h(ModelPicker, { value: '', options: spare, recommended, disabled: busy, t, label: t('confirm.addFallback'), placeholder: t('confirm.addFallback'),
                   onChange: k => update(r, { fallbacks: [...c.fallbacks, k] }) })
                 : c.fallbacks.length >= max ? h('span', { className: 'ctm-sub' }, fmt(t('confirm.max'), { n: max })) : null)),
           r.learned?.unhealthy?.[c.primary] ? h('p', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.primaryFailing'), { route: c.primary, n: r.learned.unhealthy[c.primary] })) : null,
@@ -1318,9 +1324,10 @@ window.__ModuleLoader__.load({
         h('div', { className: 'ctm-dc-foot' },
           h('div', { className: 'ctm-dc-scope', role: 'radiogroup', 'aria-label': t('confirm.scope') },
             h('span', { className: 'ctm-label' }, t('confirm.scope')),
-            h('div', { className: 'ctm-dc-seg' }, ...['task', 'project'].map(s => h('button', { key: s, type: 'button', role: 'radio', 'aria-checked': scope === s,
-              className: 'ctm-dc-segbtn', disabled: busy, onClick: () => setScope(s) }, t(`confirm.scope.${s}`)))),
-            scope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
+            h('div', { className: 'ctm-dc-seg' }, ...['task', 'project'].map(s => h('button', { key: s, type: 'button', role: 'radio', 'aria-checked': effectiveScope === s,
+              className: 'ctm-dc-segbtn', disabled: busy || (s === 'project' && hasCrossTier), onClick: () => setScope(s) }, t(`confirm.scope.${s}`)))),
+            hasCrossTier ? h('span', { className: 'ctm-sub ctm-warn' }, t('confirm.crossTierTaskOnly')) : null,
+            effectiveScope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
           error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
           h('div', { className: 'ctm-dc-buttons' },
             h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('confirm.cancel')),
@@ -1416,14 +1423,15 @@ window.__ModuleLoader__.load({
       return words.length ? options.filter(k => words.every(w => k.toLowerCase().includes(w))) : options;
     }
     let pickerSeq = 0;
-    function ModelPicker({ value, options, onChange, placeholder, label: aria, disabled, t }) {
+    function ModelPicker({ value, options, recommended = [], onChange, placeholder, label: aria, disabled, t }) {
       const [open, setOpen] = React.useState(false);
       const [query, setQuery] = React.useState('');
       const [active, setActive] = React.useState(0);
       const idRef = React.useRef(null);
       if (!idRef.current) idRef.current = `ctm-mp-${++pickerSeq}`;
       const id = idRef.current;
-      const shown = filterRoutes(options, query);
+      const ordered = [...options.filter(key => recommended.includes(key)), ...options.filter(key => !recommended.includes(key)).sort((a, b) => splitKey(a)[0].localeCompare(splitKey(b)[0]))];
+      const shown = filterRoutes(ordered, query);
       const close = () => { setOpen(false); setQuery(''); setActive(0); };
       const pick = key => { if (key) onChange(key); close(); };
       const onKeyDown = event => {
@@ -1435,7 +1443,7 @@ window.__ModuleLoader__.load({
       };
       const groups = [];
       shown.forEach((key, index) => {
-        const [provider] = splitKey(key);
+        const provider = recommended.includes(key) ? t('picker.sameTier') : splitKey(key)[0];
         if (!groups.length || groups[groups.length - 1].provider !== provider) groups.push({ provider, items: [] });
         groups[groups.length - 1].items.push({ key, index });
       });
@@ -1455,7 +1463,7 @@ window.__ModuleLoader__.load({
                 className: 'ctm-mp-option', 'data-active': index === active ? '' : undefined,
                 // mousedown keeps focus in the input, so blur does not close the list before the click lands
                 onMouseDown: e => { e.preventDefault(); pick(key); }, onMouseEnter: () => setActive(index) },
-                h('span', { className: 'ctm-mp-model' }, splitKey(key)[1]), key === value ? h('span', { className: 'ctm-mp-check', 'aria-hidden': true }, '✓') : null)),
+                h('span', { className: 'ctm-mp-model' }, key), key === value ? h('span', { className: 'ctm-mp-check', 'aria-hidden': true }, '✓') : null)),
             ]))
             : h('div', { className: 'ctm-mp-empty ctm-sub' }, t('picker.empty'))) : null);
     }

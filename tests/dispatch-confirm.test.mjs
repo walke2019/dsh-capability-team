@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { answerPending, confirmedRoute, createDispatchConfirm, forgetLead, handleDispatchConfirm, pendingView, planRoutes, validateAnswer, withConfirmedRoute } from '../dispatch-confirm.js';
 import { effectiveConfig } from '../config.js';
+import { applyModelPolicy } from '../model-policy.js';
+import { createFailover } from '../failover.js';
 
 const effective = effectiveConfig({
   tiers: { medium: ['m1', 'm2', 'm3', 'm4', 'm5'] },
@@ -29,9 +31,22 @@ test('validateAnswer：回退最多 3 个、不能重复、必须在同档候选
   assert.deepEqual(ok.routes[0].primary, { provider: 'provider-a', model: 'm3' });
   assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m3', fallbacks: ['provider-a/m1', 'provider-a/m2', 'provider-a/m4', 'provider-a/m5'] }] }), /最多 3 个/);
   assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m3', fallbacks: ['provider-a/m3'] }] }), /重复/);
-  assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'other/x' }] }), /不在同档可用模型中/);
+  assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'other/x' }] }), /不在目录可用模型中/);
   assert.equal(validateAnswer(offered, { decision: 'confirm', routes: [] }).routes[0].changed, false, '不改就是原样确认');
   assert.deepEqual(validateAnswer(offered, { decision: 'cancel' }), { decision: 'cancel' });
+});
+
+test('full catalog candidates rank same-tier first and preserve configured recommendations', () => {
+  const extra = { provider: 'provider-b', model: 'outside' };
+  const full = planRoutes(plan, effective, ['provider-a/m5'], { entries: [extra, ...catalog.entries], errors: [] });
+  assert.deepEqual(full[0].primary, offered[0].primary);
+  assert.deepEqual(full[0].fallbacks, offered[0].fallbacks);
+  assert.deepEqual(full[0].candidates.map(c => c.sameTier), [true, true, true, true, false]);
+  assert.deepEqual(full[0].candidates.at(-1), { ...extra, sameTier: false });
+  const routes = [{ role: 'diao-chan', primary: extra, fallbacks: ['provider-a/m2'] }];
+  assert.equal(validateAnswer(full, { decision: 'confirm', routes }).routes[0].primary.model, 'outside');
+  assert.throws(() => validateAnswer(full, { decision: 'confirm', scope: 'project', routes }), /跨档选择仅本次生效/);
+  assert.throws(() => validateAnswer(full, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m5' }] }), /不在目录/);
 });
 
 const lead = id => ({ id, ctx: {} });
@@ -77,6 +92,59 @@ test('目录版本变化返回 409；校验失败返回 422', async () => {
   assert.throws(() => answerPending('L3', 'c1', { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'x/y' }] }), e => e.status === 422);
   answerPending('L3', 'c1', { decision: 'confirm' });
   assert.equal((await p).asked, true);
+});
+
+test('cross-tier task answers succeed while project, disabled and missing answers return 422', async () => {
+  const id = 'cross-tier'; forgetLead(id);
+  const expanded = { ...llm, listModels: async () => [...await llm.listModels(), { id: 'outside' }] };
+  const confirm = createDispatchConfirm({ llm: expanded }, team, { graceMs: 1000 });
+  const p = confirm.confirm(exec(id), plan, effective, { disabledRoutes: ['provider-a/m5'] }, 'always');
+  await flush();
+  const answer = { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/outside', fallbacks: [] }] };
+  assert.throws(() => answerPending(id, 'call-1', { ...answer, scope: 'project' }), e => e.status === 422 && /跨档/.test(e.message));
+  for (const primary of ['provider-a/m5', 'missing/model'])
+    assert.throws(() => answerPending(id, 'call-1', { ...answer, routes: [{ role: 'diao-chan', primary }] }), e => e.status === 422);
+  answerPending(id, 'call-1', answer);
+  assert.equal((await p).routes[0].primary.model, 'outside');
+  forgetLead(id);
+});
+
+test('confirmed cross-tier fallbacks stay ordered and bounded; defaults remain same-tier', async () => {
+  const id = 'confirmed-failover'; forgetLead(id);
+  const expanded = { ...llm, listModels: async () => [...await llm.listModels(), { id: 'outside-one' }, { id: 'outside-two' }, { id: 'never-selected' }] };
+  const p = createDispatchConfirm({ llm: expanded }, team, { graceMs: 1000 }).confirm(exec(id), plan, effective, { disabledRoutes: [] }, 'always');
+  await flush();
+  const selected = ['outside-two', 'm3', 'outside-one'];
+  answerPending(id, 'call-1', { decision: 'confirm', scope: 'task', routes: [{ role: 'diao-chan', primary: 'provider-a/m1', fallbacks: selected.map(model => `provider-a/${model}`) }] });
+  await p;
+  const role = { ...effective.capabilities.frontend, failover: { ...effective.failover, retries: 0 } };
+  const exhaust = async route => {
+    const failover = createFailover({ now: () => 1000, sleep: async () => true });
+    const agent = {}, used = [];
+    for (let i = 0; i < 10; i++) {
+      used.push(failover.route(agent, 1, 1, route).model);
+      if (!await failover.recover(agent, { code: 'AUTH_ERROR', status: 401, message: 'Unauthorized' }, new AbortController().signal)) return used;
+    }
+    assert.fail('Failover must stop once the explicit list is exhausted');
+  };
+  const confirmed = applyModelPolicy(withConfirmedRoute(role, confirmedRoute(id, 'diao-chan')), []);
+  assert.deepEqual(await exhaust(confirmed), ['m1', ...selected]);
+  assert.deepEqual(await exhaust(applyModelPolicy(withConfirmedRoute(role, confirmedRoute('unconfirmed', 'diao-chan')), [])), ['m1', 'm2']);
+  assert.ok(role.fallbacks.every(route => effective.tiers.medium.includes(route.model)));
+  forgetLead(id);
+});
+
+test('catalogVersion changes for newly searchable models and tier membership', async () => {
+  const versions = [];
+  for (const [index, catalogModels] of [['m1', 'm2'], ['m1', 'm2', 'outside'], ['m1', 'm2', 'outside']].entries()) {
+    const id = `version-${index}`;
+    const dynamic = { ...llm, listModels: async () => catalogModels.map(id => ({ id })) };
+    const config = index === 2 ? { ...effective, tiers: { ...effective.tiers, medium: [...effective.tiers.medium, 'outside'] } } : effective;
+    const p = createDispatchConfirm({ llm: dynamic }, team, { graceMs: 1000 }).confirm(exec(id), plan, config, { disabledRoutes: [] }, 'always');
+    await flush(); versions.push(pendingView(id, 'call-1').catalogVersion);
+    answerPending(id, 'call-1', { decision: 'confirm' }); await p; forgetLead(id);
+  }
+  assert.equal(new Set(versions).size, 3);
 });
 
 test('没有卡片时退回原生提问框，可逐行调整', async () => {

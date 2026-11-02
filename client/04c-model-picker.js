@@ -8,14 +8,15 @@
       return words.length ? options.filter(k => words.every(w => k.toLowerCase().includes(w))) : options;
     }
     let pickerSeq = 0;
-    function ModelPicker({ value, options, onChange, placeholder, label: aria, disabled, t }) {
+    function ModelPicker({ value, options, recommended = [], onChange, placeholder, label: aria, disabled, t }) {
       const [open, setOpen] = React.useState(false);
       const [query, setQuery] = React.useState('');
       const [active, setActive] = React.useState(0);
       const idRef = React.useRef(null);
       if (!idRef.current) idRef.current = `ctm-mp-${++pickerSeq}`;
       const id = idRef.current;
-      const shown = filterRoutes(options, query);
+      const ordered = [...options.filter(key => recommended.includes(key)), ...options.filter(key => !recommended.includes(key)).sort((a, b) => splitKey(a)[0].localeCompare(splitKey(b)[0]))];
+      const shown = filterRoutes(ordered, query);
       const close = () => { setOpen(false); setQuery(''); setActive(0); };
       const pick = key => { if (key) onChange(key); close(); };
       const onKeyDown = event => {
@@ -27,7 +28,7 @@
       };
       const groups = [];
       shown.forEach((key, index) => {
-        const [provider] = splitKey(key);
+        const provider = recommended.includes(key) ? t('picker.sameTier') : splitKey(key)[0];
         if (!groups.length || groups[groups.length - 1].provider !== provider) groups.push({ provider, items: [] });
         groups[groups.length - 1].items.push({ key, index });
       });
@@ -47,7 +48,7 @@
                 className: 'ctm-mp-option', 'data-active': index === active ? '' : undefined,
                 // mousedown keeps focus in the input, so blur does not close the list before the click lands
                 onMouseDown: e => { e.preventDefault(); pick(key); }, onMouseEnter: () => setActive(index) },
-                h('span', { className: 'ctm-mp-model' }, splitKey(key)[1]), key === value ? h('span', { className: 'ctm-mp-check', 'aria-hidden': true }, '✓') : null)),
+                h('span', { className: 'ctm-mp-model' }, key), key === value ? h('span', { className: 'ctm-mp-check', 'aria-hidden': true }, '✓') : null)),
             ]))
             : h('div', { className: 'ctm-mp-empty ctm-sub' }, t('picker.empty'))) : null);
     }
