@@ -76,6 +76,31 @@ test('team search switch denies external tools; ordinary and other presets unaff
   search = true; assert.equal(guard({ agent, name: 'omni_search' }), undefined);
   ctx.agentPresets.composedPreset = () => 'ordinary'; search = false; assert.equal(guard({ agent, name: 'omni_fetch' }), undefined);
 });
+test('settings pushed as same-named DSH credentials re-register search tools with the matching schema', async t => {
+  const f = await fixture(t);
+  const store = { OMNI_SEARCH_ENGINES: 'custom', OMNI_SEARCH_BASE_URL: 'https://gateway.example.com', OMNI_SEARCH_PROVIDERS_PATH: '/v1/providers', OMNI_SEARCH_API_KEY: 'pushed-key' };
+  let deliver;
+  f.ctx.inject = (deps, fn) => { if (deps.includes('credentials')) deliver = () => fn({ credentials: { resolve: async name => (store[name] ? { value: store[name], source: 'file' } : undefined) }, effect: fn => f.disposers?.push?.(fn()) }); };
+  const plugin = apply(f.ctx);
+  // Without the credential service the zero-config tools exist at once.
+  assert.deepEqual([...f.defs.keys()], ['omni_search','omni_fetch','omni_transcribe','omni_transcribe_status']);
+  const fetchDef = f.defs.get('omni_fetch');
+  deliver(); await plugin.ready();
+  assert.ok(f.defs.has('omni_search_providers'));
+  assert.equal(f.defs.get('omni_search').parameters.properties.provider.type, 'string');
+  assert.equal(f.defs.get('omni_fetch'), fetchDef, 'unchanged tools are not re-registered');
+  for (const def of f.defs.values()) assert.doesNotThrow(() => assertToolSchema(def.parameters));
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { assert.equal(url, 'https://gateway.example.com/v1/providers'); assert.equal(init.headers.Authorization, 'Bearer pushed-key'); return Response.json({ data: ['p1'] }); };
+  t.after(() => { globalThis.fetch = oldFetch; });
+  assert.match(await f.defs.get('omni_search_providers').execute({}, { agent: {} }), /p1/);
+  // A setting withdrawn from the store shrinks the schema again on the next refresh.
+  delete store.OMNI_SEARCH_ENGINES; delete store.OMNI_SEARCH_BASE_URL;
+  deliver(); await plugin.ready();
+  assert.ok(!f.defs.has('omni_search_providers'));
+  assert.equal(f.defs.get('omni_search').parameters.properties.provider, undefined);
+  f.dispose(); assert.equal(f.defs.size, 0);
+});
 test('read-only config/API, team non-registration, roles missing-tool warning and shared hash', async () => {
   await buildShared(true);
   const config = await import('../../packages/omni-search/shared/integrations-config.js');

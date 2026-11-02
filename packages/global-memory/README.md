@@ -65,7 +65,11 @@ The embeddings `baseUrl` must currently be `https`; a local Ollama or vLLM serve
 | `local` (default) | none | No mirroring; shared recall returns nothing |
 | `openviking` | `memory.url` / `OPENVIKING_URL` (https, or http on loopback), optional key `OPENVIKING_API_KEY`, `account`, `user` | Writes are queued durably and committed in batches; recall merges the server's context search. A down server never blocks a member |
 
-Each caller labels what it sends (the team plugin as its team, this package as global memory) and keeps its own queue file per backend.
+Each caller labels what it sends (the team plugin as its team, this package as global memory) and keeps its own queue file per backend. `MEMORY_BACKEND` overrides `memory.backend` (`local` or `openviking`).
+
+### Settings from the DSH credential store
+
+Every override variable may also be stored as a same-named DSH credential, for example when a fleet manager pushes settings to every client, so a client works with zero local config. A credential wins over the same-named environment variable; invalid values are ignored and never logged. Names: `EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` (legacy `CPA_EMBED_*` equivalents), `MEMORY_BACKEND`, `OPENVIKING_URL`, plus the keys `EMBEDDING_API_KEY` and `OPENVIKING_API_KEY`. Credentials are re-read on start and before each embedding/backend request.
 
 ### How to add a backend
 

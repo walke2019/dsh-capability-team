@@ -20,6 +20,8 @@ export function apply(ctx, input = {}) {
   ctx.inject?.(['credentials'], scoped => {
     setCredentialResolver(name => scoped.credentials.resolve(name));
     scoped.effect(() => () => setCredentialResolver(null));
+    // Settings pushed to the credential store (EMBEDDING_*, MEMORY_BACKEND, OPENVIKING_URL...) apply at once.
+    void refreshCredentials().catch(() => {});
   });
   ctx.inject?.(['agentTeams'], () => {});
   const store = createMemoryStore(defaultRoot());

@@ -129,6 +129,10 @@ The file is `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`; `CAPA
 
 Alternatively set the environment variables listed above (`OMNI_SEARCH_BASE_URL`, `SEARXNG_URL`, `OMNI_AUDIO_BASE_URL`, `EMBEDDING_BASE_URL`, `OPENVIKING_URL`, ...) in the DSH host environment; environment values override the file. Secrets belong in the DSH credential store or named environment variables, never as literal configuration values. Every key name is looked up in the DSH credential store first, then the environment. See the plugin READMEs for schemas and details.
 
+### Settings from the DSH credential store
+
+Each single-field override variable may also be stored as a same-named DSH credential (useful when a fleet manager pushes settings to every client, which then needs no local config). A credential wins over the same-named environment variable; invalid values are ignored and never logged; the source is reported as `credential:<NAME>`. Names: `OMNI_SEARCH_BASE_URL`, `OMNI_SEARCH_ENGINES`, `OMNI_FETCH_ENGINES` (comma-separated lists), `OMNI_SEARCH_PROVIDERS_PATH`, `SEARXNG_URL`, `OMNI_AUDIO_BASE_URL`, `EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` (legacy `CPA_EMBED_*`), `MEMORY_BACKEND`, `OPENVIKING_URL`. `omni-search` re-registers its search tools when such settings change the schema.
+
 ### Migration from cpa-tools
 
 Breaking change: the old names are no longer recognized.

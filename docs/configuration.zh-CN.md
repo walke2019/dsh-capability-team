@@ -129,6 +129,10 @@
 
 也可在 DSH Host 环境设置上表中的变量（`OMNI_SEARCH_BASE_URL`、`SEARXNG_URL`、`OMNI_AUDIO_BASE_URL`、`EMBEDDING_BASE_URL`、`OPENVIKING_URL` 等），环境变量优先于文件。密钥仅保存在 DSH 凭据库或对应环境变量中，不要写入配置文件；每个密钥名先查 DSH 凭据库，再查环境变量。字段详情见两个独立插件的 README。
 
+### 从 DSH 凭据库读取设置
+
+每个单字段覆盖变量也可以作为同名 DSH 凭据保存（适合由集群管理端统一下发设置，客户端无需本地配置）。凭据优先于同名环境变量；非法值被忽略且不会记录日志；来源显示为 `credential:<名称>`。名称：`OMNI_SEARCH_BASE_URL`、`OMNI_SEARCH_ENGINES`、`OMNI_FETCH_ENGINES`（逗号分隔列表）、`OMNI_SEARCH_PROVIDERS_PATH`、`SEARXNG_URL`、`OMNI_AUDIO_BASE_URL`、`EMBEDDING_BASE_URL`、`EMBEDDING_MODEL`、`EMBEDDING_DIMENSIONS`（旧名 `CPA_EMBED_*`）、`MEMORY_BACKEND`、`OPENVIKING_URL`。这些设置改变工具结构时，`omni-search` 会重新注册搜索工具。
+
 ### 从 cpa-tools 迁移
 
 破坏性变更：旧名称不再识别。

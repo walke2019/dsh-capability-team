@@ -27,15 +27,21 @@ export const INTEGRATION_DEFAULTS = Object.freeze({
   memory: Object.freeze({ backend: 'local', url: null, apiKeyEnv: 'OPENVIKING_API_KEY', account: null, user: null, timeoutMs: 8000, recallLimit: 4 }),
 });
 /**
- * Environment variables that override single fields. A list means primary first, then legacy fallbacks:
- * a later name is consulted only when every earlier one is unset.
+ * Names that override single fields. A list means primary first, then legacy fallbacks: a later name is
+ * consulted only when every earlier one is unset. Each name is read from the DSH credential store first (a
+ * fleet manager can push settings there) and from the environment second.
  */
 export const ENV_OVERRIDES = Object.freeze({
-  search: { baseUrl: 'OMNI_SEARCH_BASE_URL', searxngUrl: 'SEARXNG_URL' },
+  search: { baseUrl: 'OMNI_SEARCH_BASE_URL', searxngUrl: 'SEARXNG_URL', engines: 'OMNI_SEARCH_ENGINES', fetchEngines: 'OMNI_FETCH_ENGINES', providersPath: 'OMNI_SEARCH_PROVIDERS_PATH' },
   embeddings: { baseUrl: ['EMBEDDING_BASE_URL', 'CPA_EMBED_BASE_URL'], model: ['EMBEDDING_MODEL', 'CPA_EMBED_MODEL'], dimensions: ['EMBEDDING_DIMENSIONS', 'CPA_EMBED_DIMENSIONS'] },
   audio: { baseUrl: 'OMNI_AUDIO_BASE_URL' },
-  memory: { url: 'OPENVIKING_URL' },
+  memory: { url: 'OPENVIKING_URL', backend: 'MEMORY_BACKEND' },
 });
+/** Every override name (primary and legacy), e.g. for refreshing them from the credential store. */
+export const overrideNames = () => [...new Set(Object.values(ENV_OVERRIDES).flatMap(fields => Object.values(fields).flat()))];
+// List fields arrive as one comma-separated string from the environment or a credential.
+const LIST_FIELDS = ['engines', 'fetchEngines'];
+const overrideValue = (key, raw) => (LIST_FIELDS.includes(key) ? String(raw).split(',').map(v => v.trim()).filter(Boolean) : raw);
 /** Legacy key names consulted when a section still uses its default key name and that one is unset. */
 export const LEGACY_KEY_ENV = Object.freeze({ embeddings: Object.freeze({ EMBEDDING_API_KEY: 'CPA_EMBED_API_KEY' }) });
 /** Per-engine key fields of integrations.search (the `custom` engine uses apiKeyEnv). */
@@ -130,21 +136,28 @@ function readFileLayer(root) {
 export function resolveIntegrations({ root = defaultRoot(), env = process.env } = {}) {
   const file = readFileLayer(root);
   const effective = {}, sources = {}, keys = {};
+  // The credential store only backs the real process environment (tests pass their own env to isolate).
+  const useStore = env === process.env;
   for (const section of SECTIONS) {
     effective[section] = {}; sources[section] = {};
     for (const key of Object.keys(INTEGRATION_DEFAULTS[section])) {
-      // Primary name first; a legacy name is used only when every earlier name is unset.
-      const envName = [ENV_OVERRIDES[section][key] ?? []].flat().find(name => env[name]);
+      // Primary name first (credential, then environment); a legacy name only when every earlier one is unset.
+      let override;
+      for (const name of [ENV_OVERRIDES[section][key] ?? []].flat()) {
+        const stored = useStore ? credentialCache.get(name) : undefined;
+        if (stored) { override = { raw: stored, source: `credential:${name}` }; break; }
+        if (env[name]) { override = { raw: env[name], source: `env:${name}` }; break; }
+      }
       let value = INTEGRATION_DEFAULTS[section][key], source = 'default';
       if (file.value[section]?.[key] !== undefined) { value = file.value[section][key]; source = 'file'; }
-      if (envName) {
-        try { value = validateField(section, key, env[envName]); source = `env:${envName}`; } catch { /* an invalid env value is ignored, not trusted */ }
+      if (override) {
+        try { value = validateField(section, key, overrideValue(key, override.raw)); source = override.source; } catch { /* an invalid override is ignored, not trusted */ }
       }
       effective[section][key] = value; sources[section][key] = source;
     }
     keys[section] = { env: effective[section].apiKeyEnv, present: !!lookup(sectionKeyNames(section, effective[section]), env, false) };
   }
-  keys.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => [engine, { env: effective.search[field], present: !!env[effective.search[field]] }]));
+  keys.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => [engine, { env: effective.search[field], present: !!lookup([effective.search[field]], env, false) }]));
   const resolved = { revision: file.revision, effective, sources, keys, fileLayer: file.value };
   // The environment stays attached but non-enumerable, so a serialized view never carries it.
   Object.defineProperty(resolved, 'env', { value: env });
@@ -180,12 +193,19 @@ export function keyNames(resolved) {
 let credentialResolver;
 const credentialCache = new Map();
 export function setCredentialResolver(fn) { credentialResolver = fn; credentialCache.clear(); }
-/** Re-read every key name the config uses from the DSH credential store (no-op without the store). */
+/**
+ * Re-read every key name the config uses and every override name (ENV_OVERRIDES, legacy included) from the
+ * DSH credential store (no-op without the store). Values stay in memory and are never logged.
+ */
 export async function refreshCredentials(resolved = resolveIntegrations()) {
   if (!credentialResolver) return;
-  for (const name of keyNames(resolved)) {
-    try { const value = await credentialResolver(name); if (value) credentialCache.set(name, value); else credentialCache.delete(name); }
-    catch { credentialCache.delete(name); }
+  const resolver = credentialResolver;
+  for (const name of new Set([...keyNames(resolved), ...overrideNames()])) {
+    try {
+      const credential = await resolver(name);
+      const value = typeof credential === 'string' ? credential : credential?.value;
+      if (value) credentialCache.set(name, value); else credentialCache.delete(name);
+    } catch { credentialCache.delete(name); }
   }
 }
 /** Every configured key value (store and environment), only for redacting them out of stored text. */

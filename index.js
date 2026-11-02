@@ -20,7 +20,7 @@ import { createTokenDiscipline } from './token-discipline.js';
 import { createRouteHealth, mergeHealth } from './route-health.js';
 import { createRotation } from './session-rotation.js';
 import { createMemoryHub } from './memory-hub.js';
-import { knownSecretValues, setCredentialResolver } from './integrations-config.js';
+import { knownSecretValues, refreshCredentials, setCredentialResolver } from './integrations-config.js';
 export const inject = ['agents', 'agentTeams', 'systemPrompt', 'tools', 'workingDirectory', 'skills', 'llm', 'userQuestions'];
 export function apply(host, config = {}) {
   // Lead-only and teammate-only plugin tools are installed per agent, so teammates do not carry the lead's tool schemas.
@@ -29,6 +29,8 @@ export function apply(host, config = {}) {
   // Memory endpoints/models are read-only user file/environment configuration.
   // Keys come from DSH's own credential store first (Settings → credentials), the environment second.
   setCredentialResolver(async name => (await ctx.get?.('credentials')?.resolve(name))?.value);
+  // Settings may also arrive as same-named credentials (e.g. MEMORY_BACKEND pushed by a fleet manager).
+  void refreshCredentials().catch(() => {});
   void team.refresh(); // First catalog match in the background; requests await it if still pending.
   const observability = createRuntimeObservability();
   const routeHealth = createRouteHealth(team.root);

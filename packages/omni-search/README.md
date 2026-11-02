@@ -91,9 +91,15 @@ Only search/audio are used by this bundle. Embedding and memory configuration be
 | `TAVILY_API_KEY` / `BRAVE_API_KEY` / `SEARXNG_API_KEY` / `JINA_API_KEY` | Engine keys (default names; rename with `tavilyKeyEnv`, `braveKeyEnv`, `searxngKeyEnv`, `jinaKeyEnv`) |
 | `SEARXNG_URL` | SearXNG instance address (overrides `search.searxngUrl`) |
 | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` | Custom gateway address and key |
+| `OMNI_SEARCH_ENGINES` / `OMNI_FETCH_ENGINES` | Comma-separated engine order (overrides `search.engines` / `search.fetchEngines`), e.g. `brave,custom` |
+| `OMNI_SEARCH_PROVIDERS_PATH` | Custom gateway providers path (overrides `search.providersPath`) |
 | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` | Transcription endpoint address and key |
 
-Every key name is a DSH credential reference first (keys saved in DSH Settings are looked up through the credential store), with the same-named Host environment variable as fallback. Keys are never written to config or tool arguments. No plugin configuration layer or HTTP writer exists. Configuration is read on each request; tool schemas (the `provider` argument and the providers tool) are captured at activation, so reload/restart after changing the engine or provider lists.
+Every key name is a DSH credential reference first (keys saved in DSH Settings are looked up through the credential store), with the same-named Host environment variable as fallback. Keys are never written to config or tool arguments. No plugin configuration layer or HTTP writer exists. Configuration is read on each request; tool schemas (the `provider` argument and the providers tool) are built at activation and rebuilt once the credential store has been read, so reload/restart after changing the engine or provider lists in the file or environment.
+
+### Settings from the DSH credential store
+
+Each override variable in the table above (not only the keys) may also be stored as a DSH credential with the same name, for example when a fleet manager pushes settings to every client. A credential wins over the same-named environment variable; an invalid value is ignored, and values are never logged. Override names: `OMNI_SEARCH_BASE_URL`, `OMNI_SEARCH_ENGINES`, `OMNI_FETCH_ENGINES`, `OMNI_SEARCH_PROVIDERS_PATH`, `SEARXNG_URL`, `OMNI_AUDIO_BASE_URL` (plus the memory names listed in the Global Memory README). The source of such a value is shown as `credential:<NAME>`.
 
 Breaking change: the former `cpa_*` tool names and `CPA_SEARCH_*` / `CPA_AUDIO_*` variables are no longer recognized.
 

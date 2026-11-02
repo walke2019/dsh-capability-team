@@ -111,6 +111,53 @@ test('DSH 凭据库对每个引擎密钥名和嵌入旧名都生效', async t =>
   assert.ok(!JSON.stringify(presence).includes('"sb"'));
 });
 
+test('覆盖项环境变量：引擎列表用逗号分隔，非法值被忽略', async () => {
+  const root = await tmp();
+  const r = resolveIntegrations({ root, env: { OMNI_SEARCH_ENGINES: 'brave, custom', OMNI_FETCH_ENGINES: 'tavily,jina', OMNI_SEARCH_PROVIDERS_PATH: '/v1/providers', MEMORY_BACKEND: 'openviking' } });
+  assert.deepEqual(r.effective.search.engines, ['brave', 'custom']);
+  assert.equal(r.sources.search.engines, 'env:OMNI_SEARCH_ENGINES');
+  assert.deepEqual(r.effective.search.fetchEngines, ['tavily', 'jina']);
+  assert.equal(r.effective.search.providersPath, '/v1/providers');
+  assert.equal(r.effective.memory.backend, 'openviking');
+  const bad = resolveIntegrations({ root, env: { OMNI_SEARCH_ENGINES: 'google', MEMORY_BACKEND: 'mem0', OMNI_SEARCH_PROVIDERS_PATH: 'x' } });
+  assert.equal(bad.effective.search.engines, null);
+  assert.equal(bad.effective.memory.backend, 'local');
+  assert.equal(bad.effective.search.providersPath, null);
+  for (const name of ['OMNI_SEARCH_ENGINES', 'OMNI_FETCH_ENGINES', 'OMNI_SEARCH_PROVIDERS_PATH', 'MEMORY_BACKEND', 'OMNI_SEARCH_BASE_URL', 'SEARXNG_URL', 'EMBEDDING_MODEL', 'CPA_EMBED_MODEL', 'OMNI_AUDIO_BASE_URL', 'OPENVIKING_URL']) assert.ok(configApi.overrideNames().includes(name), name);
+});
+
+test('覆盖项也从同名 DSH 凭据读取：凭据优先于环境变量，来源标为 credential:<名>', async t => {
+  const root = await tmp();
+  const saved = { home: process.env.CAPABILITY_TEAM_HOME, model: process.env.EMBEDDING_MODEL, url: process.env.OMNI_SEARCH_BASE_URL };
+  process.env.CAPABILITY_TEAM_HOME = root;
+  process.env.EMBEDDING_MODEL = 'env-model';
+  delete process.env.OMNI_SEARCH_BASE_URL;
+  t.after(() => {
+    configApi.setCredentialResolver(undefined);
+    for (const [k, name] of [['home', 'CAPABILITY_TEAM_HOME'], ['model', 'EMBEDDING_MODEL'], ['url', 'OMNI_SEARCH_BASE_URL']]) if (saved[k] === undefined) delete process.env[name]; else process.env[name] = saved[k];
+  });
+  const store = { EMBEDDING_MODEL: 'cred-model', CPA_EMBED_DIMENSIONS: '256', MEMORY_BACKEND: 'openviking', OPENVIKING_URL: 'https://memory.example.com', OMNI_SEARCH_ENGINES: 'custom', OMNI_SEARCH_BASE_URL: 'https://gateway.example.com', OMNI_FETCH_ENGINES: 'bogus' };
+  const asked = [];
+  configApi.setCredentialResolver(async name => { asked.push(name); return store[name] ? { value: store[name], source: 'file' } : undefined; });
+  await configApi.refreshCredentials();
+  for (const name of configApi.overrideNames()) assert.ok(asked.includes(name), name);
+  const r = resolveIntegrations();
+  assert.equal(r.effective.embeddings.model, 'cred-model');
+  assert.equal(r.sources.embeddings.model, 'credential:EMBEDDING_MODEL');
+  if (!process.env.EMBEDDING_DIMENSIONS) assert.equal(r.sources.embeddings.dimensions, 'credential:CPA_EMBED_DIMENSIONS');
+  assert.equal(r.effective.memory.backend, 'openviking');
+  assert.equal(r.effective.memory.url, 'https://memory.example.com');
+  assert.deepEqual(r.effective.search.engines, ['custom']);
+  assert.equal(r.effective.search.baseUrl, 'https://gateway.example.com');
+  assert.deepEqual(r.effective.search.fetchEngines, ['jina'], '非法凭据值被忽略');
+  // An explicit env (tests, diagnostics) never sees the store.
+  assert.equal(resolveIntegrations({ root, env: {} }).effective.memory.backend, 'local');
+  // A credential removed from the store falls back to the environment.
+  delete store.EMBEDDING_MODEL;
+  await configApi.refreshCredentials();
+  assert.equal(resolveIntegrations().sources.embeddings.model, 'env:EMBEDDING_MODEL');
+});
+
 test('不再识别 CPA_SEARCH_* / CPA_AUDIO_* 环境变量', async () => {
   const root = await tmp();
   const r = resolveIntegrations({ root, env: { CPA_SEARCH_BASE_URL: 'https://a.example', CPA_AUDIO_BASE_URL: 'https://b.example', CPA_SEARCH_API_KEY: 'x', CPA_AUDIO_API_KEY: 'y' } });
