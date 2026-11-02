@@ -49,7 +49,7 @@ window.__ModuleLoader__.load({
       'plan.next': '下一步',
       'plan.budget': '本轮自行执行上限 {n} 次',
       'plan.unlimited': '你已确认由主控亲自完成，本轮不限执行次数',
-      'direct.title': '允许主控亲自完成？', 'direct.hint': '允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。', 'direct.allow': '允许', 'direct.deny': '不允许', 'direct.loading': '正在读取待确认的请求…', 'direct.sent': '已允许，主控继续执行。', 'direct.cancelled': '已拒绝，执行限制不变。', 'direct.stale': '确认请求已失效（可能插件已重载或已超时），请中断本轮后重试。',
+      'direct.title': '允许主控亲自完成？', 'direct.hint': '允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。', 'direct.allow': '允许', 'direct.deny': '不允许', 'direct.loading': '正在读取待确认的请求…', 'direct.sent': '已允许，主控继续执行。', 'direct.cancelled': '已拒绝，执行限制不变。', 'direct.stale': '确认请求已失效（可能插件已重载或已超时），请中断本轮后重试。', 'direct.native': '这次确认已转到弹出的问答框，请在那里选择。', 'confirm.native': '这次分派确认已转到弹出的问答框，请在那里选择。',
       'mode.delegate': '指派队友',
       'mode.free': '免费模型',
       'mode.direct': '主控处理',
@@ -316,7 +316,7 @@ window.__ModuleLoader__.load({
       'plan.next': 'Next step',
       'plan.budget': 'Up to {n} direct actions this turn',
       'plan.unlimited': 'You confirmed the Lead does this itself; no direct-action cap this turn',
-      'direct.title': 'Let the Lead do this itself?', 'direct.hint': 'Allowing removes the step limit for this turn. It returns with your next message. File rules and permissions stay on.', 'direct.allow': 'Allow', 'direct.deny': 'Do not allow', 'direct.loading': 'Loading the pending request…', 'direct.sent': 'Allowed. The Lead continues.', 'direct.cancelled': 'Refused. The step limit stays on.', 'direct.stale': 'This confirmation request is no longer valid (the plugin may have reloaded or it timed out). Interrupt this turn and try again.',
+      'direct.title': 'Let the Lead do this itself?', 'direct.hint': 'Allowing removes the step limit for this turn. It returns with your next message. File rules and permissions stay on.', 'direct.allow': 'Allow', 'direct.deny': 'Do not allow', 'direct.loading': 'Loading the pending request…', 'direct.sent': 'Allowed. The Lead continues.', 'direct.cancelled': 'Refused. The step limit stays on.', 'direct.stale': 'This confirmation request is no longer valid (the plugin may have reloaded or it timed out). Interrupt this turn and try again.', 'direct.native': 'This confirmation moved to the pop-up question box. Answer it there.', 'confirm.native': 'This dispatch confirmation moved to the pop-up question box. Answer it there.',
       'mode.delegate': 'Delegate',
       'mode.free': 'Free model',
       'mode.direct': 'Lead handles',
@@ -1189,8 +1189,8 @@ window.__ModuleLoader__.load({
             const res = await fetch(apiUrl(CONFIRM_PATH, { sessionId, callId }), { signal: ctrl?.signal });
             const body = res.ok ? await res.json() : null;
             if (!live) return;
-            // Pending: show it once, then keep polling as a heartbeat until it ends or the card unmounts.
-            if (body?.status === 'pending') { if (!wasPending) setView(body); wasPending = true; again(CONFIRM_HEARTBEAT_MS); return; }
+            // Pending: show it once (refresh only when the native question box takes over), keep polling as a heartbeat.
+            if (body?.status === 'pending') { setView(v => (wasPending && v?.status === 'pending' && v.native === body.native ? v : body)); wasPending = true; again(CONFIRM_HEARTBEAT_MS); return; }
             // It was pending and is gone now: answered here or in the question box, or ended on the server.
             if (wasPending) { setView(v => (v?.status === 'pending' ? { status: 'gone' } : v)); return; }
             // The tool registers its request right after it starts; retry briefly before giving up.
@@ -1217,6 +1217,7 @@ window.__ModuleLoader__.load({
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('direct.loading')));
       if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('direct.stale')));
       if (view.status !== 'pending') return null;
+      if (view.native) return h('div', { className: 'ctm-dc', 'data-state': 'native' }, h('span', { className: 'ctm-sub' }, t('direct.native')));
       const submit = async decision => {
         setBusy(true); setError(null);
         try {
@@ -1249,6 +1250,7 @@ window.__ModuleLoader__.load({
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('confirm.loading')));
       if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('confirm.stale')));
       if (view.status !== 'pending') return null; // Answered in the question box or ended on the server.
+      if (view.native) return h('div', { className: 'ctm-dc', 'data-state': 'native' }, h('span', { className: 'ctm-sub' }, t('confirm.native')));
       const max = view.maxFallbacks ?? 3;
       const current = r => edits[r.role] ?? { primary: rkey(r.primary), fallbacks: r.fallbacks.map(rkey) };
       const update = (r, change) => setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } }));

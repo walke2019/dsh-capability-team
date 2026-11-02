@@ -188,6 +188,15 @@ test('确认卡片：提交失败显示错误，点不允许提交 cancel', asyn
   h.unmount();
 });
 
+test('确认卡片：已转到原生问答框时只提示去那里回答，不再显示允许按钮', async () => {
+  const h = loadCard(async () => json(200, { ...directPending, native: true }));
+  h.render(); await flush();
+  const tree = h.render();
+  assert.ok(text(tree).includes('direct.native'));
+  assert.equal(button(tree, 'direct.allow'), undefined);
+  h.unmount();
+});
+
 test('端到端：工作流经真实确认通道等待用户，允许后才放开', async () => {
   const eff = effectiveConfig({}, base);
   let guard; const tools = {};

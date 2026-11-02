@@ -128,22 +128,35 @@ test('无人确认时按总超时报错，不再永久挂起', async () => {
   assert.equal(pendingView('L7', 't1').status, 'none');
 });
 
-test('卡片心跳失联后回退原生问答框，且只问一次；原生问答失败时卡片仍可回答', async () => {
+test('卡片出现过后心跳停顿（后台标签节流）不再弹原生问答框，同一问题只有一个入口', async () => {
   forgetLead('L8');
-  let asked = 0, signal;
-  const userQuestions = { ask: async q => { asked++; signal = q.signal; throw Object.assign(new Error('no client'), { code: 'NO_PROVIDER' }); } };
-  const confirm = createDispatchConfirm({ llm, userQuestions }, team, { graceMs: 1000, heartbeatMs: 30, timeoutMs: 5000 });
+  let asked = 0;
+  const userQuestions = { ask: async () => { asked++; return new Promise(() => {}); } };
+  const confirm = createDispatchConfirm({ llm, userQuestions }, team, { graceMs: 20, heartbeatMs: 20, timeoutMs: 5000 });
   const p = confirm.confirm({ agent: lead('L8'), callId: 'b1', signal: new AbortController().signal }, plan, effective, { disabledRoutes: [] }, 'always');
   await flush();
-  pendingView('L8', 'b1'); // the card appears once, then disappears (tab closed)
-  await sleep(120);
-  assert.equal(asked, 1, '心跳过期后回退原生问答');
-  await sleep(80);
-  assert.equal(asked, 1, '原生问答只发起一次');
-  assert.equal(pendingView('L8', 'b1').status, 'pending', '原生问答失败不让确认立即失败');
+  assert.equal(pendingView('L8', 'b1').native, false); // the card appears once, then its heartbeat stalls
+  await sleep(150);
+  assert.equal(asked, 0, '卡片已出现时不再回退原生问答');
   answerPending('L8', 'b1', { decision: 'confirm' });
   assert.equal((await p).asked, true);
-  assert.equal(signal.aborted, true, '结束时中止原生问答框的 signal');
+});
+
+test('卡片从未出现而转到原生问答框后，卡片只提示去问答框；原生问答失败时卡片恢复可答', async () => {
+  for (const fails of [false, true]) {
+    const id = `L8b-${fails}`;
+    forgetLead(id);
+    let asked = 0, signal;
+    const userQuestions = { ask: async q => { asked++; signal = q.signal; if (fails) throw Object.assign(new Error('no client'), { code: 'NO_PROVIDER' }); return new Promise(() => {}); } };
+    const confirm = createDispatchConfirm({ llm, userQuestions }, team, { graceMs: 20, heartbeatMs: 20, timeoutMs: 5000 });
+    const p = confirm.confirm({ agent: lead(id), callId: 'b2', signal: new AbortController().signal }, plan, effective, { disabledRoutes: [] }, 'always');
+    await sleep(120);
+    assert.equal(asked, 1, '原生问答只发起一次');
+    assert.equal(pendingView(id, 'b2').native, !fails);
+    answerPending(id, 'b2', { decision: 'confirm' });
+    assert.equal((await p).asked, true);
+    assert.equal(signal.aborted, true, '结束时中止原生问答框的 signal');
+  }
 });
 
 test('原生问答框回答后中止残留；卡片从未出现时在 graceMs 后回退', async () => {

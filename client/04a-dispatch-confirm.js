@@ -18,8 +18,8 @@
             const res = await fetch(apiUrl(CONFIRM_PATH, { sessionId, callId }), { signal: ctrl?.signal });
             const body = res.ok ? await res.json() : null;
             if (!live) return;
-            // Pending: show it once, then keep polling as a heartbeat until it ends or the card unmounts.
-            if (body?.status === 'pending') { if (!wasPending) setView(body); wasPending = true; again(CONFIRM_HEARTBEAT_MS); return; }
+            // Pending: show it once (refresh only when the native question box takes over), keep polling as a heartbeat.
+            if (body?.status === 'pending') { setView(v => (wasPending && v?.status === 'pending' && v.native === body.native ? v : body)); wasPending = true; again(CONFIRM_HEARTBEAT_MS); return; }
             // It was pending and is gone now: answered here or in the question box, or ended on the server.
             if (wasPending) { setView(v => (v?.status === 'pending' ? { status: 'gone' } : v)); return; }
             // The tool registers its request right after it starts; retry briefly before giving up.
@@ -46,6 +46,7 @@
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('direct.loading')));
       if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('direct.stale')));
       if (view.status !== 'pending') return null;
+      if (view.native) return h('div', { className: 'ctm-dc', 'data-state': 'native' }, h('span', { className: 'ctm-sub' }, t('direct.native')));
       const submit = async decision => {
         setBusy(true); setError(null);
         try {
@@ -78,6 +79,7 @@
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('confirm.loading')));
       if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('confirm.stale')));
       if (view.status !== 'pending') return null; // Answered in the question box or ended on the server.
+      if (view.native) return h('div', { className: 'ctm-dc', 'data-state': 'native' }, h('span', { className: 'ctm-sub' }, t('confirm.native')));
       const max = view.maxFallbacks ?? 3;
       const current = r => edits[r.role] ?? { primary: rkey(r.primary), fallbacks: r.fallbacks.map(rkey) };
       const update = (r, change) => setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } }));
