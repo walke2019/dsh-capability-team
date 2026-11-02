@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-capability-team",
-  "version": "3.1.3",
+  "version": "3.1.4",
   "description": "DSH 能力协作团队预设：按能力映射模型、可对话配置、同档备选容灾",
   "private": true,
   "license": "MIT",
