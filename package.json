@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-capability-team",
-  "version": "3.1.6",
+  "version": "3.1.7",
   "description": "DSH 能力协作团队预设：按能力映射模型、可对话配置、同档备选容灾",
   "private": true,
   "license": "MIT",
@@ -46,6 +46,7 @@
     "runtime-view.js",
     "model-policy.js",
     "access.js",
+    "teammate-wait.js",
     "usage.js",
     "long-context.js",
     "plan-gate.js",
