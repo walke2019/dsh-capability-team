@@ -1,5 +1,5 @@
 {
-  "name": "@local/dsh-omni-search", "version": "0.1.0", "private": true, "type": "module",
+  "name": "@local/dsh-omni-search", "version": "0.2.0", "private": true, "type": "module",
   "engines": { "node": ">=22" },
   "description": "Profile-wide search, web fetch and user-approved audio transcription for DSH",
   "exports": { ".": "./index.js", "./locale/*.json": "./locale/*.json", "./icon": "./icon.svg" },

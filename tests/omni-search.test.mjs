@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, realpath, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { keyOf, keyPresence, refreshCredentials, resolveIntegrations, setCredentialResolver, validateIntegrations } from '../integrations-config.js';
@@ -77,7 +77,7 @@ test('语音：授权前不读文件，超限不读；multipart 上传真实字�
 });
 
 test('语音：符号链接按真实目标检查格式并在确认框显示真实路径；状态接口不回传凭据或响应片段', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'audio-link-'));
+  const dir = await realpath(await mkdtemp(join(tmpdir(), 'audio-link-')));
   const secret = join(dir, 'id_rsa'); await writeFile(secret, 'PRIVATE KEY');
   await symlink(secret, join(dir, 'meeting.mp3'));
   await assert.rejects(readAudio(join(dir, 'meeting.mp3'), 1024, async () => assert.fail('不应询问')), /不支持的音频格式/);
