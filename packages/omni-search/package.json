@@ -1,9 +1,19 @@
 {
-  "name": "@local/dsh-omni-search", "version": "0.2.1", "private": true, "type": "module",
+  "name": "dsh-omni-search",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Profile-wide multi-engine web search, page fetch and user-approved audio transcription for DeepSeek Harness (DSH)",
+  "license": "MIT",
+  "author": "walke2019",
+  "homepage": "https://github.com/walke2019/dsh-capability-team/tree/main/packages/omni-search#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/walke2019/dsh-capability-team.git", "directory": "packages/omni-search" },
+  "bugs": { "url": "https://github.com/walke2019/dsh-capability-team/issues" },
+  "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "cordis", "web-search", "web-fetch", "transcription", "tavily", "searxng", "llm"],
   "engines": { "node": ">=22" },
-  "description": "Profile-wide search, web fetch and user-approved audio transcription for DSH",
+  "peerDependencies": { "@deepseek-ai/cordis": ">=4.0.1", "@deepseek-ai/schemastery": ">=3.18.4" },
+  "peerDependenciesMeta": { "@deepseek-ai/cordis": { "optional": true }, "@deepseek-ai/schemastery": { "optional": true } },
   "exports": { ".": "./index.js", "./locale/*.json": "./locale/*.json", "./icon": "./icon.svg" },
-  "files": ["index.js", "shared/**", "cordis.patch.yml", "locale/*.json", "icon.svg", "README.md"],
+  "files": ["index.js", "shared/**", "cordis.patch.yml", "locale/*.json", "icon.svg", "README.md", "LICENSE"],
   "scripts": { "build": "node scripts/build-shared.mjs", "test": "node --test ../../tests/omni-search/*.test.mjs" },
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
 }

@@ -1,5 +1,5 @@
 - insert:
     - id: omni-search
-      name: '@local/dsh-omni-search'
+      name: 'dsh-omni-search'
       config:
         enabled: true

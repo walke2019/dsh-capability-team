@@ -5,4 +5,6 @@ node_modules/
 packages/*/artifacts/
 docs/demo/
 /.claude/launch.json
-/local-dsh-capability-team-*.tgz
+/dsh-capability-team-*.tgz
+/dsh-omni-search-*.tgz
+/dsh-capability-memory-*.tgz
