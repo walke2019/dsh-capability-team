@@ -69,7 +69,7 @@ test('放行不跨计划：换成普通计划恢复预算，改为 delegate 后�
   await h.plan(plain);
   assert.equal(h.wf.state(h.lead).directConfirmed, false);
   await h.plan(personal);
-  await h.plan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'lv-bu', task: 't' }] });
+  await h.plan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'backend', task: 't' }] });
   assert.match(h.call('pwsh'), /主控只负责分派/);
 });
 

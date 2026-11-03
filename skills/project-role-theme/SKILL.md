@@ -18,7 +18,9 @@ description: 用户要为当前项目调整团队时使用：角色改名或整�
 
 ## 修改方式
 保存参数中每一项：对象表示新增或按字段合并，null 表示恢复预设默认，false 表示删除。
-- 改名或换主题：roles 中仅给出 displayName，例如 `{"lv-bu": {"displayName": "后端工程师"}}`。
+- 改名：roles 中仅给出 displayName，例如 `{"backend": {"displayName": "后端工程师"}}`。
+- 内置主题：默认名册为中性角色（lead、architect、backend、frontend、researcher、writer、qa）。用户想换成三国名册（孙权、诸葛亮、吕布、貂蝉、赵云、陈琳、周瑜）时调用 capability_team_import 并传 `theme: "three-kingdoms"`（不传 template），换回中性名册传 `theme: "default"`；只替换角色名册，能力与模型不变，同样经确认框保存。
+- 旧配置兼容：4.0 之前保存、引用三国 id 的项目继续按三国名册加载；按三国 id 创建的队友（如 `lv-bu`）在中性名册下按对应能力路由（backend）。
 - 改职责：roles 的 description，作用于单个角色；能力的 job 是该能力的通用职责。
 - 改模型：capabilities 中给出 provider、model、tier；模型必须在该档位列表中，必要时同时修改 tiers。
 - 调整档位：tiers 中给出该档位的完整模型ID数组。

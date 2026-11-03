@@ -57,7 +57,7 @@ test('目录变化后：已保存的路由仍可加载并被报告，主控不�
   }
 
   // Other edits still save, and a route that is new or changed is still checked strictly.
-  const renamed = await saveProject(project, { roles: { 'lv-bu': { displayName: '后端' } } }, 1, { base: after, root });
+  const renamed = await saveProject(project, { roles: { 'backend': { displayName: '后端' } } }, 1, { base: after, root });
   assert.equal(renamed.revision, 2);
   await assert.rejects(saveProject(project, { capabilities: { frontend: { provider: 'p', model: 'gpt-6.1-sol', tier: 'upper', fallbacks: [] } } }, 2, { base: after, root }), /已归入 medium 档/);
   await assert.rejects(saveProject(project, { capabilities: { backend: { provider: 'p', model: 'gemini-3-flash', fallbacks: [] } } }, 2, { base: after, root }), /已归入 \w+ 档/);

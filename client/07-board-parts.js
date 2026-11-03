@@ -76,21 +76,6 @@
       return { alias: route, grade: 'default', gradeLabel: null };
     }
 
-    /** Three Kingdoms static quotes for idle roles. */
-    function characterQuoteKey(roleId) {
-      const map = {
-        lead: 'live.quote.lead',
-        'sun-quan': 'live.quote.lead',
-        'zhuge-liang': 'live.quote.zhuge-liang',
-        'lv-bu': 'live.quote.lv-bu',
-        'diao-chan': 'live.quote.diao-chan',
-        'zhao-yun': 'live.quote.zhao-yun',
-        'chen-lin': 'live.quote.chen-lin',
-        'zhou-yu': 'live.quote.zhou-yu',
-      };
-      return map[roleId] ?? 'live.quote.default';
-    }
-
     /** Status bubble for cards: task subject + status text, or idle static lines. */
     function statusBubble(card, t, live) {
       const isRunning = card.status === 'running';
@@ -128,7 +113,7 @@
         } else if (phase === 'idle') {
           const idleText = label(t, `live.${card.status}`, card.status);
           headBadge = h('span', { className: 'ctm-sub' }, idleText);
-          const qKey = characterQuoteKey(card.role?.id ?? card.id);
+          const qKey = card.role?.quoteKey ?? characterQuoteKey(card.role?.id ?? card.id);
           const quote = t(qKey);
           bodyContent = cur?.summary ? `${cur.summary} · “${quote}”` : `“${quote}”`;
         }
@@ -170,7 +155,7 @@
           h('div', { className: 'ctm-bd-bubble-body ctm-sub' }, t('live.busyNoTask')));
       }
 
-      const qKey = characterQuoteKey(card.role?.id ?? card.id);
+      const qKey = card.role?.quoteKey ?? characterQuoteKey(card.role?.id ?? card.id);
       const quote = t(qKey);
       const idleText = label(t, `live.${card.status}`, card.status);
       return h('div', { className: 'ctm-bd-bubble' },

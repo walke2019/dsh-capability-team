@@ -130,7 +130,7 @@
       'live.noDeps': 'No task dependencies',
       'live.bubbleRunning': 'Running',
       'live.bubbleWaiting': 'Waiting',
-      'live.quote.lead': 'United we stand for Eastern Wu.',
+      'live.quote.sun-quan': 'United we stand for Eastern Wu.',
       'live.quote.zhuge-liang': 'Strategizing within the tent to win afar.',
       'live.quote.lv-bu': 'Halberd ready, awaiting orders!',
       'live.quote.diao-chan': 'A spark of grace, blooming anew.',

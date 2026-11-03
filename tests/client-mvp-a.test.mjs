@@ -341,10 +341,10 @@ test('MVP-A 5: 状态气泡在空闲时显示静态三国台词，有任务时�
           agentTeam: {
             members: [
               { id: 's_lead', name: 'lead', role: 'lead', phase: 'active' },
-              { id: 's_diao', name: 'diao-chan', role: 'teammate', phase: 'active' },
+              { id: 's_diao', name: 'frontend', role: 'teammate', phase: 'active' },
             ],
             tasks: [
-              { id: 't10', subject: 'UI增强', status: 'in_progress', ownerName: 'diao-chan' },
+              { id: 't10', subject: 'UI增强', status: 'in_progress', ownerName: 'frontend' },
             ],
           },
         },
@@ -359,7 +359,7 @@ test('MVP-A 5: 状态气泡在空闲时显示静态三国台词，有任务时�
   const view = boardDetailsOf(board);
 
   // diao-chan 有任务：应显示 UI增强
-  const diaoCard = h.find(view, n => n.props?.['data-card'] === 'diao-chan');
+  const diaoCard = h.find(view, n => n.props?.['data-card'] === 'frontend');
   const diaoBubble = h.find(diaoCard, n => n.props?.className === 'ctm-bd-bubble');
   assert.ok(diaoBubble);
   assert.ok(JSON.stringify(diaoBubble).includes('UI增强'));

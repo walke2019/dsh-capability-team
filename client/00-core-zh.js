@@ -134,7 +134,7 @@
       'live.noDeps': '暂无任务依赖',
       'live.bubbleRunning': '执行中',
       'live.bubbleWaiting': '等待中',
-      'live.quote.lead': '江东基业，当同心协力。',
+      'live.quote.sun-quan': '江东基业，当同心协力。',
       'live.quote.zhuge-liang': '运筹帷幄之中，决胜千里之外。',
       'live.quote.lv-bu': '方天画戟已备，随时待命！',
       'live.quote.diao-chan': '一点生机，万般颜色。',

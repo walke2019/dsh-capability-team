@@ -16,6 +16,7 @@ import { createRouteStore } from './dispatch-routes-store.js';
 import { applyModelPrefsTool, createModelPrefs } from './model-prefs.js';
 import { createBoardDispatch } from './board-dispatch.js';
 import { baseName } from './session-rotation.js';
+import { legacyRoleId } from './roster-defaults.js';
 import { applySkillCatalog, scopeTools } from './teammate-context.js';
 import { createTokenDiscipline } from './token-discipline.js';
 import { createRouteHealth, mergeHealth } from './route-health.js';
@@ -65,7 +66,8 @@ export function apply(host, config = {}) {
     const m = host.agentTeams.tryMembership(agent);
     if (!project || !m?.name) return undefined;
     const { effective } = team.loadSync(project, agent);
-    return effective.capabilities[effective.roles[baseName(m.name)]?.capability]?.skills;
+    const id = baseName(m.name);
+    return effective.capabilities[effective.roles[legacyRoleId(id, effective.roles) ?? id]?.capability]?.skills;
   });
   applyAccess(ctx, team);
   applyTeammateWait(ctx);
