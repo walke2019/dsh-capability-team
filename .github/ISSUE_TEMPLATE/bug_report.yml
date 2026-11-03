@@ -1,0 +1,73 @@
+name: Bug report
+description: Report a problem with the capability team, omni-search, or global-memory plugins.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please remove API keys, tokens, private gateway hosts, IP addresses, and local absolute paths from everything you paste below.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Select the capability-team preset
+        2. Ask the lead to ...
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DSH version
+      description: Output of `dsh --version`, or the version shown in DSH Desktop.
+      placeholder: 0.2.1-rc.5
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: How do you run DSH?
+      options:
+        - DSH Desktop
+        - dsh web
+        - Both
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin and version
+      description: Which plugin (capability team, omni-search, global-memory) and its version from package.json.
+      placeholder: capability team 3.1.7
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version (if relevant)
+      placeholder: 24.x
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log output or error messages. Redact secrets and private hosts before pasting.
+      render: text

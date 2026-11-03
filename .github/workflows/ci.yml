@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+
+      # `npm test` runs pretest, which rewrites client.js; verify the committed copy first.
+      - name: Check committed client.js
+        run: node scripts/build-client.mjs --check
+
+      # Run through npm so npm_execpath is set for scripts/pack-package.mjs.
+      - name: Test
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Pack (dry run)
+        shell: bash
+        run: |
+          for dir in . packages/omni-search packages/global-memory; do
+            name=$(node -p "require('./$dir/package.json').name")
+            echo "::group::npm pack --dry-run $name ($dir)"
+            (cd "$dir" && npm pack --dry-run)
+            echo "::endgroup::"
+          done

@@ -1,0 +1,70 @@
+name: Release
+
+# Manual only: never add push, tag, or schedule triggers here.
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package to publish
+        required: true
+        type: choice
+        options:
+          - root
+          - omni-search
+          - global-memory
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release-${{ inputs.package }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.package }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Resolve package directory
+        id: target
+        env:
+          PACKAGE_INPUT: ${{ inputs.package }}
+        run: |
+          case "$PACKAGE_INPUT" in
+            root) dir=. ;;
+            omni-search) dir=packages/omni-search ;;
+            global-memory) dir=packages/global-memory ;;
+            *) echo "::error::Unknown package input: $PACKAGE_INPUT"; exit 1 ;;
+          esac
+          name=$(node -p "require('./$dir/package.json').name")
+          version=$(node -p "require('./$dir/package.json').version")
+          private=$(node -p "Boolean(require('./$dir/package.json').private)")
+          if [ "$private" = "true" ]; then
+            echo "::error::$name is marked \"private\": true in $dir/package.json; npm refuses to publish it."
+            exit 1
+          fi
+          echo "Publishing $name@$version from $dir"
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish
+        working-directory: ${{ steps.target.outputs.dir }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

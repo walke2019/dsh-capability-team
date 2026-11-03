@@ -1,0 +1,101 @@
+name: DSH compatibility
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dsh-compat
+  cancel-in-progress: false
+
+jobs:
+  tags:
+    name: Resolve DSH dist-tags
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.tags.outputs.matrix }}
+    steps:
+      - id: tags
+        name: Read @deepseek-ai/dsh dist-tags
+        run: |
+          node --input-type=module -e "
+          const url = 'https://registry.npmjs.org/-/package/@deepseek-ai%2fdsh/dist-tags';
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('dist-tags request failed: HTTP ' + response.status);
+          const tags = await response.json();
+          const include = ['latest', 'next', 'alpha']
+            .filter(tag => tags[tag])
+            .map(tag => ({ tag, version: tags[tag] }));
+          if (!include.length) throw new Error('No latest/next/alpha dist-tag found for @deepseek-ai/dsh');
+          console.log(JSON.stringify(include, null, 2));
+          const { appendFileSync } = await import('node:fs');
+          appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify({ include }) + '\n');
+          "
+
+  smoke:
+    name: dsh@${{ matrix.tag }} (${{ matrix.version }})
+    needs: tags
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.tags.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      # The CLI is large (~480 MB); reuse the npm download cache per resolved version.
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-dsh-${{ runner.os }}-${{ matrix.version }}
+          restore-keys: npm-dsh-${{ runner.os }}-
+
+      - name: Install @deepseek-ai/dsh@${{ matrix.version }}
+        run: npm install --global --no-audit --no-fund --prefer-offline "@deepseek-ai/dsh@${{ matrix.version }}"
+
+      # The native Cordis cases need a Desktop asar (DSH_NATIVE_ASAR) and skip here;
+      # the static patch assertions still run.
+      - name: Team mount test
+        run: node --test tests/team-mount.test.mjs
+
+      - name: Peer and profile smoke check
+        run: node scripts/ci-dsh-smoke.mjs
+
+  report:
+    name: Report scheduled failure
+    needs: [tags, smoke]
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const label = 'dsh-compat';
+            const title = 'DSH compatibility check failed';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `The scheduled DSH compatibility check failed on ${new Date().toISOString()}.\n\nRun: ${runUrl}`;
+            try {
+              await github.rest.issues.getLabel({ ...context.repo, name: label });
+            } catch {
+              await github.rest.issues.createLabel({ ...context.repo, name: label, color: 'd93f0b',
+                description: 'Compatibility with published @deepseek-ai/dsh releases' });
+            }
+            const { data: open } = await github.rest.issues.listForRepo({
+              ...context.repo, state: 'open', labels: label, per_page: 1 });
+            if (open.length) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: open[0].number, body });
+              core.info(`Commented on #${open[0].number}`);
+            } else {
+              const { data: issue } = await github.rest.issues.create({ ...context.repo, title, body, labels: [label] });
+              core.info(`Opened #${issue.number}`);
+            }
