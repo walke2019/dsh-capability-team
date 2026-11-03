@@ -3,7 +3,7 @@
      * clicks through `onSelect`; `selectedId` lets a host (or a test) pin the selection from outside.
      */
     function TeamBoard({ roles, activity, allocations, since, t, open, live, usage, runtimeState, currentMemberId, leadSessionId, selectedId }) {
-      const cards = boardCards(roles, activity, allocations);
+      const cards = boardCards(localizeRoles(roles, t), activity, allocations);
       const running = cards.filter(c => c.status === 'running').length;
       const [picked, setPicked] = React.useState({ stageSelected: null });
       const selected = selectedId !== undefined ? selectedId : (picked?.stageSelected ?? null);

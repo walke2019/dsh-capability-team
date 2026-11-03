@@ -42,7 +42,11 @@
 
 档位规则基于模型命名与厂商代际模式。匹配顺序考虑代际、能力偏好、版本及渠道注册顺序。全局禁用策略在匹配与实际路由时生效。最多选择三个同档备选，优先同模型的其他渠道，再考虑其他厂商的模型。不会静默降档：没有合格模型时能力保持未分配并阻止请求。未识别的模型会报告而不会猜测。
 
-渠道目录变化后后续请求会重新匹配。显式保存的项目配置优先于自动匹配。`capability_team_read` 返回 `autoMatch` 报告，包括 matched、upgraded、below-tier、unassigned 和未识别模型。
+渠道目录变化后后续请求会重新匹配。
+
+### 单模型模式
+
+模型目录无法满足某能力的档位时（例如只配置了一个模型），该能力的角色请求会被阻止，报错中会提示单模型模式。主控调用 `capability_team_save` 并传 `single_model: "use-default"` 开启：插件读取 DSH 当前默认模型（设置 → 模型），只有在用户于原生配置确认框中批准后，才把 `singleModel: { provider, model, acceptedAt }` 写入项目配置。开启期间，所有未分配路由的能力对应的角色统一使用该模型；已分配路由的角色保持原路由。此模式没有备选（容灾仍只允许同档），模型失败会直接报告。角色卡片、角色视图与战报显示“单模型模式”标记。传 `single_model: "off"` 关闭（同样需确认），之后未分配角色恢复为阻止请求。显式保存的项目配置优先于自动匹配。`capability_team_read` 返回 `autoMatch` 报告，包括 matched、upgraded、below-tier、unassigned 和未识别模型。
 
 ## 对话式配置与团队模板
 
@@ -107,9 +111,18 @@
 
 ## 独立工具与集成配置
 
-右侧面板没有集成页或设置界面，配置为只读。通过 `integrations.json`、Host 环境变量或 DSH 凭据库提供配置。在 DSH 插件管理器安装并启用 `packages/omni-search` 与 `packages/global-memory` 目录（或对应 `.tgz` 包），然后重启 DSH。团队插件的记忆枢纽也读取 `global-memory` 使用的同一份配置。
+可通过插件设置表单、`integrations.json`、Host 环境变量或 DSH 凭据库提供配置。两个独立插件导出 schemastery `Config`（可选 peer `@deepseek-ai/schemastery >= 3.18.4`，由 DSH 提供），其实时字段在 DSH“插件”页对应插件的详情中显示为表单（由本包 Web 客户端按包名渲染）。表单中填写的字段优先于凭据、环境变量和文件；留空则沿用下层配置，已有部署不受影响。`*KeyEnv` 字段填写 DSH 凭据或环境变量的名称，而不是密钥本身。
 
-`omni-search`（`@local/dsh-omni-search`）无界面，向所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status`，名称刻意区别于 DSH 内置的 `web_search` / `web_fetch`；团队插件中 `search: false` 的角色不能调用这五个工具。插件/工具未安装或未启用时，应如实报告。`global-memory` 读取嵌入和记忆后端配置。
+| 插件 | 表单字段 | 对应集成字段 |
+|---|---|---|
+| `dsh-omni-search` | `engines`、`fetchEngines`、`searxngUrl`、`baseUrl`、`tavilyKeyEnv`、`braveKeyEnv`、`searxngKeyEnv`、`jinaKeyEnv`、`apiKeyEnv` | `search.*`（同名） |
+| `dsh-omni-search` | `audioBaseUrl`、`audioKeyEnv` | `audio.baseUrl`、`audio.apiKeyEnv` |
+| `dsh-capability-memory` | `embeddingBaseUrl`、`embeddingModel`、`embeddingKeyEnv` | `embeddings.baseUrl`、`.model`、`.apiKeyEnv` |
+| `dsh-capability-memory` | `memoryBackend`、`memoryUrl`、`memoryKeyEnv` | `memory.backend`、`.url`、`.apiKeyEnv` |
+
+若残留的旧版 schemastery（无 `.volatile()`）遮蔽了 DSH 自带版本，插件会拒绝加载，并在错误中指明需删除的目录。在 DSH 插件管理器安装并启用 `packages/omni-search` 与 `packages/global-memory` 目录（或对应 `.tgz` 包），然后重启 DSH。团队插件的记忆枢纽也读取 `global-memory` 使用的同一份配置。
+
+`omni-search`（`dsh-omni-search`）无界面，向所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status`，名称刻意区别于 DSH 内置的 `web_search` / `web_fetch`；团队插件中 `search: false` 的角色不能调用这五个工具。插件/工具未安装或未启用时，应如实报告。`global-memory` 读取嵌入和记忆后端配置。
 
 ### 搜索与抓取引擎
 
@@ -128,7 +141,7 @@
 }
 ```
 
-也可在 DSH Host 环境设置上表中的变量（`OMNI_SEARCH_BASE_URL`、`SEARXNG_URL`、`OMNI_AUDIO_BASE_URL`、`EMBEDDING_BASE_URL`、`OPENVIKING_URL` 等），环境变量优先于文件。密钥仅保存在 DSH 凭据库或对应环境变量中，不要写入配置文件；每个密钥名先查 DSH 凭据库，再查环境变量。字段详情见两个独立插件的 README。
+也可在 DSH Host 环境设置上表中的变量（`OMNI_SEARCH_BASE_URL`、`SEARXNG_URL`、`OMNI_AUDIO_BASE_URL`、`EMBEDDING_BASE_URL`、`OPENVIKING_URL` 等），环境变量优先于文件。优先级：设置表单 › DSH 凭据 › 环境变量 › `integrations.json` › 默认值。密钥仅保存在 DSH 凭据库或对应环境变量中，不要写入配置文件；每个密钥名先查 DSH 凭据库，再查环境变量。字段详情见两个独立插件的 README。
 
 ### 从 DSH 凭据库读取设置
 
@@ -140,7 +153,7 @@
 
 | 旧 | 新 |
 |---|---|
-| `packages/cpa-tools` | `packages/omni-search`（`@local/dsh-omni-search`，patch id `omni-search`） |
+| `packages/cpa-tools` | `packages/omni-search`（`dsh-omni-search`，patch id `omni-search`） |
 | `cpa_search`、`cpa_fetch`、`cpa_search_providers`、`cpa_transcribe`、`cpa_transcribe_status` | `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status` |
 | `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY`（`custom` 引擎） |
 | `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |

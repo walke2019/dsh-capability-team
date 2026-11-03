@@ -6,17 +6,34 @@ import { createMemoryStore } from './shared/memory-store.js';
 import { createEmbedder } from './shared/memory-embed.js';
 import { createMemoryBackend } from './shared/memory-backends.js';
 import { defaultRoot } from './shared/theme.js';
-import { setCredentialResolver, knownSecretValues, refreshCredentials } from './shared/integrations-config.js';
-// No `Config` export: cordis validates an exported Config through Standard Schema (`Config['~standard']`), and the
-// plain JSON-Schema object in config.js would make every load fail. `configuration()` validates the input instead.
+import { setCredentialResolver, knownSecretValues, refreshCredentials, setSettingsReader, MEMORY_BACKENDS } from './shared/integrations-config.js';
+import { schemastery, splitSettings } from './shared/settings-schema.js';
+// Settings-form fields (DSH plugin page) → integrations target. Unset fields keep integrations.json/env/credentials.
+export const SETTINGS_FIELDS = Object.freeze({ embeddingBaseUrl: ['embeddings', 'baseUrl'], embeddingModel: ['embeddings', 'model'], embeddingKeyEnv: ['embeddings', 'apiKeyEnv'],
+  memoryBackend: ['memory', 'backend'], memoryUrl: ['memory', 'url'], memoryKeyEnv: ['memory', 'apiKeyEnv'] });
+const z = schemastery('dsh-capability-memory');
+// cordis validates `Config` through Standard Schema; the plain options keep their defaults and configuration() checks.
+// Key fields hold credential/environment variable NAMES (role credential-ref), never key values.
+export const createConfig = z => z.object({
+  enabled: z.boolean().default(true), autoRecall: z.boolean().default(true),
+  injectChars: z.natural().min(200).max(6000).default(2400), recallK: z.natural().min(1).max(20).default(6),
+  recallTimeoutMs: z.natural().min(100).max(10000).default(2000), sharedRecall: z.boolean().default(true),
+  sharedProjectFilter: z.union([z.const('current'), z.const('none'), z.const(null)]), syncWrites: z.boolean().default(true),
+  embeddingBaseUrl: z.string().volatile(), embeddingModel: z.string().volatile(), embeddingKeyEnv: z.string().role('credential-ref').volatile(),
+  memoryBackend: z.union(MEMORY_BACKENDS.map(v => z.const(v))).volatile(), memoryUrl: z.string().volatile(), memoryKeyEnv: z.string().role('credential-ref').volatile(),
+});
+export const Config = z ? createConfig(z) : undefined;
 export const inject = ['agents','systemPrompt','tools','workingDirectory','agentPresets'];
 const instances = new WeakSet();
 export function apply(ctx, input = {}) {
-  const config = configuration(input);
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid configuration');
+  const { plain, read } = splitSettings(input, SETTINGS_FIELDS);
+  const config = configuration(Object.fromEntries(Object.entries(plain).filter(([, v]) => v !== undefined)));
   const owner = ctx.root ?? ctx;
   if (instances.has(owner)) throw new Error('global-memory already installed in this profile');
   instances.add(owner);
-  ctx.effect(() => () => { instances.delete(owner); setCredentialResolver(null); });
+  ctx.effect(() => () => { instances.delete(owner); setCredentialResolver(null); setSettingsReader(null); });
+  setSettingsReader(read);
   if (!config.enabled) return;
   ctx.inject?.(['credentials'], scoped => {
     setCredentialResolver(name => scoped.credentials.resolve(name));
@@ -24,6 +41,8 @@ export function apply(ctx, input = {}) {
     // Settings pushed to the credential store (EMBEDDING_*, MEMORY_BACKEND, OPENVIKING_URL...) apply at once.
     void refreshCredentials().catch(() => {});
   });
+  // A settings-form edit commits in place (volatile Config): re-read the key names it may have changed.
+  ctx.on?.('loader/volatile-update', () => { void refreshCredentials().catch(() => {}); });
   ctx.inject?.(['agentTeams'], () => {});
   const store = createMemoryStore(defaultRoot());
   const embedder = createEmbedder();

@@ -199,7 +199,7 @@
     }
 
     /** Battle report view (MVP-B). */
-    function BattleReportView({ sessionId, liveTeam, live, t, runtimeState }) {
+    function BattleReportView({ sessionId, liveTeam, live, t, runtimeState, singleModel }) {
       const members = liveTeam?.members ?? [];
       let totalTurns = 0;
       let totalSteps = 0;
@@ -303,7 +303,8 @@
 
       // 汇总展示
       return h('div', { className: 'ctm-rpt-shelf' },
-        h('span', { className: 'ctm-label' }, t('report.title')),
+        h('span', { className: 'ctm-label' }, t('report.title'),
+          singleModel ? h('span', { className: 'ctm-badge', 'data-tone': 'warn', 'data-single-model': '', title: `${singleModel.provider}/${singleModel.model}` }, t('roles.singleModel')) : null),
         h('p', { className: 'ctm-sub' },
           fmt(t('report.window'), {
             start: earliestFirstTurn ? when(earliestFirstTurn) : t('common.unknown'),

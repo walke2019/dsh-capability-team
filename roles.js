@@ -47,7 +47,7 @@ export function apply(ctx, team, failover, observability, taskControl) {
     if (!team.owns(agent)) return previous;
     const role = await team.resolve(agent);
     // Fail closed: silently inheriting the Lead model defeats capability tiers and hides misconfiguration.
-    if (role.unassigned) throw new Error(`角色 ${role.displayName ?? role.id}（${role.capability}）未分配合格模型，已阻止请求；请配置该能力的渠道与模型，不会自动沿用主控模型或降档。`);
+    if (role.unassigned) throw new Error(`角色 ${role.displayName ?? role.id}（${role.capability}）未分配合格模型，已阻止请求；请配置该能力的渠道与模型，不会自动沿用主控模型或降档。只有一个可用模型时，可让主控调用 capability_team_save（single_model=use-default）开启单模型模式，经你在确认框中同意后，未分配角色统一使用 DSH 当前默认模型（无备选、可随时关闭）。`);
     // DSH's own sandbox preset for read-only roles; re-checked every request so config edits take effect.
     ensurePreset(ctx.get?.('permissionPresets'), agent.session, role.access, message => ctx.logger?.warn?.(`capability-team: ${message}`));
     const projections = ctx.get?.('sessionProjections');

@@ -6,7 +6,12 @@ import { applyObservabilityProjections } from './observability-projection.js';
 import { applyObservabilityApi } from './observability-api.js';
 import { applyTaskControlApi } from './task-control-api.js';
 import { applyDispatchConfirmApi } from './dispatch-confirm.js';
+import { applyOnboardingApi } from './onboarding.js';
+import { schemastery } from './settings-schema.js';
 export const inject = ['commands', 'agentPresets', 'tools'];
+// Only the welcome card's acknowledgement is a live setting (the client renders its own card, so no auto page).
+const z = schemastery('dsh-capability-team');
+export const Config = z ? z.object({ welcomeVersion: z.string().volatile() }) : undefined;
 /** Live roster state from the host's Agent Teams service: status, model, owned tasks. No log reads, cheap to poll. */
 export function teamActivity(ctx, agent) {
   const teams = ctx.get?.('agentTeams');
@@ -37,7 +42,7 @@ export async function inspectTeamRuntime(ctx, agent) {
   const memberEvidence = preset === 'capability-team'
     ? await readTeamEvidence(ctx.get?.('sessionQuery'), ctx.get?.('agentTeams'), agent) : [];
   return {
-    sessionId: agent.id, preset,
+    sessionId: agent.id, preset, teamServicePresent: !!ctx.get?.('agentTeams'),
     declared: !!definition, activationError: definition?.broken ?? null,
     ready: preset === 'capability-team' && !!definition && !definition.broken && missingTools.length === 0 && team !== null && !teamError,
     missingTools,
@@ -88,6 +93,8 @@ export function apply(ctx) {
   applyObservabilityApi(ctx);
   applyTaskControlApi(ctx);
   applyDispatchConfirmApi(ctx);
+  applyOnboardingApi(ctx);
+  ctx.inject?.(['settings'], scoped => { scoped.effect(() => scoped.settings.configure({ auto: false }, ctx.fiber)); });
   ctx.effect(() => ctx.commands.register({
     name: 'capability-model-policy',
     description: '保存全局模型禁用列表与前缀规则；对所有能力协作团队会话从下一次请求起生效。',

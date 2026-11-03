@@ -1,4 +1,4 @@
-    function Overview({ sessionId, t: injectedT, hostT, load, save, live, cache, openMember }) {
+    function Overview({ sessionId, t: injectedT, hostT, load, save, live, cache, openMember, onboarding }) {
       const [state, setState] = React.useState({ pending: false });
       const [tab, setTab] = React.useState('models');
       const [showOverview, setShowOverview] = React.useState(false);
@@ -287,6 +287,7 @@
           h('p', { className: 'ctm-sub ctm-ov-subrow', title: subRowText }, subRowText)),
         h('div', { className: 'ctm-ov-scroll' },
           subagentNoticeNode,
+          onboarding ? onboarding({ t }) : null,
           current.error ? h('p', { role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, current.error) : null,
           !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(isPresetMounted === false ? 'overview.notMounted' : current.pending ? 'overview.loading' : 'overview.empty')),
             (isPresetMounted === false || current.pending) ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
@@ -328,7 +329,7 @@
               h(ArtifactsRack, { sessionId: effectiveSessionId, liveTeam, live, t }))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'report', hidden: tab !== 'report' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:report`, t },
-              h(BattleReportView, { sessionId: effectiveSessionId, liveTeam, live, t, runtimeState }))) : null,
+              h(BattleReportView, { sessionId: effectiveSessionId, liveTeam, live, t, runtimeState, singleModel: team?.singleModel }))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'roles', hidden: tab !== 'roles' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:roles`, t },
               team ? h(React.Fragment, null,

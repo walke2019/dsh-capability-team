@@ -185,7 +185,7 @@
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'capability-team: dictionaries');
         ctx.effect(() => {
           const tag = document.createElement('style');
-          tag.dataset.plugin = '@local/dsh-capability-team';
+          tag.dataset.plugin = 'dsh-capability-team';
           tag.textContent = CSS + STAGE_CSS;
           document.head.appendChild(tag);
           return () => tag.remove();
@@ -202,6 +202,7 @@
         };
         const load = async sessionId => expandStatus(await execute(sessionId, '/capability-status'));
         const live = liveStore(ctx);
+        const onboardingGate = registerOnboarding(ctx, bound);
         const save = (sessionId, disabledRoutes, expectedRevision) => execute(sessionId,
           '/capability-model-policy ' + JSON.stringify({ disabledRoutes, expectedRevision }));
         ctx.effect(() => ctx.sidebarRightTabs.register({
@@ -217,9 +218,9 @@
           const isCtm = effectiveLive?.isCapabilityTeam?.(targetSessionId);
           if (isCtm === false) {
             return h('div', { className: 'ctm-ov-empty ctm-not-mounted', 'data-tone': 'warn', style: { padding: '24px' } },
-              h('p', { className: 'ctm-sub' }, bound('overview.notMounted')));
+              onboardingGate(props), h('p', { className: 'ctm-sub' }, bound('overview.notMounted')));
           }
-          return h(Overview, { ...props,
+          return h(Overview, { ...props, onboarding: props.onboarding ?? onboardingGate,
           // Item 3: Overview owns its own bilingual dictionary lookup keyed by its own locale toggle, not the
           // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
           // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.

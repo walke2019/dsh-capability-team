@@ -6,6 +6,8 @@ import { validateRotation } from './session-rotation.js';
 import { validateSkillsPolicy } from './teammate-context.js';
 import { validateTokenRules } from './token-discipline.js';
 import { unroutableReason } from './defaults.js';
+import { DEFAULT_ROLES, rosterBase, legacyRoleId } from './roster-defaults.js';
+import { patchSingleModel, effectiveRoute, singleModelChanges } from './single-model.js';
 const ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const LINE_CONTROL = /[\x00-\x1f\x7f]/;
 const TEXT_CONTROL = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
@@ -76,15 +78,7 @@ export const seed = deepFreeze({
       access: { editPaths: ['**/*.md', '**/*.mdx', '**/*.txt', 'docs/**'], shell: false } },
     qa: { job: '测试计划、回归测试、接口与界面验收、失败复现及证据；区分实测、模拟与未验证，不默认修改业务实现', whenToUse: '实现完成后需要独立验证、编写或运行测试、复现缺陷并留存证据时', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
   },
-  roles: {
-    lead: { displayName: '孙权', capability: 'orchestrator' },
-    'zhuge-liang': { displayName: '诸葛亮', capability: 'technical-director' },
-    'lv-bu': { displayName: '吕布', capability: 'backend' },
-    'diao-chan': { displayName: '貂蝉', capability: 'frontend' },
-    'zhao-yun': { displayName: '赵云', capability: 'research' },
-    'chen-lin': { displayName: '陈琳', capability: 'writer' },
-    'zhou-yu': { displayName: '周瑜', capability: 'qa' },
-  },
+  roles: structuredClone(DEFAULT_ROLES), // roster-defaults.js; the hero roster is the optional three-kingdoms theme
 });
 function text(value, max, label, multiline = false) {
   if (typeof value !== 'string' || !value.trim() || value.length > max || (multiline ? TEXT_CONTROL : LINE_CONTROL).test(value)) {
@@ -128,7 +122,6 @@ export function validateConfig(config, { trustedRoutes } = {}) {
       ...(c.skills === undefined || c.skills === null ? {} : { skills: validateSkillsPolicy(c.skills, `能力 ${id}`) }),
       // Per-session budget of billable tokens (uncached input + cache write + output) for each member with this capability.
       ...(c.maxTokens === undefined || c.maxTokens === null ? {} : { maxTokens: count(c.maxTokens, 1000, 1e10, `能力 ${id} 的 maxTokens`) }) };
-    // A capability may stay unassigned when the user's catalog has nothing usable; its role then keeps the session model.
     if (c.provider === undefined && c.model === undefined) {
       if (c.fallbacks?.length) throw new Error(`能力 ${id} 未指定主模型，不能只配置备选`);
       if (c.longContext) throw new Error(`能力 ${id} 未指定主模型，不能只配置长上下文路由`);
@@ -155,7 +148,7 @@ export function validateConfig(config, { trustedRoutes } = {}) {
     roles[id] = { displayName, capability: r.capability, ...(r.description === undefined ? {} : { description: text(r.description, 2000, `角色 ${id} 的职责描述`, true) }) };
   }
   if (!roles.lead) throw new Error('必须保留 lead 角色');
-  return { name, failover: validateFailover(config.failover ?? seed.failover), workflow: validateWorkflow(config.workflow ?? seed.workflow), tiers, capabilities, roles, ...(tierDrift.length ? { tierDrift } : {}) };
+  return { name, failover: validateFailover(config.failover ?? seed.failover), workflow: validateWorkflow(config.workflow ?? seed.workflow), tiers, capabilities, roles, ...(tierDrift.length ? { tierDrift } : {}), ...patchSingleModel(undefined, config.singleModel ?? null) };
 }
 /**
  * An explicitly chosen model may not sit in another tier (no cross-tier routes), but a model the automatic
@@ -311,12 +304,12 @@ function withoutStaleInherited(capabilities, overrides, tiers) {
 export function effectiveConfig(overrides = {}, base = seed, { trustedFrom } = {}) {
   const tiers = layer(base.tiers, overrides.tiers);
   return validateConfig({
-    name: overrides.name ?? base.name,
+    name: overrides.name ?? base.name, singleModel: overrides.singleModel,
     failover: { ...base.failover, ...(overrides.failover ?? {}) },
     workflow: { ...(base.workflow ?? seed.workflow), ...(overrides.workflow ?? {}) },
     tiers,
     capabilities: withoutStaleInherited(layer(base.capabilities, overrides.capabilities), overrides.capabilities, tiers),
-    roles: layer(base.roles, overrides.roles),
+    roles: layer(rosterBase(base.roles, overrides), overrides.roles), // pre-4.0 saves keep the hero roster
   }, trustedFrom ? { trustedRoutes: storedRoutes(trustedFrom) } : {});
 }
 /** Base configuration from preset config: bindings may rename or add seed roles. */
@@ -343,19 +336,19 @@ export function withAutoRoutes(base, match) {
 /** Upgrade the earlier names/descriptions/routes file format in memory. */
 export function migrateProject(raw) {
   if (!isMap(raw)) throw new Error('项目团队配置文件格式无效');
-  const { revision = 0, name, failover, workflow, names = {}, descriptions = {}, routes = {}, tiers = {}, capabilities = {}, roles = {} } = raw;
+  const { revision = 0, name, failover, workflow, roster, singleModel, names = {}, descriptions = {}, routes = {}, tiers = {}, capabilities = {}, roles = {} } = raw;
   const legacyRoles = {};
   for (const id of new Set([...Object.keys(names), ...Object.keys(descriptions)])) {
     legacyRoles[id] = { ...(names[id] === undefined ? {} : { displayName: names[id] }), ...(descriptions[id] === undefined ? {} : { description: descriptions[id] }) };
   }
-  return { revision, ...(name === undefined ? {} : { name }), ...(failover === undefined ? {} : { failover }), ...(workflow === undefined ? {} : { workflow }), tiers: { ...tiers }, capabilities: { ...routes, ...capabilities }, roles: { ...legacyRoles, ...roles } };
+  return { revision, ...(roster === undefined ? {} : { roster }), ...(singleModel == null ? {} : { singleModel }), ...(name === undefined ? {} : { name }), ...(failover === undefined ? {} : { failover }), ...(workflow === undefined ? {} : { workflow }), tiers: { ...tiers }, capabilities: { ...routes, ...capabilities }, roles: { ...legacyRoles, ...roles } };
 }
 /**
  * Apply one conversational patch to stored overrides.
  * Per entry: an object merges fields, null reverts to the default, false removes the entry.
  */
 export function applyPatch(overrides, patch) {
-  const next = { revision: overrides.revision ?? 0, name: overrides.name };
+  const next = { revision: overrides.revision ?? 0, name: overrides.name, ...(overrides.roster === undefined ? {} : { roster: overrides.roster }), ...patchSingleModel(overrides.singleModel, patch.singleModel) };
   if (patch.name !== undefined) next.name = text(patch.name, 80, '配置名称');
   if (next.name === undefined) delete next.name;
   // failover is one object: fields merge, null restores the preset policy.
@@ -383,14 +376,14 @@ const rolePolicies = c => ({ ...(c.access ? { access: c.access } : {}), ...(c.ma
 /** One model-facing row per role, with the route its capability resolves to. */
 export function roleView(effective) {
   return Object.entries(effective.roles).map(([id, r]) => {
-    const c = effective.capabilities[r.capability];
-    return { id, displayName: r.displayName, capability: r.capability, description: r.description ?? c.job, ...(c.whenToUse ? { whenToUse: c.whenToUse } : {}), provider: c.provider, model: c.model, tier: c.tier, search: c.search, fallbacks: c.fallbacks, ...rolePolicies(c) };
+    const c = effective.capabilities[r.capability]; const route = effectiveRoute(c, effective.singleModel);
+    return { id, displayName: r.displayName, capability: r.capability, description: r.description ?? c.job, ...(c.whenToUse ? { whenToUse: c.whenToUse } : {}), provider: route.provider, model: route.model, tier: c.tier, search: c.search, fallbacks: route.fallbacks, ...rolePolicies(c), ...(route.singleModel ? { singleModel: true } : {}) };
   });
 }
 const SECTION_LABEL = { tiers: '档位', capabilities: '能力', roles: '角色' };
 /** Human-readable list of every field that differs between two effective configurations. */
 export function describeChanges(before, after) {
-  const lines = before.name === after.name ? [] : [`配置名称：${before.name} → ${after.name}`];
+  const lines = [...(before.name === after.name ? [] : [`配置名称：${before.name} → ${after.name}`]), ...singleModelChanges(before.singleModel, after.singleModel)];
   const fa = JSON.stringify(before.failover); const fb = JSON.stringify(after.failover);
   if (fa !== fb) lines.push(`容灾策略：${fa} → ${fb}`);
   const wa = JSON.stringify(before.workflow); const wb = JSON.stringify(after.workflow);
@@ -408,9 +401,10 @@ export function resolveRole(membership, effective) {
   const name = !membership || membership.role === 'lead' ? 'lead' : membership.name;
   // A rotation successor `<role>-r<N>` keeps its role's model, access and budget.
   const base = name.replace(/-r\d+$/, '');
-  const id = Object.hasOwn(effective.roles, name) || !Object.hasOwn(effective.roles, base) ? name : base;
+  const own = Object.hasOwn(effective.roles, name) || !Object.hasOwn(effective.roles, base) ? name : base;
+  const id = legacyRoleId(own, effective.roles) ?? legacyRoleId(base, effective.roles) ?? own; // `lv-bu(-rN)` routes as backend
   const role = Object.hasOwn(effective.roles, id) ? effective.roles[id] : undefined;
   if (!role) throw new Error(`队友 ${id} 未在当前项目的团队配置中登记，无法确定模型。主控请加载 project-role-theme 技能，经用户确认后用 capability_team_save 登记该角色及能力；不按名称猜测模型。`);
-  const c = effective.capabilities[role.capability];
-  return { id, displayName: role.displayName, capability: role.capability, description: role.description ?? c.job, provider: c.provider, model: c.model, tier: c.tier, search: c.search, fallbacks: c.fallbacks, failover: effective.failover, ...rolePolicies(c), ...(c.provider === undefined ? { unassigned: true } : {}) };
+  const c = effective.capabilities[role.capability]; const r = effectiveRoute(c, effective.singleModel);
+  return { id, displayName: role.displayName, capability: role.capability, description: role.description ?? c.job, provider: r.provider, model: r.model, tier: c.tier, search: c.search, fallbacks: r.fallbacks, failover: effective.failover, ...rolePolicies(c), ...(r.unassigned ? { unassigned: true } : {}), ...(r.singleModel ? { singleModel: true } : {}) };
 }

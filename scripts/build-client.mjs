@@ -11,7 +11,7 @@ const HEAD = `${GENERATED}
 // Web cards and the right-sidebar overview for the capability-team tools. React comes from the host module
 // table; no other Harness Client package is required (host tokens are the only shared styling dependency).
 window.__ModuleLoader__.load({
-  id: '@local/dsh-capability-team',
+  id: 'dsh-capability-team',
   factory(require) {
 `;
 const TAIL = `

@@ -1,7 +1,7 @@
 // External integrations (search engines, embeddings, speech, memory) are per-user data, never code: base URLs,
 // paths, headers, models and engine order all come from configuration, and nothing assumes a particular vendor.
 // Keys are never stored: the config names the environment variable (or DSH credential) that holds each key.
-// Read-only layers: environment variables › user integrations.json › defaults. No HTTP/config writer.
+// Read-only layers: bundle settings form (when set) › credentials/environment › user integrations.json › defaults.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defaultRoot } from './theme.js';
@@ -111,6 +111,10 @@ function validateField(section, key, value) {
     default: return fail(label, '不是支持的字段');
   }
 }
+// Settings layer: the owning bundle's volatile DSH Config (settings-schema.js), read on every resolve.
+let settingsReader = () => ({});
+export function setSettingsReader(fn) { settingsReader = typeof fn === 'function' ? fn : () => ({}); }
+function readSettings() { try { return settingsReader() ?? {}; } catch { return {}; } }
 /** Validate a partial config ({search?, embeddings?}); unknown sections or fields are rejected. */
 export function validateIntegrations(value) {
   if (value === undefined || value === null) return {};
@@ -142,6 +146,7 @@ export function resolveIntegrations({ root = defaultRoot(), env = process.env } 
   const effective = {}, sources = {}, keys = {};
   // The credential store only backs the real process environment (tests pass their own env to isolate).
   const useStore = env === process.env;
+  const settings = useStore ? readSettings() : {};
   for (const section of SECTIONS) {
     effective[section] = {}; sources[section] = {};
     for (const key of Object.keys(INTEGRATION_DEFAULTS[section])) {
@@ -156,6 +161,10 @@ export function resolveIntegrations({ root = defaultRoot(), env = process.env } 
       if (file.value[section]?.[key] !== undefined) { value = file.value[section][key]; source = 'file'; }
       if (override) {
         try { value = validateField(section, key, overrideValue(key, override.raw)); source = override.source; } catch { /* an invalid override is ignored, not trusted */ }
+      }
+      // A field set in the bundle's DSH settings form wins; unset fields keep the layers below.
+      if (useStore && settings[section]?.[key] !== undefined) {
+        try { value = validateField(section, key, settings[section][key]); source = 'settings'; } catch { /* invalid form value ignored */ }
       }
       effective[section][key] = value; sources[section][key] = source;
     }
