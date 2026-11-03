@@ -46,8 +46,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Compatibility
 
-- Project configurations saved before 4.0 that rename or remove hero roles keep the hero roster; their next save
-  stores the roster explicitly (`roster: 2`).
+- Project configurations saved before 4.0 that store any hero role (renamed, removed, or complete roles from a
+  template) keep the hero roster; their next save stores the roster explicitly (`roster: 2`).
+- Projects that never saved a role keep no trace of the old default and show the neutral roster after upgrading;
+  ask the lead to apply theme `three-kingdoms` to restore the hero names.
 - Teammates spawned under hero ids (for example `lv-bu`, `diao-chan-r2`) still resolve to the matching neutral
   role's capability, model and policies when the project uses the neutral roster.
 

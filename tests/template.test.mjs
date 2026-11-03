@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { toTemplate, templatePatch } from '../template.js';
-import { effectiveConfig, applyPatch } from '../config.js';
+import { effectiveConfig, applyPatch, seed } from '../config.js';
+import { pinRoster } from '../roster-defaults.js';
 const tiers = { upper: ['m1', 'm2'], high: [], medium: [], low: [] };
 test('导出只含可移植字段，不含渠道、模型、备选与长上下文路由', () => {
   const effective = effectiveConfig({ tiers, capabilities: { backend: { provider: 'p', model: 'm1', fallbacks: [{ provider: 'q', model: 'm2' }], longContext: { thresholdTokens: 9000, provider: 'q', model: 'm2' }, maxTokens: 5000, planFirst: true } } });
@@ -17,7 +18,8 @@ test('导入：策略按模板覆盖、保留已有路由、角色整体替换�
   const template = JSON.parse(JSON.stringify(toTemplate(source)));
   const projectOverrides = { revision: 3, tiers, capabilities: { backend: { provider: 'p', model: 'm1', planFirst: true } }, roles: { extra: { displayName: '额外', capability: 'qa' } } };
   const current = effectiveConfig(projectOverrides);
-  const next = effectiveConfig(applyPatch(projectOverrides, templatePatch(template, current)));
+  // Same path as saveProject in theme.js: every 4.0 save is pinned, so a hero-role template is not read as a 3.x save.
+  const next = effectiveConfig(pinRoster(applyPatch(projectOverrides, templatePatch(template, current)), projectOverrides, seed.roles));
   assert.equal(next.name, '模板团队');
   assert.equal(next.capabilities.backend.provider, 'p'); // route kept
   assert.equal(next.capabilities.backend.planFirst, undefined); // policy follows the template

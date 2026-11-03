@@ -29,14 +29,13 @@ const sameRole = (a, b) => isMap(a) && isMap(b) && a.displayName === b.displayNa
 /** Stored-override marker written by 4.0+: such files are never read against the old hero default. */
 export const ROSTER_MARK = 2;
 /**
- * True for overrides saved before 4.0 against the hero default: no marker, and a hero id the base lacks is stored as a
- * partial rename or a deletion (null), which only means something on top of the hero roster. Complete hero roles (as a
- * template or the three-kingdoms theme writes them) stand on their own.
+ * True for overrides saved before 4.0 against the hero default: no marker (every 4.0+ save writes one), and a hero id
+ * the base lacks is stored, whether as a partial rename, a deletion (null) or a complete role from a 3.x template.
+ * Such a file was written on top of the hero roster, so mixing it into the neutral default would duplicate roles.
  */
 export function isLegacyRoster(baseRoles = {}, overrides = {}) {
   if (overrides.roster === ROSTER_MARK) return false;
-  return Object.entries(overrides.roles ?? {}).some(([id, r]) => Object.hasOwn(LEGACY_ROLE_ALIASES, id) && !Object.hasOwn(baseRoles, id)
-    && (r === null || (isMap(r) && (r.capability === undefined || r.displayName === undefined))));
+  return Object.keys(overrides.roles ?? {}).some(id => Object.hasOwn(LEGACY_ROLE_ALIASES, id) && !Object.hasOwn(baseRoles, id));
 }
 /** Base roles for one project's stored overrides: a pre-4.0 save keeps the hero roster (neutral defaults it never saw are dropped). */
 export function rosterBase(baseRoles = {}, overrides = {}) {

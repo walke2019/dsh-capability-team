@@ -50,6 +50,23 @@ test('a config saved before 4.0 with hero ids still loads, validates and routes'
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('a 3.x save holding complete hero roles keeps the hero roster without duplicating neutral roles', async () => {
+  const root = await temp();
+  try {
+    const project = join(root, 'full'); await mkdir(project);
+    // A 3.x template import wrote complete roles, without renames or deletions and without the 4.0 marker.
+    const roles = Object.fromEntries(Object.entries(THREE_KINGDOMS_ROLES).map(([id, r]) => [id, { ...r }]));
+    await writeFile(themePath(project, root), JSON.stringify({ revision: 2, project, roles }));
+    const { effective } = await loadProject(project, seed, root);
+    assert.deepEqual(Object.keys(effective.roles).sort(), [...HEROES].sort());
+    const perCapability = Object.values(effective.roles).reduce((m, r) => ({ ...m, [r.capability]: (m[r.capability] ?? 0) + 1 }), {});
+    assert.ok(Object.values(perCapability).every(n => n === 1), JSON.stringify(perCapability));
+    // A 4.0 save carrying the marker is taken as written, even with complete hero roles.
+    await writeFile(themePath(project, root), JSON.stringify({ revision: 3, project, roster: 2, roles: { extra: { displayName: '额外', capability: 'qa' } } }));
+    assert.deepEqual(Object.keys((await loadProject(project, seed, root)).effective.roles).sort(), [...Object.keys(DEFAULT_ROLES), 'extra'].sort());
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('members spawned under hero ids keep routing on the neutral roster', () => {
   const e = effectiveConfig({});
   for (const [hero, id] of [['zhuge-liang', 'architect'], ['lv-bu', 'backend'], ['diao-chan', 'frontend'], ['zhao-yun', 'researcher'], ['chen-lin', 'writer'], ['zhou-yu', 'qa'], ['diao-chan-r3', 'frontend']]) {
