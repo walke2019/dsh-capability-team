@@ -1,151 +1,139 @@
 # Capability Team for DSH
 
-A configurable, capability-routed multi-agent team preset that extends DSH’s native collaboration with project-aware roles, model policies, and a live workbench.
+**Your AI team, each doing what it is best at: expensive models only take hard work, and one failing model never stops the team.**
 
-![MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![DSH 0.2.1-rc.5](https://img.shields.io/badge/DSH-0.2.1--rc.5-6f42c1.svg) ![Node >= 22](https://img.shields.io/badge/Node-%3E%3D%2022-339933.svg)
+[![npm](https://img.shields.io/npm/v/dsh-capability-team.svg)](https://www.npmjs.com/package/dsh-capability-team)
+[![CI](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml/badge.svg)](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![DSH >= 0.2.1-rc.3](https://img.shields.io/badge/DSH-%3E%3D%200.2.1--rc.3-6f42c1.svg)
+![Node >= 22](https://img.shields.io/badge/Node-%3E%3D%2022-339933.svg)
 
 **English** | [简体中文](README.zh-CN.md)
 
-## ✨ Highlights
+A multi-agent team preset for DeepSeek Harness (DSH). It is a thin enhancement layer on top of the official DSH Agent Teams (the `agentTeams` service, the `team_task_*` board, `spawn_teammate` / `send_message`), not a replacement for them.
 
-- Routes teammates to models selected for their capability and required tier.
-- Matches registered models automatically and fails over only within the same tier.
-- Configures roles, duties, and themes through a guarded conversational workflow.
-- Brings team activity, tasks, usage, and model management into a focused workbench.
-- Applies per-role tool, file, and sandbox policies.
-- Turns requests into dispatch plans and tracks execution on DSH’s task board.
-- Supports planned session rotation and shared memory integrations.
-- Tracks token usage and enforces optional per-role budgets.
+<!-- TODO: docs/assets/demo.gif — lead dispatches, a model is unplugged, same-tier backup takes over -->
 
-## DSH team: native foundation, project-level enhancements
+## Why
 
-| DSH provides | This preset adds |
-|---|---|
-| Teammate lifecycle, messaging, waiting, and interruption | Capability-based model assignment and same-tier failover |
-| Shared task board and dependencies | Project roles, dispatch policies, write-scope enforcement, and budgets |
-| Team sessions and usage projections | Team workbench, role-aware configuration, and model management |
-| Permission presets and native confirmation UI | Per-role sandbox policies and approval-gated team changes |
+- **Every teammate runs on your most expensive model → each role is routed to its own capability tier.** Architecture and review go to high/upper-tier models, docs and simple chores to cheaper ones. Teammates never inherit the lead's model, and a role with no qualifying model fails closed instead of silently borrowing one.
+- **One provider outage or exhausted quota stalls the whole team → same-tier failover keeps it running.** After retries, the request moves to a configured backup of the same tier (never a cross-tier downgrade); auth and quota errors switch immediately, and failed routes cool down exponentially before returning.
+- **Agents improvise, overwrite each other and burn tokens → a plan-first, board-driven workflow.** Every request starts with a dispatch plan (delegate / free / direct), subtasks land on the native task board with write scopes, and token discipline keeps prompts cacheable and outputs trimmed.
 
-## 🚀 Features
+## Quick start
 
-### Model routing and resilience
-- Automatic model catalog matching by capability and tier.
-- Global model exclusions and configurable same-tier fallbacks.
-- Long-context routes and cooldown-aware retry behavior.
+Requirements: DSH >= 0.2.1-rc.3 (validated on 0.2.1-rc.5), Node.js >= 22, and the official `@deepseek-ai/dsh-experimental-agent-team-profile` bundle enabled in your DSH profile.
 
-### Team configuration and roles
-- Project-specific role names, capabilities, duties, and usage guidance.
-- Conversational edits with validation and native user confirmation.
-- Role-scoped tool, path, shell, and permission-preset policies.
+**1. Install**
 
-### Workflow and collaboration
-- Dispatch plans for delegation, direct work, and supported free-text tasks.
-- Native board integration with dependencies and scoped assignments.
-- Optional teammate plan approval, dispatch confirmation, and session handoff.
-
-### Workbench
-- Team overview for members, tasks, activity, usage, and models.
-- Role-focused session view and task controls.
-- No integrations page or settings UI; integration configuration is read-only.
-
-### Independent tools and memory
-- `packages/omni-search` (`@local/dsh-omni-search`) provides vendor-neutral multi-engine search (Tavily, Brave, SearXNG, or a custom gateway, with failover), web fetch (keyless via Jina Reader by default), and transcription to all sessions without a UI: `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe`, `omni_transcribe_status`.
-- `packages/global-memory` works fully locally with zero configuration; optional OpenAI-compatible embeddings and a pluggable shared backend (`local` by default, or `openviking`). The team plugin's memory hub reads the same configuration.
-- See [configuration reference](docs/configuration.md) and each package README for setup and schema.
-
-## Quick Start
-
-### Prerequisites
-
-- DSH Desktop or `dsh web` shipping the native experimental Agent Teams packages (verified against 0.2.1-rc.5).
-- Node.js 22 or newer.
-
-Enable the official `@deepseek-ai/dsh-experimental-agent-team-profile` bundle in the host profile to supply the native Team service, scoped tools, and Team UI. This bundle does not insert those global components: Cordis selects the last entry for a repeated ID rather than preserving earlier configuration, so inserting defaults here could reset host customizations. Without the official components, Team support remains unavailable; check the existing runtime diagnostics and enable the official bundle rather than assuming this preset installs it. Standard agents do not receive Team tools because the native installer requires Team membership.
-
-Optional installed-runtime regression: set `DSH_NATIVE_ASAR` to a readable Desktop `app.asar`, then run `node --test tests/team-mount.test.mjs`. It executes the installed YAML parser, patch composer, loader group update, and native tool-installer membership gate without modifying or restarting the host. Without that variable the two native checks are explicitly skipped; they are not a full host boot or browser test.
-
-### Install and enable
-
-1. Clone this repository.
-2. In DSH’s plugin manager, install the repository directory with `install_bundle`.
-3. Restart DSH if the installer reports that a restart is required.
-4. Start a **new** session and select **能力协作团队** (`capability-team`). To make it the default, set the preset registry’s `selectedDefault` to `capability-team` in the host profile.
-
-### Minimal setup
-
-Register providers and models in DSH first. The preset derives assignments from that catalog. There is no integrations page; configuration is read-only and is supplied through a file, host environment variables, or the DSH credential store. Install and enable `packages/omni-search` and `packages/global-memory` (or their corresponding `.tgz` packages) in DSH’s plugin manager, then restart DSH. See each package README for details.
-
-The configuration file is `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`; `CAPABILITY_TEAM_HOME` can override its directory. Example:
-
-```json
-{
-  "integrations": {
-    "search": { "engines": ["tavily", "searxng"], "fetchEngines": ["jina"], "searxngUrl": "http://127.0.0.1:8888" },
-    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "OMNI_AUDIO_API_KEY" },
-    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "EMBEDDING_API_KEY", "model": "<model>" },
-    "memory": { "backend": "openviking", "url": "https://memory.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
-  }
-}
+```bash
+dsh plugin add dsh-capability-team
+# optional companion packages
+dsh plugin add dsh-omni-search
+dsh plugin add dsh-capability-memory
 ```
 
-Zero configuration: `omni_fetch` works without any key (Jina Reader), memory is fully local, and `omni_search` needs just one of `TAVILY_API_KEY`, `BRAVE_API_KEY`, or `SEARXNG_URL`. Other environment variables: `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` (custom gateway), `JINA_API_KEY` (optional), `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY`, `EMBEDDING_BASE_URL` / `EMBEDDING_API_KEY` / `EMBEDDING_MODEL` / `EMBEDDING_DIMENSIONS`, and `OPENVIKING_URL`. Keep secrets in the DSH credential store or named environment variables, never as literal config values. `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` and `CAPABILITY_TEAM_OPENCODE_MODELS` configure the optional free-text task channel.
+**2. Enable Agent Teams from the onboarding card**
 
-### Migration from cpa-tools
+If the official Agent Teams bundle is not enabled, an onboarding card detects it and offers to enable it in one click. Note that this affects every session in the profile and disables DSH's native generic subagent tools. If none of your registered models can be matched to a tier, the card lets you explicitly accept a single-model mode instead.
 
-Breaking change: old names are no longer recognized.
+> The onboarding card, single-model mode and the subpackage settings forms are being finalized for this release. Until they ship, enable the official bundle from DSH's plugin manager and restart DSH if asked.
 
-| Old | New |
-|---|---|
-| `packages/cpa-tools` | `packages/omni-search` (`@local/dsh-omni-search`, patch id `omni-search`) |
-| `cpa_search`, `cpa_fetch`, `cpa_search_providers` | `omni_search`, `omni_fetch`, `omni_search_providers` |
-| `cpa_transcribe`, `cpa_transcribe_status` | `omni_transcribe`, `omni_transcribe_status` |
-| `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` (the `custom` engine) |
-| `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |
-| `CPA_EMBED_*` | `EMBEDDING_*` (legacy names still read when the new one is unset) |
+**3. Start a team session**
 
-Start a new team session and ask: “Read the team configuration.” The lead can report the current role and model-matching summary.
+New session → choose the **Capability Team** preset (`capability-team`) → ask:
+
+```text
+Read the team configuration
+```
+
+The lead reports the roster, the tier of each role and which of your models were matched.
+
+## Comparison
+
+| | Single agent | Official DSH Agent Teams | This preset |
+|---|---|---|---|
+| Team lifecycle, messaging, task board | — | ✅ | ✅ (reuses the official ones) |
+| Per-role model routing | — | No per-role choice; all teammates use the profile's spawn provider | ✅ Tier-based, auto-matched from your models; fails closed |
+| Same-tier failover | — | — | ✅ With exponential cooldown, no cross-tier downgrade |
+| Cost controls / budgets | — | Usage projections | ✅ Tier routing, per-role token budgets, token discipline |
+| Dispatch triage | — | — | ✅ `delegate` / `free` / `direct` dispatch plan |
+| Write-scope enforcement | — | — | ✅ Per-task `write_scopes`, per-role path/tool/sandbox policy |
+| Workbench | — | Team UI | ✅ Overview, board, usage, model management, pixel office stage |
+
+See [docs/comparison.md](docs/comparison.md) for a longer comparison, including generic model-routing plugins.
+
+## How it works
+
+```mermaid
+flowchart LR
+  R[User request] --> P[Dispatch plan<br/>delegate / free / direct]
+  P --> T[Roles routed by tier<br/>high · upper · medium · low]
+  T --> B[Native task board<br/>write scopes + dependencies]
+  B --> V[Verify<br/>QA / architect review]
+  V --> D[Lead delivers]
+  T -. model fails .-> F[Same-tier backup<br/>+ cooldown]
+  F -.-> T
+```
+
+- **Capability tiers.** Models registered in your DSH catalog are graded `high` / `upper` / `medium` / `low` by vendor naming rules; non-chat, free/trial and below-floor models are excluded. Each capability gets a primary and up to three same-tier backups.
+- **Per-role routing.** Every role (capability) has its own tier and vendor preference. Unassigned roles fail closed.
+- **Failover.** Same-route retries first, then the next same-tier backup. Failed routes cool down (doubling, capped at 30 minutes) and the primary returns after recovery. Auth and quota errors skip straight to the next backup.
+- **Dispatch and board.** The lead must call `capability_dispatch_plan` first; delegated subtasks become board tasks with `write_scopes` and `blocked_by`, and edits outside a held task's scopes are rejected.
+- **Guardrails.** Per-role sandbox / tool / path access, optional plan-first approval, session rotation with handoff, and token discipline (stable prompt prefix, output trimming, idle compaction).
+- **Workbench and memory.** A live right-side panel shows the team overview, board, usage and model management with a pixel office stage; a local memory hub recalls past pitfalls and decisions for new tasks.
 
 ## Configuration
 
-Most settings are managed from the workbench or team configuration tools. The example below illustrates the shape only; valid fields and values depend on the team schema and registered models.
+Most settings are changed by asking the lead (the change is validated and shown in DSH's confirmation dialog before it is saved) or from the workbench. Tools: `capability_team_read`, `capability_team_save`, `capability_team_import`.
 
 ```json
 { "capabilities": { "writer": { "tier": "low", "search": false } } }
 ```
 
-See the [configuration reference](docs/configuration.md) for all options.
+Integrations (search, transcription, embeddings, shared memory) are read from `integrations.json` in `~/.dsh/capability-team-themes/` (`%USERPROFILE%/.dsh/capability-team-themes/` on Windows; override the directory with `CAPABILITY_TEAM_HOME`), host environment variables, or the DSH credential store. Never put literal keys in configuration — only environment variable names such as `OMNI_SEARCH_API_KEY`.
 
-## Tech Stack
+Full reference: [docs/configuration.md](docs/configuration.md) — tiers and auto-matching, permissions, budgets, plan-first, dispatch workflow, failover and long context, rotation, memory, and all environment variables.
 
-- **Runtime:** Node.js 22+, DSH plugin lifecycle and Cordis integration.
-- **Team services:** DSH `ctx.agentTeams` API and native task-board tools.
-- **Workbench:** JavaScript sources in `client/`, bundled into `client.js`.
-- **Tests:** Node.js built-in `node:test` runner.
-- **Optional integrations:** search engines (Tavily, Brave, SearXNG, custom gateway), Jina Reader fetch, OpenAI-compatible embeddings, and pluggable shared memory backends (OpenViking).
+## Roster and themes
 
-## Project Structure
+The default roster is neutral:
 
-| Path | Purpose |
+| Role id | Capability | Default tier |
+|---|---|---|
+| `lead` | orchestrator | high |
+| `architect` | technical-director | upper |
+| `backend` | backend | upper |
+| `frontend` | frontend | medium |
+| `researcher` | research (read-only) | medium |
+| `writer` | writer (docs paths only) | low |
+| `qa` | qa | upper |
+
+Names, duties, tiers and models can be changed per project. The former Three Kingdoms roster is an optional built-in theme: ask the lead to apply theme `three-kingdoms` (`capability_team_import { theme: "three-kingdoms" }`) and switch back with theme `default`. Projects saved with 3.x that renamed or removed hero ids keep their hero roster.
+
+## Companion packages
+
+| Package | What it adds |
 |---|---|
-| `client/` | Workbench client source modules. |
-| `scripts/` | Client bundling and project checks. |
-| `tests/` | Node.js test suites and fixtures. |
-| `skills/` | Project role/theme guidance skill. |
-| `locale/` | English and Chinese interface strings. |
-| `config.js`, `defaults.js`, `roles.js` | Team defaults, model matching, and role definitions. |
-| `cordis.patch.yml` | DSH preset and plugin registration. |
-| `client.js` | Generated workbench bundle consumed by DSH. |
-| `index.js`, `ui.js` | Plugin and UI entry points. |
+| [`dsh-omni-search`](packages/omni-search/README.md) | `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe` for all sessions. Vendor-neutral engines (Tavily, Brave, SearXNG, custom gateway) with failover; fetch works keyless via Jina Reader. |
+| [`dsh-capability-memory`](packages/global-memory/README.md) | Explicit memory tools and bounded automatic recall. Local by default; optional OpenAI-compatible embeddings and an OpenViking shared backend. |
 
-## Documentation
+Both are independent profile bundles: they also work outside team sessions, and the team plugin's memory hub reads the same configuration.
 
-- [Configuration reference](docs/configuration.md)
-- [Development guide](docs/development.md)
-- [Team and repository policies](AGENTS.md)
+## Migration from 3.x
+
+4.0.0 contains breaking changes: packages are renamed (`@local/dsh-capability-team` → `dsh-capability-team`, `@local/dsh-omni-search` → `dsh-omni-search`, `@local/dsh-global-memory` → `dsh-capability-memory`) and the default roster is now neutral. Update profile, bundle-list and `cordis.patch.yml` references, then see [CHANGELOG.md](CHANGELOG.md) for details. The older `cpa-tools` → `omni-search` rename is covered in [docs/configuration.md](docs/configuration.md#migration-from-cpa-tools).
+
+## Roadmap
+
+- Public benchmark report (cost and completion versus a single agent) — coming.
+- Team templates for common project types.
+- Mothership: multi-machine management — coming later.
+
+## Contributing
+
+Issues and pull requests are welcome; please use the [issue templates](.github/ISSUE_TEMPLATE) and the [pull request template](.github/PULL_REQUEST_TEMPLATE.md). Read the [development guide](docs/development.md) and the repository rules in [AGENTS.md](AGENTS.md) first. Before submitting, run `npm test`, `npm run lint` and `npm run build`.
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-
-
