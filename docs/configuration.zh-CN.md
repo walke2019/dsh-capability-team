@@ -24,7 +24,7 @@
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | 可选 OpenCode 可执行文件路径；未设置时从 `PATH` 查找。 |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | 可选 OpenCode 模型目录路径。 |
 
-集成为只读配置，须通过下文的配置文件、Host 环境变量或 DSH 凭据库提供。密钥值不得写入配置文件。
+集成配置可来自 DSH“插件”页的设置表单、DSH 凭据库、Host 环境变量或集成配置文件，优先级见[独立工具与集成配置](#独立工具与集成配置)。密钥值不得写入配置文件。
 
 ## 默认能力与角色
 

@@ -24,7 +24,7 @@ Set variables in the DSH host process environment. Restart DSH after changing th
 | `CAPABILITY_TEAM_OPENCODE_EXECUTABLE` | Optional OpenCode executable path; otherwise discovered from `PATH`. |
 | `CAPABILITY_TEAM_OPENCODE_MODELS` | Optional OpenCode model catalog path. |
 
-Integration settings are read-only; provide them through the integrations file, host environment variables, or DSH credential store as described below. Never put literal key values in configuration.
+Integration settings come from the settings form on DSH's Plugins page, the DSH credential store, host environment variables or the integrations file; see [Independent tools and integrations](#independent-tools-and-integrations) for the precedence. Never put literal key values in configuration.
 
 ## Defaults: capabilities and roles
 

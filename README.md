@@ -35,9 +35,9 @@ dsh plugin add dsh-capability-memory
 
 **2. Enable Agent Teams from the onboarding card**
 
-If the official Agent Teams bundle is not enabled, an onboarding card detects it and offers to enable it in one click. Note that this affects every session in the profile and disables DSH's native generic subagent tools. If none of your registered models can be matched to a tier, the card lets you explicitly accept a single-model mode instead.
+If the official Agent Teams bundle is not enabled, an onboarding card detects it and enables it only after you click the button. Note that this affects every session in the profile and disables DSH's native generic subagent tools. The card also shows which capabilities matched a model tier. If some cannot be matched, add a provider, or ask the lead to turn on single-model mode: roles without a match then use your DSH default model, after you confirm it in a dialog.
 
-> The onboarding card, single-model mode and the subpackage settings forms are being finalized for this release. Until they ship, enable the official bundle from DSH's plugin manager and restart DSH if asked.
+> If the card reports that this connection cannot manage plugins, enable `@deepseek-ai/dsh-experimental-agent-team-profile` on DSH's Plugins page instead, and restart DSH if asked.
 
 **3. Start a team session**
 

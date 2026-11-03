@@ -25,6 +25,8 @@ jobs:
   publish:
     name: Publish ${{ inputs.package }}
     runs-on: ubuntu-latest
+    # Publish only from main, so a release always matches reviewed history.
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v5
 
