@@ -1,6 +1,6 @@
 {
   "name": "dsh-capability-autocomplete",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "type": "module",
   "description": "Composer autocomplete for DeepSeek Harness (DSH): inline continuation and next-message suggestions accepted with Tab, never sent automatically",
   "license": "MIT",

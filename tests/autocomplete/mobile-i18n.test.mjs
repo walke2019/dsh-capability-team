@@ -101,6 +101,27 @@ test('the strip is in normal flow and takes no space until there are suggestions
   assert.equal(style.overflowX, 'auto');
 });
 
+test('the strip lines up with the input box edges, measured from the strip itself', () => {
+  const { hooks, render, setGhost } = load({ coarse: true });
+  const props = { sessionId: 's', config: DEFAULT_CONFIG, t: k => k, useInput: sel => sel({ draft: '' }), useSession: sel => sel({ running: false }) };
+  render(hooks.TouchSuggestionBar, props);
+  setGhost({ mode: 'next', items: ['a'], index: 0, stream: '', active: false });
+  const tree = render(hooks.TouchSuggestionBar, props);
+  assert.ok(tree.props.ref, 'the strip exposes a ref for measuring');
+  assert.equal(tree.props.style.marginLeft, '0px', 'margins come from the measured state');
+  // Measured on a phone: the dock column starts 56px left of the input box and ends 16px right of it.
+  const card = { getBoundingClientRect: () => ({ left: 72, right: 367, width: 295 }) };
+  const strip = { parentElement: { querySelector: () => card, parentElement: null }, getBoundingClientRect: () => ({ left: 16, right: 383, width: 367 }) };
+  let inset = { left: 0, right: 0 };
+  hooks.measureCardInset(strip, update => { inset = update(inset); });
+  assert.equal(JSON.stringify(inset), JSON.stringify({ left: 56, right: 16 }));
+  // Once aligned, a re-measure is stable (no oscillation between renders).
+  const aligned = { parentElement: strip.parentElement, getBoundingClientRect: () => ({ left: 72, right: 367, width: 295 }) };
+  const before = inset;
+  hooks.measureCardInset(aligned, update => { inset = update(inset); });
+  assert.equal(inset, before);
+});
+
 test('on narrow screens the ✦ leaves the crowded tool row and appears in the strip only while drafting', () => {
   // Fresh harness per component: hook slots are positional and differ between components.
   const fresh = () => load({ coarse: true, narrow: true });

@@ -333,6 +333,48 @@ window.__ModuleLoader__.load({
       }, []);
       return narrow;
     }
+    /** The card of THIS composer: the nearest ancestor of the strip that contains one (a page may hold several). */
+    function composerCardOf(strip) {
+      for (let el = strip?.parentElement; el; el = el.parentElement) {
+        const card = el.querySelector('[data-composer-card]');
+        if (card) return card;
+      }
+      return null;
+    }
+    /**
+     * Measure the strip's own box against the input box and correct its current margins by the difference. The dock's
+     * direct parents use `display: contents` (no box of their own), so a parent rect cannot be the reference.
+     */
+    function measureCardInset(strip, setInset) {
+      const card = composerCardOf(strip);
+      if (!card) return;
+      const own = strip.getBoundingClientRect(), target = card.getBoundingClientRect();
+      if (!target.width || !own.width) return;
+      setInset(prev => {
+        const next = { left: Math.max(0, Math.round(prev.left + target.left - own.left)), right: Math.max(0, Math.round(prev.right + own.right - target.right)) };
+        return prev.left === next.left && prev.right === next.right ? prev : next;
+      });
+    }
+    /**
+     * Insets that line the strip up with the input box. The dock spans the whole composer column, which is wider than the
+     * input box (measured on a phone: 56px on the left, 16px on the right), so without this the chips start left of it.
+     * Re-measured on resize and whenever the input box resizes; no inset when there is no input box to measure.
+     */
+    function useCardAlignment(stripRef) {
+      const [inset, setInset] = React.useState({ left: 0, right: 0 });
+      React.useLayoutEffect(() => {
+        const strip = stripRef.current;
+        if (!strip) return undefined;
+        const measure = () => measureCardInset(strip, setInset);
+        measure();
+        window.addEventListener('resize', measure);
+        const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+        const card = composerCardOf(strip);
+        if (observer && card) observer.observe(card);
+        return () => { window.removeEventListener('resize', measure); observer?.disconnect(); };
+      }, [stripRef.current]);
+      return inset;
+    }
     /** ✦ button in the composer's own tool row (conversation.input.right): no extra height, nothing covered. */
     function TouchAskButton({ sessionId, useSession, form, t }) {
       const config = configOf(useStoreSnapshot(form));
@@ -357,6 +399,8 @@ window.__ModuleLoader__.load({
       const { busy, running } = useComposerBusy(useSession);
       const { ghost, setGhost, request, abortRef, composingRef, dismissedRef } = usePredictions(sessionId, draft);
       const narrow = useNarrow();
+      const stripRef = React.useRef(null);
+      const align = useCardAlignment(stripRef);
       const label = typeof t === 'function' ? t : key => en[key] ?? key;
       const blocked = !sessionId || busy || isTriggerToken(draft);
       // A dispatch card or a running teammate turn appearing must also cancel a request already in flight.
@@ -393,10 +437,11 @@ window.__ModuleLoader__.load({
         textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px solid var(--dsw-alias-border-l2, #555)',
         background: 'var(--dsw-alias-bg-layer-2, transparent)', color: 'var(--dsw-alias-label-primary, inherit)', fontSize: '14px' };
       // In flow (no absolute positioning): one row, scrolls sideways, never wraps into a second line.
-      return h('div', { role: 'toolbar', 'aria-label': label('barLabel'), 'data-autocomplete-bar': ghost.mode,
+      return h('div', { ref: stripRef, role: 'toolbar', 'aria-label': label('barLabel'), 'data-autocomplete-bar': ghost.mode,
         // flexShrink 0: the composer stack is a fixed-height flex column and would otherwise squeeze the chips flat.
+        // The dock is wider than the composer card, so the strip is inset to the card's own left and right edges.
         style: { display: 'flex', flexShrink: 0, gap: '8px', alignItems: 'center', overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none', padding: '2px 2px 6px', maxWidth: '100%', boxSizing: 'border-box' } },
+          scrollbarWidth: 'none', padding: '2px 0 6px', boxSizing: 'border-box', marginLeft: `${align.left}px`, marginRight: `${align.right}px` } },
         askHere ? h('button', { type: 'button', key: 'ask', 'data-action': 'suggest', 'aria-label': label('suggest'), onMouseDown: keep, onClick: ask,
           disabled: ghost.active, style: { ...chip, minWidth: '36px', padding: '6px 10px' } }, ghost.active ? '…' : '✦') : null,
         ghost.active && !items.length ? h('span', { key: 'busy', style: { fontSize: '13px', opacity: 0.7 } }, label('thinking')) : null,
@@ -475,7 +520,7 @@ window.__ModuleLoader__.load({
       },
     };
     // Test-only seam: harnesses may define window.__acTestHook; browsers never do.
-    if (typeof window.__acTestHook === 'function') window.__acTestHook({ ComposerOverlay, GhostOverlay, TouchSuggestionBar, TouchDock, TouchAskButton, touchStore, AutocompleteSettings, parseSse, isTriggerToken, configOf, candidateOf, ENDPOINT, zh, en });
+    if (typeof window.__acTestHook === 'function') window.__acTestHook({ ComposerOverlay, GhostOverlay, TouchSuggestionBar, TouchDock, TouchAskButton, touchStore, measureCardInset, AutocompleteSettings, parseSse, isTriggerToken, configOf, candidateOf, ENDPOINT, zh, en });
 
     return plugin;
   },

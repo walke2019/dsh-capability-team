@@ -28,4 +28,4 @@
       },
     };
     // Test-only seam: harnesses may define window.__acTestHook; browsers never do.
-    if (typeof window.__acTestHook === 'function') window.__acTestHook({ ComposerOverlay, GhostOverlay, TouchSuggestionBar, TouchDock, TouchAskButton, touchStore, AutocompleteSettings, parseSse, isTriggerToken, configOf, candidateOf, ENDPOINT, zh, en });
+    if (typeof window.__acTestHook === 'function') window.__acTestHook({ ComposerOverlay, GhostOverlay, TouchSuggestionBar, TouchDock, TouchAskButton, touchStore, measureCardInset, AutocompleteSettings, parseSse, isTriggerToken, configOf, candidateOf, ENDPOINT, zh, en });
