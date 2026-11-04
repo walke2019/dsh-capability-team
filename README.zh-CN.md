@@ -31,6 +31,7 @@ dsh plugin add dsh-capability-team
 # 可选的配套包
 dsh plugin add dsh-omni-search
 dsh plugin add dsh-capability-memory
+dsh plugin add dsh-capability-autocomplete
 ```
 
 **2. 在引导卡片中启用 Agent Teams**
@@ -117,8 +118,9 @@ flowchart LR
 |---|---|
 | [`dsh-omni-search`](packages/omni-search/README.md) | 为所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`。厂商中立的引擎（Tavily、Brave、SearXNG、自定义网关）自动故障切换；抓取经 Jina Reader 免密钥可用。 |
 | [`dsh-capability-memory`](packages/global-memory/README.md) | 显式记忆工具与有界自动召回。默认纯本地；可选 OpenAI 兼容嵌入与 OpenViking 共享后端。 |
+| [`dsh-capability-autocomplete`](packages/autocomplete/README.md) | DSH Web 输入框自动补全：打字停顿时行内续写、回复后建议下一句，按 Tab 采纳、绝不自动发送。可跟随会话模型或固定一个低延迟模型。 |
 
-两者都是独立的 profile bundle：在团队会话之外同样可用，团队插件的记忆枢纽读取同一份配置。
+它们都是独立的 profile bundle：在团队会话之外同样可用，团队插件的记忆枢纽读取同一份记忆与搜索配置。
 
 ## 从 3.x 迁移
 

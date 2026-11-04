@@ -32,6 +32,15 @@ const globalRoot = join(root, 'packages', bundle);
   }
   console.log(`${bundle.toUpperCase().replaceAll('-', '_')}_CLOSURE_OK`);
 }
+// Autocomplete ships its own generated client.js: it must be current and every published file must exist.
+{
+  const acRoot = join(root, 'packages', 'autocomplete');
+  const check = spawnSync(process.execPath, [join(acRoot, 'scripts/build-client.mjs'), '--check'], { encoding: 'utf8', windowsHide: true });
+  if (check.status !== 0) throw new Error(check.stderr || 'Autocomplete client check failed');
+  const acPkg = JSON.parse(await readFile(join(acRoot, 'package.json'), 'utf8'));
+  for (const file of [...acPkg.files, ...Object.values(acPkg.exports), acPkg.dsh.bundle.patch]) await stat(join(acRoot, file.replace(/^\.\//, '')));
+  console.log('AUTOCOMPLETE_CLOSURE_OK');
+}
 let checked = 0;
 for (const path of await walk(root)) {
   if (/\.m?js$/.test(path)) {

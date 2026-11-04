@@ -1,0 +1,6 @@
+- insert:
+    - id: autocomplete
+      name: 'dsh-capability-autocomplete'
+      config:
+        enabled: true
+        routeMode: session

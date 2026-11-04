@@ -37,9 +37,10 @@
   "scripts": {
     "build:client": "node scripts/build-client.mjs",
     "pretest": "node scripts/build-client.mjs",
-    "test": "node --test tests/*.test.mjs && node --test tests/global-memory/*.test.mjs && node --test tests/omni-search/*.test.mjs",
+    "test": "node --test tests/*.test.mjs && node --test tests/global-memory/*.test.mjs && node --test tests/omni-search/*.test.mjs && node --test tests/autocomplete/*.test.mjs",
     "build:global-memory": "node packages/global-memory/scripts/build-shared.mjs",
     "build:omni-search": "node packages/omni-search/scripts/build-shared.mjs",
+    "build:autocomplete": "node packages/autocomplete/scripts/build-client.mjs",
     "lint": "node scripts/check.mjs syntax",
     "build": "node scripts/check.mjs package"
   },

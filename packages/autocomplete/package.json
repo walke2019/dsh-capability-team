@@ -1,0 +1,36 @@
+{
+  "name": "dsh-capability-autocomplete",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Composer autocomplete for DeepSeek Harness (DSH): inline continuation and next-message suggestions accepted with Tab, never sent automatically",
+  "license": "MIT",
+  "author": "walke2019",
+  "homepage": "https://github.com/walke2019/dsh-capability-team/tree/main/packages/autocomplete#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/walke2019/dsh-capability-team.git", "directory": "packages/autocomplete" },
+  "bugs": { "url": "https://github.com/walke2019/dsh-capability-team/issues" },
+  "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "cordis", "autocomplete", "composer", "prediction", "llm"],
+  "engines": { "node": ">=22" },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.1",
+    "@deepseek-ai/schemastery": ">=3.18.4",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.1-rc.3"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": { "optional": true },
+    "@deepseek-ai/schemastery": { "optional": true },
+    "@deepseek-ai/dsh-client-locale": { "optional": true },
+    "@deepseek-ai/dsh-client-ui-conversation": { "optional": true }
+  },
+  "exports": { ".": "./index.js", "./client": "./client.js", "./icon": "./icon.svg" },
+  "files": ["index.js", "predictor.js", "schema.js", "client.js", "cordis.patch.yml", "icon.svg", "README.md", "LICENSE"],
+  "scripts": { "build": "node scripts/build-client.mjs", "test": "node --test ../../tests/autocomplete/*.test.mjs" },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-conversation"]
+    }
+  }
+}

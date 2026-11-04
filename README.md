@@ -31,6 +31,7 @@ dsh plugin add dsh-capability-team
 # optional companion packages
 dsh plugin add dsh-omni-search
 dsh plugin add dsh-capability-memory
+dsh plugin add dsh-capability-autocomplete
 ```
 
 **2. Enable Agent Teams from the onboarding card**
@@ -117,8 +118,9 @@ Names, duties, tiers and models can be changed per project. The former Three Kin
 |---|---|
 | [`dsh-omni-search`](packages/omni-search/README.md) | `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe` for all sessions. Vendor-neutral engines (Tavily, Brave, SearXNG, custom gateway) with failover; fetch works keyless via Jina Reader. |
 | [`dsh-capability-memory`](packages/global-memory/README.md) | Explicit memory tools and bounded automatic recall. Local by default; optional OpenAI-compatible embeddings and an OpenViking shared backend. |
+| [`dsh-capability-autocomplete`](packages/autocomplete/README.md) | Composer autocomplete for DSH Web: inline continuation while typing and next-message suggestions, accepted with Tab and never sent automatically. Follows the session model or a fixed low-latency model. |
 
-Both are independent profile bundles: they also work outside team sessions, and the team plugin's memory hub reads the same configuration.
+All are independent profile bundles: they also work outside team sessions, and the team plugin's memory hub reads the same memory and search configuration.
 
 ## Migration from 3.x
 
