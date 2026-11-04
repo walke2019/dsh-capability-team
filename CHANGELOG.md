@@ -14,6 +14,7 @@ All notable changes to this project are documented in this file. The format foll
 - `npm run build:autocomplete` generates the package's `client.js`; lint and build verify it is current and that every published file exists.
 - `dsh-capability-autocomplete` 0.3.0: Chinese and English for the plugin name and description (`locale/zh.json`, `locale/en.json`), every settings field (schemastery `i18n`) and all on-screen text.
 - Touch suggestion bar for phones and tablets: tappable suggestion buttons above the composer, a ✦ button to ask for a continuation, × to dismiss. Chosen by input type (`pointer: coarse`), switchable with `mobileBar`.
+- `dsh-capability-autocomplete` 0.4.0: optional fleet defaults. A manager can push `AUTOCOMPLETE_PROVIDER`, `AUTOCOMPLETE_MODEL` (and optionally `AUTOCOMPLETE_ROUTE_MODE`) through the DSH credential store; they apply only while the user's own route is untouched, and the user's choice always wins as a whole.
 
 ### Fixed
 
