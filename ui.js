@@ -12,14 +12,16 @@ export const inject = ['commands', 'agentPresets', 'tools'];
 // Only the welcome card's acknowledgement is a live setting (the client renders its own card, so no auto page).
 const z = schemastery('dsh-capability-team');
 export const Config = z ? z.object({ welcomeVersion: z.string().volatile() }) : undefined;
-/** Live roster state from the host's Agent Teams service: status, model, owned tasks. No log reads, cheap to poll. */
+/**
+ * Live roster state from the host's Agent Teams service: status and owned tasks. No log reads, cheap to poll.
+ * The host's member provider/model is not kept in sync with real requests, so it is deliberately not forwarded.
+ */
 export function teamActivity(ctx, agent) {
   const teams = ctx.get?.('agentTeams');
   if (!teams) return { members: [], tasks: [], unavailable: '当前宿主未提供团队服务' };
   let members, tasks = [];
   try {
-    members = teams.listMembers(agent).map(m => ({ id: m.id, name: m.name, role: m.role, status: m.status,
-      ...(m.provider ? { provider: m.provider } : {}), ...(m.model ? { model: m.model } : {}), diagnostics: m.diagnostics ?? [] }));
+    members = teams.listMembers(agent).map(m => ({ id: m.id, name: m.name, role: m.role, status: m.status, diagnostics: m.diagnostics ?? [] }));
   } catch (error) { return { members: [], tasks: [], unavailable: `团队成员读取失败：${error.message ?? error}` }; }
   try {
     tasks = (teams.listTasks?.(agent) ?? []).filter(task => task.status !== 'deleted')

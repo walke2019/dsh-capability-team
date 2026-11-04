@@ -77,8 +77,8 @@ window.__ModuleLoader__.load({
       'overview.ready': '已就绪', 'overview.notMounted': '未挂载', 'overview.abnormal': '需处理', 'overview.preset': '预设', 'overview.missingTools': '缺少工具', 'overview.details': '挂载诊断',
       'overview.revision': '版本 {rev}', 'overview.updated': '更新于 {time}', 'overview.statRoles': '角色', 'overview.firstLoad': '读取团队配置', 'overview.logNote': '实时状态由宿主推送，不写入对话；点“刷新”读取配置时，对话里会留下一条命令记录。', 'overview.statWorking': '工作中',
       'live.title': '团队工作台', 'live.runningCount': '{n} 个正在工作', 'live.polling': '实时推送', 'live.running': '工作中', 'live.idle': '空闲', 'live.inactive': '未启动', 'live.provisioning': '启动中', 'live.failed': '异常',
-      'live.noTask': '暂无任务', 'live.open': '打开该队友的会话', 'live.busyNoTask': '正在处理消息…', 'live.liveModel': '运行时模型（宿主上报）', 'live.configModel': '配置的主用模型（尚未启动）',
-      'live.lastRequest': '上次请求', 'live.fallback': '备选', 'live.notInConfig': '非配置路由',
+      'live.noTask': '暂无任务', 'live.open': '打开该队友的会话', 'live.busyNoTask': '正在处理消息…', 'live.liveModel': '最近一次实际请求的模型（插件用量记录）', 'live.configModel': '配置的主用模型（尚无实际请求记录）',
+      'live.lastRequest': '上次请求', 'live.fallback': '备选', 'live.notInConfig': '非配置路由', 'live.configTag': '配置', 'live.leadPick': '对话中选择的模型（尚无实际请求记录）', 'live.routeWarn': '⚠ 不在配置内', 'live.routeWarnHint': '实际请求的模型不在该角色的主模型与备选中，请检查路由或配置',
       'models.prefixTitle': '按前缀排除', 'models.prefixPlaceholder': '输入前缀，如 @cf/、provider-a/or/、grok-imagine', 'models.prefixAdd': '排除',
       'models.prefixPreview': '{rule} 将排除 {n} 个模型：{list}', 'models.prefixInvalid': '前缀至少 2 个字符，不能含空格或中间的 *', 'models.prefixExists': '这条规则已存在',
       'models.prefixHelp': '前缀同时匹配“渠道/模型”和单独的模型 ID；规则会持续生效，以后新增的同前缀模型也会被排除。保存后生效。',
@@ -345,8 +345,8 @@ window.__ModuleLoader__.load({
       'overview.ready': 'Ready', 'overview.notMounted': 'Not mounted', 'overview.abnormal': 'Needs attention', 'overview.preset': 'Preset', 'overview.missingTools': 'Missing tools', 'overview.details': 'Activation details',
       'overview.revision': 'revision {rev}', 'overview.updated': 'updated {time}', 'overview.statRoles': 'Roles', 'overview.firstLoad': 'Load team configuration', 'overview.logNote': 'Live status is pushed by the host and is not logged; Refresh runs a command that leaves one entry in the conversation.', 'overview.statWorking': 'Working',
       'live.title': 'Team board', 'live.runningCount': '{n} working', 'live.polling': 'Live push', 'live.running': 'Working', 'live.idle': 'Idle', 'live.inactive': 'Not started', 'live.provisioning': 'Starting', 'live.failed': 'Failed',
-      'live.noTask': 'No task', 'live.open': 'Open this teammate\'s session', 'live.busyNoTask': 'Handling a message…', 'live.liveModel': 'Runtime model (reported by host)', 'live.configModel': 'Configured primary (not started)',
-      'live.lastRequest': 'last request', 'live.fallback': 'fallback', 'live.notInConfig': 'not in config',
+      'live.noTask': 'No task', 'live.open': 'Open this teammate\'s session', 'live.busyNoTask': 'Handling a message…', 'live.liveModel': 'Model of the latest actual request (plugin usage record)', 'live.configModel': 'Configured primary (no recorded request yet)',
+      'live.lastRequest': 'last request', 'live.fallback': 'fallback', 'live.notInConfig': 'not in config', 'live.configTag': 'config', 'live.leadPick': 'Model picked in the conversation (no recorded request yet)', 'live.routeWarn': '⚠ not configured', 'live.routeWarnHint': 'The model actually requested is neither the primary nor a fallback of this role; check the routing or config',
       'models.prefixTitle': 'Exclude by prefix', 'models.prefixPlaceholder': 'Prefix, e.g. @cf/, provider-a/or/, grok-imagine', 'models.prefixAdd': 'Exclude',
       'models.prefixPreview': '{rule} excludes {n} models: {list}', 'models.prefixInvalid': 'At least 2 characters, no spaces or inner *', 'models.prefixExists': 'Rule already exists',
       'models.prefixHelp': 'A prefix matches both "provider/model" and the bare model id; rules persist and also exclude models added later. Takes effect after saving.',
@@ -1637,7 +1637,7 @@ window.__ModuleLoader__.load({
           r.whenToUse ? h('span', { className: 'ctm-sub' }, fmt(t('roles.whenToUse'), { text: r.whenToUse })) : null,
           h('span', { className: r.provider ? 'ctm-ov-route' : 'ctm-ov-route ctm-warn', title: r.blocked },
             r.provider ? `${r.provider}/${r.model}` : t(r.blocked ? 'models.blocked' : 'team.unassigned')),
-          liveRoleLine(live?.get(r.id), t),
+          liveRoleLine(live?.get(r.id), t, r),
           fallbacks.length ? h('span', { className: 'ctm-sub', title: fallbacks.join('\n') }, fmt(t('roles.fallbackList'), { list: fallbacks.join(t('common.listSep')) })) : null,
           r.maxTokens || r.longContext || r.planFirst ? h('div', { className: 'ctm-chips' },
             r.planFirst ? badge(t('roles.planFirst'), 'brand', 'p') : null,
@@ -1647,11 +1647,13 @@ window.__ModuleLoader__.load({
       }));
     }
     /** The member currently filling this role: live status and the model of its latest request. */
-    function liveRoleLine(member, t) {
+    function liveRoleLine(member, t, role) {
       if (!member) return null;
+      const route = member.model ? [member.provider, member.model].filter(Boolean).join('/') : null;
       return h('div', { className: 'ctm-chips' },
         badge(label(t, `live.${member.status}`, member.status), LIVE[member.status], 's'),
-        member.model ? h('span', { className: 'ctm-sub', title: t('roles.liveModel') }, fmt(t('roles.current'), { route: [member.provider, member.model].filter(Boolean).join('/') })) : null);
+        route ? h('span', { className: 'ctm-sub', title: t('roles.liveModel') }, fmt(t('roles.current'), { route })) : null,
+        route && routeOutsideConfig(route, role) ? routeWarnBadge(t) : null);
     }
     /** Permission chips for one role; nothing when the capability has no access policy. */
     function accessBadges(access, t) {
@@ -1694,16 +1696,12 @@ window.__ModuleLoader__.load({
     const compact = n => n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k` : String(n);
     const splitRoute = route => { const i = route.indexOf('/'); return i > 0 ? { provider: route.slice(0, i), model: route.slice(i + 1) } : {}; };
     const PHASE = { provisioning: 'provisioning', failed: 'failed' };
-    /** Roster and board tasks from the Lead's live `agentTeam` projection, with each member's routed model. */
+    /** Roster and board tasks from the Lead's live `agentTeam` projection. Models are attached later by withTrustedRoutes. */
     function teamActivityFrom(team, live) {
       return {
-        members: (team.members ?? []).map(m => {
-          // DSH's modelSelection: the pending pick, else the model of the last request header, which this plugin routes.
-          const next = live.projections(m.id)?.modelSelection?.next;
-          return { id: m.id, name: m.name, role: m.role,
-            status: PHASE[m.phase] ?? (m.phase === 'active' ? (live.running(m.id) ? 'running' : 'idle') : 'inactive'),
-            ...(next?.provider && next.model ? { provider: next.provider, model: next.model } : {}), diagnostics: m.error ? [String(m.error.message ?? m.error)] : [] };
-        }),
+        members: (team.members ?? []).map(m => ({ id: m.id, name: m.name, role: m.role,
+          status: PHASE[m.phase] ?? (m.phase === 'active' ? (live.running(m.id) ? 'running' : 'idle') : 'inactive'),
+          diagnostics: m.error ? [String(m.error.message ?? m.error)] : [] })),
         tasks: (team.tasks ?? []).map(task => ({
           id: task.id,
           subject: task.subject,
@@ -1716,7 +1714,7 @@ window.__ModuleLoader__.load({
     }
     /**
      * One usage row per member from DSH's own live projections: totals from token-meter's `tokenUsage`, timing from
-     * `sessionStats`, the current model from `modelSelection`. Per-model token splits come from the last refresh.
+     * `sessionStats`, the current model from trustedRoute (own usage routes). Per-model token splits come from the last refresh.
      */
     function usageRows(d, liveTeam, live) {
       const snapshot = new Map((d?.memberEvidence?.length ? d.memberEvidence : d ? [{ sessionId: d.sessionId, name: 'lead', ...(d.requestEvidence ?? {}) }] : [])
@@ -1726,7 +1724,7 @@ window.__ModuleLoader__.load({
       return members.map(m => {
         const values = liveTeam ? live.projections(m.id) : undefined;
         const before = snapshot.get(m.id)?.usage;
-        const next = values?.modelSelection?.next;
+        const route = trustedRoute(values, before);
         const ownUsage = values?.capabilityTeamUsage;
         // 预算与用量严格对齐后端契约：只读 capabilityTeamUsage / snapshot own usage，绝不读宿主 tokenUsage 避免 fork 偏差
         const totals = ownUsage?.totals ?? before?.totals;
@@ -1737,7 +1735,7 @@ window.__ModuleLoader__.load({
         return {
           id: m.id, name: m.name, totals, routes, coverage, reportedSamples, attemptsWithoutUsage,
           refreshedAt: before ? refreshedAt : undefined,
-          ...(next?.provider && next.model ? { model: `${next.provider}/${next.model}` } : {}),
+          ...(route ? { model: route } : {}),
           ...(values?.sessionStats ? { stats: values.sessionStats } : {})
         };
       }).filter(row => row.totals || row.routes.length || row.stats || row.model);
@@ -1885,10 +1883,79 @@ window.__ModuleLoader__.load({
     const elapsed = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
     /** Join configured roles with live roster rows: Lead by role, teammates by their spawn name (= role id). */
 
+    // ---------- which model a member is shown with ----------
+    // The host's listMembers model is not kept in sync with real requests, so it is never displayed. Priority:
+    // 1) the route of the latest request header, from this plugin's own capabilityTeamUsage.lastRoute
+    //    (live projection, else the last refresh) — the model a request was actually sent to, failover included;
+    // 2) older checkpoints without lastRoute: the recorded usage routes, with modelSelection.next accepted only
+    //    when it is one of them;
+    // 3) otherwise nothing here, and the board falls back to the configured primary, labelled "config".
+    // The Lead follows the user's pick (lead-route.js); before its first request it shows that pick, labelled as such.
+    const isRouteKey = route => typeof route === 'string' && route !== 'unknown' && route.indexOf('/') > 0;
+    /** Routes this member actually sent requests to, in the order the plugin first recorded them. */
+    function recordedRoutes(values, snapshotUsage) {
+      const own = values?.capabilityTeamUsage?.routes;
+      const rows = (own?.length ? own : snapshotUsage?.routes) ?? [];
+      return rows.map(row => row?.route).filter(isRouteKey);
+    }
+    /** Route of the latest request header, or null when none is recorded. */
+    function latestRequestRoute(values, snapshotUsage) {
+      const last = values?.capabilityTeamUsage?.lastRoute ?? snapshotUsage?.lastRoute;
+      return isRouteKey(last) ? last : null;
+    }
+    /** Latest trusted route for one member, or null when the plugin has not recorded a request yet. */
+    function trustedRoute(values, snapshotUsage) {
+      const latest = latestRequestRoute(values, snapshotUsage);
+      if (latest) return latest;
+      const routes = recordedRoutes(values, snapshotUsage);
+      if (!routes.length) return null;
+      const next = values?.modelSelection?.next;
+      const pick = next?.provider && next.model ? `${next.provider}/${next.model}` : null;
+      return pick && routes.includes(pick) ? pick : routes[routes.length - 1];
+    }
+    /** The Lead's actual route; before any recorded request, the model the user picked in the conversation. */
+    function leadRoute(values, snapshotUsage) {
+      const actual = trustedRoute(values, snapshotUsage);
+      if (actual) return { route: actual, from: 'request' };
+      const next = values?.modelSelection?.next;
+      return next?.provider && next.model ? { route: `${next.provider}/${next.model}`, from: 'pick' } : null;
+    }
+    /** Replace every roster member's model with its trusted route; members without one carry no model. */
+    function withTrustedRoutes(roster, live, d) {
+      if (!roster) return roster;
+      const evidence = new Map((d?.memberEvidence ?? []).map(m => [m.sessionId, m.usage]));
+      if (d?.sessionId && !evidence.has(d.sessionId) && d.requestEvidence?.usage) evidence.set(d.sessionId, d.requestEvidence.usage);
+      return { ...roster, members: (roster.members ?? []).map(m => {
+        const { provider: _hostProvider, model: _hostModel, ...rest } = m;
+        const values = live?.projections?.(m.id), usage = evidence.get(m.id);
+        const shown = m.role === 'lead' ? leadRoute(values, usage) : (r => r ? { route: r, from: 'request' } : null)(trustedRoute(values, usage));
+        return shown ? { ...rest, ...splitRoute(shown.route), modelFrom: shown.from } : rest;
+      }) };
+    }
+    /** Routes a role may legitimately use: its primary, declared fallbacks and long-context route. */
+    function allowedRoutes(role, allocation) {
+      const list = [allocation?.primary ?? (role?.provider ? `${role.provider}/${role.model}` : null),
+        ...(allocation?.fallbacks ?? []), ...(Array.isArray(role?.fallbacks) ? role.fallbacks : []).map(routeText),
+        role?.longContext?.provider ? `${role.longContext.provider}/${role.longContext.model}` : null];
+      return [...new Set(list.filter(isRouteKey))];
+    }
+    const isLeadRole = role => role?.id === 'lead' || role?.capability === 'orchestrator';
+    /** True when a trusted route lies outside what the role is configured for; unknown config and the Lead never warn. */
+    function routeOutsideConfig(route, role, allocation) {
+      if (isLeadRole(role)) return false;
+      const allowed = allowedRoutes(role, allocation);
+      return !!(isRouteKey(route) && allowed.length && !allowed.includes(route));
+    }
+    /** Small warning marker for a model outside the role's primary and fallbacks. */
+    function routeWarnBadge(t) {
+      return h('span', { key: 'route-warn', className: 'ctm-badge', 'data-tone': 'warn', 'data-route-warn': '', title: t('live.routeWarnHint') }, t('live.routeWarn'));
+    }
+
     function boardCards(roles, activity, allocations) {
       const members = activity?.members ?? [];
       const tasks = activity?.tasks ?? [];
       const primary = new Map((allocations ?? []).map(a => [a.id, a.primary]));
+      const allocById = new Map((allocations ?? []).map(a => [a.id, a]));
       const allocNames = new Map((allocations ?? []).map(a => [a.id, a.displayName]).filter(([_, name]) => Boolean(name)));
       const used = new Set();
       const cards = roles.map(role => {
@@ -1918,7 +1985,8 @@ window.__ModuleLoader__.load({
         const status = card.member?.status ?? 'inactive';
         const task = mine.find(task => task.status === 'in_progress') ?? mine[0];
         // Item 9: "configured" (role.provider/role.model, or this role's primary allocation) is distinct from
-        // "last request" (modelSelection.next, surfaced on card.member.model by teamActivityFrom). They are the
+        // "last request" (this plugin's own capabilityTeamUsage route, put on card.member.model by withTrustedRoutes;
+        // the host roster's model is never used). They are the
         // same route most of the time, but failover/long-context switches or a stale config can make them differ —
         // that difference must stay visible rather than being collapsed into one badge.
         const configuredModel = primary.get(card.id) ?? (card.role?.provider ? `${card.role.provider}/${card.role.model}` : null);
@@ -1927,8 +1995,12 @@ window.__ModuleLoader__.load({
         return { ...card, status,
           model: lastRequestModel ?? configuredModel,
           configuredModel, lastRequestModel,
-          modelDiffers: !!(lastRequestModel && configuredModel && lastRequestModel !== configuredModel),
+          // The Lead runs on the user's pick, so its configured route is only a default and is not contrasted.
+          modelDiffers: !card.lead && !!(lastRequestModel && configuredModel && lastRequestModel !== configuredModel),
           lastRequestIsFallback: !!(lastRequestModel && fallbackRoutes.includes(lastRequestModel)),
+          // Shown model's source: 'request' (trusted route) or 'config' (configured primary, labelled as such).
+          modelSource: lastRequestModel ? 'request' : configuredModel ? 'config' : null,
+          routeWarn: routeOutsideConfig(lastRequestModel, card.role, allocById.get(card.id)),
           liveModel: !!card.member?.model, task, queued: mine.length,
           // A teammate is "delegated to" while it works or holds an in-progress task from the Lead.
           delegated: !card.lead && (status === 'running' || status === 'provisioning' || task?.status === 'in_progress') };
@@ -3310,12 +3382,14 @@ window.__ModuleLoader__.load({
         // (e.g. no role/allocation data loaded yet), fall back to a single badge for whichever model is known —
         // this keeps the pre-existing single-badge rendering intact for that case.
         const showDual = !!c.configuredModel && c.modelDiffers;
-        const singleModel = showDual ? null : (c.configuredModel ?? c.lastRequestModel);
+        const singleModel = showDual ? null : (c.lastRequestModel ?? c.configuredModel);
         const singleBadge = singleModel ? modelBadgeInfo(singleModel, t) : null;
         const singleIsLive = singleModel === c.lastRequestModel && c.liveModel;
         const configuredBadge = showDual ? modelBadgeInfo(c.configuredModel, t) : null;
         const lastRequestBadge = showDual ? modelBadgeInfo(c.lastRequestModel, t) : null;
-        const lastRequestTag = c.lastRequestIsFallback ? t('live.fallback') : t('live.notInConfig');
+        // The warning marker replaces the plain "not in config" tag, so the card says it once.
+        const lastRequestTag = c.lastRequestIsFallback ? t('live.fallback') : c.routeWarn ? null : t('live.notInConfig');
+        const warn = c.routeWarn ? routeWarnBadge(t) : null;
 
         return h('div', { key: c.id, className: 'ctm-bd-card', 'data-status': c.status, 'data-card': c.id, ...(c.delegated ? { 'data-delegated': '' } : {}),
           ...(currentMemberId && c.member?.id === currentMemberId ? { 'data-current': '' } : {}),
@@ -3339,10 +3413,12 @@ window.__ModuleLoader__.load({
               h('i', { className: 'ctm-bd-dot', 'aria-hidden': true }), label(t, `live.${c.status}`, c.status),
               c.status === 'running' && since.get(c.member?.id) ? h('span', { className: 'ctm-bd-time' }, elapsed(Date.now() - since.get(c.member.id))) : null)),
           statusBubble(c, t, live),
-          singleBadge ? h('div', { className: 'ctm-bd-model', title: `${singleModel} (${t(singleIsLive ? 'live.liveModel' : 'live.configModel')})` },
+          singleBadge ? h('div', { className: 'ctm-bd-model', title: `${singleModel} (${t(singleIsLive ? (c.member?.modelFrom === 'pick' ? 'live.leadPick' : 'live.liveModel') : 'live.configModel')})` },
             h('span', { className: 'ctm-ov-hop ctm-model-badge', 'data-grade': singleBadge.grade, ...(singleIsLive ? { 'data-primary': '' } : {}) },
               singleBadge.gradeLabel ? h('span', { className: 'ctm-badge-rank' }, singleBadge.gradeLabel) : null,
-              h('span', { className: 'ctm-badge-alias' }, singleBadge.alias))) : null,
+              h('span', { className: 'ctm-badge-alias' }, singleBadge.alias),
+              singleIsLive ? null : h('span', { className: 'ctm-sub', 'data-config-model': '' }, t('live.configTag'))),
+            singleIsLive ? warn : null) : null,
           configuredBadge ? h('div', { className: 'ctm-bd-model', title: `${c.configuredModel} (${t('live.configModel')})` },
             h('span', { className: 'ctm-ov-hop ctm-model-badge', 'data-grade': configuredBadge.grade },
               configuredBadge.gradeLabel ? h('span', { className: 'ctm-badge-rank' }, configuredBadge.gradeLabel) : null,
@@ -3351,7 +3427,8 @@ window.__ModuleLoader__.load({
             h('span', { className: 'ctm-ov-hop ctm-model-badge', 'data-grade': lastRequestBadge.grade, 'data-primary': '' },
               h('span', { className: 'ctm-badge-rank' }, t('live.lastRequest')),
               h('span', { className: 'ctm-badge-alias' }, lastRequestBadge.alias),
-              h('span', { className: 'ctm-sub' }, lastRequestTag))) : null,
+              lastRequestTag ? h('span', { className: 'ctm-sub' }, lastRequestTag) : null),
+            warn) : null,
           cardMeters(c, live, usage, t),
           coolingBadges(c.member?.id),
           switchNotices(c.member?.id),
@@ -3586,7 +3663,8 @@ window.__ModuleLoader__.load({
       // The Lead's agentTeam projection is pushed live; without it the board falls back to the last refresh.
       const liveTeam = live?.projections?.(effectiveSessionId)?.agentTeam;
       const liveActivity = liveTeam ? teamActivityFrom(liveTeam, live) : null;
-      const roster = liveRoster(effectiveSessionId, liveActivity ?? d?.activity, children?.sessionId === effectiveSessionId ? children.entries : null, live, liveActivity ? Date.now() : current.at);
+      // Models come only from this plugin's own request records (withTrustedRoutes), never from the host roster.
+      const roster = withTrustedRoutes(liveRoster(effectiveSessionId, liveActivity ?? d?.activity, children?.sessionId === effectiveSessionId ? children.entries : null, live, liveActivity ? Date.now() : current.at), live, d);
       const usage = usageRows(d, liveTeam, live);
       const shown = isPresetMounted !== false && !isOrphanSubagent && !!(d || liveTeam);
       const boardRoles = d?.team?.roles ?? (liveTeam?.members ?? []).map(m => ({ id: m.name, displayName: m.name, ...(m.role === 'lead' ? { capability: 'orchestrator' } : {}) }));
@@ -3731,8 +3809,12 @@ window.__ModuleLoader__.load({
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
       const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name || r.id === baseName(currentMember.name) || (currentMember.role === 'lead' && (r.id === 'lead' || r.capability === 'orchestrator'))) : null;
       const currentMemberDisplayName = myRole?.displayName ?? currentMember?.name;
-      const currentMemberModel = myRole?.provider ? `${myRole.provider}/${myRole.model}` : null;
       const currentMemberLive = liveByRole.get(myRole?.id ?? sessionId);
+      const myAllocation = (policy?.allocations ?? []).find(a => a.id === myRole?.id);
+      const currentMemberRouted = currentMemberLive?.model ? [currentMemberLive.provider, currentMemberLive.model].filter(Boolean).join('/') : null;
+      const currentMemberConfigured = myAllocation?.primary ?? (myRole?.provider ? `${myRole.provider}/${myRole.model}` : null);
+      const currentMemberModel = currentMemberRouted ?? currentMemberConfigured;
+      const currentMemberWarn = !!currentMemberRouted && routeOutsideConfig(currentMemberRouted, myRole, myAllocation);
       const currentMemberStatus = currentMemberLive?.status ?? (currentMember ? (live?.running?.(sessionId) ? 'running' : 'idle') : null);
 
       const subagentNoticeNode = isTeammateSession ? h('div', { className: 'ctm-teammate-bar' },
@@ -3744,7 +3826,9 @@ window.__ModuleLoader__.load({
               h('span', { className: 'ctm-sub' }, [myRole?.id, myRole?.capability].filter(Boolean).join(' · ')),
               currentMemberStatus ? badge(label(t, `live.${currentMemberStatus}`, currentMemberStatus), LIVE[currentMemberStatus], 'st') : null),
             h('div', { className: 'ctm-tm-sub' },
-              currentMemberModel ? h('span', { className: 'ctm-ov-route', title: currentMemberModel }, currentMemberModel) : null,
+              currentMemberModel ? h('span', { className: 'ctm-ov-route', title: `${currentMemberModel} (${t(currentMemberRouted ? 'live.liveModel' : 'live.configModel')})` }, currentMemberModel) : null,
+              currentMemberModel && !currentMemberRouted ? h('span', { className: 'ctm-sub', 'data-config-model': '' }, t('live.configTag')) : null,
+              currentMemberWarn ? routeWarnBadge(t) : null,
               h('span', { className: 'ctm-sub', style: { display: 'none' } }, t('subagent.notice')),
               currentMember ? h('span', { className: 'ctm-sub', style: { display: 'none' } }, fmt(t('subagent.currentMember'), { name: currentMemberDisplayName, role: currentMember.role ?? currentMember.id })) : null))),
         h('div', { className: 'ctm-tm-actions' },

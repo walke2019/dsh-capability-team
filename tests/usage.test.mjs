@@ -24,7 +24,7 @@ test('own fold：settled attempt累加、宿主重试累加、按请求头归属
 test('跳过继承事件；无用量的会话为零', () => {
   const events = [header('a', 'm'), usageChunk(1, 1, 999, 999), header('a', 'm'), usageChunk(2, 1, 1, 2)];
   assert.equal(billable(foldUsage({ events, inheritedEventCount: 2 }).totals), 3);
-  assert.deepEqual(foldUsage({ events: [] }), { totals: { uncachedInputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }, routes: [], reportedSamples: 0, attemptsWithoutUsage: 0, coverage: 'unknown' });
+  assert.deepEqual(foldUsage({ events: [] }), { totals: { uncachedInputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }, routes: [], lastRoute: null, reportedSamples: 0, attemptsWithoutUsage: 0, coverage: 'unknown' });
 });
 test('预算：maxTokens 校验，达到上限阻止，投影缺席时不拦截', () => {
   const effective = effectiveConfig({ capabilities: { writer: { maxTokens: 5000 } } });
@@ -65,4 +65,12 @@ test('请求证据与用量来自同一次日志读取', async () => {
   assert.equal(reads, 1);
   assert.equal(result.records.length, 1);
   assert.equal(billable(result.usage.totals), 11);
+});
+test('lastRoute is the latest request header, even when it returns to a route used earlier', async () => {
+  const { ownUsageView } = await import('../usage.js');
+  const events = [header('a', 'pick'), usageChunk(1, 1, 0, 0), header('a', 'primary'), usageChunk(1, 2, 10, 1), header('a', 'pick')];
+  assert.equal(foldUsage({ events }).lastRoute, 'a/pick');
+  const state = events.reduce(applyOwnUsage, initOwnUsage());
+  assert.equal(ownUsageView(state).lastRoute, 'a/pick');
+  assert.equal(ownUsageView(initOwnUsage()).lastRoute, null);
 });

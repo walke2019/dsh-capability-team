@@ -40,7 +40,7 @@ test('团队活动只读取宿主名册与看板，过滤已删除任务，读�
     listTasks: () => [{ id: 1, subject: 'a', status: 'in_progress', ownerName: 'lead', description: 'long' }, { id: 2, subject: 'b', status: 'deleted' }],
   };
   const result = teamActivity({ get: key => key === 'agentTeams' ? teams : undefined }, {});
-  assert.deepEqual(result.members, [{ id: 's1', name: 'lead', role: 'lead', status: 'running', provider: 'p', model: 'm', diagnostics: [] }]);
+  assert.deepEqual(result.members, [{ id: 's1', name: 'lead', role: 'lead', status: 'running', diagnostics: [] }]);
   assert.deepEqual(result.tasks, [{ id: 1, subject: 'a', status: 'in_progress', ownerName: 'lead' }]);
   const broken = teamActivity({ get: () => ({ listMembers() { throw new Error('not a member'); } }) }, {});
   assert.deepEqual(broken.members, []); assert.match(broken.unavailable, /not a member/);

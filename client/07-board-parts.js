@@ -2,6 +2,7 @@
       const members = activity?.members ?? [];
       const tasks = activity?.tasks ?? [];
       const primary = new Map((allocations ?? []).map(a => [a.id, a.primary]));
+      const allocById = new Map((allocations ?? []).map(a => [a.id, a]));
       const allocNames = new Map((allocations ?? []).map(a => [a.id, a.displayName]).filter(([_, name]) => Boolean(name)));
       const used = new Set();
       const cards = roles.map(role => {
@@ -31,7 +32,8 @@
         const status = card.member?.status ?? 'inactive';
         const task = mine.find(task => task.status === 'in_progress') ?? mine[0];
         // Item 9: "configured" (role.provider/role.model, or this role's primary allocation) is distinct from
-        // "last request" (modelSelection.next, surfaced on card.member.model by teamActivityFrom). They are the
+        // "last request" (this plugin's own capabilityTeamUsage route, put on card.member.model by withTrustedRoutes;
+        // the host roster's model is never used). They are the
         // same route most of the time, but failover/long-context switches or a stale config can make them differ —
         // that difference must stay visible rather than being collapsed into one badge.
         const configuredModel = primary.get(card.id) ?? (card.role?.provider ? `${card.role.provider}/${card.role.model}` : null);
@@ -40,8 +42,12 @@
         return { ...card, status,
           model: lastRequestModel ?? configuredModel,
           configuredModel, lastRequestModel,
-          modelDiffers: !!(lastRequestModel && configuredModel && lastRequestModel !== configuredModel),
+          // The Lead runs on the user's pick, so its configured route is only a default and is not contrasted.
+          modelDiffers: !card.lead && !!(lastRequestModel && configuredModel && lastRequestModel !== configuredModel),
           lastRequestIsFallback: !!(lastRequestModel && fallbackRoutes.includes(lastRequestModel)),
+          // Shown model's source: 'request' (trusted route) or 'config' (configured primary, labelled as such).
+          modelSource: lastRequestModel ? 'request' : configuredModel ? 'config' : null,
+          routeWarn: routeOutsideConfig(lastRequestModel, card.role, allocById.get(card.id)),
           liveModel: !!card.member?.model, task, queued: mine.length,
           // A teammate is "delegated to" while it works or holds an in-progress task from the Lead.
           delegated: !card.lead && (status === 'running' || status === 'provisioning' || task?.status === 'in_progress') };

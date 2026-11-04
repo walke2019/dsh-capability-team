@@ -91,7 +91,8 @@
       // The Lead's agentTeam projection is pushed live; without it the board falls back to the last refresh.
       const liveTeam = live?.projections?.(effectiveSessionId)?.agentTeam;
       const liveActivity = liveTeam ? teamActivityFrom(liveTeam, live) : null;
-      const roster = liveRoster(effectiveSessionId, liveActivity ?? d?.activity, children?.sessionId === effectiveSessionId ? children.entries : null, live, liveActivity ? Date.now() : current.at);
+      // Models come only from this plugin's own request records (withTrustedRoutes), never from the host roster.
+      const roster = withTrustedRoutes(liveRoster(effectiveSessionId, liveActivity ?? d?.activity, children?.sessionId === effectiveSessionId ? children.entries : null, live, liveActivity ? Date.now() : current.at), live, d);
       const usage = usageRows(d, liveTeam, live);
       const shown = isPresetMounted !== false && !isOrphanSubagent && !!(d || liveTeam);
       const boardRoles = d?.team?.roles ?? (liveTeam?.members ?? []).map(m => ({ id: m.name, displayName: m.name, ...(m.role === 'lead' ? { capability: 'orchestrator' } : {}) }));
@@ -236,8 +237,12 @@
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
       const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name || r.id === baseName(currentMember.name) || (currentMember.role === 'lead' && (r.id === 'lead' || r.capability === 'orchestrator'))) : null;
       const currentMemberDisplayName = myRole?.displayName ?? currentMember?.name;
-      const currentMemberModel = myRole?.provider ? `${myRole.provider}/${myRole.model}` : null;
       const currentMemberLive = liveByRole.get(myRole?.id ?? sessionId);
+      const myAllocation = (policy?.allocations ?? []).find(a => a.id === myRole?.id);
+      const currentMemberRouted = currentMemberLive?.model ? [currentMemberLive.provider, currentMemberLive.model].filter(Boolean).join('/') : null;
+      const currentMemberConfigured = myAllocation?.primary ?? (myRole?.provider ? `${myRole.provider}/${myRole.model}` : null);
+      const currentMemberModel = currentMemberRouted ?? currentMemberConfigured;
+      const currentMemberWarn = !!currentMemberRouted && routeOutsideConfig(currentMemberRouted, myRole, myAllocation);
       const currentMemberStatus = currentMemberLive?.status ?? (currentMember ? (live?.running?.(sessionId) ? 'running' : 'idle') : null);
 
       const subagentNoticeNode = isTeammateSession ? h('div', { className: 'ctm-teammate-bar' },
@@ -249,7 +254,9 @@
               h('span', { className: 'ctm-sub' }, [myRole?.id, myRole?.capability].filter(Boolean).join(' · ')),
               currentMemberStatus ? badge(label(t, `live.${currentMemberStatus}`, currentMemberStatus), LIVE[currentMemberStatus], 'st') : null),
             h('div', { className: 'ctm-tm-sub' },
-              currentMemberModel ? h('span', { className: 'ctm-ov-route', title: currentMemberModel }, currentMemberModel) : null,
+              currentMemberModel ? h('span', { className: 'ctm-ov-route', title: `${currentMemberModel} (${t(currentMemberRouted ? 'live.liveModel' : 'live.configModel')})` }, currentMemberModel) : null,
+              currentMemberModel && !currentMemberRouted ? h('span', { className: 'ctm-sub', 'data-config-model': '' }, t('live.configTag')) : null,
+              currentMemberWarn ? routeWarnBadge(t) : null,
               h('span', { className: 'ctm-sub', style: { display: 'none' } }, t('subagent.notice')),
               currentMember ? h('span', { className: 'ctm-sub', style: { display: 'none' } }, fmt(t('subagent.currentMember'), { name: currentMemberDisplayName, role: currentMember.role ?? currentMember.id })) : null))),
         h('div', { className: 'ctm-tm-actions' },

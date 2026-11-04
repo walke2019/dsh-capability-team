@@ -7,16 +7,12 @@
     const compact = n => n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}k` : String(n);
     const splitRoute = route => { const i = route.indexOf('/'); return i > 0 ? { provider: route.slice(0, i), model: route.slice(i + 1) } : {}; };
     const PHASE = { provisioning: 'provisioning', failed: 'failed' };
-    /** Roster and board tasks from the Lead's live `agentTeam` projection, with each member's routed model. */
+    /** Roster and board tasks from the Lead's live `agentTeam` projection. Models are attached later by withTrustedRoutes. */
     function teamActivityFrom(team, live) {
       return {
-        members: (team.members ?? []).map(m => {
-          // DSH's modelSelection: the pending pick, else the model of the last request header, which this plugin routes.
-          const next = live.projections(m.id)?.modelSelection?.next;
-          return { id: m.id, name: m.name, role: m.role,
-            status: PHASE[m.phase] ?? (m.phase === 'active' ? (live.running(m.id) ? 'running' : 'idle') : 'inactive'),
-            ...(next?.provider && next.model ? { provider: next.provider, model: next.model } : {}), diagnostics: m.error ? [String(m.error.message ?? m.error)] : [] };
-        }),
+        members: (team.members ?? []).map(m => ({ id: m.id, name: m.name, role: m.role,
+          status: PHASE[m.phase] ?? (m.phase === 'active' ? (live.running(m.id) ? 'running' : 'idle') : 'inactive'),
+          diagnostics: m.error ? [String(m.error.message ?? m.error)] : [] })),
         tasks: (team.tasks ?? []).map(task => ({
           id: task.id,
           subject: task.subject,
@@ -29,7 +25,7 @@
     }
     /**
      * One usage row per member from DSH's own live projections: totals from token-meter's `tokenUsage`, timing from
-     * `sessionStats`, the current model from `modelSelection`. Per-model token splits come from the last refresh.
+     * `sessionStats`, the current model from trustedRoute (own usage routes). Per-model token splits come from the last refresh.
      */
     function usageRows(d, liveTeam, live) {
       const snapshot = new Map((d?.memberEvidence?.length ? d.memberEvidence : d ? [{ sessionId: d.sessionId, name: 'lead', ...(d.requestEvidence ?? {}) }] : [])
@@ -39,7 +35,7 @@
       return members.map(m => {
         const values = liveTeam ? live.projections(m.id) : undefined;
         const before = snapshot.get(m.id)?.usage;
-        const next = values?.modelSelection?.next;
+        const route = trustedRoute(values, before);
         const ownUsage = values?.capabilityTeamUsage;
         // 预算与用量严格对齐后端契约：只读 capabilityTeamUsage / snapshot own usage，绝不读宿主 tokenUsage 避免 fork 偏差
         const totals = ownUsage?.totals ?? before?.totals;
@@ -50,7 +46,7 @@
         return {
           id: m.id, name: m.name, totals, routes, coverage, reportedSamples, attemptsWithoutUsage,
           refreshedAt: before ? refreshedAt : undefined,
-          ...(next?.provider && next.model ? { model: `${next.provider}/${next.model}` } : {}),
+          ...(route ? { model: route } : {}),
           ...(values?.sessionStats ? { stats: values.sessionStats } : {})
         };
       }).filter(row => row.totals || row.routes.length || row.stats || row.model);

@@ -195,10 +195,10 @@ test('MVP-A 3: 模型徽章映射与色阶，tooltip 保留真实 ID 与运行�
           },
         },
       },
-      s_m1: { values: { modelSelection: { next: { provider: 'provider-a', model: 'gpt-6.1-sol' } } } },
-      s_m2: { values: { modelSelection: { next: { provider: 'provider-a', model: 'claude-opus-5-5' } } } },
-      s_m3: { values: { modelSelection: { next: { provider: 'provider-a', model: 'gemini-3.8-flash' } } } },
-      s_m4: { values: { modelSelection: { next: { provider: 'opencode', model: 'build-agent' } } } },
+      s_m1: { values: { modelSelection: { next: { provider: 'provider-a', model: 'gpt-6.1-sol' } }, capabilityTeamUsage: { routes: [{ route: 'provider-a/gpt-6.1-sol' }] } } },
+      s_m2: { values: { modelSelection: { next: { provider: 'provider-a', model: 'claude-opus-5-5' } }, capabilityTeamUsage: { routes: [{ route: 'provider-a/claude-opus-5-5' }] } } },
+      s_m3: { values: { modelSelection: { next: { provider: 'provider-a', model: 'gemini-3.8-flash' } }, capabilityTeamUsage: { routes: [{ route: 'provider-a/gemini-3.8-flash' }] } } },
+      s_m4: { values: { modelSelection: { next: { provider: 'opencode', model: 'build-agent' } }, capabilityTeamUsage: { routes: [{ route: 'opencode/build-agent' }] } } },
     },
   };
   const sessions = { list: { getSnapshot: () => state, subscribe: () => () => {} }, refreshProjections: async () => {} };
@@ -490,9 +490,9 @@ test('MVP-A 7 (item 9): 配置模型与"上次请求"模型不一致时双徽章
         },
       },
       // m1's last request used its declared fallback (e.g. a failover switch happened).
-      s_m1: { values: { modelSelection: { next: { provider: 'provider-a', model: 'claude-opus-5-5' } } } },
+      s_m1: { values: { modelSelection: { next: { provider: 'provider-a', model: 'claude-opus-5-5' } }, capabilityTeamUsage: { routes: [{ route: 'provider-a/claude-opus-5-5' }] } } },
       // m2's last request used a route that is neither the configured primary nor a declared fallback.
-      s_m2: { values: { modelSelection: { next: { provider: 'provider-a', model: 'gemini-3.8-flash' } } } },
+      s_m2: { values: { modelSelection: { next: { provider: 'provider-a', model: 'gemini-3.8-flash' } }, capabilityTeamUsage: { routes: [{ route: 'provider-a/gemini-3.8-flash' }] } } },
     },
   };
   const sessions = { list: { getSnapshot: () => state, subscribe: () => () => {} }, refreshProjections: async () => {} };
@@ -521,7 +521,7 @@ test('MVP-A 7 (item 9): 配置模型与"上次请求"模型不一致时双徽章
   assert.ok(m2Card);
   const m2Models = h.findAll(m2Card, n => n.props?.className === 'ctm-bd-model');
   assert.equal(m2Models.length, 2);
-  assert.ok(JSON.stringify(m2Card).includes('live.notInConfig'), '非声明备选的路由应标注 not in config');
+  assert.ok(h.find(m2Card, n => n.props?.['data-route-warn'] === ''), '非声明备选的路由应显示告警标记');
 
   // lead: no member.model at all -> single badge path still works (regression guard for MVP-A 3).
   const leadCard = h.find(view, n => n.props?.['data-card'] === 'lead');

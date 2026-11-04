@@ -64,14 +64,15 @@ export function applyOwnUsage(state, event) {
   next.coverage = next.attemptsWithoutUsage ? 'partial' : 'complete';
   return next;
 }
+/** `lastRoute` is the route of this session's latest request header: the model a request was actually sent to. */
 export function ownUsageView(state) {
-  return { schemaVersion: 1, scope: 'own-session-events', totals: state.totals, routes: state.routes,
+  return { schemaVersion: 1, scope: 'own-session-events', totals: state.totals, routes: state.routes, lastRoute: state.route ?? null,
     reportedSamples: state.reportedSamples, attemptsWithoutUsage: state.attemptsWithoutUsage, coverage: state.coverage, truncated: state.truncated };
 }
 /** Usage of one session log, excluding events inherited from a parent session. */
 export function foldUsage(snapshot) {
   const own = snapshot.events.slice(snapshot.inheritedEventCount ?? 0).reduce(applyOwnUsage, initOwnUsage());
-  return { totals: own.totals, routes: own.routes.filter(u => billable(u) || u.cacheReadTokens),
+  return { totals: own.totals, routes: own.routes.filter(u => billable(u) || u.cacheReadTokens), lastRoute: own.route ?? null,
     reportedSamples: own.reportedSamples, attemptsWithoutUsage: own.attemptsWithoutUsage, coverage: own.coverage };
 }
 /** Own-session budget totals only. Missing/unknown usage does not block; no inherited host fallback. */

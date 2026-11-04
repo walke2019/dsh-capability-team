@@ -140,10 +140,11 @@ test('档位横向标签默认首个档位，只筛选显示，不改变草稿',
 test('工作台按角色id匹配队友实时状态，未启动角色显示配置模型', async () => {
   const h = harness();
   const roles = [{ id: 'lead', displayName: 'L', capability: 'orchestrator' }, { id: 'qa', displayName: 'Q', capability: 'qa', provider: 'p', model: 'cfg' }, { id: 'fe', displayName: 'F', capability: 'frontend' }];
-  const activity = { members: [{ id: 's1', name: 'lead', role: 'lead', status: 'idle', diagnostics: [] }, { id: 's2', name: 'qa', role: 'teammate', status: 'running', provider: 'p', model: 'live', diagnostics: [] }],
+  const activity = { members: [{ id: 's1', name: 'lead', role: 'lead', status: 'idle', diagnostics: [] }, { id: 's2', name: 'qa', role: 'teammate', status: 'running', provider: 'p', model: 'host-stale', diagnostics: [] }],
     tasks: [{ id: 7, subject: '回归测试', status: 'in_progress', ownerName: 'qa' }] };
   const props = { sessionId: 'board', t: key => key, activity: async () => activity,
-    load: async () => ({ preset: 'capability-team', activity, team: { roles, modelPolicy: { revision: 0, rows: [], allocations: [{ id: 'fe', primary: 'p/fe-model' }] } } }) };
+    load: async () => ({ preset: 'capability-team', activity, memberEvidence: [{ sessionId: 's2', name: 'qa', usage: { routes: [{ route: 'p/live' }] } }],
+      team: { roles, modelPolicy: { revision: 0, rows: [], allocations: [{ id: 'fe', primary: 'p/fe-model' }] } } }) };
   const overview = h.view(props).type;
   let tree = h.render(overview, props);
   await h.find(tree, n => n.type === 'button').props.onClick();
@@ -152,7 +153,8 @@ test('工作台按角色id匹配队友实时状态，未启动角色显示配置
   const view = boardDetailsOf(board);
   const card = status => h.find(view, n => n.props?.className === 'ctm-bd-card' && n.props['data-status'] === status);
   assert.ok(JSON.stringify(card('running')).includes('回归测试'));
-  assert.ok(JSON.stringify(card('running')).includes('p/live'));
+  assert.ok(JSON.stringify(card('running')).includes('p/live'), 'route comes from the plugin usage record');
+  assert.ok(!JSON.stringify(view).includes('host-stale'), 'host roster model is never displayed');
   assert.ok(JSON.stringify(card('inactive')).includes('p/fe-model'));
   assert.ok(card('idle'));
   assert.equal(card('running').props['data-delegated'], '');

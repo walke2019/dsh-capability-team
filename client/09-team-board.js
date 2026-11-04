@@ -109,12 +109,14 @@
         // (e.g. no role/allocation data loaded yet), fall back to a single badge for whichever model is known —
         // this keeps the pre-existing single-badge rendering intact for that case.
         const showDual = !!c.configuredModel && c.modelDiffers;
-        const singleModel = showDual ? null : (c.configuredModel ?? c.lastRequestModel);
+        const singleModel = showDual ? null : (c.lastRequestModel ?? c.configuredModel);
         const singleBadge = singleModel ? modelBadgeInfo(singleModel, t) : null;
         const singleIsLive = singleModel === c.lastRequestModel && c.liveModel;
         const configuredBadge = showDual ? modelBadgeInfo(c.configuredModel, t) : null;
         const lastRequestBadge = showDual ? modelBadgeInfo(c.lastRequestModel, t) : null;
-        const lastRequestTag = c.lastRequestIsFallback ? t('live.fallback') : t('live.notInConfig');
+        // The warning marker replaces the plain "not in config" tag, so the card says it once.
+        const lastRequestTag = c.lastRequestIsFallback ? t('live.fallback') : c.routeWarn ? null : t('live.notInConfig');
+        const warn = c.routeWarn ? routeWarnBadge(t) : null;
 
         return h('div', { key: c.id, className: 'ctm-bd-card', 'data-status': c.status, 'data-card': c.id, ...(c.delegated ? { 'data-delegated': '' } : {}),
           ...(currentMemberId && c.member?.id === currentMemberId ? { 'data-current': '' } : {}),
@@ -138,10 +140,12 @@
               h('i', { className: 'ctm-bd-dot', 'aria-hidden': true }), label(t, `live.${c.status}`, c.status),
               c.status === 'running' && since.get(c.member?.id) ? h('span', { className: 'ctm-bd-time' }, elapsed(Date.now() - since.get(c.member.id))) : null)),
           statusBubble(c, t, live),
-          singleBadge ? h('div', { className: 'ctm-bd-model', title: `${singleModel} (${t(singleIsLive ? 'live.liveModel' : 'live.configModel')})` },
+          singleBadge ? h('div', { className: 'ctm-bd-model', title: `${singleModel} (${t(singleIsLive ? (c.member?.modelFrom === 'pick' ? 'live.leadPick' : 'live.liveModel') : 'live.configModel')})` },
             h('span', { className: 'ctm-ov-hop ctm-model-badge', 'data-grade': singleBadge.grade, ...(singleIsLive ? { 'data-primary': '' } : {}) },
               singleBadge.gradeLabel ? h('span', { className: 'ctm-badge-rank' }, singleBadge.gradeLabel) : null,
-              h('span', { className: 'ctm-badge-alias' }, singleBadge.alias))) : null,
+              h('span', { className: 'ctm-badge-alias' }, singleBadge.alias),
+              singleIsLive ? null : h('span', { className: 'ctm-sub', 'data-config-model': '' }, t('live.configTag'))),
+            singleIsLive ? warn : null) : null,
           configuredBadge ? h('div', { className: 'ctm-bd-model', title: `${c.configuredModel} (${t('live.configModel')})` },
             h('span', { className: 'ctm-ov-hop ctm-model-badge', 'data-grade': configuredBadge.grade },
               configuredBadge.gradeLabel ? h('span', { className: 'ctm-badge-rank' }, configuredBadge.gradeLabel) : null,
@@ -150,7 +154,8 @@
             h('span', { className: 'ctm-ov-hop ctm-model-badge', 'data-grade': lastRequestBadge.grade, 'data-primary': '' },
               h('span', { className: 'ctm-badge-rank' }, t('live.lastRequest')),
               h('span', { className: 'ctm-badge-alias' }, lastRequestBadge.alias),
-              h('span', { className: 'ctm-sub' }, lastRequestTag))) : null,
+              lastRequestTag ? h('span', { className: 'ctm-sub' }, lastRequestTag) : null),
+            warn) : null,
           cardMeters(c, live, usage, t),
           coolingBadges(c.member?.id),
           switchNotices(c.member?.id),

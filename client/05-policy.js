@@ -166,7 +166,7 @@
           r.whenToUse ? h('span', { className: 'ctm-sub' }, fmt(t('roles.whenToUse'), { text: r.whenToUse })) : null,
           h('span', { className: r.provider ? 'ctm-ov-route' : 'ctm-ov-route ctm-warn', title: r.blocked },
             r.provider ? `${r.provider}/${r.model}` : t(r.blocked ? 'models.blocked' : 'team.unassigned')),
-          liveRoleLine(live?.get(r.id), t),
+          liveRoleLine(live?.get(r.id), t, r),
           fallbacks.length ? h('span', { className: 'ctm-sub', title: fallbacks.join('\n') }, fmt(t('roles.fallbackList'), { list: fallbacks.join(t('common.listSep')) })) : null,
           r.maxTokens || r.longContext || r.planFirst ? h('div', { className: 'ctm-chips' },
             r.planFirst ? badge(t('roles.planFirst'), 'brand', 'p') : null,
@@ -176,11 +176,13 @@
       }));
     }
     /** The member currently filling this role: live status and the model of its latest request. */
-    function liveRoleLine(member, t) {
+    function liveRoleLine(member, t, role) {
       if (!member) return null;
+      const route = member.model ? [member.provider, member.model].filter(Boolean).join('/') : null;
       return h('div', { className: 'ctm-chips' },
         badge(label(t, `live.${member.status}`, member.status), LIVE[member.status], 's'),
-        member.model ? h('span', { className: 'ctm-sub', title: t('roles.liveModel') }, fmt(t('roles.current'), { route: [member.provider, member.model].filter(Boolean).join('/') })) : null);
+        route ? h('span', { className: 'ctm-sub', title: t('roles.liveModel') }, fmt(t('roles.current'), { route })) : null,
+        route && routeOutsideConfig(route, role) ? routeWarnBadge(t) : null);
     }
     /** Permission chips for one role; nothing when the capability has no access policy. */
     function accessBadges(access, t) {
