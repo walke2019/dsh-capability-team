@@ -18,6 +18,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- `dsh-capability-autocomplete` 0.4.1: on phones the suggestion strip was absolutely positioned over the area above the composer and covered the workspace and mode controls. It now sits in the composer dock (laid out in flow, no height while empty) and the ✦ moves into the composer tool row, or into the strip on screens narrower than 360 px where the tool row has no room. Suggestions also stand down in multi-agent sessions while a dispatch confirmation is docked or a teammate view is read-only.
+
 - `dsh-capability-autocomplete` 0.3.1: the settings form (model routing, provider/model, candidates) was missing on instances where DSH is installed by pnpm, because the optional `@deepseek-ai/schemastery` peer could not be resolved from the profile and the plugin exported no `Config`. schemastery is now a direct dependency pinned to the version DSH ships.
 - Autocomplete works across terminals: the client calls the endpoint relative to the page, and the endpoint accepts the forwarded host of the Mothership hub tunnel or a reverse proxy as same-origin, so phones and remote browsers are no longer refused as cross-origin.
 

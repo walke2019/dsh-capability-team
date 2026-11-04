@@ -3,17 +3,26 @@
       if (inputActions?.insertText && inputActions.captureInsertion && inputActions.insertText(value, inputActions.captureInsertion())) return;
       document.execCommand('insertText', false, value);
     }
-    /** Composer suggestions: ghost text + Tab on keyboards, a tappable bar on touch screens. */
+    /** Keyboard devices: ghost text inside the composer. Touch devices use the dock strip instead (TouchDock). */
     function ComposerOverlay(props) {
       const config = configOf(useStoreSnapshot(props.form));
       const touch = useTouch();
-      if (!config.enabled) return null;
-      return touch && config.mobileBar ? h(TouchSuggestionBar, { ...props, config }) : h(GhostOverlay, { ...props, config });
+      if (!config.enabled || (touch && config.mobileBar)) return null;
+      return h(GhostOverlay, { ...props, config });
+    }
+    /** Touch devices: the suggestion strip, rendered in the dock above the composer. */
+    function TouchDock(props) {
+      const config = configOf(useStoreSnapshot(props.form));
+      const touch = useTouch();
+      if (!config.enabled || !touch || !config.mobileBar) return null;
+      return h(TouchSuggestionBar, { ...props, config });
     }
     function GhostOverlay({ sessionId, useInput, useSession, inputActions, config }) {
       const draft = useInput ? useInput(s => (s?.draft ? String(s.draft) : '')) ?? '' : '';
-      const running = useSession ? useSession(s => s?.running) === true : false;
+      // "running" here means any busy state (running turn, docked confirmation, read-only teammate view).
+      const { busy: running } = useComposerBusy(useSession);
       const { ghost, setGhost, request, abortRef, composingRef, dismissedRef } = usePredictions(sessionId, draft);
+      React.useEffect(() => { if (running) { abortRef.current?.abort(); setGhost(NO_GHOST); } }, [running]);
       const [box, setBox] = React.useState(null);
       const anchorRef = React.useRef(null);
       const currentRef = React.useRef('');

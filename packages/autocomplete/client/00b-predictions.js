@@ -1,4 +1,25 @@
     /**
+     * Whether the composer is busy and suggestions must stand down. Multi-agent sessions add two cases besides a running
+     * turn: a confirmation card docked above the composer (e.g. a team dispatch plan the user must approve), and a
+     * read-only teammate view whose composer cannot send. Composer DOM is checked, not plugin internals, so this works
+     * with any plugin that docks a card and keeps working if that plugin is absent.
+     */
+    function useComposerBusy(useSession) {
+      const session = useSession ? useSession(s => ({ running: s?.running === true, readonly: s?.subagent != null && s.subagent.address?.mode !== 'continuable' })) : null;
+      const running = session?.running === true, readonly = session?.readonly === true;
+      const [docked, setDocked] = React.useState(false);
+      React.useEffect(() => {
+        if (typeof document === 'undefined' || typeof MutationObserver !== 'function') return undefined;
+        // Any dock content other than our own strip means another surface (e.g. a dispatch confirmation) is in use.
+        const check = () => setDocked([...document.querySelectorAll('.ctm-dock, [data-composer-dock-busy]')].some(el => el.getBoundingClientRect().height > 0));
+        check();
+        const observer = new MutationObserver(check);
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+      }, []);
+      return { busy: running || readonly || docked, running, readonly, docked };
+    }
+    /**
      * Shared prediction state for both input modes: one in-flight request per composer, streamed deltas, abort on
      * draft change and during IME composition, and a "dismissed" marker so a closed suggestion does not reappear.
      */

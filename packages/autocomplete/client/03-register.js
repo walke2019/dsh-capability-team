@@ -12,6 +12,14 @@
         ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
           name: 'conversation.input.overlay', id: 'capability-autocomplete', order: 10, locale: NS,
         }, props => h(ComposerOverlay, { ...props, form, t: props?.t ?? t })));
+        // Touch: the strip lives in the dock (laid out in flow above the composer, so it never covers native controls)
+        // and the ✦ button lives in the composer's own tool row (no extra height).
+        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+          name: 'conversation.input.dock', id: 'capability-autocomplete-touch', order: 90, locale: NS,
+        }, props => h(TouchDock, { ...props, form, t: props?.t ?? t })));
+        ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
+          name: 'conversation.input.right', id: 'capability-autocomplete-ask', order: 90, locale: NS,
+        }, props => h(TouchAskButton, { ...props, form, t: props?.t ?? t })));
         const settings = props => h(AutocompleteSettings, { ...props, form, t: props?.t ?? t });
         ctx.slots.inject('settings.general.item', () => ctx.slots.register({
           name: 'settings.general.item', id: 'capability-autocomplete', order: 55, label: () => t('title'), locale: NS,
@@ -20,4 +28,4 @@
       },
     };
     // Test-only seam: harnesses may define window.__acTestHook; browsers never do.
-    if (typeof window.__acTestHook === 'function') window.__acTestHook({ ComposerOverlay, GhostOverlay, TouchSuggestionBar, AutocompleteSettings, parseSse, isTriggerToken, configOf, candidateOf, ENDPOINT, zh, en });
+    if (typeof window.__acTestHook === 'function') window.__acTestHook({ ComposerOverlay, GhostOverlay, TouchSuggestionBar, TouchDock, TouchAskButton, touchStore, AutocompleteSettings, parseSse, isTriggerToken, configOf, candidateOf, ENDPOINT, zh, en });

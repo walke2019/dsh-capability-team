@@ -21,14 +21,18 @@ The mode is picked from the device's input, not the screen width, and switches b
 
 | | Desktop (mouse/keyboard) | Phone / tablet (touch) |
 |---|---|---|
-| Where | Grey ghost text after the caret | A suggestion bar of buttons just above the composer |
-| Next message | Appears in the empty composer | Appears as buttons in the bar after a reply |
-| Continue a draft | Appears after you pause typing | Tap **✦** to ask (saves data, no surprise requests) |
+| Where | Grey ghost text after the caret | A strip of buttons just above the composer, shown only when there are suggestions |
+| Next message | Appears in the empty composer | Appears as buttons in the strip after a reply |
+| Continue a draft | Appears after you pause typing | Tap **✦** in the composer's tool row (on screens narrower than 360 px, at the start of the strip) |
 | Accept | **Tab** | Tap a suggestion button |
 | Other candidates | **Alt+↑/↓** | All candidates are shown; scroll the bar sideways |
 | Dismiss | **Esc** | Tap **×** |
 
-Buttons are at least 36 px tall and do not take focus, so the soft keyboard stays open. Turn the bar off with `mobileBar: false` to get ghost text on touch devices too.
+Buttons are at least 36 px tall and do not take focus, so the soft keyboard stays open. The strip is laid out in the page above the composer, so it pushes content up instead of covering the workspace, mode or other composer controls, and it takes no space while empty. Turn it off with `mobileBar: false` to get ghost text on touch devices too.
+
+### Multi-agent sessions
+
+Suggestions stand down while the composer is busy: during a running turn, while a confirmation card is docked above the composer (such as a team dispatch plan waiting for approval), and in a read-only teammate view. A request already in flight is cancelled at that moment. Teammate sessions that can be steered (continuable) keep suggestions.
 
 ## Across terminals
 
