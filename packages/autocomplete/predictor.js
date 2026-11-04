@@ -13,7 +13,7 @@ export function readConfig(input = {}) {
     const value = raw !== null && typeof raw === 'object' && typeof raw.get === 'function' ? raw.get() : raw;
     if (value !== undefined) result[key] = value;
   }
-  if (typeof result.enabled !== 'boolean' || !['session', 'fixed'].includes(result.routeMode)
+  if (typeof result.enabled !== 'boolean' || typeof result.mobileBar !== 'boolean' || !['session', 'fixed'].includes(result.routeMode)
     || typeof result.provider !== 'string' || typeof result.model !== 'string') throw new PredictionError('invalid-config', 503);
   for (const [key, [min, max]] of Object.entries(LIMITS)) {
     if (!Number.isInteger(result[key]) || result[key] < min || result[key] > max) throw new PredictionError('invalid-config', 503);

@@ -1,56 +1,22 @@
-    /** Ghost-text overlay in the composer card: requests, streams and lets Tab insert a suggestion (never submits). */
-    function ComposerOverlay({ sessionId, useInput, useSession, inputActions, form }) {
-      const config = configOf(useStoreSnapshot(form));
+    /** Insert into the shell-owned draft; never submits. Falls back to the editor's own insert on older hosts. */
+    function insertSuggestion(inputActions, value) {
+      if (inputActions?.insertText && inputActions.captureInsertion && inputActions.insertText(value, inputActions.captureInsertion())) return;
+      document.execCommand('insertText', false, value);
+    }
+    /** Composer suggestions: ghost text + Tab on keyboards, a tappable bar on touch screens. */
+    function ComposerOverlay(props) {
+      const config = configOf(useStoreSnapshot(props.form));
+      const touch = useTouch();
+      if (!config.enabled) return null;
+      return touch && config.mobileBar ? h(TouchSuggestionBar, { ...props, config }) : h(GhostOverlay, { ...props, config });
+    }
+    function GhostOverlay({ sessionId, useInput, useSession, inputActions, config }) {
       const draft = useInput ? useInput(s => (s?.draft ? String(s.draft) : '')) ?? '' : '';
       const running = useSession ? useSession(s => s?.running) === true : false;
-      const [ghost, setGhost] = React.useState(NO_GHOST);
+      const { ghost, setGhost, request, abortRef, composingRef, dismissedRef } = usePredictions(sessionId, draft);
       const [box, setBox] = React.useState(null);
       const anchorRef = React.useRef(null);
-      const abortRef = React.useRef(null);
-      const composingRef = React.useRef(false);
-      const dismissedRef = React.useRef(null);
       const currentRef = React.useRef('');
-      const request = React.useCallback(async (mode, text) => {
-        if (!sessionId || document.hidden) return;
-        abortRef.current?.abort();
-        const controller = new AbortController();
-        abortRef.current = controller;
-        setGhost({ mode, items: [], index: 0, stream: '', active: true });
-        const settle = items => {
-          if (controller.signal.aborted) return;
-          setGhost(prev => (prev.mode !== mode ? prev : items.length ? { mode, items, index: 0, stream: '', active: false } : NO_GHOST));
-        };
-        try {
-          const response = await fetch(ENDPOINT, { method: 'POST', signal: controller.signal,
-            headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
-            body: JSON.stringify({ sessionId, mode, draft: text }) });
-          if (!response.ok || controller.signal.aborted) { settle([]); return; }
-          if (!(response.headers.get('content-type') || '').includes('text/event-stream') || !response.body) {
-            const done = parseSse(await response.text().catch(() => '')).find(e => e.type === 'done');
-            settle(Array.isArray(done?.suggestions) ? done.suggestions : []);
-            return;
-          }
-          await consumeStream(response.body, controller.signal, event => {
-            if (controller.signal.aborted) return;
-            if (event.type === 'delta' && typeof event.text === 'string') {
-              setGhost(prev => (prev.active && prev.mode === mode ? { ...prev, stream: prev.stream + event.text } : prev));
-            } else if (event.type === 'done') settle(Array.isArray(event.suggestions) ? event.suggestions : []);
-            else if (event.type === 'error') settle([]);
-          });
-        } catch { if (!controller.signal.aborted) settle([]); }
-      }, [sessionId]);
-      React.useEffect(() => {
-        const start = () => { composingRef.current = true; abortRef.current?.abort(); setGhost(NO_GHOST); setBox(null); };
-        const end = () => { composingRef.current = false; };
-        document.addEventListener('compositionstart', start, true);
-        document.addEventListener('compositionend', end, true);
-        return () => { document.removeEventListener('compositionstart', start, true); document.removeEventListener('compositionend', end, true); abortRef.current?.abort(); };
-      }, []);
-      React.useEffect(() => {
-        abortRef.current?.abort();
-        setGhost(NO_GHOST);
-        if (dismissedRef.current && dismissedRef.current.draft !== draft) dismissedRef.current = null;
-      }, [draft]);
       React.useEffect(() => {
         if (!config.enabled || running || draft !== '' || !sessionId || dismissedRef.current?.draft === draft) return undefined;
         const timer = setTimeout(() => { if (!composingRef.current) void request('next', ''); }, 600);
@@ -65,9 +31,7 @@
         }, Math.max(200, config.typePauseMs));
         return () => clearTimeout(timer);
       }, [sessionId, draft, request, config.enabled, config.typePauseMs]);
-      const raw = ghost.items.length ? ghost.items[Math.min(ghost.index, ghost.items.length - 1)] ?? ''
-        : ghost.stream.trim().split(/\r?\n/)[0]?.replace(/^[-*0-9.)\s]+/, '') ?? '';
-      const current = ghost.mode === 'continue' && raw.startsWith(draft) ? raw.slice(draft.length) : raw;
+      const current = candidateOf(ghost, draft);
       currentRef.current = current;
       const visible = Boolean(config.enabled && current && box && (ghost.mode === 'next' ? !draft && !running : draft.trim() && !isTriggerToken(draft)));
       React.useLayoutEffect(() => {
@@ -110,8 +74,7 @@
             const value = currentRef.current;
             dismissedRef.current = { draft: ghost.mode === 'continue' ? draft + value : value };
             setGhost(NO_GHOST);
-            if (inputActions?.insertText && inputActions.captureInsertion) inputActions.insertText(value, inputActions.captureInsertion());
-            else document.execCommand('insertText', false, value);
+            insertSuggestion(inputActions, value);
           }
         };
         document.addEventListener('keydown', onKeyDown, true);

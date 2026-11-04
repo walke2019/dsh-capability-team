@@ -8,12 +8,31 @@ dsh plugin add dsh-capability-autocomplete
 
 Requires DSH >= 0.2.1-rc.3 and Node.js >= 22.
 
-Composer autocomplete for DSH Web (`dsh-capability-autocomplete`, patch id `autocomplete`):
+Composer autocomplete for DSH Web (`dsh-capability-autocomplete`, patch id `autocomplete`). The plugin name, description, settings and on-screen text follow the DSH language (Chinese / English).
 
-- **Inline continuation**: pause while typing and a grey continuation appears after the caret.
+- **Inline continuation**: pause while typing and a continuation is suggested.
 - **Next message**: after the assistant replies, an empty composer suggests what you might ask next.
-- **Tab** accepts the suggestion into the draft, **Alt+Up/Down** cycles candidates, **Esc** dismisses. A suggestion is never sent automatically.
+- A suggestion only fills the composer; it is **never sent automatically**.
 - Suggestions stay out of the way of slash commands (`/…`) and references (`@…`), IME composition, and a running turn.
+
+## Desktop vs. phone and tablet
+
+The mode is picked from the device's input, not the screen width, and switches by itself when you attach or detach a keyboard or mouse.
+
+| | Desktop (mouse/keyboard) | Phone / tablet (touch) |
+|---|---|---|
+| Where | Grey ghost text after the caret | A suggestion bar of buttons just above the composer |
+| Next message | Appears in the empty composer | Appears as buttons in the bar after a reply |
+| Continue a draft | Appears after you pause typing | Tap **✦** to ask (saves data, no surprise requests) |
+| Accept | **Tab** | Tap a suggestion button |
+| Other candidates | **Alt+↑/↓** | All candidates are shown; scroll the bar sideways |
+| Dismiss | **Esc** | Tap **×** |
+
+Buttons are at least 36 px tall and do not take focus, so the soft keyboard stays open. Turn the bar off with `mobileBar: false` to get ghost text on touch devices too.
+
+## Across terminals
+
+The same package works on every DSH Web client connected to the instance: the local browser, another computer on the network, and phones opened through the Mothership hub link. The page calls the endpoint relative to itself, so tunnels and path prefixes need no configuration, and settings are stored in the instance (not the browser), so every device shares them.
 
 ## Model routing
 
@@ -35,6 +54,7 @@ Change them from **Settings → General** or the plugin's card on the Plugins pa
 | `provider`, `model` | empty | used in `fixed` mode |
 | `maxSuggestions` | 3 | 1–5 |
 | `typePauseMs` | 700 | 200–5000 |
+| `mobileBar` | `true` | tap bar on touch devices |
 | `maxOutputTokens` | 220 | 16–2048 |
 | `timeoutMs` | 20000 | 1000–120000 |
 | `maxMessages` | 10 | 1–50 |
@@ -42,7 +62,7 @@ Change them from **Settings → General** or the plugin's card on the Plugins pa
 
 ## Privacy and safety
 
-- The endpoint `POST /autocomplete/predict` accepts only the authenticated **owner**, same-origin JSON requests; cross-site requests are refused.
+- The endpoint `POST autocomplete/predict` accepts only the authenticated **owner** and same-origin JSON requests (the forwarded host of a hub tunnel or reverse proxy counts as the origin); cross-site requests are refused.
 - Only the text of recent user and assistant messages is sent as context, never tool calls or tool output, and it is quoted as untrusted data.
 - Predictions never write to the session transcript. At most four predictions run at once; each is bounded by `timeoutMs`.
 

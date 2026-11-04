@@ -5,30 +5,49 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
-    const ENDPOINT = '/autocomplete/predict';
+    // Relative to the page (<base href="./">), so it works on loopback, behind the hub tunnel and under any path prefix.
+    const ENDPOINT = 'autocomplete/predict';
     const NS = 'capability-autocomplete';
     const PACKAGE = 'dsh-capability-autocomplete';
     const FORM = 'autocomplete';
-    const DEFAULTS = { enabled: true, routeMode: 'session', provider: '', model: '', maxSuggestions: 3, typePauseMs: 700 };
+    const DEFAULTS = { enabled: true, routeMode: 'session', provider: '', model: '', maxSuggestions: 3, typePauseMs: 700, mobileBar: true };
     const NO_GHOST = { mode: 'next', items: [], index: 0, stream: '', active: false };
     const zh = {
-      title: '输入框自动补全', hint: '打字停顿时行内续写，回复后建议下一句；按 Tab 采纳，绝不自动发送。',
+      title: '输入框自动补全', hint: '打字停顿时行内续写，回复后建议下一句；电脑按 Tab、手机点建议栏采纳，绝不自动发送。',
       enabled: '启用补全', enabledHint: '关闭后不再请求或展示任何候选。', route: '模型路由',
       routeHint: '跟随当前会话模型，或固定一个低延迟模型。', session: '跟随会话（推荐）', fixed: '固定模型',
       provider: '提供商 ID', model: '模型 ID', fixedHint: '固定模式需要同时填写已有的提供商 ID 与模型 ID（不是密钥）。',
       count: '候选数', countHint: '每次最多生成的候选，Alt+↑/↓ 切换。', pause: '停顿延迟（毫秒）',
-      pauseHint: '停止输入后多久请求续写。', saved: '已保存', failed: '保存失败', loading: '正在读取设置…',
+      pauseHint: '停止输入后多久请求续写。', mobileBar: '触屏建议栏', mobileBarHint: '在手机、平板上把建议显示为输入框上方可点击的按钮。',
+      saved: '已保存', failed: '保存失败', loading: '正在读取设置…',
       unavailable: '设置暂不可用：请确认已启用该插件。', summary: '输入框行内补全与下一句建议',
+      barLabel: '补全建议', suggest: '获取建议', thinking: '正在生成…', accept: '采纳：{text}', dismiss: '关闭建议', none: '暂无建议',
     };
     const en = {
-      title: 'Composer autocomplete', hint: 'Inline continuation while you pause and next-message suggestions after replies; Tab accepts, nothing is sent automatically.',
+      title: 'Composer autocomplete', hint: 'Inline continuation while you pause and next-message suggestions after replies; Tab on desktop or tap the bar on mobile accepts, nothing is sent automatically.',
       enabled: 'Enable suggestions', enabledHint: 'When off, no prediction is requested or shown.', route: 'Model routing',
       routeHint: 'Follow the session model, or pin a low-latency model.', session: 'Follow session (recommended)', fixed: 'Fixed model',
       provider: 'Provider ID', model: 'Model ID', fixedHint: 'Fixed mode needs an existing provider ID and model ID (not a key).',
       count: 'Candidates', countHint: 'Maximum candidates per prediction; Alt+Up/Down cycles them.', pause: 'Typing pause (ms)',
-      pauseHint: 'How long after typing stops before a continuation is requested.', saved: 'Saved', failed: 'Save failed',
-      loading: 'Loading settings…', unavailable: 'Settings unavailable: make sure the plugin is enabled.', summary: 'Inline composer completion and next-message suggestions',
+      pauseHint: 'How long after typing stops before a continuation is requested.', mobileBar: 'Touch suggestion bar',
+      mobileBarHint: 'On phones and tablets, show suggestions as tappable buttons above the composer.',
+      saved: 'Saved', failed: 'Save failed', loading: 'Loading settings…',
+      unavailable: 'Settings unavailable: make sure the plugin is enabled.', summary: 'Inline composer completion and next-message suggestions',
+      barLabel: 'Suggestions', suggest: 'Suggest', thinking: 'Thinking…', accept: 'Accept: {text}', dismiss: 'Dismiss suggestions', none: 'No suggestion',
     };
+    /** Touch-first devices get the tap bar; a phone has no Tab key. Re-evaluated when the input mode changes. */
+    function useTouch() {
+      const query = typeof window.matchMedia === 'function' ? window.matchMedia('(pointer: coarse)') : null;
+      const [touch, setTouch] = React.useState(() => query?.matches === true);
+      React.useEffect(() => {
+        if (!query) return undefined;
+        const update = () => setTouch(query.matches === true);
+        query.addEventListener?.('change', update);
+        return () => query.removeEventListener?.('change', update);
+      }, []);
+      return touch;
+    }
+    const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_m, key) => values[key] ?? '');
     /** Re-render on a `{getSnapshot, subscribe}` store such as a ConfigForm. */
     function useStoreSnapshot(store) {
       const [, redraw] = React.useState(0);
@@ -101,18 +120,15 @@ window.__ModuleLoader__.load({
       return rect && prefix && prefix === collapse(draft.trimEnd()) ? rect : null;
     }
 
-    /** Ghost-text overlay in the composer card: requests, streams and lets Tab insert a suggestion (never submits). */
-    function ComposerOverlay({ sessionId, useInput, useSession, inputActions, form }) {
-      const config = configOf(useStoreSnapshot(form));
-      const draft = useInput ? useInput(s => (s?.draft ? String(s.draft) : '')) ?? '' : '';
-      const running = useSession ? useSession(s => s?.running) === true : false;
+    /**
+     * Shared prediction state for both input modes: one in-flight request per composer, streamed deltas, abort on
+     * draft change and during IME composition, and a "dismissed" marker so a closed suggestion does not reappear.
+     */
+    function usePredictions(sessionId, draft) {
       const [ghost, setGhost] = React.useState(NO_GHOST);
-      const [box, setBox] = React.useState(null);
-      const anchorRef = React.useRef(null);
       const abortRef = React.useRef(null);
       const composingRef = React.useRef(false);
       const dismissedRef = React.useRef(null);
-      const currentRef = React.useRef('');
       const request = React.useCallback(async (mode, text) => {
         if (!sessionId || document.hidden) return;
         abortRef.current?.abort();
@@ -124,7 +140,7 @@ window.__ModuleLoader__.load({
           setGhost(prev => (prev.mode !== mode ? prev : items.length ? { mode, items, index: 0, stream: '', active: false } : NO_GHOST));
         };
         try {
-          const response = await fetch(ENDPOINT, { method: 'POST', signal: controller.signal,
+          const response = await fetch(ENDPOINT, { method: 'POST', signal: controller.signal, credentials: 'same-origin',
             headers: { 'content-type': 'application/json', accept: 'text/event-stream' },
             body: JSON.stringify({ sessionId, mode, draft: text }) });
           if (!response.ok || controller.signal.aborted) { settle([]); return; }
@@ -143,7 +159,7 @@ window.__ModuleLoader__.load({
         } catch { if (!controller.signal.aborted) settle([]); }
       }, [sessionId]);
       React.useEffect(() => {
-        const start = () => { composingRef.current = true; abortRef.current?.abort(); setGhost(NO_GHOST); setBox(null); };
+        const start = () => { composingRef.current = true; abortRef.current?.abort(); setGhost(NO_GHOST); };
         const end = () => { composingRef.current = false; };
         document.addEventListener('compositionstart', start, true);
         document.addEventListener('compositionend', end, true);
@@ -154,6 +170,34 @@ window.__ModuleLoader__.load({
         setGhost(NO_GHOST);
         if (dismissedRef.current && dismissedRef.current.draft !== draft) dismissedRef.current = null;
       }, [draft]);
+      return { ghost, setGhost, request, abortRef, composingRef, dismissedRef };
+    }
+    /** The candidate shown for a draft: continuation text after the draft, or a whole next message. */
+    function candidateOf(ghost, draft) {
+      const raw = ghost.items.length ? ghost.items[Math.min(ghost.index, ghost.items.length - 1)] ?? ''
+        : ghost.stream.trim().split(/\r?\n/)[0]?.replace(/^[-*0-9.)\s]+/, '') ?? '';
+      return ghost.mode === 'continue' && raw.startsWith(draft) ? raw.slice(draft.length) : raw;
+    }
+
+    /** Insert into the shell-owned draft; never submits. Falls back to the editor's own insert on older hosts. */
+    function insertSuggestion(inputActions, value) {
+      if (inputActions?.insertText && inputActions.captureInsertion && inputActions.insertText(value, inputActions.captureInsertion())) return;
+      document.execCommand('insertText', false, value);
+    }
+    /** Composer suggestions: ghost text + Tab on keyboards, a tappable bar on touch screens. */
+    function ComposerOverlay(props) {
+      const config = configOf(useStoreSnapshot(props.form));
+      const touch = useTouch();
+      if (!config.enabled) return null;
+      return touch && config.mobileBar ? h(TouchSuggestionBar, { ...props, config }) : h(GhostOverlay, { ...props, config });
+    }
+    function GhostOverlay({ sessionId, useInput, useSession, inputActions, config }) {
+      const draft = useInput ? useInput(s => (s?.draft ? String(s.draft) : '')) ?? '' : '';
+      const running = useSession ? useSession(s => s?.running) === true : false;
+      const { ghost, setGhost, request, abortRef, composingRef, dismissedRef } = usePredictions(sessionId, draft);
+      const [box, setBox] = React.useState(null);
+      const anchorRef = React.useRef(null);
+      const currentRef = React.useRef('');
       React.useEffect(() => {
         if (!config.enabled || running || draft !== '' || !sessionId || dismissedRef.current?.draft === draft) return undefined;
         const timer = setTimeout(() => { if (!composingRef.current) void request('next', ''); }, 600);
@@ -168,9 +212,7 @@ window.__ModuleLoader__.load({
         }, Math.max(200, config.typePauseMs));
         return () => clearTimeout(timer);
       }, [sessionId, draft, request, config.enabled, config.typePauseMs]);
-      const raw = ghost.items.length ? ghost.items[Math.min(ghost.index, ghost.items.length - 1)] ?? ''
-        : ghost.stream.trim().split(/\r?\n/)[0]?.replace(/^[-*0-9.)\s]+/, '') ?? '';
-      const current = ghost.mode === 'continue' && raw.startsWith(draft) ? raw.slice(draft.length) : raw;
+      const current = candidateOf(ghost, draft);
       currentRef.current = current;
       const visible = Boolean(config.enabled && current && box && (ghost.mode === 'next' ? !draft && !running : draft.trim() && !isTriggerToken(draft)));
       React.useLayoutEffect(() => {
@@ -213,8 +255,7 @@ window.__ModuleLoader__.load({
             const value = currentRef.current;
             dismissedRef.current = { draft: ghost.mode === 'continue' ? draft + value : value };
             setGhost(NO_GHOST);
-            if (inputActions?.insertText && inputActions.captureInsertion) inputActions.insertText(value, inputActions.captureInsertion());
-            else document.execCommand('insertText', false, value);
+            insertSuggestion(inputActions, value);
           }
         };
         document.addEventListener('keydown', onKeyDown, true);
@@ -230,6 +271,54 @@ window.__ModuleLoader__.load({
           h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.85 } }, current),
           ghost.items.length > 1 ? h('span', { style: tag }, `${ghost.index + 1}/${ghost.items.length}`) : null,
           ghost.active ? null : h('kbd', { style: tag }, 'Tab')));
+    }
+
+    /**
+     * Touch suggestion bar (phones, tablets): a phone has no Tab key and no hover, so suggestions are tappable chips
+     * above the composer, like a keyboard's suggestion strip. Tapping a chip fills the draft; it never sends.
+     * The ✦ button asks on demand, which also saves mobile data compared with requesting on every pause.
+     */
+    function TouchSuggestionBar({ sessionId, useInput, useSession, inputActions, config, t }) {
+      const draft = useInput ? useInput(s => (s?.draft ? String(s.draft) : '')) ?? '' : '';
+      const running = useSession ? useSession(s => s?.running) === true : false;
+      const { ghost, setGhost, request, abortRef, composingRef, dismissedRef } = usePredictions(sessionId, draft);
+      const label = typeof t === 'function' ? t : key => en[key] ?? key;
+      const blocked = !sessionId || running || isTriggerToken(draft);
+      const ask = () => {
+        if (blocked || composingRef.current) return;
+        dismissedRef.current = null;
+        void (draft.trim() ? request('continue', draft.slice(-4000)) : request('next', ''));
+      };
+      // Next-message suggestions arrive by themselves after a reply; continuations wait for an explicit tap.
+      React.useEffect(() => {
+        if (blocked || draft !== '' || dismissedRef.current?.draft === draft) return undefined;
+        const timer = setTimeout(() => { if (!composingRef.current) void request('next', ''); }, 600);
+        return () => clearTimeout(timer);
+      }, [sessionId, running, draft, request]);
+      if (blocked) return null;
+      const items = ghost.items.length ? ghost.items : [candidateOf(ghost, draft)].filter(Boolean);
+      const accept = item => {
+        const value = ghost.mode === 'continue' && item.startsWith(draft) ? item.slice(draft.length) : item;
+        dismissedRef.current = { draft: ghost.mode === 'continue' ? draft + value : value };
+        setGhost(NO_GHOST);
+        insertSuggestion(inputActions, value);
+      };
+      const close = () => { dismissedRef.current = { draft }; abortRef.current?.abort(); setGhost(NO_GHOST); };
+      // 36px+ targets, horizontal scroll for long chips, and no focus steal so the soft keyboard stays open.
+      const keep = event => event.preventDefault();
+      const chip = { flex: '0 0 auto', maxWidth: '80vw', minHeight: '36px', padding: '6px 12px', borderRadius: '18px', overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px solid var(--dsw-alias-border-l2, #555)',
+        background: 'var(--dsw-alias-bg-layer-2, transparent)', color: 'var(--dsw-alias-label-primary, inherit)', fontSize: '14px' };
+      return h('div', { role: 'toolbar', 'aria-label': label('barLabel'), 'data-autocomplete-bar': ghost.mode,
+        style: { position: 'absolute', left: 0, right: 0, bottom: '100%', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'center',
+          overflowX: 'auto', WebkitOverflowScrolling: 'touch', padding: '2px', zIndex: 10 } },
+        h('button', { type: 'button', key: 'ask', 'data-action': 'suggest', 'aria-label': label('suggest'), onMouseDown: keep, onClick: ask, disabled: ghost.active,
+          style: { ...chip, minWidth: '36px', padding: '6px 10px' } }, ghost.active ? '…' : '✦'),
+        ghost.active && !items.length ? h('span', { key: 'busy', style: { fontSize: '13px', opacity: 0.7 } }, label('thinking')) : null,
+        ...items.map((item, index) => h('button', { type: 'button', key: `s${index}`, 'data-action': 'accept', disabled: ghost.active,
+          'aria-label': fill(label('accept'), { text: item }), onMouseDown: keep, onClick: () => accept(item), style: chip }, item)),
+        items.length ? h('button', { type: 'button', key: 'close', 'data-action': 'dismiss', 'aria-label': label('dismiss'), onMouseDown: keep, onClick: close,
+          style: { ...chip, minWidth: '36px', padding: '6px 10px' } }, '×') : null);
     }
 
     /** Settings card bound to this plugin's ConfigForm: the host config is the single source of truth. */
@@ -266,6 +355,8 @@ window.__ModuleLoader__.load({
           h('span', { style: muted }, t('fixedHint')), row(t('provider'), '', text('provider')), row(t('model'), '', text('model'))) : null,
         row(t('count'), t('countHint'), number('maxSuggestions', 1, 5, 1)),
         row(t('pause'), t('pauseHint'), number('typePauseMs', 200, 5000, 50)),
+        row(t('mobileBar'), t('mobileBarHint'), h('input', { type: 'checkbox', name: 'mobileBar', role: 'switch', disabled: locked, checked: value.mobileBar !== false,
+          onChange: event => void save('mobileBar', event.target.checked) })),
         result ? h('span', { role: 'status', style: muted }, t(result)) : null);
     }
 
@@ -282,7 +373,7 @@ window.__ModuleLoader__.load({
         });
         ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
           name: 'conversation.input.overlay', id: 'capability-autocomplete', order: 10, locale: NS,
-        }, props => h(ComposerOverlay, { ...props, form })));
+        }, props => h(ComposerOverlay, { ...props, form, t: props?.t ?? t })));
         const settings = props => h(AutocompleteSettings, { ...props, form, t: props?.t ?? t });
         ctx.slots.inject('settings.general.item', () => ctx.slots.register({
           name: 'settings.general.item', id: 'capability-autocomplete', order: 55, label: () => t('title'), locale: NS,
@@ -291,7 +382,7 @@ window.__ModuleLoader__.load({
       },
     };
     // Test-only seam: harnesses may define window.__acTestHook; browsers never do.
-    if (typeof window.__acTestHook === 'function') window.__acTestHook({ ComposerOverlay, AutocompleteSettings, parseSse, isTriggerToken, configOf });
+    if (typeof window.__acTestHook === 'function') window.__acTestHook({ ComposerOverlay, GhostOverlay, TouchSuggestionBar, AutocompleteSettings, parseSse, isTriggerToken, configOf, candidateOf, ENDPOINT, zh, en });
 
     return plugin;
   },

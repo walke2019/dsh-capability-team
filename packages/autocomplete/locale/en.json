@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Composer Autocomplete",
+    "description": "Inline continuation while you pause and next-message suggestions after replies. Press Tab on desktop or tap the suggestion bar on mobile; nothing is sent automatically."
+  }
+}

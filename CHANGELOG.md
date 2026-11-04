@@ -12,6 +12,12 @@ All notable changes to this project are documented in this file. The format foll
 - The owner-only `POST /autocomplete/predict` endpoint refuses cross-site requests, sends only user/assistant text as quoted context, caps concurrent predictions at four and never writes the transcript.
 - Settings are read from the host ConfigForm (Settings → General and the plugin card) instead of browser storage, so the server and the client share one source of truth.
 - `npm run build:autocomplete` generates the package's `client.js`; lint and build verify it is current and that every published file exists.
+- `dsh-capability-autocomplete` 0.3.0: Chinese and English for the plugin name and description (`locale/zh.json`, `locale/en.json`), every settings field (schemastery `i18n`) and all on-screen text.
+- Touch suggestion bar for phones and tablets: tappable suggestion buttons above the composer, a ✦ button to ask for a continuation, × to dismiss. Chosen by input type (`pointer: coarse`), switchable with `mobileBar`.
+
+### Fixed
+
+- Autocomplete works across terminals: the client calls the endpoint relative to the page, and the endpoint accepts the forwarded host of the Mothership hub tunnel or a reverse proxy as same-origin, so phones and remote browsers are no longer refused as cross-origin.
 
 ## [4.0.1] - 2026-11-05
 

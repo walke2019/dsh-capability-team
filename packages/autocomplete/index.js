@@ -30,10 +30,13 @@ function refusal(ctx, request, active) {
   if ('rejection' in admission) return [admission.rejection, 'unauthorized'];
   if (admission.peer.principal.kind !== 'owner') return [403, 'forbidden'];
   if (request.method !== 'POST') return [405, 'method-not-allowed'];
-  // Admission authenticates; Origin/Sec-Fetch-Site additionally block browser CSRF.
+  // Admission authenticates; Origin/Sec-Fetch-Site additionally block browser CSRF. Behind the hub tunnel or a
+  // reverse proxy the public host may arrive as X-Forwarded-Host; a page cannot forge that header cross-site
+  // because the JSON content type already forces a CORS preflight that DSH never approves.
   const origin = request.headers.origin;
+  const hosts = [request.headers.host, String(request.headers['x-forwarded-host'] ?? '').split(',')[0].trim()].filter(Boolean);
   let crossOrigin = request.headers['sec-fetch-site'] === 'cross-site';
-  if (origin !== undefined) { try { crossOrigin ||= new URL(origin).host !== request.headers.host; } catch { crossOrigin = true; } }
+  if (origin !== undefined) { try { crossOrigin ||= !hosts.includes(new URL(origin).host); } catch { crossOrigin = true; } }
   if (crossOrigin) return [403, 'cross-origin'];
   if (request.headers['content-type']?.split(';')[0].trim().toLowerCase() !== 'application/json') return [415, 'unsupported-media-type'];
   if (active.size >= MAX_ACTIVE) return [429, 'too-many-predictions'];

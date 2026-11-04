@@ -1,6 +1,6 @@
 {
   "name": "dsh-capability-autocomplete",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Composer autocomplete for DeepSeek Harness (DSH): inline continuation and next-message suggestions accepted with Tab, never sent automatically",
   "license": "MIT",
@@ -22,8 +22,8 @@
     "@deepseek-ai/dsh-client-locale": { "optional": true },
     "@deepseek-ai/dsh-client-ui-conversation": { "optional": true }
   },
-  "exports": { ".": "./index.js", "./client": "./client.js", "./icon": "./icon.svg" },
-  "files": ["index.js", "predictor.js", "schema.js", "client.js", "cordis.patch.yml", "icon.svg", "README.md", "LICENSE"],
+  "exports": { ".": "./index.js", "./client": "./client.js", "./locale/*.json": "./locale/*.json", "./icon": "./icon.svg" },
+  "files": ["index.js", "predictor.js", "schema.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg", "README.md", "LICENSE"],
   "scripts": { "build": "node scripts/build-client.mjs", "test": "node --test ../../tests/autocomplete/*.test.mjs" },
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },

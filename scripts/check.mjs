@@ -38,7 +38,16 @@ const globalRoot = join(root, 'packages', bundle);
   const check = spawnSync(process.execPath, [join(acRoot, 'scripts/build-client.mjs'), '--check'], { encoding: 'utf8', windowsHide: true });
   if (check.status !== 0) throw new Error(check.stderr || 'Autocomplete client check failed');
   const acPkg = JSON.parse(await readFile(join(acRoot, 'package.json'), 'utf8'));
-  for (const file of [...acPkg.files, ...Object.values(acPkg.exports), acPkg.dsh.bundle.patch]) await stat(join(acRoot, file.replace(/^\.\//, '')));
+  for (const entry of [...acPkg.files, ...Object.values(acPkg.exports), acPkg.dsh.bundle.patch]) {
+    const file = entry.replace(/^\.\//, '');
+    if (!file.includes('*')) { await stat(join(acRoot, file)); continue; }
+    // A wildcard entry must match at least one file, and every matched JSON file must parse.
+    const [prefix, suffix] = file.slice(file.lastIndexOf('/') + 1).split('*');
+    const dir = join(acRoot, file.slice(0, Math.max(0, file.lastIndexOf('/'))));
+    const matched = (await readdir(dir)).filter(name => name.startsWith(prefix) && name.endsWith(suffix));
+    if (!matched.length) throw new Error(`Empty autocomplete package pattern: ${entry}`);
+    for (const name of matched) if (name.endsWith('.json')) JSON.parse(await readFile(join(dir, name), 'utf8'));
+  }
   console.log('AUTOCOMPLETE_CLOSURE_OK');
 }
 let checked = 0;

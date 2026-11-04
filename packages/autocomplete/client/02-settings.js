@@ -32,5 +32,7 @@
           h('span', { style: muted }, t('fixedHint')), row(t('provider'), '', text('provider')), row(t('model'), '', text('model'))) : null,
         row(t('count'), t('countHint'), number('maxSuggestions', 1, 5, 1)),
         row(t('pause'), t('pauseHint'), number('typePauseMs', 200, 5000, 50)),
+        row(t('mobileBar'), t('mobileBarHint'), h('input', { type: 'checkbox', name: 'mobileBar', role: 'switch', disabled: locked, checked: value.mobileBar !== false,
+          onChange: event => void save('mobileBar', event.target.checked) })),
         result ? h('span', { role: 'status', style: muted }, t(result)) : null);
     }
