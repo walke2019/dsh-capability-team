@@ -1,9 +1,18 @@
 // Archive tests use the existing npm/pnpm pack command, never a committed tarball.
-import { readdir, readFile, mkdtemp, rm, access } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { readdir, readFile, mkdtemp, rm, access, realpath } from 'node:fs/promises';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { gunzipSync } from 'node:zlib';
+/** npm-cli.js behind the `npm` found on PATH (like `which npm` + realpath); Windows shims sit beside node_modules/npm. */
+async function npmOnPath() {
+  const found = [];
+  for (const dir of (process.env.PATH ?? '').split(delimiter).filter(Boolean)) {
+    found.push(join(dir, 'node_modules/npm/bin/npm-cli.js'));
+    try { const real = await realpath(join(dir, 'npm')); if (/\.[cm]?js$/.test(real)) found.push(real); } catch {}
+  }
+  return found;
+}
 /** Run real npm/pnpm pack into a fresh temp directory; return uncompressed tar bytes. */
 export async function temporaryArchive(t, packageDir) {
   const temp = await mkdtemp(join(tmpdir(), 'dsh-pack-'));
@@ -11,6 +20,8 @@ export async function temporaryArchive(t, packageDir) {
   const candidates = [process.env.npm_execpath,
     join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'),
     join(dirname(process.execPath), '../node_modules/npm/bin/npm-cli.js'),
+    join(dirname(process.execPath), '../lib/node_modules/npm/bin/npm-cli.js'),
+    ...await npmOnPath(),
     join(homedir(), '.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/pnpm/bin/pnpm.mjs')].filter(Boolean);
   let cli;
   for (const candidate of candidates) { try { await access(candidate); cli = candidate; break; } catch {} }

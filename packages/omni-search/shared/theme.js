@@ -5,6 +5,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { resolve, join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { effectiveConfig, migrateProject, applyPatch, seed } from './config.js';
+import { pinRoster } from './roster-defaults.js';
 export const STALE_LOCK_MS = 30000;
 export function defaultRoot() {
   return process.env.CAPABILITY_TEAM_HOME || join(homedir(), '.dsh', 'capability-team-themes');
@@ -98,7 +99,7 @@ export async function saveProject(project, patch, expectedRevision, { base = see
   try {
     const previous = await loadProject(project, base, root);
     if (!Number.isSafeInteger(expectedRevision) || previous.revision !== expectedRevision) throw new Error(`团队配置版本冲突（当前 ${previous.revision}），请重新读取并重新确认`);
-    const nextOverrides = applyPatch(previous.overrides, patch);
+    const nextOverrides = pinRoster(applyPatch(previous.overrides, patch), previous.overrides, base.roles);
     const effective = effectiveConfig(nextOverrides, base, { trustedFrom: previous.overrides });
     if (check) await check(previous.effective, effective);
     const stored = { ...nextOverrides, revision: previous.revision + 1, project: resolve(project) };

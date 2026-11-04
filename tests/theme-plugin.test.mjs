@@ -56,11 +56,11 @@ test('保存前弹出真人确认框，取消则不写入', async () => {
   const root = await temp();
   try {
     const no = harness(root, { answer: '取消' });
-    await assert.rejects(no.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'lv-bu': { displayName: '后端' } } }, { agent: no.agent() }), /未确认/);
+    await assert.rejects(no.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'backend': { displayName: '后端' } } }, { agent: no.agent() }), /未确认/);
     assert.match(no.asked[0].questions[0].detail, /后端/);
     assert.equal((await loadProject(root, seed, root)).revision, 0);
     const yes = harness(root);
-    const saved = JSON.parse(await yes.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'lv-bu': { displayName: '后端' } } }, { agent: yes.agent() }));
+    const saved = JSON.parse(await yes.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'backend': { displayName: '后端' } } }, { agent: yes.agent() }));
     assert.equal(saved.revision, 1);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -69,17 +69,17 @@ test('导入模板与保存走同一确认流程：取消不写入，确认后�
   try {
     const h = harness(root);
     const template = JSON.parse(await h.tools.capability_team_export.execute({}, { agent: h.agent() }));
-    template.roles = { lead: template.roles.lead, 'zhou-yu': { displayName: '质检', capability: 'qa' } };
+    template.roles = { lead: template.roles.lead, 'qa': { displayName: '质检', capability: 'qa' } };
     template.capabilities.qa.planFirst = true;
     const no = harness(root, { answer: '取消' });
     await assert.rejects(no.tools.capability_team_import.execute({ expected_revision: 0, template }, { agent: no.agent() }), /未确认/);
     assert.match(no.asked[0].questions[0].detail, /质检/);
     assert.equal((await loadProject(root, seed, root)).revision, 0);
     const saved = JSON.parse(await h.tools.capability_team_import.execute({ expected_revision: 0, template }, { agent: h.agent() }));
-    assert.deepEqual(saved.roles.map(r => r.id).sort(), ['lead', 'zhou-yu']);
+    assert.deepEqual(saved.roles.map(r => r.id).sort(), ['lead', 'qa']);
     const { effective } = await loadProject(root, h.team.base, root);
     assert.equal(effective.capabilities.qa.planFirst, true);
-    assert.equal(effective.roles['zhou-yu'].displayName, '质检');
+    assert.equal(effective.roles['qa'].displayName, '质检');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('新模型必须在DSH目录中，档位可同步扩充', async () => {
@@ -98,13 +98,13 @@ test('每个团队成员获得自己的动态上下文，随保存即时更新',
   const root = await temp();
   try {
     const h = harness(root);
-    const member = h.agent({ role: 'teammate', name: 'zhou-yu' });
+    const member = h.agent({ role: 'teammate', name: 'qa' });
     await h.listeners['agent/created']({ agent: member });
     assert.equal(h.contexts.length, 1);
-    assert.match(h.contexts[0].text(), /周瑜/);
-    await h.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'zhou-yu': { displayName: '质量负责人', description: '负责回归' } } }, { agent: h.agent() });
+    assert.match(h.contexts[0].text(), /QA/);
+    await h.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'qa': { displayName: '质量负责人', description: '负责回归' } } }, { agent: h.agent() });
     const text = h.contexts[0].text();
-    assert.match(text, /质量负责人/); assert.match(text, /负责回归/); assert.doesNotMatch(text, /周瑜/);
+    assert.match(text, /质量负责人/); assert.match(text, /负责回归/); assert.doesNotMatch(text, /QA/);
     const outsider = h.agent({ role: 'teammate', name: 'nobody' });
     await h.listeners['agent/created']({ agent: outsider });
     assert.match(h.contexts[1].text(), /未在当前项目的团队配置中登记/);

@@ -79,7 +79,7 @@ test('QA current filter skips shared calls; session skips all remote paths; none
   await s.search(who, { query: 'session query', scope: 'session' });
   assert.deepEqual(count, { embed: 0, recall: 0, enqueue: 0, revoke: 0 });
   assert.doesNotMatch(written[0].text, /qa-secret-value/);
-  const local = await s.search(who, { query: 'local query' });
+  const local = await s.search(who, { query: 'local query', shared_project_filter: 'current' });
   assert.equal(local.shared.degraded, 'project-filter-unavailable'); assert.equal(count.recall, 0);
   const shared = await s.search(who, { query: 'shared query', shared_project_filter: 'none' });
   assert.equal(shared.mode, 'text'); assert.equal(shared.shared.degraded, 'shared-unavailable'); assert.equal(count.recall, 1);

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 const base = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const out = resolve(base, 'packages/global-memory/shared');
-const roots = ['memory-store.js','memory-embed.js','memory-openviking.js','memory-backends.js','memory-sync-queue.js','memory-redact.js','integrations-config.js','preset-guard.js'];
+const roots = ['memory-store.js','memory-embed.js','memory-openviking.js','memory-backends.js','memory-sync-queue.js','memory-redact.js','integrations-config.js','preset-guard.js','settings-schema.js'];
 export async function buildShared(check = false) {
   const manifest = {};
   async function visit(name) {

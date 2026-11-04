@@ -2,7 +2,7 @@
 // Web cards and the right-sidebar overview for the capability-team tools. React comes from the host module
 // table; no other Harness Client package is required (host tokens are the only shared styling dependency).
 window.__ModuleLoader__.load({
-  id: '@local/dsh-capability-team',
+  id: 'dsh-capability-team',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
@@ -26,6 +26,7 @@ window.__ModuleLoader__.load({
       'workflow.fileLimits': '文件铁律', 'workflow.fileLimits.value': '源文件 ≤{source} 行 · 测试 ≤{test} 行 · 整读 ≤{read} 行 · 汇报 ≤{report} 字', 'workflow.fileLimits.off': '关闭',
       'workflow.tokens': 'Token 规则', 'workflow.tokens.value': '空闲时上下文 ≥{ratio}% 自动压缩 · 命令/搜索输出超过 {chars} 字只留头尾',
       'confirm.habit': '按你的习惯 {n}/{of}', 'confirm.failing': '最近失败 {n} 次', 'confirm.primaryFailing': '主模型 {route} 最近失败 {n} 次，建议换一个。', 'confirm.habitSettled': '最近 3 次你都这样选，可以改为“保存为项目默认”。', 'plan.boardScope': '写入范围 {list}', 'plan.boardAfter': '等待 {list}', 'workflow.enforceWriteScopes': '写入范围', 'workflow.enforceWriteScopes.on': '强制（范围外修改会被拒绝）', 'workflow.enforceWriteScopes.off': '仅提示', 'cards.prefs': '模型偏好', 'cards.prefs.summary': '已学到 {n} 个能力的偏好', 'cards.prefs.cleared': '已清空学到的偏好',
+      'picker.sameTier': '同档推荐', 'confirm.crossTier': '跨档', 'confirm.crossTierFallback': '跨档：故障时会切换到这个模型', 'confirm.crossTierTaskOnly': '跨档选择仅本次生效',
       'confirm.expand': '展开', 'confirm.collapse': '收起', 'picker.search': '输入搜索模型…', 'picker.count': '{n} / {total} 个模型', 'picker.empty': '没有匹配的模型', 'picker.noProvider': '其他',
       'cards.memorySearch': '记忆检索', 'cards.memorySearch.summary': '“{q}” · {n} 条 · {mode}', 'cards.memory.mode.hybrid': '全文+向量', 'cards.memory.mode.text': '仅全文', 'cards.memoryWrite': '写入记忆', 'cards.memoryWrite.saved': '已保存', 'cards.memoryWrite.merged': '已合并到相同记忆', 'cards.memory.kind.handoff': '交接', 'cards.memory.kind.result': '结果', 'cards.memory.kind.pitfall': '踩坑', 'cards.memory.kind.decision': '决定', 'cards.memory.kind.note': '笔记',
       'usage.avgPrompt': '每步平均输入 {n}', 'usage.cacheShare': '缓存读取占 {p}%', 'usage.heavyContext': '每步上下文偏大，建议轮换会话', 'usage.contextHint': '每步平均输入 =（未缓存输入 + 缓存读取 + 缓存写入）÷ 步数。数值越大，每一步重发的上下文越多。',
@@ -49,7 +50,7 @@ window.__ModuleLoader__.load({
       'plan.next': '下一步',
       'plan.budget': '本轮自行执行上限 {n} 次',
       'plan.unlimited': '你已确认由主控亲自完成，本轮不限执行次数',
-      'direct.title': '允许主控亲自完成？', 'direct.hint': '允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。', 'direct.allow': '允许', 'direct.deny': '不允许', 'direct.loading': '正在读取待确认的请求…', 'direct.sent': '已允许，主控继续执行。', 'direct.cancelled': '已拒绝，执行限制不变。', 'direct.stale': '确认请求已失效（可能插件已重载或已超时），请中断本轮后重试。',
+      'direct.title': '允许主控亲自完成？', 'direct.hint': '允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。', 'direct.allow': '允许', 'direct.deny': '不允许', 'direct.loading': '正在读取待确认的请求…', 'direct.sent': '已允许，主控继续执行。', 'direct.cancelled': '已拒绝，执行限制不变。', 'direct.stale': '确认请求已失效（可能插件已重载或已超时），请中断本轮后重试。', 'direct.native': '这次确认已转到弹出的问答框，请在那里选择。', 'confirm.native': '这次分派确认已转到弹出的问答框，请在那里选择。',
       'mode.delegate': '指派队友',
       'mode.free': '免费模型',
       'mode.direct': '主控处理',
@@ -139,7 +140,7 @@ window.__ModuleLoader__.load({
       'live.noDeps': '暂无任务依赖',
       'live.bubbleRunning': '执行中',
       'live.bubbleWaiting': '等待中',
-      'live.quote.lead': '江东基业，当同心协力。',
+      'live.quote.sun-quan': '江东基业，当同心协力。',
       'live.quote.zhuge-liang': '运筹帷幄之中，决胜千里之外。',
       'live.quote.lv-bu': '方天画戟已备，随时待命！',
       'live.quote.diao-chan': '一点生机，万般颜色。',
@@ -266,6 +267,13 @@ window.__ModuleLoader__.load({
       'list.collapse': '收起',
       'stage.title': '像素办公室', 'stage.summary': '{n} / {m} 人在岗', 'stage.collapse': '收起办公室', 'stage.expand': '展开办公室',
       'stage.open': '打开会话', 'stage.empty': '队伍尚未成型，发出第一个需求后队友会入座',
+      'stage.detail': '成员详情', 'stage.detailClose': '收起详情', 'stage.detailHint': '点击办公室里的角色或其名牌，查看模型、上下文、冷却与任务控制等详情',
+      'stage.parallel': '并行 {n}',
+      'stage.act.thinking': '思考中', 'stage.act.thinkingBubble': '思考中…', 'stage.act.reading': '读文件', 'stage.act.writing': '写代码',
+      'stage.act.terminal': '跑命令', 'stage.act.searching': '搜索中', 'stage.act.browsing': '查网页', 'stage.act.messaging': '传信中',
+      'stage.act.board': '看板操作', 'stage.act.waiting': '等待队友', 'stage.act.working': '用工具', 'stage.act.failed': '出错了',
+      'stage.act.failedBubble': '出错了，需要处理', 'stage.act.arriving': '正在入座…', 'stage.act.idle': '空闲', 'stage.act.offline': '未上岗',
+      'stage.act.doneBubble': '任务完成！',
     };
 
     const en = {
@@ -286,6 +294,7 @@ window.__ModuleLoader__.load({
       'workflow.fileLimits': 'File rules', 'workflow.fileLimits.value': 'Source ≤{source} lines · tests ≤{test} · whole read ≤{read} · report ≤{report} chars', 'workflow.fileLimits.off': 'Off',
       'workflow.tokens': 'Token rules', 'workflow.tokens.value': 'Compact idle members above {ratio}% · trim command/search output over {chars} chars',
       'confirm.habit': 'Your usual choice {n}/{of}', 'confirm.failing': 'Failed {n}× recently', 'confirm.primaryFailing': 'Model {route} failed {n}× recently; consider another one.', 'confirm.habitSettled': 'You chose this the last 3 times; consider "Save as project default".', 'plan.boardScope': 'writes {list}', 'plan.boardAfter': 'after {list}', 'workflow.enforceWriteScopes': 'Write scopes', 'workflow.enforceWriteScopes.on': 'Enforced (edits outside are refused)', 'workflow.enforceWriteScopes.off': 'Advisory', 'cards.prefs': 'Model preferences', 'cards.prefs.summary': 'Learned preferences for {n} capabilities', 'cards.prefs.cleared': 'Learned preferences cleared',
+      'picker.sameTier': 'Same-tier recommendations', 'confirm.crossTier': 'Cross-tier', 'confirm.crossTierFallback': 'Cross-tier: used when failing over', 'confirm.crossTierTaskOnly': 'Cross-tier selections apply to this task only',
       'confirm.expand': 'Show more', 'confirm.collapse': 'Show less', 'picker.search': 'Type to search models…', 'picker.count': '{n} of {total} models', 'picker.empty': 'No matching models', 'picker.noProvider': 'Other',
       'cards.memorySearch': 'Memory search', 'cards.memorySearch.summary': '"{q}" · {n} · {mode}', 'cards.memory.mode.hybrid': 'text + vector', 'cards.memory.mode.text': 'text only', 'cards.memoryWrite': 'Save memory', 'cards.memoryWrite.saved': 'Saved', 'cards.memoryWrite.merged': 'Merged into an existing memory', 'cards.memory.kind.handoff': 'Handoff', 'cards.memory.kind.result': 'Result', 'cards.memory.kind.pitfall': 'Pitfall', 'cards.memory.kind.decision': 'Decision', 'cards.memory.kind.note': 'Note',
       'usage.avgPrompt': 'Avg input per step {n}', 'usage.cacheShare': 'Cache reads {p}%', 'usage.heavyContext': 'Large context per step; consider rotating the session', 'usage.contextHint': 'Average input per step = (uncached input + cache reads + cache writes) ÷ steps. Higher means more context is resent every step.',
@@ -309,7 +318,7 @@ window.__ModuleLoader__.load({
       'plan.next': 'Next step',
       'plan.budget': 'Up to {n} direct actions this turn',
       'plan.unlimited': 'You confirmed the Lead does this itself; no direct-action cap this turn',
-      'direct.title': 'Let the Lead do this itself?', 'direct.hint': 'Allowing removes the step limit for this turn. It returns with your next message. File rules and permissions stay on.', 'direct.allow': 'Allow', 'direct.deny': 'Do not allow', 'direct.loading': 'Loading the pending request…', 'direct.sent': 'Allowed. The Lead continues.', 'direct.cancelled': 'Refused. The step limit stays on.', 'direct.stale': 'This confirmation request is no longer valid (the plugin may have reloaded or it timed out). Interrupt this turn and try again.',
+      'direct.title': 'Let the Lead do this itself?', 'direct.hint': 'Allowing removes the step limit for this turn. It returns with your next message. File rules and permissions stay on.', 'direct.allow': 'Allow', 'direct.deny': 'Do not allow', 'direct.loading': 'Loading the pending request…', 'direct.sent': 'Allowed. The Lead continues.', 'direct.cancelled': 'Refused. The step limit stays on.', 'direct.stale': 'This confirmation request is no longer valid (the plugin may have reloaded or it timed out). Interrupt this turn and try again.', 'direct.native': 'This confirmation moved to the pop-up question box. Answer it there.', 'confirm.native': 'This dispatch confirmation moved to the pop-up question box. Answer it there.',
       'mode.delegate': 'Delegate',
       'mode.free': 'Free model',
       'mode.direct': 'Lead handles',
@@ -399,7 +408,7 @@ window.__ModuleLoader__.load({
       'live.noDeps': 'No task dependencies',
       'live.bubbleRunning': 'Running',
       'live.bubbleWaiting': 'Waiting',
-      'live.quote.lead': 'United we stand for Eastern Wu.',
+      'live.quote.sun-quan': 'United we stand for Eastern Wu.',
       'live.quote.zhuge-liang': 'Strategizing within the tent to win afar.',
       'live.quote.lv-bu': 'Halberd ready, awaiting orders!',
       'live.quote.diao-chan': 'A spark of grace, blooming anew.',
@@ -526,6 +535,13 @@ window.__ModuleLoader__.load({
       'list.collapse': 'Collapse',
       'stage.title': 'Pixel office', 'stage.summary': '{n} / {m} seated', 'stage.collapse': 'Collapse office', 'stage.expand': 'Expand office',
       'stage.open': 'Open session', 'stage.empty': 'No team yet. Teammates take their seats once you send the first request.',
+      'stage.detail': 'Member details', 'stage.detailClose': 'Hide details', 'stage.detailHint': 'Click a character or its name plate in the office to see its model, context, cooldown and task controls',
+      'stage.parallel': '{n} parallel',
+      'stage.act.thinking': 'Thinking', 'stage.act.thinkingBubble': 'Thinking…', 'stage.act.reading': 'Reading', 'stage.act.writing': 'Writing',
+      'stage.act.terminal': 'Running a command', 'stage.act.searching': 'Searching', 'stage.act.browsing': 'Browsing', 'stage.act.messaging': 'Messaging',
+      'stage.act.board': 'Updating the board', 'stage.act.waiting': 'Waiting for teammates', 'stage.act.working': 'Using a tool', 'stage.act.failed': 'Failed',
+      'stage.act.failedBubble': 'Something failed; needs attention', 'stage.act.arriving': 'Taking a seat…', 'stage.act.idle': 'Idle', 'stage.act.offline': 'Not started',
+      'stage.act.doneBubble': 'Task done!',
     };
 
     const CSS = `
@@ -719,23 +735,6 @@ window.__ModuleLoader__.load({
 .ctm-bd-at{margin-left:auto;display:inline-flex;align-items:center;gap:5px}
 .ctm-bd-pulse{width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-state-success-primary);animation:ctm-beat 2.5s ease-out infinite}
 @keyframes ctm-beat{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--dsw-alias-state-success-primary) 55%,transparent)}70%,100%{box-shadow:0 0 0 6px transparent}}
-.ctm-bd-canvas{position:relative;display:flex;flex-direction:column;gap:18px;padding:14px 8px;border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;background-color:var(--dsw-alias-bg-layer-2);background-image:radial-gradient(color-mix(in srgb,var(--dsw-alias-label-secondary) 28%,transparent) 1px,transparent 1.2px);background-size:14px 14px}
-.ctm-bd-lead{position:relative;display:flex;justify-content:center}
-.ctm-bd-lead>.ctm-bd-card{width:min(100%,280px)}
-.ctm-bd-mates{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:18px 8px;padding-top:2px}
-.ctm-bd-lead,.ctm-bd-mates{z-index:1}
-.ctm-bd-links{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-.ctm-bd-link{fill:none;stroke:var(--dsw-alias-border-l1);stroke-width:1.5;stroke-linejoin:round}
-.ctm-bd-link-end{fill:var(--dsw-alias-border-l1)}
-.ctm-bd-link[data-active]{stroke:color-mix(in srgb,var(--ctm-accent) 35%,transparent)}
-.ctm-bd-link-draw{fill:none;stroke:var(--ctm-accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:ctm-draw .6s ease-out forwards}
-.ctm-bd-link-flow{fill:none;stroke:var(--ctm-accent);stroke-width:2;stroke-linecap:round;stroke-dasharray:5 7;opacity:0;animation:ctm-flow .8s linear infinite,ctm-fade-in .3s .6s forwards}
-.ctm-bd-link-dot{fill:var(--ctm-accent);filter:drop-shadow(0 0 3px var(--ctm-accent))}
-.ctm-bd-link-end[data-active]{fill:var(--ctm-accent)}
-@keyframes ctm-draw{to{stroke-dashoffset:0}}
-@keyframes ctm-flow{to{stroke-dashoffset:-12}}
-@keyframes ctm-fade-in{to{opacity:1}}
-@media (prefers-reduced-motion:reduce){.ctm-bd-link-draw{animation:none;stroke-dashoffset:0}.ctm-bd-link-flow,.ctm-bd-link-dot{display:none}}
 .ctm-bd-card{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 10px 11px;border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px rgba(0,0,0,.05);transition:border-color .2s,box-shadow .2s,opacity .2s}
 .ctm-bd-card[data-status=inactive]{opacity:.62;border-style:dashed}
 .ctm-bd-card[data-open]{cursor:pointer}
@@ -762,12 +761,10 @@ window.__ModuleLoader__.load({
 .ctm-bd-subject{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .ctm-bd-model{display:flex;min-width:0}
 .ctm-bd-task>.ctm-sub{flex:none}
-.ctm-bd-mates .ctm-bd-top{flex-wrap:wrap;row-gap:4px}
-.ctm-bd-mates .ctm-bd-state{order:3;flex-basis:100%;padding-left:36px;box-sizing:border-box}
 .ctm-bd-bar{position:absolute;left:10px;right:10px;bottom:4px;height:2px;border-radius:2px;overflow:hidden;opacity:0}
 .ctm-bd-card[data-status=running] .ctm-bd-bar,.ctm-bd-card[data-status=provisioning] .ctm-bd-bar{opacity:1;background:linear-gradient(90deg,transparent,var(--ctm-accent),transparent) 0 0/40% 100% no-repeat,color-mix(in srgb,var(--ctm-accent) 12%,transparent);animation:ctm-scan 1.4s ease-in-out infinite}
 @keyframes ctm-scan{0%{background-position:-40% 0,0 0}100%{background-position:140% 0,0 0}}
-@media (prefers-reduced-motion:reduce){.ctm-bd *,.ctm-bd *::before,.ctm-bd *::after,.ctm-bd-mates::after,.ctm-bd-card{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.ctm-bd *,.ctm-bd *::before,.ctm-bd *::after,.ctm-bd-card{animation:none!important}}
 .ctm-ov-route{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:12px}
 .ctm-ov-group{border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}
 .ctm-ov-group>summary{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;list-style:none;user-select:none}
@@ -917,11 +914,35 @@ window.__ModuleLoader__.load({
 .ctm-stage-meter[data-tone=error]>i{background:var(--dsw-alias-state-error-primary,#ff5c5c)}
 .ctm-stage-icon{position:absolute;transform:translate(-50%,-100%);font-size:14px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));animation:ctm-stage-float 1.6s ease-in-out infinite}
 .ctm-stage-bubble{position:absolute;z-index:2;transform:translate(-50%,-100%);max-width:180px;padding:3px 8px;border-radius:8px;background:var(--ctm-stage-plate);border:.5px solid rgba(255,255,255,.18);color:#f4f4f6;font-size:11px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-plate-act{font-size:10.5px;line-height:14px;color:#c3c3cb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-plate-act:empty{display:none}
+.ctm-stage-plate[data-act=thinking] .ctm-stage-plate-act,.ctm-stage-plate[data-act=writing] .ctm-stage-plate-act,.ctm-stage-plate[data-act=reading] .ctm-stage-plate-act,.ctm-stage-plate[data-act=searching] .ctm-stage-plate-act,.ctm-stage-plate[data-act=browsing] .ctm-stage-plate-act{color:#a9d4ff}
+.ctm-stage-plate[data-act=terminal] .ctm-stage-plate-act{color:#7ff0a8}
+.ctm-stage-plate[data-act=messaging] .ctm-stage-plate-act,.ctm-stage-plate[data-act=board] .ctm-stage-plate-act{color:#e6d38f}
+.ctm-stage-plate[data-act=waiting] .ctm-stage-plate-act{color:#cfd8ff}
+.ctm-stage-plate[data-act=failed]{border-color:var(--dsw-alias-state-error-primary,#ff5c5c)}
+.ctm-stage-plate[data-act=failed] .ctm-stage-plate-act{color:#ff9a9a}
+.ctm-stage-icon[data-act=thinking]{animation:ctm-stage-pulse 1.2s ease-in-out infinite}
+.ctm-stage-icon[data-act=waiting]{animation:ctm-stage-sway 2s ease-in-out infinite}
+.ctm-stage-icon[data-act=failed]{animation:ctm-stage-shake .5s 3}
+.ctm-stage-icon[data-act=done]{animation:ctm-stage-pop .5s ease-out}
+.ctm-stage-bubble[data-act=failed]{border-color:var(--dsw-alias-state-error-primary,#ff5c5c);color:#ffd0d0}
+.ctm-stage-bubble[data-act=done]{border-color:var(--dsw-alias-state-success-primary,#3ddc84)}
+.ctm-stage-bubble[data-act=thinking]{font-style:italic}
+.ctm-stage-detail{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ctm-stage-detail-head{display:flex;align-items:center;gap:8px;min-width:0}
+.ctm-stage-detail-head .ctm-btn{margin-left:auto;flex:none}
+.ctm-stage-detail-hint{margin:0;padding:6px 10px;border:.5px dashed var(--dsw-alias-border-l1);border-radius:8px;text-align:center}
+.ctm-stage-detail>.ctm-bd-card{width:100%;box-sizing:border-box}
 @container ctm-stage (max-width:599px){.ctm-stage-plate{min-width:64px;padding:2px 6px}.ctm-stage-bubble{max-width:140px}}
 @keyframes ctm-stage-blink{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes ctm-stage-float{0%,100%{transform:translate(-50%,-100%)}50%{transform:translate(-50%,calc(-100% - 3px))}}
 @keyframes ctm-stage-flash{0%,100%{filter:none}50%{filter:brightness(1.8)}}
-@media (prefers-reduced-motion:reduce){.ctm-stage-icon,.ctm-stage-dot[data-s=running],.ctm-stage-plate .ctm-model-badge[data-flash]{animation:none}.ctm-stage-meter>i,.ctm-stage-plate{transition:none}}
+@keyframes ctm-stage-pulse{0%,100%{opacity:1;transform:translate(-50%,-100%) scale(1)}50%{opacity:.6;transform:translate(-50%,-100%) scale(.88)}}
+@keyframes ctm-stage-sway{0%,100%{transform:translate(-50%,-100%) rotate(-12deg)}50%{transform:translate(-50%,-100%) rotate(12deg)}}
+@keyframes ctm-stage-shake{0%,100%{transform:translate(-50%,-100%)}25%{transform:translate(calc(-50% - 2px),-100%)}75%{transform:translate(calc(-50% + 2px),-100%)}}
+@keyframes ctm-stage-pop{0%{transform:translate(-50%,-100%) scale(.3)}70%{transform:translate(-50%,-100%) scale(1.3)}100%{transform:translate(-50%,-100%) scale(1)}}
+@media (prefers-reduced-motion:reduce){.ctm-stage-icon,.ctm-stage-icon[data-act],.ctm-stage-dot[data-s=running],.ctm-stage-plate .ctm-model-badge[data-flash]{animation:none}.ctm-stage-meter>i,.ctm-stage-plate{transition:none}}
 `;
 
     // ---------- pure helpers ----------
@@ -1124,6 +1145,7 @@ window.__ModuleLoader__.load({
         h('span', { className: 'ctm-sub', key: `c${i}` }, [r.capability, r.tier].filter(Boolean).join(' · ')),
         h('div', { className: 'ctm-who', key: `m${i}` },
           h('span', null, r.provider ? `${r.provider}/${r.model}` : t('team.unassigned')),
+          r.singleModel ? h('span', { className: 'ctm-badge', 'data-tone': 'warn', 'data-single-model': '' }, t('roles.singleModel')) : null,
           Array.isArray(r.fallbacks) && r.fallbacks.length ? h('span', { className: 'ctm-sub' }, fmt(t('team.fallbacks'), { n: r.fallbacks.length })) : null),
       ]));
     }
@@ -1170,8 +1192,8 @@ window.__ModuleLoader__.load({
             const res = await fetch(apiUrl(CONFIRM_PATH, { sessionId, callId }), { signal: ctrl?.signal });
             const body = res.ok ? await res.json() : null;
             if (!live) return;
-            // Pending: show it once, then keep polling as a heartbeat until it ends or the card unmounts.
-            if (body?.status === 'pending') { if (!wasPending) setView(body); wasPending = true; again(CONFIRM_HEARTBEAT_MS); return; }
+            // Pending: show it once (refresh only when the native question box takes over), keep polling as a heartbeat.
+            if (body?.status === 'pending') { setView(v => (wasPending && v?.status === 'pending' && v.native === body.native ? v : body)); wasPending = true; again(CONFIRM_HEARTBEAT_MS); return; }
             // It was pending and is gone now: answered here or in the question box, or ended on the server.
             if (wasPending) { setView(v => (v?.status === 'pending' ? { status: 'gone' } : v)); return; }
             // The tool registers its request right after it starts; retry briefly before giving up.
@@ -1198,6 +1220,7 @@ window.__ModuleLoader__.load({
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('direct.loading')));
       if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('direct.stale')));
       if (view.status !== 'pending') return null;
+      if (view.native) return h('div', { className: 'ctm-dc', 'data-state': 'native' }, h('span', { className: 'ctm-sub' }, t('direct.native')));
       const submit = async decision => {
         setBusy(true); setError(null);
         try {
@@ -1230,16 +1253,20 @@ window.__ModuleLoader__.load({
       if (!view) return h('div', { className: 'ctm-dc' }, h('span', { className: 'ctm-sub' }, t('confirm.loading')));
       if (view.status === 'stale') return h('div', { className: 'ctm-dc', 'data-state': 'stale' }, h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, t('confirm.stale')));
       if (view.status !== 'pending') return null; // Answered in the question box or ended on the server.
+      if (view.native) return h('div', { className: 'ctm-dc', 'data-state': 'native' }, h('span', { className: 'ctm-sub' }, t('confirm.native')));
       const max = view.maxFallbacks ?? 3;
       const current = r => edits[r.role] ?? { primary: rkey(r.primary), fallbacks: r.fallbacks.map(rkey) };
-      const update = (r, change) => setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } }));
+      const isCrossTier = (r, route) => r.candidates.some(candidate => rkey(candidate) === route && candidate.sameTier === false);
+      const hasCrossTier = view.routes.some(r => [current(r).primary, ...current(r).fallbacks].some(route => isCrossTier(r, route)));
+      const effectiveScope = hasCrossTier ? 'task' : scope;
+      const update = (r, change) => { setEdits(prev => ({ ...prev, [r.role]: { ...current(r), ...change } })); setScope('task'); };
       const move = (list, i, d) => { const next = [...list]; const j = i + d; if (j < 0 || j >= next.length) return list; [next[i], next[j]] = [next[j], next[i]]; return next; };
       const submit = async decision => {
         setBusy(true); setError(null);
         try {
           const routes = view.routes.map(r => ({ role: r.role, ...current(r) }));
           const res = await fetch(apiUrl(CONFIRM_PATH), { method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ sessionId, callId, decision, scope, catalogVersion: view.catalogVersion, routes }) });
+            body: JSON.stringify({ sessionId, callId, decision, scope: effectiveScope, catalogVersion: view.catalogVersion, routes }) });
           if (res.ok) { setSent(decision); return; }
           const body = await res.json().catch(() => ({}));
           if (res.status === 409) { setError(t('confirm.error.conflict')); setEdits({}); setView(null); setReload(n => n + 1); return; }
@@ -1251,6 +1278,7 @@ window.__ModuleLoader__.load({
       const row = r => {
         const c = current(r);
         const options = [...new Set([c.primary, ...r.candidates.map(rkey)])].filter(Boolean);
+        const recommended = r.candidates.filter(candidate => candidate.sameTier).map(rkey);
         const spare = options.filter(k => k !== c.primary && !c.fallbacks.includes(k));
         const who = r.displayName ?? r.role;
         const long = r.task && (r.task.length > 120 || r.task.includes('\n'));
@@ -1269,21 +1297,21 @@ window.__ModuleLoader__.load({
             long ? h('button', { type: 'button', className: 'ctm-dc-link', onClick: () => setExpanded(prev => ({ ...prev, [r.role]: !prev[r.role] })) },
               t(expanded[r.role] ? 'confirm.collapse' : 'confirm.expand')) : null) : null,
           h('div', { className: 'ctm-dc-grid' },
-            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.primary')),
-            h(ModelPicker, { value: c.primary, options, disabled: busy, t, label: `${who} ${t('confirm.primary')}`, placeholder: t('picker.search'),
+            h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.primary'), isCrossTier(r, c.primary) ? badge(t('confirm.crossTier'), 'warn', 'cross-tier') : null),
+            h(ModelPicker, { value: c.primary, options, recommended, disabled: busy, t, label: `${who} ${t('confirm.primary')}`, placeholder: t('picker.search'),
               onChange: k => update(r, { primary: k, fallbacks: c.fallbacks.filter(f => f !== k) }) }),
             h('span', { className: 'ctm-label ctm-dc-key' }, t('confirm.fallbacks'), h('span', { className: 'ctm-dc-count' }, `${c.fallbacks.length}/${max}`)),
             h('div', { className: 'ctm-dc-fallbacks' },
               c.fallbacks.length ? h('ol', { className: 'ctm-dc-list' }, ...c.fallbacks.map((f, i) => h('li', { key: f, className: 'ctm-dc-item' },
                 h('span', { className: 'ctm-dc-index', 'aria-hidden': true }, String(i + 1)),
-                h('span', { className: 'ctm-dc-route', title: f }, f, r.learned?.unhealthy?.[f] ? badge(fmt(t('confirm.failing'), { n: r.learned.unhealthy[f] }), 'warn', 'bad') : null),
+                h('span', { className: 'ctm-dc-route', title: f }, f, isCrossTier(r, f) ? badge(t('confirm.crossTierFallback'), 'warn', 'cross-tier') : null, r.learned?.unhealthy?.[f] ? badge(fmt(t('confirm.failing'), { n: r.learned.unhealthy[f] }), 'warn', 'bad') : null),
                 h('span', { className: 'ctm-dc-actions' },
                   iconButton('↑', 'confirm.up', f, i === 0, () => update(r, { fallbacks: move(c.fallbacks, i, -1) })),
                   iconButton('↓', 'confirm.down', f, i === c.fallbacks.length - 1, () => update(r, { fallbacks: move(c.fallbacks, i, 1) })),
                   iconButton('×', 'confirm.remove', f, false, () => update(r, { fallbacks: c.fallbacks.filter(x => x !== f) }))))))
                 : h('span', { className: 'ctm-sub' }, t('confirm.noFallbacks')),
               c.fallbacks.length < max && spare.length
-                ? h(ModelPicker, { value: '', options: spare, disabled: busy, t, label: t('confirm.addFallback'), placeholder: t('confirm.addFallback'),
+                ? h(ModelPicker, { value: '', options: spare, recommended, disabled: busy, t, label: t('confirm.addFallback'), placeholder: t('confirm.addFallback'),
                   onChange: k => update(r, { fallbacks: [...c.fallbacks, k] }) })
                 : c.fallbacks.length >= max ? h('span', { className: 'ctm-sub' }, fmt(t('confirm.max'), { n: max })) : null)),
           r.learned?.unhealthy?.[c.primary] ? h('p', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.primaryFailing'), { route: c.primary, n: r.learned.unhealthy[c.primary] })) : null,
@@ -1297,9 +1325,10 @@ window.__ModuleLoader__.load({
         h('div', { className: 'ctm-dc-foot' },
           h('div', { className: 'ctm-dc-scope', role: 'radiogroup', 'aria-label': t('confirm.scope') },
             h('span', { className: 'ctm-label' }, t('confirm.scope')),
-            h('div', { className: 'ctm-dc-seg' }, ...['task', 'project'].map(s => h('button', { key: s, type: 'button', role: 'radio', 'aria-checked': scope === s,
-              className: 'ctm-dc-segbtn', disabled: busy, onClick: () => setScope(s) }, t(`confirm.scope.${s}`)))),
-            scope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
+            h('div', { className: 'ctm-dc-seg' }, ...['task', 'project'].map(s => h('button', { key: s, type: 'button', role: 'radio', 'aria-checked': effectiveScope === s,
+              className: 'ctm-dc-segbtn', disabled: busy || (s === 'project' && hasCrossTier), onClick: () => setScope(s) }, t(`confirm.scope.${s}`)))),
+            hasCrossTier ? h('span', { className: 'ctm-sub ctm-warn' }, t('confirm.crossTierTaskOnly')) : null,
+            effectiveScope === 'project' && changedCaps.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('confirm.scope.projectHint'), { list: [...new Set(changedCaps)].join(t('common.listSep')) })) : null),
           error ? h('p', { className: 'ctm-sub ctm-warn', role: 'alert' }, error) : null,
           h('div', { className: 'ctm-dc-buttons' },
             h('button', { type: 'button', className: 'ctm-btn', disabled: busy, onClick: () => submit('cancel') }, t('confirm.cancel')),
@@ -1395,14 +1424,15 @@ window.__ModuleLoader__.load({
       return words.length ? options.filter(k => words.every(w => k.toLowerCase().includes(w))) : options;
     }
     let pickerSeq = 0;
-    function ModelPicker({ value, options, onChange, placeholder, label: aria, disabled, t }) {
+    function ModelPicker({ value, options, recommended = [], onChange, placeholder, label: aria, disabled, t }) {
       const [open, setOpen] = React.useState(false);
       const [query, setQuery] = React.useState('');
       const [active, setActive] = React.useState(0);
       const idRef = React.useRef(null);
       if (!idRef.current) idRef.current = `ctm-mp-${++pickerSeq}`;
       const id = idRef.current;
-      const shown = filterRoutes(options, query);
+      const ordered = [...options.filter(key => recommended.includes(key)), ...options.filter(key => !recommended.includes(key)).sort((a, b) => splitKey(a)[0].localeCompare(splitKey(b)[0]))];
+      const shown = filterRoutes(ordered, query);
       const close = () => { setOpen(false); setQuery(''); setActive(0); };
       const pick = key => { if (key) onChange(key); close(); };
       const onKeyDown = event => {
@@ -1414,7 +1444,7 @@ window.__ModuleLoader__.load({
       };
       const groups = [];
       shown.forEach((key, index) => {
-        const [provider] = splitKey(key);
+        const provider = recommended.includes(key) ? t('picker.sameTier') : splitKey(key)[0];
         if (!groups.length || groups[groups.length - 1].provider !== provider) groups.push({ provider, items: [] });
         groups[groups.length - 1].items.push({ key, index });
       });
@@ -1434,7 +1464,7 @@ window.__ModuleLoader__.load({
                 className: 'ctm-mp-option', 'data-active': index === active ? '' : undefined,
                 // mousedown keeps focus in the input, so blur does not close the list before the click lands
                 onMouseDown: e => { e.preventDefault(); pick(key); }, onMouseEnter: () => setActive(index) },
-                h('span', { className: 'ctm-mp-model' }, splitKey(key)[1]), key === value ? h('span', { className: 'ctm-mp-check', 'aria-hidden': true }, '✓') : null)),
+                h('span', { className: 'ctm-mp-model' }, key), key === value ? h('span', { className: 'ctm-mp-check', 'aria-hidden': true }, '✓') : null)),
             ]))
             : h('div', { className: 'ctm-mp-empty ctm-sub' }, t('picker.empty'))) : null);
     }
@@ -1595,12 +1625,13 @@ window.__ModuleLoader__.load({
       && a.save === b.save && (a.t === b.t || a.t('models.save') === b.t('models.save'))) : ModelPolicyEditor;
 
     function RoleCards({ roles, live, t }) {
-      return h('div', { className: 'ctm-ov-roles' }, ...roles.map(r => {
+      return h('div', { className: 'ctm-ov-roles' }, ...localizeRoles(roles, t).map(r => {
         const fallbacks = (Array.isArray(r.fallbacks) ? r.fallbacks : []).map(routeText).filter(Boolean);
         return h('div', { key: r.id, className: 'ctm-ov-role' },
           h('div', { className: 'ctm-ov-role-head' },
             h('span', { className: 'ctm-name' }, r.displayName ?? r.id),
-            r.tier ? badge(label(t, `tier.${r.tier}`, r.tier), r.tier === 'high' ? 'brand' : undefined, 'tier') : null),
+            r.tier ? badge(label(t, `tier.${r.tier}`, r.tier), r.tier === 'high' ? 'brand' : undefined, 'tier') : null,
+            r.singleModel ? h('span', { className: 'ctm-badge', 'data-tone': 'warn', 'data-single-model': '', title: t('roles.singleModelHint') }, t('roles.singleModel')) : null),
           h('span', { className: 'ctm-sub' }, [r.id, r.capability].filter(Boolean).join(' · ')),
           r.description ? h('span', { className: 'ctm-ov-desc' }, r.description) : null,
           r.whenToUse ? h('span', { className: 'ctm-sub' }, fmt(t('roles.whenToUse'), { text: r.whenToUse })) : null,
@@ -1903,66 +1934,6 @@ window.__ModuleLoader__.load({
           delegated: !card.lead && (status === 'running' || status === 'provisioning' || task?.status === 'in_progress') };
       });
     }
-    /**
-     * Lead → teammate paths in canvas coordinates. First-row cards get an S-curve into their top edge;
-     * lower rows would be hidden behind the row above, so they drop down the gutter beside the card and enter from the side.
-     */
-    function boardLinks(lead, mates, origin) {
-      if (!lead || !mates.length) return [];
-      const x = v => v.toFixed(1);
-      const top = Math.min(...mates.map(m => m.rect.top));
-      const x1 = lead.left + lead.width / 2 - origin.left, y1 = lead.bottom - origin.top;
-      const bus = (lead.bottom + top) / 2 - origin.top;
-      return mates.map(({ id, active, rect }) => {
-        const cx = rect.left + rect.width / 2 - origin.left;
-        if (rect.top - top < 2) {
-          const y2 = rect.top - origin.top, bend = Math.max(12, (y2 - y1) / 2);
-          return { id, active, d: `M${x(x1)} ${x(y1)}C${x(x1)} ${x(y1 + bend)} ${x(cx)} ${x(y2 - bend)} ${x(cx)} ${x(y2)}`, end: [cx, y2] };
-        }
-        // Gutter: halfway to the neighbour in the same row, or the canvas padding when the card stands alone.
-        const row = mates.filter(m => Math.abs(m.rect.top - rect.top) < 2 && m.id !== id);
-        const right = row.filter(m => m.rect.left > rect.left).sort((a, b) => a.rect.left - b.rect.left)[0];
-        const left = row.filter(m => m.rect.left < rect.left).sort((a, b) => b.rect.left - a.rect.left)[0];
-        const gx = (right ? (rect.right + right.rect.left) / 2 : left ? (left.rect.right + rect.left) / 2 : rect.left - 4) - origin.left;
-        const ex = (right ? rect.right : rect.left) - origin.left, ey = rect.top + 16 - origin.top;
-        return { id, active, d: `M${x(x1)} ${x(y1)}V${x(bus)}H${x(gx)}V${x(ey)}H${x(ex)}`, end: [ex, ey] };
-      });
-    }
-    /** Measure the rendered cards and keep one Lead → teammate path each; re-measured on layout changes. */
-    function useBoardLinks(canvas, cards) {
-      const [links, setLinks] = React.useState([]);
-      const signature = cards.map(c => `${c.id}:${c.lead ? 'L' : c.delegated ? 1 : 0}`).join('|');
-      (React.useLayoutEffect ?? React.useEffect)(() => {
-        const root = canvas.current;
-        if (!root) return undefined;
-        const measure = () => {
-          const lead = root.querySelector('.ctm-bd-lead>[data-card]');
-          const mates = [...root.querySelectorAll('.ctm-bd-mates>[data-card]')].map(el => ({
-            id: el.getAttribute('data-card'), active: el.hasAttribute('data-delegated'), rect: el.getBoundingClientRect() }));
-          const next = boardLinks(lead?.getBoundingClientRect(), mates, root.getBoundingClientRect());
-          setLinks(old => JSON.stringify(old) === JSON.stringify(next) ? old : next);
-        };
-        measure();
-        const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
-        if (observer) { observer.observe(root); for (const el of root.querySelectorAll('[data-card]')) observer.observe(el); }
-        else window.addEventListener?.('resize', measure);
-        return () => { observer ? observer.disconnect() : window.removeEventListener?.('resize', measure); };
-      }, [canvas, signature]);
-      return links;
-    }
-    function BoardLinks({ links }) {
-      if (!links.length) return null;
-      // Active paths are keyed by their state, so a new delegation remounts and replays the draw-in.
-      return h('svg', { className: 'ctm-bd-links', 'aria-hidden': true, focusable: 'false' },
-        ...links.map(link => h('g', { key: `${link.id}:${link.active ? 1 : 0}` },
-          h('path', { className: 'ctm-bd-link', d: link.d, ...(link.active ? { 'data-active': '' } : {}) }),
-          link.active ? h('path', { className: 'ctm-bd-link-draw', d: link.d, pathLength: 1 }) : null,
-          link.active ? h('path', { className: 'ctm-bd-link-flow', d: link.d }) : null,
-          link.active ? h('circle', { className: 'ctm-bd-link-dot', r: 2.5 },
-            h('animateMotion', { dur: '1.6s', begin: '0.6s', repeatCount: 'indefinite', path: link.d })) : null,
-          h('circle', { className: 'ctm-bd-link-end', cx: link.end[0], cy: link.end[1], r: 2.5, ...(link.active ? { 'data-active': '' } : {}) }))));
-    }
-
     /** Static model badge mapping: provider/model -> alias & rarity rank (legendary/epic/rare/cloth/default). */
     function modelBadgeInfo(route, t) {
       if (!route) return null;
@@ -1990,21 +1961,6 @@ window.__ModuleLoader__.load({
       }
       // 未知模型回退显示原名，色阶普通
       return { alias: route, grade: 'default', gradeLabel: null };
-    }
-
-    /** Three Kingdoms static quotes for idle roles. */
-    function characterQuoteKey(roleId) {
-      const map = {
-        lead: 'live.quote.lead',
-        'sun-quan': 'live.quote.lead',
-        'zhuge-liang': 'live.quote.zhuge-liang',
-        'lv-bu': 'live.quote.lv-bu',
-        'diao-chan': 'live.quote.diao-chan',
-        'zhao-yun': 'live.quote.zhao-yun',
-        'chen-lin': 'live.quote.chen-lin',
-        'zhou-yu': 'live.quote.zhou-yu',
-      };
-      return map[roleId] ?? 'live.quote.default';
     }
 
     /** Status bubble for cards: task subject + status text, or idle static lines. */
@@ -2044,7 +2000,7 @@ window.__ModuleLoader__.load({
         } else if (phase === 'idle') {
           const idleText = label(t, `live.${card.status}`, card.status);
           headBadge = h('span', { className: 'ctm-sub' }, idleText);
-          const qKey = characterQuoteKey(card.role?.id ?? card.id);
+          const qKey = card.role?.quoteKey ?? characterQuoteKey(card.role?.id ?? card.id);
           const quote = t(qKey);
           bodyContent = cur?.summary ? `${cur.summary} · “${quote}”` : `“${quote}”`;
         }
@@ -2086,7 +2042,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'ctm-bd-bubble-body ctm-sub' }, t('live.busyNoTask')));
       }
 
-      const qKey = characterQuoteKey(card.role?.id ?? card.id);
+      const qKey = card.role?.quoteKey ?? characterQuoteKey(card.role?.id ?? card.id);
       const quote = t(qKey);
       const idleText = label(t, `live.${card.status}`, card.status);
       return h('div', { className: 'ctm-bd-bubble' },
@@ -2235,6 +2191,38 @@ window.__ModuleLoader__.load({
     }
 
     /** Artifacts rack & Changes view (MVP-B). */
+
+    // ---------- role skins: neutral default names are localized; Three Kingdoms quotes apply only to that roster ----------
+    const NEUTRAL_ROLE_NAMES = { lead: 'Lead', architect: 'Architect', backend: 'Backend', frontend: 'Frontend', researcher: 'Researcher', writer: 'Writer', qa: 'QA' };
+    const THREE_KINGDOMS_IDS = ['zhuge-liang', 'lv-bu', 'diao-chan', 'zhao-yun', 'chen-lin', 'zhou-yu'];
+    /** Idle quote key of one role id; `heroes` marks a roster using the optional three-kingdoms theme. */
+    function characterQuoteKey(roleId, heroes = false) {
+      if (roleId === 'lead' || roleId === 'sun-quan') return heroes || roleId === 'sun-quan' ? 'live.quote.sun-quan' : 'live.quote.lead';
+      if (THREE_KINGDOMS_IDS.includes(roleId) || Object.hasOwn(NEUTRAL_ROLE_NAMES, roleId)) return `live.quote.${roleId}`;
+      return 'live.quote.default';
+    }
+    /** Roles with untouched neutral default names translated (`role.name.<id>`) and their theme-aware idle quote key. */
+    function localizeRoles(roles, t) {
+      const list = Array.isArray(roles) ? roles : [];
+      const heroes = list.some(r => THREE_KINGDOMS_IDS.includes(r?.id));
+      return list.map(r => {
+        if (!r || typeof r !== 'object') return r;
+        const key = `role.name.${r.id}`, text = typeof t === 'function' && NEUTRAL_ROLE_NAMES[r.id] === r.displayName ? t(key) : key;
+        return { ...r, ...(text !== key ? { displayName: text } : {}), quoteKey: characterQuoteKey(r.id, heroes) };
+      });
+    }
+    Object.assign(zh, {
+      'role.name.lead': '主控', 'role.name.architect': '技术总监', 'role.name.backend': '后端', 'role.name.frontend': '前端',
+      'role.name.researcher': '研究员', 'role.name.writer': '文档', 'role.name.qa': '测试',
+      'live.quote.lead': '目标已明确，分工就绪。', 'live.quote.architect': '先定方案与接口，再动手。', 'live.quote.backend': '接口与数据，随时待命。',
+      'live.quote.frontend': '页面与交互，交给我。', 'live.quote.researcher': '先查证，再下结论。', 'live.quote.writer': '文档随时可以落笔。', 'live.quote.qa': '没有证据，不算完成。',
+    });
+    Object.assign(en, {
+      'role.name.lead': 'Lead', 'role.name.architect': 'Architect', 'role.name.backend': 'Backend', 'role.name.frontend': 'Frontend',
+      'role.name.researcher': 'Researcher', 'role.name.writer': 'Writer', 'role.name.qa': 'QA',
+      'live.quote.lead': 'Goals set, work assigned.', 'live.quote.architect': 'Design and contracts first, then code.', 'live.quote.backend': 'APIs and data, ready when you are.',
+      'live.quote.frontend': 'Pages and interactions, on it.', 'live.quote.researcher': 'Verify first, conclude second.', 'live.quote.writer': 'Docs ready to be written.', 'live.quote.qa': 'No evidence, not done.',
+    });
 
     function ArtifactsRack({ sessionId, liveTeam, live, t }) {
       const [filterRole, setFilterRole] = React.useState('all');
@@ -2437,7 +2425,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Battle report view (MVP-B). */
-    function BattleReportView({ sessionId, liveTeam, live, t, runtimeState }) {
+    function BattleReportView({ sessionId, liveTeam, live, t, runtimeState, singleModel }) {
       const members = liveTeam?.members ?? [];
       let totalTurns = 0;
       let totalSteps = 0;
@@ -2541,7 +2529,8 @@ window.__ModuleLoader__.load({
 
       // 汇总展示
       return h('div', { className: 'ctm-rpt-shelf' },
-        h('span', { className: 'ctm-label' }, t('report.title')),
+        h('span', { className: 'ctm-label' }, t('report.title'),
+          singleModel ? h('span', { className: 'ctm-badge', 'data-tone': 'warn', 'data-single-model': '', title: `${singleModel.provider}/${singleModel.model}` }, t('roles.singleModel')) : null),
         h('p', { className: 'ctm-sub' },
           fmt(t('report.window'), {
             start: earliestFirstTurn ? when(earliestFirstTurn) : t('common.unknown'),
@@ -2755,10 +2744,12 @@ window.__ModuleLoader__.load({
       const x = s.home.x, y = s.home.y, present = s.data.status !== 'inactive';
       px(x - 12 * S, y + S, 24 * S, 7 * S, desk); px(x - 12 * S, y, 24 * S, 5 * S, deskTop); px(x - 12 * S, y, 24 * S, S, 'rgba(255,255,255,.12)');
       px(x - 4 * S, y - 5 * S, 8 * S, 5 * S, '#1a1b22');
-      const screen = !present ? '#2b3340' : s.data.status === 'failed' ? '#8f2f2f' : s.phase === 'typing' ? '#3a9ad9' : '#4b5563';
-      px(x - 3 * S, y - 4 * S, 6 * S, 3 * S, screen);
-      if (s.phase === 'typing' && s.frame % 2) px(x - 2 * S, y - 3 * S, 2 * S, S, '#bfe6ff');
+      stageDrawScreen(px, s, S, x, y, present);
       px(x - S, y, 2 * S, S, '#111');
+      if (s.data.activity === 'reading') { // open book on the desk, the page flips every other frame
+        px(x - 6 * S, y + S, 5 * S, 3 * S, '#f1ead6'); px(x - 4 * S, y + S, S, 3 * S, '#cdbf9a');
+        if (s.frame % 2) px(x - 6 * S, y + S, 2 * S, 2 * S, '#ffffff');
+      }
       const a = s.palette.accent;
       switch (s.palette.prop) {
         case 'map': px(x + 5 * S, y + S, 6 * S, 3 * S, '#d9c38a'); px(x + 6 * S, y + 2 * S, 2 * S, S, '#b3412f'); break;
@@ -2772,26 +2763,56 @@ window.__ModuleLoader__.load({
       }
       px(x - 10 * S, y + S, 3 * S, 2 * S, '#c84b3c'); px(x - 9 * S, y, S, S, '#f0e9d8');
     }
-    /** 12×16 pixel person; `lead` wears the crown, `failed` shows a red mark, walking alternates the legs. */
+    /** Monitor content per activity: code lines scroll while writing, a green terminal flickers, failures turn red. */
+    function stageDrawScreen(px, s, S, x, y, present) {
+      const a = s.data.activity, f = s.frame;
+      const screen = !present ? '#2b3340' : a === 'failed' ? '#8f2f2f' : a === 'writing' ? '#1e3a5f' : a === 'terminal' ? '#0c2214'
+        : a === 'browsing' || a === 'searching' ? '#2d5f8a' : a === 'messaging' || a === 'board' ? '#5b4a8a' : a === 'thinking' || a === 'reading' ? '#3a4a5c' : '#4b5563';
+      px(x - 3 * S, y - 4 * S, 6 * S, 3 * S, screen);
+      if (a === 'writing') for (let i = 0; i < 3; i++) px(x - 2 * S, y - (4 - i) * S, ((f + i) % 3 + 2) * S, S * .6, i === (f % 3) ? '#bfe6ff' : '#6fa8dc');
+      else if (a === 'terminal') { px(x - 2 * S, y - 3 * S, 3 * S, S * .6, '#3ddc84'); if (f % 2) px(x + S, y - 3 * S, S, S * .6, '#b6ffcf'); }
+      else if (a === 'failed') { px(x - .5 * S, y - 4 * S, S, 2 * S * .8, '#ffd0d0'); if (f % 2) px(x - .5 * S, y - 1.6 * S, S, S * .5, '#ffd0d0'); }
+      else if (a === 'browsing' || a === 'searching') px(x - S, y - 4 * S + (f % 3) * S * .7, 2 * S, S * .6, '#a9d4ff');
+      else if (a === 'messaging' || a === 'board') px(x - 2 * S, y - 3 * S, 4 * S, S, f % 2 ? '#d9c38a' : '#f3e7c6');
+    }
+    /**
+     * 12×16 pixel person. The pose follows `s.data.activity` (typing / chin-on-hand / book / head-down / dozing) plus
+     * the one-shot overlays: `s.gesture` (idle stretch or coffee) and `s.celebrate` (jump with raised arms).
+     */
     function stageDrawPerson(px, s, S) {
-      const c = s.palette, f = s.facing, walking = s.phase === 'walking';
-      const bob = (s.phase === 'typing' || s.phase === 'idle') && s.frame === 2 ? S : 0;
-      const x = s.x, y0 = s.y - 16 * S + bob;
+      const c = s.palette, f = s.facing, walking = s.phase === 'walking', a = s.data.activity, fr = s.frame;
+      const jumping = s.celebrate > 0, typing = !jumping && ['writing', 'terminal', 'searching', 'browsing', 'messaging', 'board', 'working'].includes(a);
+      const lift = jumping ? Math.round(Math.abs(Math.sin(s.celebrate * 7)) * 4) * S : 0;
+      const bob = !jumping && !walking && fr === 2 && a !== 'failed' ? S : 0;
+      const x = s.x, y0 = s.y - 16 * S + bob - lift;
       const X = u => x + (f > 0 ? u : (12 - u - 1)) * S - 6 * S, Y = v => y0 + v * S;
       const R = (u, v, w, h, col) => px(f > 0 ? X(u) : X(u + w - 1), Y(v), w * S, h * S, col);
-      const legA = walking ? (s.frame % 2 ? 1 : 0) : 0;
+      const legA = walking ? (fr % 2 ? 1 : 0) : 0;
       R(4 - legA, 12, 2, 4, c.leg); R(7 + legA, 12, 2, 4, c.leg); R(4 - legA, 15, 2, 1, '#222'); R(7 + legA, 15, 2, 1, '#222');
       R(3, 6, 7, 6, c.robe); R(6, 6, 1, 6, c.accent);
-      const armL = s.phase === 'typing' && s.frame === 1 ? 1 : 0, armR = s.phase === 'typing' && s.frame === 3 ? 1 : 0;
-      R(2, 7 - armL, 1, 4, c.robe); R(10, 7 - armR, 1, 4, c.robe); R(2, 10 - armL, 1, 1, c.skin); R(10, 10 - armR, 1, 1, c.skin);
-      R(4, 3, 5, 3, c.skin); R(5, 4, 1, 1, '#222'); R(8, 4, 1, 1, '#222');
-      R(3, 0, 7, 3, c.hat); R(3, 2, 7, 1, c.accent);
-      if (s.data.lead) { R(4, -1, 1, 1, '#ffd766'); R(6, -2, 1, 2, '#ffd766'); R(8, -1, 1, 1, '#ffd766'); }
-      if (s.data.status === 'failed') R(11, 2, 1, 1, '#ff5c5c');
+      const arm = (u, top, col = c.robe) => { R(u, top, 1, 4, col); R(u, top + 3, 1, 1, c.skin); };
+      const head = a === 'failed' ? 1 : 0; // failed members hang their head
+      if (jumping || s.gesture === 'stretch') { R(2, 2, 1, 4, c.robe); R(10, 2, 1, 4, c.robe); R(2, 1, 1, 1, c.skin); R(10, 1, 1, 1, c.skin); }
+      else if (a === 'thinking') { arm(2, 7); R(10, 5, 1, 3, c.robe); R(9, 5, 1, 1, c.skin); } // chin on hand
+      else if (a === 'reading') { R(2, 8, 1, 2, c.robe); R(10, 8, 1, 2, c.robe); R(3, 9, 7, 2, '#e8dcbf'); R(6, 9, 1, 2, '#b3a37e'); }
+      else if (s.gesture === 'coffee') { arm(2, 7); R(10, 5, 1, 3, c.robe); R(9, 5, 2, 2, '#f1ead6'); R(9, 5, 2, 1, '#6b4226'); }
+      else {
+        const fast = a === 'writing' ? fr % 2 : fr === 1 ? 1 : 0, other = a === 'writing' ? 1 - fr % 2 : fr === 3 ? 1 : 0;
+        arm(2, 7 - (typing ? fast : 0)); arm(10, 7 - (typing ? other : 0));
+      }
+      R(4, 3 + head, 5, 3, c.skin);
+      if (a === 'waiting' || a === 'failed') { R(5, 5 + head, 1, 1, '#222'); R(8, 5 + head, 1, 1, '#222'); } // closed / downcast eyes
+      else { R(5, 4, 1, 1, '#222'); R(8, 4, 1, 1, '#222'); }
+      R(3, head, 7, 3, c.hat); R(3, 2 + head, 7, 1, c.accent);
+      if (s.data.lead) { R(4, -1 + head, 1, 1, '#ffd766'); R(6, -2 + head, 1, 2, '#ffd766'); R(8, -1 + head, 1, 1, '#ffd766'); }
+      if (a === 'failed') { R(11, -3, 1, 3, '#ff5c5c'); R(11, 1, 1, 1, '#ff5c5c'); } // red "!"
+      if (a === 'thinking') for (let i = 0; i < Math.max(1, fr % 4); i++) R(4 + i * 2, -3, 1, 1, '#e6e6ee'); // animated ellipsis
+      if (a === 'waiting') { const z = fr % 3; R(10 + z, -2 - z, 2, 1, '#cfd8ff'); R(11 + z, -3 - z, 1, 1, '#cfd8ff'); R(10 + z, -4 - z, 2, 1, '#cfd8ff'); } // zzz
+      if (s.data.ctxRatio >= .9) { R(1, 2 + (fr % 2), 1, 2, '#7fc8ff'); R(1, 4 + (fr % 2), 1, 1, '#c4e6ff'); } // sweat drop
     }
-    /** A dispatch scroll flying from the Lead's desk to a teammate. */
+    /** A letter in flight: wax-sealed scroll from the Lead, blue-sealed report back to the Lead. */
     function stageDrawCourier(px, c, S) {
-      px(c.x - 3 * S, c.y - 2 * S, 6 * S, 4 * S, '#f3e7c6'); px(c.x - 3 * S, c.y - 2 * S, 6 * S, S, '#d9c38a'); px(c.x - S, c.y - S, 2 * S, 2 * S, '#c84b3c');
+      px(c.x - 3 * S, c.y - 2 * S, 6 * S, 4 * S, '#f3e7c6'); px(c.x - 3 * S, c.y - 2 * S, 6 * S, S, '#d9c38a'); px(c.x - S, c.y - S, 2 * S, 2 * S, c.reply ? '#3a9ad9' : '#c84b3c');
     }
     /** Floor, wall and windows; reads the stage's colour tokens so light and dark themes both get a readable office. */
     function stageDrawRoom(ctx, px, w, h, S, colors) {
@@ -2806,14 +2827,17 @@ window.__ModuleLoader__.load({
 
     // ---------- office stage: layout, DOM plates and the render loop (imperative; React only owns the host element) ----------
     /**
-     * Sprites arrive from `stageSprites` (08d) and are diffed in `sync`: new members walk in from the door, a task that
-     * turns in_progress sends a courier from the Lead's desk, a changed route flashes the model badge. The first frame is
-     * painted synchronously because a hidden side pane never fires requestAnimationFrame.
+     * Sprites arrive from `stageSprites` (08d) and are diffed in `sync`: new members walk in from the door, and the
+     * one-shot effects from `stageEvents` (08e) fly letters between Lead and teammates, celebrate finished tasks and
+     * flash changed routes. Poses follow each sprite's `activity`. The first frame is painted synchronously because a
+     * hidden side pane never fires requestAnimationFrame.
      */
     class OfficeScene {
-      constructor(stage, canvas, overlay, { t, onOpen }) {
-        this.stage = stage; this.canvas = canvas; this.overlay = overlay; this.ctx = canvas.getContext('2d'); this.t = t; this.onOpen = onOpen;
-        this.sprites = new Map(); this.plates = new Map(); this.icons = new Map(); this.bubbles = new Map(); this.couriers = [];
+      constructor(stage, canvas, overlay, { t, onOpen, onSelect }) {
+        this.stage = stage; this.canvas = canvas; this.overlay = overlay; this.ctx = canvas.getContext('2d'); this.t = t; this.onOpen = onOpen; this.onSelect = onSelect;
+        this.sprites = new Map(); this.plates = new Map(); this.icons = new Map(); this.bubbles = new Map(); this.couriers = []; this.prevList = []; this.tick = 0;
+        this.onCanvasClick = e => { const id = this.hit(e); if (id) this.select(this.selected === id ? null : id); };
+        canvas.addEventListener?.('click', this.onCanvasClick);
         this.w = 0; this.h = 0; this.S = 3; this.plateW = 120; this.selected = null; this.synced = false; this.dirty = true; this.visible = true;
         this.reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
         this.px = (x, y, w, h, c) => { this.ctx.fillStyle = c; this.ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
@@ -2827,11 +2851,12 @@ window.__ModuleLoader__.load({
       schedule() {
         cancelAnimationFrame(this.raf); clearTimeout(this.timer);
         this.raf = requestAnimationFrame(now => this.loop(now));
-        this.timer = setTimeout(() => this.loop(performance.now()), this.busy() ? 120 : 1000);
+        this.timer = setTimeout(() => this.loop(performance.now()), this.busy() && this.visible && !document.hidden ? 120 : 1000);
       }
       el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
       destroy() {
         cancelAnimationFrame(this.raf); clearTimeout(this.timer); this.ro?.disconnect(); document.removeEventListener('visibilitychange', this.onVisibility);
+        this.canvas.removeEventListener?.('click', this.onCanvasClick);
         for (const id of [...this.sprites.keys()]) this.remove(id);
       }
 
@@ -2845,15 +2870,21 @@ window.__ModuleLoader__.load({
           const was = prev.data; prev.data = data;
           if (was.status === 'inactive' && data.status !== 'inactive' && !this.reduced) this.walkIn(prev);
           else if (prev.phase !== 'walking') prev.phase = phaseOf(data);
-          if (data.task?.status === 'in_progress' && (was.task?.id !== data.task.id || was.task?.status !== 'in_progress') && !data.lead) this.courier(data.id);
-          if (was.route !== data.route && data.route) this.flash(data.id);
-          this.renderPlate(data.id);
+          if (was.activity !== data.activity) prev.gesture = null;
         }
+        if (this.synced) for (const ev of stageEvents(this.prevList, list)) this.effect(ev);
+        for (const data of list) this.renderPlate(data.id);
         for (const id of [...this.sprites.keys()]) if (!seen.has(id)) this.remove(id);
-        this.synced = true; this.dirty = true; this.positionOverlay(); this.draw();
+        this.prevList = list; this.synced = true; this.dirty = true; this.positionOverlay(); this.draw();
+      }
+      effect(ev) {
+        if (ev.type === 'flash') this.flash(ev.id);
+        else if (ev.type === 'mail') this.courier(ev.from, ev.to);
+        else if (ev.type === 'celebrate') { const s = this.sprites.get(ev.id); if (s) { s.celebrate = this.reduced ? 0 : 1.6; s.cheer = 2.4; } }
+        else if (ev.type === 'sweat') this.dirty = true;
       }
       add(data, enter) {
-        const s = { data, palette: stagePalette(data.id, data.capability), x: 0, y: 0, home: { x: 0, y: 0 }, facing: 1, phase: phaseOf(data), path: [], frame: 0, ft: 0, flash: 0 };
+        const s = { data, palette: stagePalette(data.id, data.capability), x: 0, y: 0, home: { x: 0, y: 0 }, facing: 1, phase: phaseOf(data), path: [], frame: 0, ft: 0, flash: 0, celebrate: 0, cheer: 0, gesture: null };
         this.sprites.set(data.id, s);
         const plate = this.el('div', 'ctm-stage-plate'); plate.dataset.id = data.id; plate.tabIndex = 0; plate.setAttribute('role', 'button');
         plate.addEventListener('click', () => this.select(this.selected === data.id ? null : data.id));
@@ -2867,11 +2898,30 @@ window.__ModuleLoader__.load({
         this.sprites.delete(id); for (const map of [this.plates, this.icons, this.bubbles]) { map.get(id)?.remove(); map.delete(id); }
         if (this.selected === id) this.select(null); this.resize();
       }
-      select(id) { this.selected = id && this.sprites.has(id) ? id : null; for (const [k, p] of this.plates) p.setAttribute('aria-selected', String(k === this.selected)); }
+      /** `notify=false` mirrors the React-held selection without echoing it back. */
+      select(id, notify = true) {
+        const next = id && this.sprites.has(id) ? id : null, changed = next !== this.selected;
+        this.selected = next; for (const [k, p] of this.plates) p.setAttribute('aria-selected', String(k === this.selected));
+        if (changed && notify) this.onSelect?.(next);
+        if (changed) this.dirty = true;
+      }
+      /** Canvas click → the member whose desk/body box contains the point (people are drawn over their desks). */
+      hit(e) {
+        const r = this.canvas.getBoundingClientRect?.(); if (!r) return null;
+        const x = e.clientX - r.left, y = e.clientY - r.top, S = this.S;
+        for (const [id, s] of this.sprites) if (Math.abs(x - s.home.x) <= 12 * S && y >= s.home.y - 18 * S && y <= s.home.y + 8 * S) return id;
+        return null;
+      }
       walkIn(s) { s.x = -12 * this.S; s.y = s.home.y + 9 * this.S; s.facing = 1; s.path = [{ x: s.home.x, y: s.y }, { x: s.home.x, y: s.home.y }]; s.phase = 'walking'; }
-      courier(id) {
-        const lead = [...this.sprites.values()].find(x => x.data.lead), to = this.sprites.get(id); if (!lead || !to || this.reduced) return;
-        this.couriers.push({ x: lead.home.x, y: lead.home.y, from: { ...lead.home }, to: { x: to.home.x - 10 * this.S, y: to.home.y + 2 * this.S }, t: 0, dur: .9 + Math.hypot(to.home.x - lead.home.x, to.home.y - lead.home.y) / 420 });
+      /** Fly a letter between two desks; `to == null` means "to the team" (fans out to every seated teammate). */
+      courier(fromId, toId) {
+        if (this.reduced) return;
+        const from = this.sprites.get(fromId); if (!from) return;
+        const targets = toId ? [this.sprites.get(toId)].filter(Boolean) : [...this.sprites.values()].filter(s => !s.data.lead && s.data.status !== 'inactive').slice(0, 6);
+        for (const to of targets) {
+          const dest = { x: to.home.x - 10 * this.S, y: to.home.y + 2 * this.S };
+          this.couriers.push({ x: from.home.x, y: from.home.y, from: { ...from.home }, to: dest, reply: !from.data.lead, t: 0, dur: .9 + Math.hypot(dest.x - from.home.x, dest.y - from.home.y) / 420 });
+        }
       }
       flash(id) { const b = this.plates.get(id)?.querySelector('.ctm-model-badge'); if (b) { b.removeAttribute('data-flash'); void b.offsetWidth; b.dataset.flash = ''; } }
 
@@ -2921,33 +2971,55 @@ window.__ModuleLoader__.load({
         const name = this.el('div', 'ctm-stage-plate-name');
         const dot = this.el('i', 'ctm-stage-dot'); dot.dataset.s = d.status; dot.title = d.statusLabel;
         name.append(dot, this.el('span', '', d.name));
+        const act = this.el('div', 'ctm-stage-plate-act', [d.activityLabel, d.parallel > 1 ? fmt(t('stage.parallel'), { n: d.parallel }) : ''].filter(Boolean).join(' · '));
+        act.dataset.act = d.activity ?? '';
         if (d.ctxRatio != null) { const m = this.el('div', 'ctm-stage-meter'); m.dataset.tone = d.ctxRatio >= .9 ? 'error' : d.ctxRatio >= .75 ? 'warn' : ''; m.style.setProperty('--p', Math.round(d.ctxRatio * 100) + '%'); m.title = `${t('live.contextPressure')} ${Math.round(d.ctxRatio * 100)}%`; m.append(this.el('i')); name.append(m); }
         const more = this.el('div', 'ctm-stage-plate-more');
         more.append(this.el('small', 'ctm-sub', [d.capability, d.statusLabel].filter(Boolean).join(' · ')));
         if (d.route) { const b = this.el('span', 'ctm-model-badge', d.routeAlias); b.dataset.grade = d.grade; b.title = d.route; more.append(b); }
         more.append(this.el('div', 'ctm-stage-plate-task', d.task ? `#${d.task.id} ${d.task.subject ?? ''}` : t('live.noTask')));
         if (d.openable && this.onOpen) { const btn = this.el('button', 'ctm-btn ctm-stage-open', t('stage.open')); btn.type = 'button'; btn.addEventListener('click', e => { e.stopPropagation(); this.onOpen(d.memberId); }); more.append(btn); }
-        p.append(name, more);
-        p.title = `${d.name} · ${d.statusLabel}${d.route ? ' · ' + d.route : ''}`; p.setAttribute('aria-label', p.title);
-        const icon = this.icons.get(id); icon.textContent = d.icon ?? ''; icon.hidden = !d.icon;
-        const bubble = this.bubbles.get(id); bubble.textContent = d.bubble ?? ''; bubble.title = d.bubble ?? ''; bubble.hidden = !d.bubble;
+        p.append(name, act, more); p.dataset.act = d.activity ?? '';
+        p.title = `${d.name} · ${d.activityLabel ?? d.statusLabel}${d.route ? ' · ' + d.route : ''}`; p.setAttribute('aria-label', p.title);
+        this.renderIcon(id); this.renderBubble(id, Date.now());
+      }
+      renderIcon(id) {
+        const s = this.sprites.get(id), icon = this.icons.get(id); if (!s || !icon) return;
+        const glyph = s.cheer > 0 ? '✅' : s.data.icon ?? ''; icon.textContent = glyph; icon.hidden = !glyph; icon.dataset.act = s.cheer > 0 ? 'done' : s.data.activity ?? '';
+      }
+      renderBubble(id, now) {
+        const s = this.sprites.get(id), bubble = this.bubbles.get(id); if (!s || !bubble) return;
+        const text = s.cheer > 0 ? this.t('stage.act.doneBubble') : stageBubbleText(s.data, now, this.t);
+        if (bubble.textContent !== text) { bubble.textContent = text; bubble.title = text; }
+        bubble.hidden = !text; bubble.dataset.act = s.cheer > 0 ? 'done' : s.data.activity ?? '';
       }
 
       /* ---------- loop ---------- */
-      busy() { return this.couriers.length > 0 || [...this.sprites.values()].some(s => s.phase === 'walking'); }
+      busy() {
+        return this.couriers.length > 0 || [...this.sprites.values()].some(s => s.phase === 'walking' || s.celebrate > 0 || s.cheer > 0
+          || s.data.status === 'running' || STAGE_BUSY_ACTS.has(s.data.activity));
+      }
       loop(now) {
         this.schedule();
         if (!this.last) this.last = now;
-        const idle = !this.busy(), minFrame = idle ? 66 : 0; if (now - this.last < minFrame) return;
+        // Reduced motion: still repaint state changes and the elapsed clock, but only a few frames per second.
+        const idle = !this.busy(), minFrame = this.reduced ? 500 : idle ? 66 : 0; if (now - this.last < minFrame) return;
         const dt = Math.min(.05, (now - this.last) / 1000); this.last = now;
         if (now - this.visibleAt > 1000) { const r = this.stage.getBoundingClientRect(); this.visible = r.width > 0 && r.bottom > 0 && r.top < (window.innerHeight || Infinity); this.visibleAt = now; }
         if ((document.hidden || !this.visible) && !this.dirty) return; // hidden or scrolled-away hosts still get one repaint per change
         this.update(dt); this.draw();
       }
       update(dt) {
-        for (const s of this.sprites.values()) {
-          s.ft += dt; const rate = s.phase === 'walking' ? .12 : s.phase === 'typing' ? .22 : .5;
+        const wall = Date.now(), second = Math.floor(wall / 1000), tickNow = second !== this.tick; this.tick = second;
+        for (const [id, s] of this.sprites) {
+          s.ft += dt; const rate = s.phase === 'walking' ? .12 : this.reduced ? 1 : STAGE_FRAME_RATE[s.data.activity] ?? .5;
           if (s.ft > rate) { s.ft = 0; s.frame = (s.frame + 1) % 4; }
+          const cheered = s.cheer > 0;
+          if (s.celebrate > 0) s.celebrate = Math.max(0, s.celebrate - dt);
+          if (s.cheer > 0) s.cheer = Math.max(0, s.cheer - dt);
+          if (cheered && !s.cheer) { this.renderIcon(id); this.renderBubble(id, wall); }
+          s.gesture = s.data.activity === 'idle' && !this.reduced ? stageIdleGesture(id, wall) : null;
+          if (tickNow && s.data.bubbleSince != null) this.renderBubble(id, wall);
           if (s.phase === 'walking' && s.path.length) {
             const p = s.path[0], dx = p.x - s.x, dy = p.y - s.y, dist = Math.hypot(dx, dy), step = 70 * dt;
             if (Math.abs(dx) > .5) s.facing = dx > 0 ? 1 : -1;
@@ -2963,7 +3035,8 @@ window.__ModuleLoader__.load({
         const css = getComputedStyle(this.stage), v = (k, d) => css.getPropertyValue(k).trim() || d;
         stageDrawRoom(ctx, this.px, w, h, S, { floorA: v('--ctm-stage-floor-a', '#1c1d26'), floorB: v('--ctm-stage-floor-b', '#202130'), grout: v('--ctm-stage-grout', 'rgba(0,0,0,.22)'), wall: v('--ctm-stage-wall', '#2a2b3a') });
         const desk = v('--ctm-stage-desk', '#3b2f26'), deskTop = v('--ctm-stage-desk-top', '#5a4535'), ents = [];
-        for (const s of this.sprites.values()) {
+        for (const [id, s] of this.sprites) {
+          if (id === this.selected) ents.push({ y: -1, f: () => { const x = s.home.x - 14 * S, y = s.home.y - 19 * S; this.px(x, y, 28 * S, S, '#ffd766'); this.px(x, s.home.y + 9 * S, 28 * S, S, '#ffd766'); } });
           ents.push({ y: s.home.y + 3 * S, f: () => stageDrawDesk(this.px, s, S, desk, deskTop) });
           if (s.data.status !== 'inactive') ents.push({ y: s.y + (s.phase === 'walking' ? 6 * S : 0), f: () => stageDrawPerson(this.px, s, S) });
         }
@@ -2973,33 +3046,35 @@ window.__ModuleLoader__.load({
       }
     }
     function phaseOf(data) { return data.status === 'running' ? 'typing' : 'idle'; }
+    /** Seconds per animation frame by activity: fast typing while writing, slow breathing when idle or dozing. */
+    const STAGE_FRAME_RATE = { writing: .12, terminal: .18, searching: .25, browsing: .3, messaging: .2, board: .25, working: .22, reading: .7, thinking: .4, waiting: .8, failed: .6, arriving: .3, idle: .5, offline: 1 };
 
     // ---------- office stage: boardCards + live projections → sprite data, and the React host component ----------
-    const STAGE_TOOL_GLYPHS = [['send_message', '📨'], ['team_task', '📋'], ['read', '📖'], ['write', '✍️'], ['edit', '✍️'], ['bash', '⌨️'], ['pwsh', '⌨️'], ['shell', '⌨️'], ['grep', '🔍'], ['glob', '🔍'], ['search', '🔍'], ['fetch', '🌐'], ['web', '🌐']];
-    function stageToolGlyph(tool) {
-      const name = String(tool ?? '').toLowerCase(); if (!name) return '';
-      return STAGE_TOOL_GLYPHS.find(([key]) => name.includes(key))?.[1] ?? '⚙️';
-    }
     /**
-     * Pure mapping, one entry per board card. Status/task/model come from boardCards (the same source as the cards
-     * below the stage); the current tool and context pressure come from the member's own live projections.
+     * Pure mapping, one entry per board card. Status/task/model come from boardCards (the same source as the member
+     * detail panel); the fine-grained activity, bubble and context pressure come from the member's own live projections.
      */
-    function stageSprites(cards, { live, t = k => k, currentMemberId = null, canOpen = false } = {}) {
+    function stageSprites(cards, { live, t = k => k, currentMemberId = null, canOpen = false, since } = {}) {
       return (cards ?? []).map(card => {
         const memberId = card.member?.id ?? null;
         const proj = memberId && live?.projections ? live.projections(memberId) : undefined;
         const act = proj?.capabilityTeamActivity, cur = act?.schemaVersion === 1 ? act.current : null;
-        const working = card.status === 'running' && act?.phase === 'tool' && cur && cur.status === 'running';
+        const activity = stageActivityOf(card.status, act);
+        const toolAct = !['thinking', 'idle', 'offline', 'failed', 'arriving'].includes(activity);
         const cp = proj?.contextPressure, projected = cp?.projectedTokens ?? cp?.pressureTokens;
         const ctxRatio = typeof projected === 'number' && typeof cp?.contextWindow === 'number' && cp.contextWindow > 0 ? Math.min(1, Math.max(0, projected / cp.contextWindow)) : null;
         const badge = card.model ? modelBadgeInfo(card.model, t) : null;
+        const task = card.task ? { id: card.task.id, subject: card.task.subject, status: card.task.status } : null;
+        const runSince = card.status === 'running' && memberId ? since?.get?.(memberId) ?? null : null;
+        const bubble = stageBubbleBase(activity, { cur, task, since: runSince, t });
         return {
           id: card.id, memberId, name: card.name, capability: card.role?.capability ?? (card.lead ? 'orchestrator' : ''), lead: !!card.lead,
           status: card.status, statusLabel: label(t, `live.${card.status}`, card.status),
-          task: card.task ? { id: card.task.id, subject: card.task.subject, status: card.task.status } : null,
-          route: card.model ?? null, routeAlias: badge?.alias ?? card.model ?? '', grade: badge?.grade ?? 'default',
-          icon: working ? stageToolGlyph(cur.tool) : '',
-          bubble: working ? [cur.summary, cur.target ? `(${cur.target})` : ''].filter(Boolean).join(' ') : '',
+          activity, activityLabel: label(t, `stage.act.${activity}`, activity), actKey: toolAct ? (cur?.id ?? cur?.startedAt ?? cur?.tool ?? '') : '',
+          task, route: card.model ?? null, routeAlias: badge?.alias ?? card.model ?? '', grade: badge?.grade ?? 'default',
+          icon: STAGE_ACT_GLYPH[activity] ?? '',
+          bubble: bubble.text, bubbleSince: bubble.since ?? null,
+          parallel: card.status === 'running' && typeof act?.activeCount === 'number' ? act.activeCount : 0,
           ctxRatio,
           openable: !!(canOpen && !card.lead && memberId && memberId !== currentMemberId && card.status !== 'provisioning' && card.status !== 'failed'),
         };
@@ -3011,18 +3086,19 @@ window.__ModuleLoader__.load({
      * the host (canvas + DOM plates) so React never reconciles those nodes. Without a DOM (unit tests, SSR) it renders
      * the header only.
      */
-    function OfficeStage({ cards, live, t, open, currentMemberId }) {
+    function OfficeStage({ cards, live, t, open, currentMemberId, since, selected = null, onSelect }) {
       const readCollapsed = () => { try { return window.localStorage?.getItem(STAGE_COLLAPSED_KEY) === '1'; } catch { return false; } };
       const [collapsed, setCollapsed] = React.useState(readCollapsed());
-      const host = React.useRef(null), sceneRef = React.useRef(null);
-      const sprites = stageSprites(cards, { live, t, currentMemberId, canOpen: !!open });
+      const host = React.useRef(null), sceneRef = React.useRef(null), selectRef = React.useRef(onSelect);
+      selectRef.current = onSelect; // the scene outlives renders, so it always calls the latest callback
+      const sprites = stageSprites(cards, { live, t, currentMemberId, canOpen: !!open, since });
       const seated = sprites.filter(s => s.status !== 'inactive').length;
       const toggle = () => setCollapsed(prev => { const next = !prev; try { window.localStorage?.setItem(STAGE_COLLAPSED_KEY, next ? '1' : '0'); } catch { /* storage unavailable */ } return next; });
       React.useEffect(() => {
         const el = host.current;
         if (!el || typeof document === 'undefined' || typeof requestAnimationFrame !== 'function') { sceneRef.current?.destroy(); sceneRef.current = null; return; }
-        if (!sceneRef.current) { sceneRef.current = new OfficeScene(el, el.querySelector('canvas'), el.querySelector('.ctm-stage-overlay'), { t, onOpen: open ? id => open(id) : null }); }
-        sceneRef.current.t = t; sceneRef.current.sync(sprites);
+        if (!sceneRef.current) { sceneRef.current = new OfficeScene(el, el.querySelector('canvas'), el.querySelector('.ctm-stage-overlay'), { t, onOpen: open ? id => open(id) : null, onSelect: id => selectRef.current?.(id) }); }
+        sceneRef.current.t = t; sceneRef.current.sync(sprites); sceneRef.current.select(selected, false);
       });
       React.useEffect(() => () => { sceneRef.current?.destroy(); sceneRef.current = null; }, []);
       return h('section', { className: 'ctm-stage', 'aria-label': t('stage.title'), ...(collapsed ? { 'data-collapsed': '' } : {}) },
@@ -3035,15 +3111,104 @@ window.__ModuleLoader__.load({
           h('div', { className: 'ctm-stage-overlay' }),
           sprites.length ? null : h('p', { className: 'ctm-stage-empty ctm-sub' }, t('stage.empty'))));
     }
-    OfficeStage.sprites = stageSprites; OfficeStage.palette = stagePalette; // test hooks for the pure helpers
+    // test hooks for the pure helpers
+    Object.assign(OfficeStage, { sprites: stageSprites, palette: stagePalette, activityOf: stageActivityOf, bubbleText: stageBubbleText,
+      events: stageEvents, idleGesture: stageIdleGesture, toolGlyph: stageToolGlyph });
 
-    function TeamBoard({ roles, activity, allocations, since, t, open, live, usage, runtimeState, currentMemberId, leadSessionId }) {
-      const cards = boardCards(roles, activity, allocations);
-      const lead = cards.filter(c => c.lead);
-      const mates = cards.filter(c => !c.lead);
+    // ---------- office stage: pure live-activity derivation (no DOM; unit-tested through OfficeStage.* hooks) ----------
+    /** Tool name → activity. First match wins, so `web_search` is browsing and `read_image` is reading. */
+    const STAGE_TOOL_ACTS = [
+      ['send_message', 'messaging'], ['spawn', 'messaging'], ['team_task', 'board'], ['wait_agent', 'waiting'],
+      ['web', 'browsing'], ['fetch', 'browsing'], ['browse', 'browsing'], ['omni', 'browsing'],
+      ['read', 'reading'], ['write', 'writing'], ['edit', 'writing'],
+      ['bash', 'terminal'], ['pwsh', 'terminal'], ['shell', 'terminal'], ['exec', 'terminal'],
+      ['grep', 'searching'], ['glob', 'searching'], ['search', 'searching'],
+    ];
+    const STAGE_ACT_GLYPH = { thinking: '💭', reading: '📖', writing: '✍️', terminal: '⌨️', searching: '🔍', browsing: '🌐',
+      messaging: '📨', board: '📋', waiting: '⏳', failed: '❗', working: '⚙️', arriving: '🚪', idle: '', offline: '' };
+    /** Activities that keep the render loop at full rate (anything animated beyond the idle gestures). */
+    const STAGE_BUSY_ACTS = new Set(['thinking', 'reading', 'writing', 'terminal', 'searching', 'browsing', 'messaging', 'board', 'waiting', 'working', 'arriving']);
+    function stageToolAct(tool) {
+      const name = String(tool ?? '').toLowerCase(); if (!name) return 'working';
+      return STAGE_TOOL_ACTS.find(([key]) => name.includes(key))?.[1] ?? 'working';
+    }
+    function stageToolGlyph(tool) { return tool ? STAGE_ACT_GLYPH[stageToolAct(tool)] : ''; }
+    /**
+     * One fine-grained activity per member from the pushed status + capabilityTeamActivity projection:
+     * offline (no session) / arriving (provisioning) / failed / tool category while a call runs / thinking while the
+     * model generates (phase model, settled-but-still-running, or no projection yet) / idle.
+     */
+    function stageActivityOf(status, act) {
+      if (status === 'inactive') return 'offline';
+      if (status === 'failed') return 'failed';
+      if (status === 'provisioning') return 'arriving';
+      if (status !== 'running') return 'idle';
+      const cur = act?.schemaVersion === 1 ? act.current : null;
+      if (act?.schemaVersion === 1 && act.phase === 'tool' && cur?.status === 'running') return stageToolAct(cur.tool);
+      return 'thinking';
+    }
+    const stageClock = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+    /** Bubble = base text + elapsed (recomputed by the scene once a second) + parallel count. */
+    function stageBubbleText(d, now, t = k => k) {
+      if (!d?.bubble) return '';
+      const parts = [d.bubble];
+      if (typeof d.bubbleSince === 'number' && now >= d.bubbleSince) parts.push(`· ${stageClock(now - d.bubbleSince)}`);
+      if (d.parallel > 1) parts.push(fmt(t('stage.parallel'), { n: d.parallel }));
+      return parts.join(' ');
+    }
+    /** Base bubble text and the start time it counts from, per activity. Idle/offline members stay quiet. */
+    function stageBubbleBase(activity, { cur, task, since, t }) {
+      const taskText = task ? `#${task.id} ${task.subject ?? ''}`.trim() : '';
+      if (activity === 'thinking') return { text: [t('stage.act.thinkingBubble'), taskText].filter(Boolean).join(' '), since };
+      if (activity === 'failed') return { text: t('stage.act.failedBubble'), since: null };
+      if (activity === 'arriving') return { text: t('stage.act.arriving'), since: null };
+      if (activity === 'idle' || activity === 'offline') return { text: '', since: null };
+      const tool = [cur?.summary || label(t, `stage.act.${activity}`, cur?.tool ?? ''), cur?.target ? `(${cur.target})` : ''].filter(Boolean).join(' ');
+      return { text: tool || t(`stage.act.${activity}`), since: typeof cur?.startedAt === 'number' ? cur.startedAt : since };
+    }
+    /**
+     * Deterministic idle gesture: every 4 s window each member has a hash-picked chance to stretch or sip coffee,
+     * so idle desks are alive without randomness (and tests can pin the result).
+     */
+    function stageIdleGesture(id, nowMs) {
+      const slot = Math.floor(nowMs / 4000), n = stageHash(`${id}:${slot}`) % 7;
+      return n === 0 ? 'stretch' : n === 1 ? 'coffee' : null;
+    }
+    /**
+     * Diff two sprite lists into one-shot effects. Mail flies Lead → teammate when a task turns in_progress for that
+     * teammate or the teammate wakes up while the Lead is messaging; teammate → Lead when the teammate starts a
+     * send_message call. Losing an in-progress task (done/removed) celebrates; a changed route flashes the badge.
+     */
+    function stageEvents(prev, next) {
+      const before = new Map((prev ?? []).map(d => [d.id, d])), out = [];
+      const lead = (next ?? []).find(d => d.lead), leadWas = lead ? before.get(lead.id) : null;
+      const leadMessaging = lead && (lead.activity === 'messaging' || leadWas?.activity === 'messaging');
+      for (const d of next ?? []) {
+        const was = before.get(d.id); if (!was) continue;
+        if (was.route !== d.route && d.route) out.push({ type: 'flash', id: d.id });
+        if (d.ctxRatio >= .9 && !(was.ctxRatio >= .9)) out.push({ type: 'sweat', id: d.id });
+        if (d.lead || !lead) continue;
+        const newTask = d.task?.status === 'in_progress' && (was.task?.id !== d.task.id || was.task?.status !== 'in_progress');
+        const woke = leadMessaging && d.status === 'running' && was.status !== 'running';
+        if (newTask || woke) out.push({ type: 'mail', from: lead.id, to: d.id });
+        if (d.activity === 'messaging' && (was.activity !== 'messaging' || was.actKey !== d.actKey)) out.push({ type: 'mail', from: d.id, to: lead.id });
+        if (was.task?.status === 'in_progress' && d.task?.id !== was.task.id) out.push({ type: 'celebrate', id: d.id });
+      }
+      if (lead && leadWas && lead.activity === 'messaging' && (leadWas.activity !== 'messaging' || leadWas.actKey !== lead.actKey)
+        && !out.some(e => e.type === 'mail' && e.from === lead.id)) out.push({ type: 'mail', from: lead.id, to: null });
+      return out;
+    }
+
+    /**
+     * Team workbench: the pixel office plus a member detail panel. Selection lives here (React) — OfficeScene reports
+     * clicks through `onSelect`; `selectedId` lets a host (or a test) pin the selection from outside.
+     */
+    function TeamBoard({ roles, activity, allocations, since, t, open, live, usage, runtimeState, currentMemberId, leadSessionId, selectedId }) {
+      const cards = boardCards(localizeRoles(roles, t), activity, allocations);
       const running = cards.filter(c => c.status === 'running').length;
-      const canvas = React.useRef(null);
-      const links = useBoardLinks(canvas, cards);
+      const [picked, setPicked] = React.useState({ stageSelected: null });
+      const selected = selectedId !== undefined ? selectedId : (picked?.stageSelected ?? null);
+      const chosen = selected ? cards.find(c => c.id === selected) ?? null : null;
       const openable = c => Boolean(open && !c.lead && c.member?.id && (!currentMemberId || c.member.id !== currentMemberId) && c.status !== 'provisioning' && c.status !== 'failed');
       const tasks = activity?.tasks ?? [];
       const taskRevSig = tasks.map(tk => {
@@ -3201,13 +3366,15 @@ window.__ModuleLoader__.load({
           running ? badge(fmt(t('live.runningCount'), { n: running }), 'brand', 'run') : null,
           activity?.at ? h('span', { className: 'ctm-sub ctm-bd-at' }, h('i', { className: 'ctm-bd-pulse', 'aria-hidden': true }), t('live.polling')) : null),
         activity?.unavailable ? h('p', { className: 'ctm-ov-note ctm-warn' }, activity.unavailable) : null,
-        h(OfficeStage, { cards, live, t, open, currentMemberId }),
-        h('div', { className: 'ctm-bd-canvas', ref: canvas },
-          h(BoardLinks, { links }),
-          lead.length ? h('div', { className: 'ctm-bd-lead' }, ...lead.map(card)) : null,
-          mates.length ? h('div', { className: 'ctm-bd-mates' }, ...mates.map(card)) : null),
+        h(OfficeStage, { cards, live, t, open, currentMemberId, since, selected: chosen?.id ?? null, onSelect: id => setPicked({ stageSelected: id ?? null }) }),
+        cards.length ? h('section', { className: 'ctm-stage-detail', 'aria-live': 'polite', 'aria-label': t('stage.detail') },
+          chosen ? h('div', { className: 'ctm-stage-detail-head' },
+            h('span', { className: 'ctm-label' }, t('stage.detail')),
+            h('button', { type: 'button', className: 'ctm-btn', onClick: () => setPicked({ stageSelected: null }) }, t('stage.detailClose'))) : null,
+          chosen ? card(chosen) : h('p', { className: 'ctm-sub ctm-stage-detail-hint' }, t('stage.detailHint'))) : null,
         depsView);
     }
+    TeamBoard.detail = (props, id) => TeamBoard({ ...props, selectedId: id }); // test/host hook: board with one member's detail open
 
     // ---------- role view (teammate session): own role card + own usage/logs/artifacts, no team canvas ----------
     /**
@@ -3326,7 +3493,7 @@ window.__ModuleLoader__.load({
         h('div', { hidden: sub !== 'runtime' }, runtimeNode));
     }
 
-    function Overview({ sessionId, t: injectedT, hostT, load, save, live, cache, openMember }) {
+    function Overview({ sessionId, t: injectedT, hostT, load, save, live, cache, openMember, onboarding }) {
       const [state, setState] = React.useState({ pending: false });
       const [tab, setTab] = React.useState('models');
       const [showOverview, setShowOverview] = React.useState(false);
@@ -3615,6 +3782,7 @@ window.__ModuleLoader__.load({
           h('p', { className: 'ctm-sub ctm-ov-subrow', title: subRowText }, subRowText)),
         h('div', { className: 'ctm-ov-scroll' },
           subagentNoticeNode,
+          onboarding ? onboarding({ t }) : null,
           current.error ? h('p', { role: 'alert', className: 'ctm-ov-callout', 'data-tone': 'error' }, current.error) : null,
           !shown ? h('div', { className: 'ctm-ov-empty' }, h('p', { className: 'ctm-sub' }, t(isPresetMounted === false ? 'overview.notMounted' : current.pending ? 'overview.loading' : 'overview.empty')),
             (isPresetMounted === false || current.pending) ? null : h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', onClick: refresh }, t('overview.firstLoad'))) : null,
@@ -3656,7 +3824,7 @@ window.__ModuleLoader__.load({
               h(ArtifactsRack, { sessionId: effectiveSessionId, liveTeam, live, t }))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'report', hidden: tab !== 'report' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:report`, t },
-              h(BattleReportView, { sessionId: effectiveSessionId, liveTeam, live, t, runtimeState }))) : null,
+              h(BattleReportView, { sessionId: effectiveSessionId, liveTeam, live, t, runtimeState, singleModel: team?.singleModel }))) : null,
           shown ? h('div', { className: 'ctm-ov-panel', 'data-panel': 'roles', hidden: tab !== 'roles' },
             h(ErrorBoundary, { key: `${effectiveSessionId}:roles`, t },
               team ? h(React.Fragment, null,
@@ -3699,6 +3867,175 @@ window.__ModuleLoader__.load({
                   h('p', { className: 'ctm-sub ctm-ov-note' }, t('theme.templateDesc'))),
                 h('div', { className: 'ctm-ov-block' }, h('div', { className: 'ctm-label' }, t('overview.policy')), h(WorkflowList, { workflow: team.workflow, t })))
               : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null)));
+    }
+
+    // ---------- onboarding: official Agent Teams bundle, model coverage, first team session; bundle settings forms ----------
+    const AGENT_TEAM_BUNDLE = '@deepseek-ai/dsh-experimental-agent-team-profile';
+    const WELCOME_VERSION = '4.0.0';
+    const UI_NAMESPACE = 'capability-team-ui'; // this package's row id in cordis.patch.yml; its volatile Config keeps the welcome acknowledgement
+    Object.assign(zh, {
+      'onb.title': '能力协作团队：三步开始', 'onb.step1': '1. 启用官方 Agent Teams', 'onb.step2': '2. 模型档位匹配', 'onb.step3': '3. 开始第一个团队任务',
+      'onb.teamReady': '官方 Agent Teams 服务已运行。',
+      'onb.teamMissing': '能力协作团队建立在官方实验包 {name} 之上；它当前未启用，团队功能不会启动。',
+      'onb.teamWarning': '注意：启用后对本配置档（profile）中的所有会话生效，并停用原生的通用子代理工具（subagent / fork 等），改由团队工具委派。只有你点击下方按钮才会启用。',
+      'onb.enable': '启用 Agent Teams', 'onb.enabling': '正在启用…', 'onb.applied': '已启用并生效。请刷新页面后新建会话。',
+      'onb.restart': '已启用，需要重启 DSH 后生效（原因：{reason}）。', 'onb.failed': '启用失败，错误码：{code}。也可在“插件”页手动启用。',
+      'onb.noManager': '当前连接不能管理插件；请在侧栏“插件”页手动启用 {name}。',
+      'onb.coverage': '{covered}/{total} 项能力已在你的模型目录中匹配到合格档位（共 {models} 个模型）。', 'onb.coverageUnknown': '模型目录暂不可读；稍后在团队总览中查看。',
+      'onb.unassigned': '未匹配：{list}。这些角色的请求会被阻止；可补充渠道，或让主控开启单模型模式（需你确认）。',
+      'onb.newSession': '新建会话 → 在模式选择中选择“能力协作团队”，然后直接描述任务。', 'onb.dismiss': '知道了', 'onb.later': '稍后',
+      'roles.singleModel': '单模型模式', 'roles.singleModelHint': '未分配模型的角色统一使用你确认的单个模型；无备选，失败直接报告。',
+      'cfg.hint': '留空 = 沿用 integrations.json / 环境变量 / DSH 凭据。*KeyEnv 字段填写 DSH 凭据或环境变量的名称，不填写密钥本身。',
+      'cfg.save': '保存', 'cfg.saved': '已保存，下一次请求起生效。', 'cfg.saveFailed': '保存失败，请刷新后重试。', 'cfg.unavailable': '该插件未运行或当前连接不可编辑设置。', 'cfg.loading': '读取中…',
+    });
+    Object.assign(en, {
+      'onb.title': 'Capability Team: three steps', 'onb.step1': '1. Enable official Agent Teams', 'onb.step2': '2. Model tier coverage', 'onb.step3': '3. Run the first team task',
+      'onb.teamReady': 'The official Agent Teams service is running.',
+      'onb.teamMissing': 'Capability Team builds on the official experimental bundle {name}; it is not enabled, so the team cannot start.',
+      'onb.teamWarning': 'Note: enabling it affects every session in this profile and disables the native generic subagent tools (subagent / fork); delegation then uses the team tools. Nothing changes until you click the button.',
+      'onb.enable': 'Enable Agent Teams', 'onb.enabling': 'Enabling…', 'onb.applied': 'Enabled and applied. Reload the page, then start a new session.',
+      'onb.restart': 'Enabled; restart DSH for it to take effect (reason: {reason}).', 'onb.failed': 'Enabling failed, error code: {code}. You can also enable it on the Plugins page.',
+      'onb.noManager': 'This connection cannot manage plugins; enable {name} on the Plugins page.',
+      'onb.coverage': '{covered}/{total} capabilities matched a qualified tier in your model catalog ({models} models).', 'onb.coverageUnknown': 'The model catalog is not readable yet; check the team overview later.',
+      'onb.unassigned': 'Unmatched: {list}. Requests of these roles are blocked; add a channel, or ask the Lead to enable single-model mode (you confirm it).',
+      'onb.newSession': 'New session → choose "Capability Team" in the mode picker, then describe your task.', 'onb.dismiss': 'Got it', 'onb.later': 'Later',
+      'roles.singleModel': 'Single-model mode', 'roles.singleModelHint': 'Roles without an assigned model use the one model you confirmed; no backups, failures surface.',
+      'cfg.hint': 'Empty = keep integrations.json / environment / DSH credentials. *KeyEnv fields take the NAME of a DSH credential or environment variable, never the key itself.',
+      'cfg.save': 'Save', 'cfg.saved': 'Saved; applies from the next request.', 'cfg.saveFailed': 'Save failed; reload and retry.', 'cfg.unavailable': 'The plugin is not running or settings are read-only here.', 'cfg.loading': 'Loading…',
+    });
+    async function fetchOnboarding(signal) {
+      const res = await fetch(apiUrl('api/capability-team.onboarding'), { signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+    /** Map a pluginManager ChangeResult (Remote reply `{ok, value}` or a bare value) to what the card shows. */
+    function enableOutcome(reply) {
+      if (reply && reply.ok === false) return { kind: 'failed', code: String(reply.error?.code ?? reply.error?.message ?? 'remote-error') };
+      const value = reply && reply.ok === true ? reply.value : reply;
+      if (value?.application === 'applied') return { kind: 'applied' };
+      if (value?.application === 'restart-required') return { kind: 'restart', reason: String(value.restartReason ?? '') };
+      return { kind: 'failed', code: String(value?.error?.code ?? (value?.application === 'cancelled' ? 'cancelled' : 'unknown-result')) };
+    }
+    /** Enable the official bundle only after a user click: confirm it is listed, then select it. */
+    async function enableAgentTeams(pluginManager) {
+      if (!pluginManager) return { kind: 'failed', code: 'no-plugin-manager' };
+      try {
+        const listed = await pluginManager.listBundles();
+        const rows = listed?.ok === true ? listed.value : Array.isArray(listed) ? listed : null;
+        if (!rows) return enableOutcome(listed);
+        const row = rows.find(b => b?.name === AGENT_TEAM_BUNDLE);
+        if (!row || row.availability === 'missing') return { kind: 'failed', code: 'not-installed' };
+        return enableOutcome(await pluginManager.setBundleEnabled(AGENT_TEAM_BUNDLE, true));
+      } catch (error) { return { kind: 'failed', code: String(error?.code ?? error?.message ?? error) }; }
+    }
+    function OnboardingCard({ status, enable, t, onDismiss, dismissLabel }) {
+      const [outcome, setOutcome] = React.useState(null);
+      const pending = outcome?.kind === 'pending';
+      const click = async () => { setOutcome({ kind: 'pending' }); setOutcome(await enable()); };
+      const cov = status?.coverage;
+      const outcomeText = !outcome || pending ? null : outcome.kind === 'applied' ? t('onb.applied')
+        : outcome.kind === 'restart' ? fmt(t('onb.restart'), { reason: outcome.reason || '-' }) : fmt(t('onb.failed'), { code: outcome.code });
+      return h('div', { className: 'ctm-ov-callout', 'data-tone': status?.teamServicePresent ? undefined : 'warn', 'data-onboarding': '' },
+        h('span', { className: 'ctm-name' }, t('onb.title')),
+        h('span', { className: 'ctm-label' }, t('onb.step1')),
+        status?.teamServicePresent ? h('span', { className: 'ctm-sub', 'data-step': 'team-ready' }, `✓ ${t('onb.teamReady')}`) : h('div', { 'data-step': 'team-missing' },
+          h('p', { className: 'ctm-sub' }, fmt(t('onb.teamMissing'), { name: AGENT_TEAM_BUNDLE })),
+          h('p', { className: 'ctm-sub ctm-warn', 'data-warning': '' }, t('onb.teamWarning')),
+          enable ? h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', 'data-action': 'enable-agent-teams', disabled: pending || outcome?.kind === 'applied' || outcome?.kind === 'restart', onClick: click },
+            t(pending ? 'onb.enabling' : 'onb.enable')) : h('p', { className: 'ctm-sub' }, fmt(t('onb.noManager'), { name: AGENT_TEAM_BUNDLE })),
+          outcomeText ? h('p', { className: outcome.kind === 'failed' ? 'ctm-sub ctm-error' : 'ctm-sub', role: 'status', 'data-outcome': outcome.kind }, outcomeText) : null),
+        h('span', { className: 'ctm-label' }, t('onb.step2')),
+        cov?.known ? h('span', { className: 'ctm-sub', 'data-step': 'coverage' }, fmt(t('onb.coverage'), { covered: cov.covered, total: cov.capabilities, models: cov.models })) : h('span', { className: 'ctm-sub' }, t('onb.coverageUnknown')),
+        cov?.unassigned?.length ? h('span', { className: 'ctm-sub ctm-warn' }, fmt(t('onb.unassigned'), { list: cov.unassigned.join(t('common.listSep')) })) : null,
+        h('span', { className: 'ctm-label' }, t('onb.step3')),
+        h('span', { className: 'ctm-sub' }, t('onb.newSession')),
+        onDismiss ? h('button', { type: 'button', className: 'ctm-btn', 'data-action': 'dismiss', onClick: onDismiss }, dismissLabel ?? t('onb.dismiss')) : null);
+    }
+    /** Re-render on a store's changes (ConfigForm and similar `{getSnapshot, subscribe}` stores). */
+    function useStoreSnapshot(store) {
+      const [, redraw] = React.useState(0);
+      React.useEffect(() => (typeof store?.subscribe === 'function' ? store.subscribe(() => redraw(n => n + 1)) : undefined), [store]);
+      return store?.getSnapshot?.() ?? { status: 'unavailable' };
+    }
+    /** Read the onboarding status once per mount. */
+    function useOnboardingStatus(fetchStatus) {
+      const [status, setStatus] = React.useState(null);
+      const started = React.useRef(false);
+      React.useEffect(() => {
+        if (started.current || !fetchStatus) return;
+        started.current = true;
+        fetchStatus().then(setStatus, () => setStatus({ unavailable: true }));
+      }, [fetchStatus]);
+      return status;
+    }
+    /** Overview banner: shown only while the official team service is missing. */
+    function OnboardingGate({ t, enable, fetchStatus }) {
+      const status = useOnboardingStatus(fetchStatus);
+      if (!status || status.unavailable || status.teamServicePresent !== false) return null;
+      return h('div', { style: { margin: '12px 16px 0' } }, h(OnboardingCard, { status, enable, t }));
+    }
+    /** settings.onboarding step: once per WELCOME_VERSION, acknowledged through this package's volatile Config. */
+    function WelcomeStep({ complete, explicit, form, t, enable, fetchStatus }) {
+      const snapshot = useStoreSnapshot(form);
+      const status = useOnboardingStatus(fetchStatus);
+      const acknowledged = snapshot.status === 'ready' && snapshot.value?.welcomeVersion === WELCOME_VERSION;
+      React.useEffect(() => { if (acknowledged && !explicit) complete?.(); }, [acknowledged, explicit]);
+      if (snapshot.status === 'loading' || !status || (acknowledged && !explicit)) return null;
+      const dismiss = async () => { if (snapshot.status === 'ready' && snapshot.writable !== false) { try { await form.set('welcomeVersion', WELCOME_VERSION); } catch { /* in-memory completion still applies */ } } complete?.(); };
+      return h('div', { role: 'dialog', 'aria-modal': 'true', className: 'ctm-onb-modal', style: { position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.35)' } },
+        h('div', { style: { maxWidth: '520px', width: 'calc(100% - 48px)', background: 'var(--dsw-alias-bg-layer-2)', borderRadius: '12px', padding: '16px' } },
+          h(OnboardingCard, { status, enable, t, onDismiss: dismiss })));
+    }
+    // Settings forms for the standalone bundles, rendered from this client (they ship no client half of their own).
+    const OMNI_FIELDS = [['engines', 'list'], ['fetchEngines', 'list'], ['searxngUrl'], ['baseUrl'], ['tavilyKeyEnv'], ['braveKeyEnv'], ['searxngKeyEnv'], ['jinaKeyEnv'], ['apiKeyEnv'], ['audioBaseUrl'], ['audioKeyEnv']];
+    const MEMORY_FIELDS = [['memoryBackend'], ['memoryUrl'], ['memoryKeyEnv'], ['embeddingBaseUrl'], ['embeddingModel'], ['embeddingKeyEnv']];
+    const fieldText = (value, kind) => (value === undefined || value === null ? '' : kind === 'list' && Array.isArray(value) ? value.join(', ') : String(value));
+    /** Edit ops for the changed fields: empty clears the field (the layers below apply again). */
+    function settingsOps(fields, value, draft) {
+      const ops = [];
+      for (const [key, kind] of fields) {
+        if (!Object.hasOwn(draft, key) || draft[key] === fieldText(value?.[key], kind)) continue;
+        const raw = draft[key].trim();
+        if (!raw) ops.push({ op: 'unset', path: [key] });
+        else ops.push({ op: 'set', path: [key], value: kind === 'list' ? raw.split(',').map(v => v.trim()).filter(Boolean) : raw });
+      }
+      return ops;
+    }
+    function BundleSettingsCard({ view, form, fields, t }) {
+      const snapshot = useStoreSnapshot(form);
+      const [draft, setDraft] = React.useState({});
+      const [result, setResult] = React.useState(null);
+      if (view === 'summary') return t('cfg.hint');
+      if (snapshot.status === 'loading') return h('p', { className: 'ctm-sub' }, t('cfg.loading'));
+      if (snapshot.status !== 'ready') return h('p', { className: 'ctm-sub', 'data-unavailable': '' }, t('cfg.unavailable'));
+      const ops = settingsOps(fields, snapshot.value, draft);
+      const save = async () => { const ok = await form.mutate(ops, snapshot.revision); setResult(ok ? 'saved' : 'failed'); if (ok) setDraft({}); };
+      return h('div', { className: 'ctm-ov-block', 'data-bundle-settings': '' },
+        h('p', { className: 'ctm-sub' }, t('cfg.hint')),
+        ...fields.map(([key, kind]) => h('label', { key, className: 'ctm-sub', style: { display: 'flex', flexDirection: 'column', gap: '2px' } }, key,
+          h('input', { type: 'text', name: key, disabled: snapshot.writable === false, value: Object.hasOwn(draft, key) ? draft[key] : fieldText(snapshot.value?.[key], kind),
+            onChange: event => setDraft(prev => ({ ...prev, [key]: event.target.value })) }))),
+        h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: !ops.length || snapshot.writable === false, onClick: save }, t('cfg.save')),
+        result ? h('p', { className: result === 'saved' ? 'ctm-sub' : 'ctm-sub ctm-error', role: 'status' }, t(result === 'saved' ? 'cfg.saved' : 'cfg.saveFailed')) : null);
+    }
+    /** Optional host services are reached through ctx.inject, so a host without them still mounts the plugin. */
+    function registerOnboarding(ctx, t) {
+      let pluginManager = null;
+      ctx.inject?.(['remote.pluginManager'], scoped => { pluginManager = scoped.remote.pluginManager; scoped.effect?.(() => () => { pluginManager = null; }); });
+      const enable = () => enableAgentTeams(pluginManager);
+      const gate = props => h(OnboardingGate, { t: props?.t ?? t, enable, fetchStatus: fetchOnboarding });
+      ctx.slots.inject('plugins.bundle.activation', () => ctx.slots.register({ name: 'plugins.bundle.activation', key: 'dsh-capability-team', locale: NS },
+        props => h(OnboardingCard, { status: null, enable, t, onDismiss: props.onDismiss, dismissLabel: t('onb.later') })));
+      ctx.inject?.(['configForms', 'slots'], scoped => {
+        const forms = scoped.configForms;
+        scoped.slots.inject('settings.onboarding', () => scoped.slots.register({ name: 'settings.onboarding', id: 'capability-team-welcome', order: 50, label: () => t('onb.title'), locale: NS },
+          props => h(WelcomeStep, { ...props, t, enable, fetchStatus: fetchOnboarding, form: forms.get(UI_NAMESPACE) })));
+        for (const [key, ns, fields] of [['dsh-omni-search', 'omni-search', OMNI_FIELDS], ['dsh-capability-memory', 'global-memory', MEMORY_FIELDS]]) {
+          scoped.slots.inject('plugins.bundle.config', () => scoped.slots.register({ name: 'plugins.bundle.config', key, locale: NS },
+            props => h(BundleSettingsCard, { view: props?.view, form: forms.get(ns), fields, t })));
+        }
+      });
+      return gate;
     }
 
     const BaseComponent = React.Component || class DummyComponent { constructor(props) { this.props = props; } };
@@ -3888,7 +4225,7 @@ window.__ModuleLoader__.load({
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'capability-team: dictionaries');
         ctx.effect(() => {
           const tag = document.createElement('style');
-          tag.dataset.plugin = '@local/dsh-capability-team';
+          tag.dataset.plugin = 'dsh-capability-team';
           tag.textContent = CSS + STAGE_CSS;
           document.head.appendChild(tag);
           return () => tag.remove();
@@ -3905,6 +4242,7 @@ window.__ModuleLoader__.load({
         };
         const load = async sessionId => expandStatus(await execute(sessionId, '/capability-status'));
         const live = liveStore(ctx);
+        const onboardingGate = registerOnboarding(ctx, bound);
         const save = (sessionId, disabledRoutes, expectedRevision) => execute(sessionId,
           '/capability-model-policy ' + JSON.stringify({ disabledRoutes, expectedRevision }));
         ctx.effect(() => ctx.sidebarRightTabs.register({
@@ -3920,9 +4258,9 @@ window.__ModuleLoader__.load({
           const isCtm = effectiveLive?.isCapabilityTeam?.(targetSessionId);
           if (isCtm === false) {
             return h('div', { className: 'ctm-ov-empty ctm-not-mounted', 'data-tone': 'warn', style: { padding: '24px' } },
-              h('p', { className: 'ctm-sub' }, bound('overview.notMounted')));
+              onboardingGate(props), h('p', { className: 'ctm-sub' }, bound('overview.notMounted')));
           }
-          return h(Overview, { ...props,
+          return h(Overview, { ...props, onboarding: props.onboarding ?? onboardingGate,
           // Item 3: Overview owns its own bilingual dictionary lookup keyed by its own locale toggle, not the
           // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
           // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.

@@ -16,7 +16,7 @@ export async function buildShared(check = false) {
     if (check) { if (await readFile(resolve(out, name), 'utf8') !== text) throw new Error(`Stale shared module: ${name}`); }
     else { await mkdir(dirname(resolve(out, name)), { recursive: true }); await writeFile(resolve(out, name), text); }
   }
-  for (const name of ['search.js','transcribe.js','integrations-config.js']) await visit(name);
+  for (const name of ['search.js','transcribe.js','integrations-config.js','settings-schema.js']) await visit(name);
   const json = JSON.stringify(Object.fromEntries(Object.entries(manifest).sort()), null, 2) + '\n';
   if (check) { if (await readFile(resolve(out, 'manifest.json'), 'utf8') !== json) throw new Error('Stale shared manifest'); }
   else await writeFile(resolve(out, 'manifest.json'), json);

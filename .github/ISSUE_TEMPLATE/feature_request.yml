@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest an improvement or new capability.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This project reuses native DSH mechanisms wherever possible. If DSH itself already offers something close, please mention it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behaviour you would like.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Capability team (roles, dispatch, board, failover)
+        - omni-search
+        - global-memory
+        - Client UI
+        - Documentation
+        - Other
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing DSH features or workarounds you have tried.

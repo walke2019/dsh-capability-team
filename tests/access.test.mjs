@@ -51,12 +51,12 @@ test('配置校验：默认值、null 取消限制、拒绝越界路径和未知
 test('守卫按队友角色生效，非团队会话与未登记队友不拦截', () => {
   let guard;
   const effective = effectiveConfig({});
-  const members = new Map([['w', { role: 'teammate', name: 'chen-lin' }], ['b', { role: 'teammate', name: 'lv-bu' }], ['x', { role: 'teammate', name: 'ghost' }]]);
+  const members = new Map([['w', { role: 'teammate', name: 'writer' }], ['b', { role: 'teammate', name: 'backend' }], ['x', { role: 'teammate', name: 'ghost' }]]);
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), tools: { guard: fn => { guard = fn; } },
     agentTeams: { tryMembership: agent => members.get(agent.id) }, workingDirectory: { get: () => '/repo' } };
   applyAccess(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }) });
   const call = (id, name, args) => guard({ agent: { id, session: {} }, name, arguments: args });
-  assert.match(call('w', 'bash', {}), /陈琳（writer）不允许执行命令/);
+  assert.match(call('w', 'bash', {}), /Writer（writer）不允许执行命令/);
   for (const name of ['omni_search', 'brisk_omni_search', 'mcp__s__brisk_omni_search']) assert.match(call('w', name, {}), /未开启外部服务/);
   assert.equal(call('w', 'write', { file_path: 'docs/a.md' }), undefined);
   assert.equal(call('b', 'bash', {}), undefined);
@@ -68,7 +68,7 @@ test('whenToUse：默认写入名册与角色视图，可清除，校验长度�
   const base = effectiveConfig({});
   assert.match(base.capabilities.writer.whenToUse, /只改文档/);
   assert.equal(base.capabilities.orchestrator.whenToUse, undefined);
-  assert.match(roleView(base).find(r => r.id === 'chen-lin').whenToUse, /README/);
+  assert.match(roleView(base).find(r => r.id === 'writer').whenToUse, /README/);
   assert.equal(effectiveConfig({ capabilities: { writer: { whenToUse: null } } }).capabilities.writer.whenToUse, undefined);
   assert.throws(() => effectiveConfig({ capabilities: { qa: { whenToUse: 'x'.repeat(501) } } }), /适用场景/);
   assert.throws(() => effectiveConfig({ capabilities: { qa: { whenToUse: 'a\nb' } } }), /适用场景/);
@@ -99,7 +99,7 @@ test('守卫读取官方预设是否生效来决定是否放行命令', () => {
   const effective = effectiveConfig({});
   let active = false;
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), tools: { guard: fn => { guard = fn; } }, get: key => key === 'permissionPresets' ? { current: () => active ? 'read-only' : 'danger-full-access' } : undefined,
-    agentTeams: { tryMembership: () => ({ role: 'teammate', name: 'zhao-yun' }) }, workingDirectory: { get: () => '/repo' } };
+    agentTeams: { tryMembership: () => ({ role: 'teammate', name: 'researcher' }) }, workingDirectory: { get: () => '/repo' } };
   applyAccess(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }) });
   const call = () => guard({ agent: { id: 'r', session: {} }, name: 'bash', arguments: {} });
   assert.match(call(), /尚未生效/);

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
+import { boardDetailsOf } from './helpers/client-harness.mjs';
 
 function createHarness(remote = { commands: {} }, sessions, { extraGlobals = {}, uiWorkspace } = {}) {
   let plugin, cursor = 0, states = [];
@@ -366,7 +367,7 @@ test('修复打开会话报 subagent/unauthorized：打开主控传字符串，�
   const leadTree = h.render(leadElement.type, leadElement.props);
   const board = h.find(leadTree, n => typeof n.type === 'function' && n.props?.roles && 'activity' in n.props);
   assert.ok(board, 'TeamBoard 必须挂载');
-  const boardView = board.type(board.props);
+  const boardView = boardDetailsOf(board);
 
   const dcCard = h.find(boardView, n => n.props?.['data-card'] === 'diao-chan');
   assert.ok(dcCard, 'diao-chan 卡片应存在');
@@ -377,7 +378,7 @@ test('修复打开会话报 subagent/unauthorized：打开主控传字符串，�
   assert.equal(provCard.props.onClick, undefined, '处于 provisioning 的卡片不可点');
 
   // 当在子代理自身视角且展示看板时，自身卡片不可点
-  const selfBoardView = board.type({ ...board.props, currentMemberId: 's_dc' });
+  const selfBoardView = boardDetailsOf(board, { ...board.props, currentMemberId: 's_dc' });
   const selfCard = h.find(selfBoardView, n => n.props?.['data-card'] === 'diao-chan');
   assert.equal(selfCard.props.onClick, undefined, '当前会话自身的卡片不可点');
 });

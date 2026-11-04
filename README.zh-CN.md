@@ -1,150 +1,139 @@
 # DSH 能力协作团队
 
-面向 DeepSeek Harness 的可配置多智能体团队预设：按能力分配模型，在 DSH 原生协作之上提供项目角色、模型策略与实时工作台。
+**你的 AI 团队，各展所长：贵的模型只干难活，一个模型挂了团队照常运转。**
 
-![MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![DSH 0.2.1-rc.5](https://img.shields.io/badge/DSH-0.2.1--rc.5-6f42c1.svg) ![Node >= 22](https://img.shields.io/badge/Node-%3E%3D%2022-339933.svg)
+[![npm](https://img.shields.io/npm/v/dsh-capability-team.svg)](https://www.npmjs.com/package/dsh-capability-team)
+[![CI](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml/badge.svg)](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![DSH >= 0.2.1-rc.3](https://img.shields.io/badge/DSH-%3E%3D%200.2.1--rc.3-6f42c1.svg)
+![Node >= 22](https://img.shields.io/badge/Node-%3E%3D%2022-339933.svg)
 
 [English](README.md) | **简体中文**
 
-## ✨ 核心优势
+面向 DeepSeek Harness（DSH）的多智能体团队预设。它是构建在官方 DSH Agent Teams（`agentTeams` 服务、`team_task_*` 看板、`spawn_teammate` / `send_message`）之上的一层轻量增强，而不是替代品。
 
-- 按队友能力与档位分配模型，不让所有成员共用主控模型。
-- 自动匹配已注册模型，并仅在同档模型间容灾切换。
-- 通过带确认保护的对话式工作流调整角色、职责与主题。
-- 在工作台集中查看团队活动、任务、用量和模型管理。
-- 按角色应用工具、文件路径与沙箱权限策略。
-- 将请求转为明确派活计划，并在 DSH 原生看板跟踪执行。
-- 支持计划式会话轮换与共享记忆集成。
-- 统计 Token 用量，并可设置角色预算。
+<!-- TODO: docs/assets/demo.gif — lead dispatches, a model is unplugged, same-tier backup takes over -->
 
-## DSH 原生团队与本预设的分工
+## 为什么需要它
 
-| DSH 原生能力 | 本预设增强 |
-|---|---|
-| 队友生命周期、消息、等待与中断 | 按能力分配模型与同档容灾 |
-| 共享任务看板与依赖 | 项目角色、派活策略、写入范围限制与预算 |
-| 团队会话与用量投影 | 团队工作台、角色配置和模型管理 |
-| 权限预设与原生确认界面 | 按角色设置沙箱策略与配置变更确认 |
-
-## 🚀 功能特性
-
-### 模型路由与容灾
-- 按能力和档位自动匹配已注册模型。
-- 支持全局模型排除与可配置的同档备选。
-- 支持长上下文路由与冷却期重试。
-
-### 团队配置与角色
-- 配置项目角色名称、能力、职责和适用场景。
-- 对话式修改经校验并由 DSH 原生确认后保存。
-- 按角色设置工具、路径、命令和权限预设。
-
-### 工作流与协作
-- 支持委派、主控直办及符合条件的文本任务计划。
-- 接入原生任务板、依赖关系与范围约束。
-- 可启用队友计划审批、派活确认和会话交接。
-
-### 团队工作台
-- 总览成员、任务、活动、用量和模型。
-- 提供角色会话视图与任务控制。
-- 不再提供集成页或设置界面；集成配置只读。
-
-### 独立工具与记忆
-- `packages/omni-search`（`@local/dsh-omni-search`）无界面，向所有会话提供厂商中立的多引擎搜索（Tavily、Brave、SearXNG 或自定义网关，自动故障切换）、网页抓取（默认经 Jina Reader 免密钥）和语音转写：`omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status`。
-- `packages/global-memory` 零配置即可纯本地运行；可选 OpenAI 兼容嵌入与可插拔共享后端（默认 `local`，可选 `openviking`）。团队插件的记忆枢纽读取同一份配置。
-- 安装步骤和配置格式见[配置参考](docs/configuration.zh-CN.md)及各插件 README。
+- **每个队友都在用你最贵的模型 → 每个角色按能力档位路由。** 架构与审查交给 high/upper 档模型，文档和简单杂活交给更便宜的模型。队友不会继承主控的模型；没有合格模型的角色直接 fail-closed，绝不悄悄借用别的模型。
+- **一个渠道宕机或额度耗尽，整个团队卡住 → 同档容灾让团队继续运转。** 重试之后，请求切换到已配置的同档备选（绝不跨档降级）；鉴权与额度错误立即切换，故障路由按指数冷却后再恢复。
+- **智能体各自乱干、互相覆盖、浪费 Token → 计划先行、看板驱动的工作流。** 每个请求先出派活计划（delegate / free / direct），子任务带写入范围进入原生任务看板，Token 纪律保证提示词可缓存、输出被裁剪。
 
 ## 快速开始
 
-### 前置条件
+前置条件：DSH >= 0.2.1-rc.3（已在 0.2.1-rc.5 验证）、Node.js >= 22，并在 DSH profile 中启用官方 `@deepseek-ai/dsh-experimental-agent-team-profile` bundle。
 
-- 包含原生实验性 Agent Teams 包的 DSH Desktop 或 `dsh web`（已对照 0.2.1-rc.5 验证）。
-- Node.js 22 或更高版本。
+**1. 安装**
 
-请在宿主 profile 中启用官方 `@deepseek-ai/dsh-experimental-agent-team-profile` bundle，由其提供原生团队服务、按成员作用域安装的工具及团队 UI。本 bundle 不插入这些全局组件：Cordis 对重复 ID 选择最后一项，不保留早期配置，在此插入默认值可能重置宿主自定义参数。缺少官方组件时，团队能力仍未就绪；请查看已有运行时诊断并启用官方 bundle，不要假设本预设自动安装。原生工具安装器要求团队成员身份，因此 standard 智能体不会获得团队工具。
-
-可选的已安装运行时回归：将 `DSH_NATIVE_ASAR` 指向可读的 Desktop `app.asar`，运行 `node --test tests/team-mount.test.mjs`。测试执行已安装的 YAML 解析器、patch 合成、loader group update 及原生工具安装器成员门禁，不修改或重启宿主。不设置该变量时，两项原生检查明确跳过；这不是完整宿主启动或浏览器测试。
-
-### 安装与启用
-
-1. 克隆本仓库。
-2. 在 DSH 插件管理器中通过 `install_bundle` 安装仓库目录。
-3. 若安装器提示需要重启，请重启 DSH。
-4. 新建会话并选择“能力协作团队”（`capability-team`）。如需设为默认，在 Host 配置中将预设注册表的 `selectedDefault` 设为 `capability-team`。
-
-### 最小配置
-
-先在 DSH 注册渠道与模型，预设会据此匹配。右侧面板没有集成页，配置只读，可通过配置文件、Host 环境变量或 DSH 凭据库提供。在 DSH 插件管理器安装并启用 `packages/omni-search`、`packages/global-memory` 目录或对应 `.tgz` 包，然后重启 DSH。`omni-search` 和 `global-memory` 的细节见对应 README。
-
-配置文件位置为 `%USERPROFILE%/.dsh/capability-team-themes/integrations.json`，可用 `CAPABILITY_TEAM_HOME` 覆盖目录。示例：
-
-```json
-{
-  "integrations": {
-    "search": { "engines": ["tavily", "searxng"], "fetchEngines": ["jina"], "searxngUrl": "http://127.0.0.1:8888" },
-    "audio": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "OMNI_AUDIO_API_KEY" },
-    "embeddings": { "baseUrl": "https://gateway.example.com", "apiKeyEnv": "EMBEDDING_API_KEY", "model": "<model>" },
-    "memory": { "backend": "openviking", "url": "https://memory.example.com", "apiKeyEnv": "OPENVIKING_API_KEY" }
-  }
-}
+```bash
+dsh plugin add dsh-capability-team
+# 可选的配套包
+dsh plugin add dsh-omni-search
+dsh plugin add dsh-capability-memory
 ```
 
-零配置：`omni_fetch` 无需任何密钥（Jina Reader），记忆完全本地，`omni_search` 只需设置 `TAVILY_API_KEY`、`BRAVE_API_KEY` 或 `SEARXNG_URL` 之一。其他环境变量：`OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY`（自定义网关）、`JINA_API_KEY`（可选）、`OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY`、`EMBEDDING_BASE_URL` / `EMBEDDING_API_KEY` / `EMBEDDING_MODEL` / `EMBEDDING_DIMENSIONS`、`OPENVIKING_URL`。密钥只放在 DSH 凭据库或对应环境变量中；勿写入配置。`CAPABILITY_TEAM_OPENCODE_EXECUTABLE` 和 `CAPABILITY_TEAM_OPENCODE_MODELS` 仍可配置免费文本任务通道。
+**2. 在引导卡片中启用 Agent Teams**
 
-### 从 cpa-tools 迁移
+如果官方 Agent Teams bundle 未启用，引导卡片会检测到，只有你点击按钮后才会启用。注意：启用后会影响该 profile 下的所有会话，并停用 DSH 原生的通用子智能体工具。卡片还会显示哪些能力已匹配到模型档位。如果有能力匹配不到，可以补充渠道，或让主控开启单模型模式：未匹配的角色改用你的 DSH 默认模型，开启前会弹出确认框由你确认。
 
-破坏性变更：旧名称不再识别。
+> 如果卡片提示当前连接不能管理插件，请在 DSH 的“插件”页手动启用 `@deepseek-ai/dsh-experimental-agent-team-profile`，并按提示重启 DSH。
 
-| 旧 | 新 |
-|---|---|
-| `packages/cpa-tools` | `packages/omni-search`（`@local/dsh-omni-search`，patch id `omni-search`） |
-| `cpa_search`、`cpa_fetch`、`cpa_search_providers` | `omni_search`、`omni_fetch`、`omni_search_providers` |
-| `cpa_transcribe`、`cpa_transcribe_status` | `omni_transcribe`、`omni_transcribe_status` |
-| `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY`（`custom` 引擎） |
-| `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |
-| `CPA_EMBED_*` | `EMBEDDING_*`（新名未设置时仍读取旧名） |
+**3. 开始团队会话**
 
-新建团队会话后，可以说：“读取团队配置。”主控会给出当前角色和模型匹配概览。
+新建会话 → 选择 **能力协作团队** 预设（`capability-team`）→ 输入：
+
+```text
+读取团队配置
+```
+
+主控会汇报名册、各角色的档位以及匹配到了你的哪些模型。
+
+## 对比
+
+| | 单智能体 | 官方 DSH Agent Teams | 本预设 |
+|---|---|---|---|
+| 团队生命周期、消息、任务看板 | — | ✅ | ✅（复用官方能力） |
+| 按角色模型路由 | — | 不能按角色选模型，所有队友走 profile 配置的同一派生通道 | ✅ 按档位从你的模型自动匹配；未分配即 fail-closed |
+| 同档容灾 | — | — | ✅ 指数冷却，绝不跨档降级 |
+| 成本控制 / 预算 | — | 用量投影 | ✅ 档位路由、按角色 Token 预算、Token 纪律 |
+| 派活分流 | — | — | ✅ `delegate` / `free` / `direct` 派活计划 |
+| 写入范围强制 | — | — | ✅ 按任务 `write_scopes`，按角色路径/工具/沙箱策略 |
+| 工作台 | — | 团队 UI | ✅ 总览、看板、用量、模型管理、像素办公室舞台 |
+
+更完整的对比（包括通用模型路由类插件）见 [docs/comparison.zh-CN.md](docs/comparison.zh-CN.md)。
+
+## 工作原理
+
+```mermaid
+flowchart LR
+  R[用户请求] --> P[派活计划<br/>delegate / free / direct]
+  P --> T[按档位路由角色<br/>high · upper · medium · low]
+  T --> B[原生任务看板<br/>写入范围 + 依赖]
+  B --> V[验收<br/>QA / 架构师审查]
+  V --> D[主控交付]
+  T -. 模型故障 .-> F[同档备选<br/>+ 冷却]
+  F -.-> T
+```
+
+- **能力档位。** DSH 目录中已注册的模型按厂商命名规则分为 `high` / `upper` / `medium` / `low`；非对话、免费/试用及低于版本下限的模型会被排除。每个能力获得一个主模型和最多三个同档备选。
+- **按角色路由。** 每个角色（能力）有自己的档位与厂商偏好。未分配模型的角色 fail-closed。
+- **容灾。** 先在同一路由重试，再切换到下一个同档备选。故障路由进入冷却（逐次加倍，上限 30 分钟），恢复后回到主模型。鉴权与额度错误直接跳到下一个备选。
+- **派活与看板。** 主控必须先调用 `capability_dispatch_plan`；委派的子任务成为带 `write_scopes` 和 `blocked_by` 的看板任务，超出所持任务范围的修改会被拒绝。
+- **护栏。** 按角色的沙箱/工具/路径权限、可选的计划先行审批、带交接的会话轮换，以及 Token 纪律（稳定提示词前缀、输出裁剪、空闲压缩）。
+- **工作台与记忆。** 右侧实时面板展示团队总览、看板、用量与模型管理，并带像素办公室舞台；本地记忆枢纽在新任务时召回过去的踩坑与决策。
 
 ## 配置
 
-大多数设置可通过团队工作台或团队配置工具管理。以下示例仅用于说明结构，实际字段和值以团队配置模式与已注册模型为准：
+大多数设置可以直接让主控修改（修改经校验，并在 DSH 确认对话框中展示差异后才保存），也可在工作台中操作。相关工具：`capability_team_read`、`capability_team_save`、`capability_team_import`。
 
 ```json
 { "capabilities": { "writer": { "tier": "low", "search": false } } }
 ```
 
-完整字段说明见[配置参考](docs/configuration.zh-CN.md)。
+集成（搜索、转写、嵌入、共享记忆）从 `~/.dsh/capability-team-themes/` 下的 `integrations.json`（Windows 为 `%USERPROFILE%/.dsh/capability-team-themes/`，可用 `CAPABILITY_TEAM_HOME` 覆盖目录）、Host 环境变量或 DSH 凭据库读取。配置中绝不写密钥本身，只写环境变量名，例如 `OMNI_SEARCH_API_KEY`。
 
-## 技术栈
+完整参考：[docs/configuration.zh-CN.md](docs/configuration.zh-CN.md) —— 档位与自动匹配、权限、预算、计划先行、派活工作流、容灾与长上下文、轮换、记忆以及全部环境变量。
 
-- **运行时：** Node.js 22+、DSH 插件生命周期与 Cordis 集成。
-- **团队服务：** DSH `ctx.agentTeams` API 与原生任务看板工具。
-- **工作台：** `client/` 中的 JavaScript 源码构建为 `client.js`。
-- **测试：** Node.js 内置 `node:test` 测试运行器。
-- **可选集成：** 搜索引擎（Tavily、Brave、SearXNG、自定义网关）、Jina Reader 抓取、OpenAI 兼容嵌入，以及可插拔共享记忆后端（OpenViking）。
+## 名册与主题
 
-## 项目结构
+默认名册为中性角色：
 
-| 路径 | 说明 |
+| 角色 id | 能力 | 默认档位 |
+|---|---|---|
+| `lead` | orchestrator | high |
+| `architect` | technical-director | upper |
+| `backend` | backend | upper |
+| `frontend` | frontend | medium |
+| `researcher` | research（只读） | medium |
+| `writer` | writer（仅文档路径） | low |
+| `qa` | qa | upper |
+
+名称、职责、档位和模型都可按项目修改。原先的三国名册现在是可选的内置主题：让主控应用主题 `three-kingdoms`（`capability_team_import { theme: "three-kingdoms" }`），用主题 `default` 切回。3.x 保存的项目若改名或删除了英雄 id，会保留其英雄名册。
+
+## 配套包
+
+| 包 | 提供的能力 |
 |---|---|
-| `client/` | 工作台客户端源码模块。 |
-| `scripts/` | 客户端打包与项目检查脚本。 |
-| `tests/` | Node.js 测试套件与夹具。 |
-| `skills/` | 项目角色与主题指导技能。 |
-| `locale/` | 英文和中文界面文案。 |
-| `config.js`、`defaults.js`、`roles.js` | 团队默认值、模型匹配和角色定义。 |
-| `cordis.patch.yml` | DSH 预设与插件注册配置。 |
-| `client.js` | DSH 加载的生成版工作台文件。 |
-| `index.js`、`ui.js` | 插件与 UI 入口。 |
+| [`dsh-omni-search`](packages/omni-search/README.md) | 为所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`。厂商中立的引擎（Tavily、Brave、SearXNG、自定义网关）自动故障切换；抓取经 Jina Reader 免密钥可用。 |
+| [`dsh-capability-memory`](packages/global-memory/README.md) | 显式记忆工具与有界自动召回。默认纯本地；可选 OpenAI 兼容嵌入与 OpenViking 共享后端。 |
 
-## 文档索引
+两者都是独立的 profile bundle：在团队会话之外同样可用，团队插件的记忆枢纽读取同一份配置。
 
-- [配置参考](docs/configuration.zh-CN.md)
-- [开发指南](docs/development.zh-CN.md)
-- [团队与仓库规范](AGENTS.md)
+## 从 3.x 迁移
+
+4.0.0 包含破坏性变更：包已改名（`@local/dsh-capability-team` → `dsh-capability-team`、`@local/dsh-omni-search` → `dsh-omni-search`、`@local/dsh-global-memory` → `dsh-capability-memory`），默认名册改为中性角色。请更新 profile、bundle 列表和 `cordis.patch.yml` 中的引用，详情见 [CHANGELOG.md](CHANGELOG.md)。更早的 `cpa-tools` → `omni-search` 改名见 [docs/configuration.zh-CN.md](docs/configuration.zh-CN.md)。
+
+## 路线图
+
+- 公开基准测试报告（与单智能体对比成本与完成度）—— 即将发布。
+- 面向常见项目类型的团队模板。
+- Mothership：多机管理 —— 稍后推出。
+
+## 参与贡献
+
+欢迎提交 Issue 和 Pull Request，请使用 [Issue 模板](.github/ISSUE_TEMPLATE) 和 [PR 模板](.github/PULL_REQUEST_TEMPLATE.md)。请先阅读[开发指南](docs/development.zh-CN.md)和仓库规范 [AGENTS.md](AGENTS.md)。提交前运行 `npm test`、`npm run lint` 和 `npm run build`。
 
 ## 许可
 
 MIT，详见 [LICENSE](LICENSE)。
-
-

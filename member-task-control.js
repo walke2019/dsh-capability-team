@@ -5,6 +5,7 @@ import { params } from './tool-schema.js';
 import { ownsCapabilityTeam } from './preset-guard.js';
 import { redactReason } from './task-control-audit.js';
 import { baseName } from './session-rotation.js';
+import { legacyRoleId } from './roster-defaults.js';
 export const ESTIMATES = { simple: 15, medium: 40, complex: 80 };
 export const judgment = (used, estimated) => used > estimated * 2 ? 'unqualified' : used > estimated * 1.5 ? 'warning' : 'within';
 const rank = tier => TIER_ORDER.indexOf(tier);
@@ -68,7 +69,7 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
   const checkCAS = (lease, args) => { if (!lease || args.lease_id !== lease.leaseId || args.expected_revision !== lease.revision) throw taskError('CONFLICT', 'CONFLICT', 409); };
   const steps = id => { const agent = ctx.agents.get(id); try { return ctx.get?.('sessionProjections')?.stateOf(agent.session, 'capabilityTeamReport')?.view?.stepsStarted ?? 0; } catch { return 0; } };
   async function candidates(lead, roleId) {
-    member(lead, roleId); const { effective, policy } = await team.load(lead); const entry = effective.roles[roleId] ?? effective.roles[baseName(roleId)], capability = effective.capabilities[entry?.capability];
+    member(lead, roleId); const { effective, policy } = await team.load(lead); const entry = effective.roles[roleId] ?? effective.roles[baseName(roleId)] ?? effective.roles[legacyRoleId(baseName(roleId), effective.roles)], capability = effective.capabilities[entry?.capability];
     if (!capability) throw taskError('NOT_FOUND', 'Unknown role', 404);
     const rows = [];
     for (const provider of ctx.llm.listProviders()) {

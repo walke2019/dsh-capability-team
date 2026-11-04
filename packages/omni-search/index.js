@@ -1,18 +1,34 @@
 import { omni, searchSchemas } from './shared/search.js';
 import { applyTranscribe } from './shared/transcribe.js';
-import { refreshCredentials, resolveIntegrations, setCredentialResolver } from './shared/integrations-config.js';
+import { refreshCredentials, resolveIntegrations, setCredentialResolver, setSettingsReader, SEARCH_ENGINES, FETCH_ENGINES } from './shared/integrations-config.js';
+import { schemastery, splitSettings } from './shared/settings-schema.js';
 export const inject = ['tools','workingDirectory','userQuestions'];
-// No `Config` export: cordis validates an exported Config through Standard Schema (`Config['~standard']`),
-// and a plain JSON-Schema object makes every load fail. `apply` validates the config itself.
-export const ConfigSchema = { type: 'object', additionalProperties: false, properties: { enabled: { type: 'boolean', default: true } } };
+// Settings-form fields (DSH plugin page) → integrations target. Unset fields keep integrations.json/env/credentials.
+export const SETTINGS_FIELDS = Object.freeze({ engines: ['search', 'engines'], fetchEngines: ['search', 'fetchEngines'], searxngUrl: ['search', 'searxngUrl'],
+  baseUrl: ['search', 'baseUrl'], tavilyKeyEnv: ['search', 'tavilyKeyEnv'], braveKeyEnv: ['search', 'braveKeyEnv'], searxngKeyEnv: ['search', 'searxngKeyEnv'],
+  jinaKeyEnv: ['search', 'jinaKeyEnv'], apiKeyEnv: ['search', 'apiKeyEnv'], audioBaseUrl: ['audio', 'baseUrl'], audioKeyEnv: ['audio', 'apiKeyEnv'] });
+const z = schemastery('dsh-omni-search');
+// Key fields hold credential/environment variable NAMES (role credential-ref), never key values.
+export const createConfig = z => { const ref = () => z.string().role('credential-ref').volatile(); return z.object({
+  enabled: z.boolean().default(true),
+  engines: z.array(z.union(SEARCH_ENGINES.map(v => z.const(v)))).volatile(),
+  fetchEngines: z.array(z.union(FETCH_ENGINES.map(v => z.const(v)))).volatile(),
+  searxngUrl: z.string().volatile(), baseUrl: z.string().volatile(),
+  tavilyKeyEnv: ref(), braveKeyEnv: ref(), searxngKeyEnv: ref(), jinaKeyEnv: ref(), apiKeyEnv: ref(),
+  audioBaseUrl: z.string().volatile(), audioKeyEnv: ref(),
+}); };
+export const Config = z ? createConfig(z) : undefined;
 const instances = new WeakSet();
 const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] };
-export function apply(ctx, config = {}) {
-  if (!config || typeof config !== 'object' || Array.isArray(config) || Object.keys(config).some(k => k !== 'enabled') || config.enabled !== undefined && typeof config.enabled !== 'boolean') throw new Error('Invalid omni-search configuration');
+export function apply(ctx, input = {}) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid omni-search configuration');
+  const { plain: config, read } = splitSettings(input, SETTINGS_FIELDS);
+  if (Object.keys(config).some(k => k !== 'enabled') || config.enabled !== undefined && typeof config.enabled !== 'boolean') throw new Error('Invalid omni-search configuration');
   const owner = ctx.root ?? ctx;
   if (instances.has(owner)) throw new Error('omni-search already installed in this profile');
   instances.add(owner);
-  ctx.effect(() => () => { instances.delete(owner); setCredentialResolver(null); });
+  ctx.effect(() => () => { instances.delete(owner); setCredentialResolver(null); setSettingsReader(null); });
+  setSettingsReader(read);
   if (config.enabled === false) return;
   // Schemas (the provider param and the providers tool) follow the engine configuration. Tools are registered
   // at once from file/environment; once the credential store is readable, settings pushed there (e.g. by a
@@ -37,6 +53,8 @@ export function apply(ctx, config = {}) {
     // Listeners must never reject: an unhandled rejection stops the DSH host.
     refreshed = refreshCredentials().then(sync).catch(error => { ctx.logger?.warn?.(`omni-search: tool schema refresh failed: ${error?.message ?? error}`); });
   });
+  // A settings-form edit commits in place (volatile Config): re-read key names and re-register changed schemas.
+  ctx.on?.('loader/volatile-update', () => { refreshed = refreshCredentials().then(sync).catch(error => { ctx.logger?.warn?.(`omni-search: settings refresh failed: ${error?.message ?? error}`); }); });
   applyTranscribe(ctx);
   // `ready()` settles once credential-provided settings have been applied to the tool schemas.
   return { ready: () => refreshed };

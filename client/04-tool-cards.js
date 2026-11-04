@@ -80,6 +80,7 @@
         h('span', { className: 'ctm-sub', key: `c${i}` }, [r.capability, r.tier].filter(Boolean).join(' · ')),
         h('div', { className: 'ctm-who', key: `m${i}` },
           h('span', null, r.provider ? `${r.provider}/${r.model}` : t('team.unassigned')),
+          r.singleModel ? h('span', { className: 'ctm-badge', 'data-tone': 'warn', 'data-single-model': '' }, t('roles.singleModel')) : null,
           Array.isArray(r.fallbacks) && r.fallbacks.length ? h('span', { className: 'ctm-sub' }, fmt(t('team.fallbacks'), { n: r.fallbacks.length })) : null),
       ]));
     }

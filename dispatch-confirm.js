@@ -46,8 +46,9 @@ export function planRoutes(plan, effective, disabledRoutes, catalog) {
   return plan.assignments.map(a => {
     const c = effective.capabilities[a.capability];
     const tierModels = effective.tiers[c.tier] ?? [];
-    const candidates = catalog.entries.filter(e => tierModels.includes(e.model) && !disabled(routeKey(e)))
-      .map(e => ({ provider: e.provider, model: e.model }));
+    const candidates = catalog.entries.filter(e => !disabled(routeKey(e)))
+      .map(e => ({ provider: e.provider, model: e.model, sameTier: tierModels.includes(e.model) }))
+      .sort((a, b) => Number(b.sameTier) - Number(a.sameTier));
     const allowed = [...(c.provider ? [{ provider: c.provider, model: c.model }] : []), ...(c.fallbacks ?? [])].filter(r => !disabled(routeKey(r)));
     return { role: a.role, displayName: a.displayName, capability: a.capability, tier: c.tier, task: a.task,
       primary: allowed[0] ?? null, fallbacks: allowed.slice(1, 1 + MAX_ROUTE_FALLBACKS), candidates };
@@ -63,18 +64,20 @@ export function validateAnswer(offered, answer) {
   const given = new Map((Array.isArray(answer.routes) ? answer.routes : []).map(r => [r?.role, r]));
   const routes = offered.map(o => {
     const r = given.get(o.role);
-    if (!r) { const ref = o.base ?? o; return { role: o.role, capability: o.capability, primary: o.primary, fallbacks: o.fallbacks, changed: keyOf(o) !== keyOf(ref) }; }
-    const allowed = route => o.candidates.some(c => sameRoute(c, route)) || sameRoute(route, o.primary) || o.fallbacks.some(f => sameRoute(f, route));
-    const primary = typeof r.primary === 'string' ? parseRoute(r.primary) : r.primary;
-    if (!primary?.provider || !primary?.model || !allowed(primary)) throw new Error(`${o.displayName ?? o.role} 的主模型 ${primary ? routeKey(primary) : String(r.primary)} 不在同档可用模型中`);
-    const list = (Array.isArray(r.fallbacks) ? r.fallbacks : []).map(f => (typeof f === 'string' ? parseRoute(f) : f));
+    const chosen = r ?? { primary: o.primary, fallbacks: o.fallbacks };
+    const allowed = route => o.candidates.some(c => sameRoute(c, route));
+    const primary = typeof chosen.primary === 'string' ? parseRoute(chosen.primary) : chosen.primary;
+    if (!primary?.provider || !primary?.model || !allowed(primary)) throw new Error(`${o.displayName ?? o.role} 的主模型 ${primary ? routeKey(primary) : String(chosen.primary)} 不在目录可用模型中`);
+    const list = (Array.isArray(chosen.fallbacks) ? chosen.fallbacks : []).map(f => (typeof f === 'string' ? parseRoute(f) : f));
     if (list.length > MAX_ROUTE_FALLBACKS) throw new Error(`${o.displayName ?? o.role} 的回退模型最多 ${MAX_ROUTE_FALLBACKS} 个`);
     const seen = new Set([routeKey(primary)]);
     for (const f of list) {
-      if (!f?.provider || !f?.model || !allowed(f)) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${f ? routeKey(f) : '?'} 不在同档可用模型中`);
+      if (!f?.provider || !f?.model || !allowed(f)) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${f ? routeKey(f) : '?'} 不在目录可用模型中`);
       if (seen.has(routeKey(f))) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${routeKey(f)} 与主模型或其他回退重复`);
       seen.add(routeKey(f));
     }
+    if (scope === 'project' && [primary, ...list].some(route => o.candidates.find(c => sameRoute(c, route))?.sameTier === false))
+      throw new Error('跨档选择仅本次生效，不能保存为项目默认；请选择仅本次任务');
     // Compared with the configured route, so a preselected habit still counts as a change when saved as default.
     const ref = o.base ?? o;
     const changed = !sameRoute(primary, ref.primary) || keyOf({ primary, fallbacks: list }) !== keyOf(ref);
@@ -95,8 +98,10 @@ export function pendingView(leadId, callId) {
   const request = leads.get(leadId)?.pending.get(callId);
   if (!request) return { schemaVersion: 1, status: 'none' };
   request.lastSeenAt = Date.now(); // heartbeat: the card keeps polling while it is on screen
-  if (request.kind === 'direct') return { schemaVersion: 1, status: 'pending', kind: 'direct', callId, analysis: request.plan.analysis, reason: request.plan.reason };
-  return { schemaVersion: 1, status: 'pending', callId, catalogVersion: request.catalogVersion, maxFallbacks: MAX_ROUTE_FALLBACKS, routes: request.offered };
+  // The native question box is already open for this request: the card only points there, so one question has one place to answer.
+  const native = request.nativeAsked === true && request.nativeFailed !== true;
+  if (request.kind === 'direct') return { schemaVersion: 1, status: 'pending', kind: 'direct', callId, native, analysis: request.plan.analysis, reason: request.plan.reason };
+  return { schemaVersion: 1, status: 'pending', callId, native, catalogVersion: request.catalogVersion, maxFallbacks: MAX_ROUTE_FALLBACKS, routes: request.offered };
 }
 /** Resolve a pending request with the card's answer; throws (with status) when it cannot. */
 export function answerPending(leadId, callId, answer) {
@@ -171,9 +176,12 @@ function waitForAnswer(ctx, state, exec, callId, spec, { graceMs, heartbeatMs, t
     deadline = setTimeout(() => fail(new Error(`${spec.subject}超时（${minutesOf(timeoutMs)} 分钟无人确认），${spec.consequence}。`
       + `${nativeError ? `原生问答框也不可用（${nativeError.code ?? nativeError.message}）。` : ''}${spec.retry}`)), timeoutMs);
     deadline.unref?.();
-    // The card proves it is on screen by polling; it never showed up within graceMs, or its heartbeat is older
-    // than heartbeatMs → the host has no card or the user left it, so ask once in the native question box.
-    const cardGone = () => (request.lastSeenAt === undefined ? Date.now() - startedAt >= graceMs : Date.now() - request.lastSeenAt > heartbeatMs);
+    // Only a card that never showed up within graceMs means the host has no card: then ask once in the native
+    // question box. A card that was seen keeps the request even when its heartbeat stalls (background tabs throttle
+    // timers), so the user never gets the same question twice; the overall timeout still ends an abandoned wait.
+    // heartbeatMs stays accepted for callers but no longer triggers the fallback.
+    void heartbeatMs;
+    const cardGone = () => request.lastSeenAt === undefined && Date.now() - startedAt >= graceMs;
     check = setInterval(() => {
       if (settled || request.nativeAsked || !ctx.userQuestions?.ask || !cardGone()) return;
       request.nativeAsked = true; // asked at most once: a second dialog for the same plan would only confuse
@@ -185,7 +193,7 @@ function waitForAnswer(ctx, state, exec, callId, spec, { graceMs, heartbeatMs, t
         // The question box failed (e.g. NO_PROVIDER when no client is attached, or it was dismissed by the host).
         // That is not the user's answer: the card can still answer while the request is pending (the user may
         // reopen the conversation), so keep waiting; the overall timeout still ends the wait with a clear error.
-        if (!settled) nativeError = error;
+        if (!settled) { nativeError = error; request.nativeFailed = true; }
       });
     }, Math.max(5, Math.min(1000, graceMs, heartbeatMs)));
     check.unref?.();

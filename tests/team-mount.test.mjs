@@ -6,7 +6,7 @@ const patchText = readFileSync(new URL('../cordis.patch.yml', import.meta.url), 
 test('bundle leaves global native Team mounts to the official profile', () => {
   assert.doesNotMatch(patchText, /^\s*- id: (?:agent-team|tool-agent-team|ui-agent-team)\s*$/m);
   assert.match(patchText, /id: capability-team\n/);
-  assert.match(patchText, /name: '@local\/dsh-capability-team\/roles'/);
+  assert.match(patchText, /name: 'dsh-capability-team\/roles'/);
 });
 import { available, nativeRuntime } from './helpers/native-team-runtime.mjs';
 

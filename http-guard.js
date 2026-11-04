@@ -7,5 +7,8 @@ export function crossSiteRequest(request) {
   if (request.headers.get('sec-fetch-site') === 'cross-site') return true;
   const origin = request.headers.get('origin');
   if (origin === null) return false;
-  try { return new URL(origin).host !== new URL(request.url).host; } catch { return true; }
+  // DSH rebuilds the request URL on a fixed internal base (http://dsh.internal), so the real authority is the Host
+  // header the Connection fence already accepted; compare against it and use the URL only when Host is absent.
+  const host = request.headers.get('host') ?? new URL(request.url).host;
+  try { return new URL(origin).host !== host; } catch { return true; }
 }

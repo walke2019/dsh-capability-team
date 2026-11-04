@@ -154,12 +154,13 @@
       && a.save === b.save && (a.t === b.t || a.t('models.save') === b.t('models.save'))) : ModelPolicyEditor;
 
     function RoleCards({ roles, live, t }) {
-      return h('div', { className: 'ctm-ov-roles' }, ...roles.map(r => {
+      return h('div', { className: 'ctm-ov-roles' }, ...localizeRoles(roles, t).map(r => {
         const fallbacks = (Array.isArray(r.fallbacks) ? r.fallbacks : []).map(routeText).filter(Boolean);
         return h('div', { key: r.id, className: 'ctm-ov-role' },
           h('div', { className: 'ctm-ov-role-head' },
             h('span', { className: 'ctm-name' }, r.displayName ?? r.id),
-            r.tier ? badge(label(t, `tier.${r.tier}`, r.tier), r.tier === 'high' ? 'brand' : undefined, 'tier') : null),
+            r.tier ? badge(label(t, `tier.${r.tier}`, r.tier), r.tier === 'high' ? 'brand' : undefined, 'tier') : null,
+            r.singleModel ? h('span', { className: 'ctm-badge', 'data-tone': 'warn', 'data-single-model': '', title: t('roles.singleModelHint') }, t('roles.singleModel')) : null),
           h('span', { className: 'ctm-sub' }, [r.id, r.capability].filter(Boolean).join(' · ')),
           r.description ? h('span', { className: 'ctm-ov-desc' }, r.description) : null,
           r.whenToUse ? h('span', { className: 'ctm-sub' }, fmt(t('roles.whenToUse'), { text: r.whenToUse })) : null,

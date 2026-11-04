@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
+import { boardDetailsOf } from './helpers/client-harness.mjs';
 function harness(remote = { commands: {} }, sessions, { runEffects = false } = {}) {
   let plugin, cursor = 0, states = [];
   const React = {
@@ -148,7 +149,7 @@ test('工作台按角色id匹配队友实时状态，未启动角色显示配置
   await h.find(tree, n => n.type === 'button').props.onClick();
   tree = h.render(overview, props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type(board.props);
+  const view = boardDetailsOf(board);
   const card = status => h.find(view, n => n.props?.className === 'ctm-bd-card' && n.props['data-status'] === status);
   assert.ok(JSON.stringify(card('running')).includes('回归测试'));
   assert.ok(JSON.stringify(card('running')).includes('p/live'));
@@ -157,8 +158,13 @@ test('工作台按角色id匹配队友实时状态，未启动角色显示配置
   assert.equal(card('running').props['data-delegated'], '');
   assert.equal(card('inactive').props['data-delegated'], undefined);
   assert.equal(card('idle').props['data-delegated'], undefined);
-  const canvas = h.find(view, n => n.props?.className === 'ctm-bd-canvas');
-  assert.ok(canvas.props.ref && h.find(canvas, n => typeof n.type === 'function' && Array.isArray(n.props.links)));
+  // The card canvas (with its Lead → teammate links) is gone; cards render one at a time in the stage's detail panel.
+  const plain = board.type(board.props);
+  assert.equal(h.find(plain, n => n.props?.className === 'ctm-bd-canvas'), undefined, 'no card canvas below the stage');
+  assert.equal(h.find(plain, n => n.props?.className === 'ctm-bd-card'), undefined, 'no card without a selection');
+  assert.ok(h.find(plain, n => n.props?.className?.includes('ctm-stage-detail-hint')), 'unselected panel shows a hint');
+  const stage = h.find(plain, n => typeof n.type === 'function' && typeof n.type.sprites === 'function');
+  assert.equal(typeof stage.props.onSelect, 'function', 'the stage reports selection back to TeamBoard');
 });
 
 test('大目录分页渲染，在用模型排在前面', async () => {
@@ -202,7 +208,7 @@ test('面板渲染不执行命令，仅点击时读取一次；宿主推送的�
   handlers['api-session/status']('s2', true);
   tree = h.render(element.type, element.props);
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type(board.props);
+  const view = boardDetailsOf(board);
   assert.ok(h.find(view, n => n.props?.className === 'ctm-bd-card' && n.props['data-status'] === 'running'));
   assert.deepEqual(lines, ['/capability-status']);
 });
@@ -258,7 +264,7 @@ test('不刷新也实时显示：工作台与用量来自 DSH 自带的会话投
   assert.ok(!h.find(tree, n => n.props?.className === 'ctm-ov-empty'), '有实时数据时不显示空状态');
   assert.ok(JSON.stringify(tree).includes('overview.live'));
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type(board.props);
+  const view = boardDetailsOf(board);
   const card = status => h.find(view, n => n.props?.className === 'ctm-bd-card' && n.props['data-status'] === status);
   assert.ok(JSON.stringify(card('running')).includes('回归测试'));
   assert.ok(JSON.stringify(card('running')).includes('provider-a/gpt-6.1-sol'));
@@ -278,7 +284,7 @@ test('点击队友卡片按官方方式打开其会话；主控卡片不可点',
   const element = h.view({ sessionId: 'L', t: key => key });
   const tree = h.render(element.type, { ...element.props, openMember: (parent, child) => opened.push([parent, child]) });
   const board = h.find(tree, n => typeof n.type === 'function' && n.props.roles && 'activity' in n.props);
-  const view = board.type(board.props);
+  const view = boardDetailsOf(board);
   const qa = h.find(view, n => n.props?.['data-card'] === 'qa');
   const lead = h.find(view, n => n.props?.['data-card'] === 'lead');
   assert.equal(lead.props.onClick, undefined);
@@ -344,7 +350,7 @@ test('轮换后的成员与快照缺失时：看板卡片与头像首字显示�
 
   // 直接使用 TeamBoard 测试两种场景：
   // 场景 A: roles 快照缺失，靠 allocations 解析
-  const viewMissingSnapshot = board.type({
+  const viewMissingSnapshot = boardDetailsOf(board, {
     ...board.props,
     roles: [
       { id: 'lead', displayName: 'lead' },
@@ -368,7 +374,7 @@ test('轮换后的成员与快照缺失时：看板卡片与头像首字显示�
   assert.equal(leadAvatarA.children[0], '孙', '主控头像首字必须是“孙”');
 
   // 场景 B: roles 快照已正常加载，成员发生轮换 (diao-chan-r2)，卡片依然匹配并显示中文
-  const viewRotated = board.type({
+  const viewRotated = boardDetailsOf(board, {
     ...board.props,
     roles: [
       { id: 'lead', displayName: '孙权', capability: 'orchestrator' },

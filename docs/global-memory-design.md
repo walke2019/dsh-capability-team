@@ -1,7 +1,7 @@
 # Global Memory：独立 DSH 插件设计与接口契约
 
 ## 1. 交付边界
-- 新包目录 `packages/global-memory`，包名 `@local/dsh-global-memory`；profile 全局 Host-only bundle，不是 Agent 预设。
+- 新包目录 `packages/global-memory`，包名 `dsh-capability-memory`；profile 全局 Host-only bundle，不是 Agent 预设。
 - 功能只有自动召回、`memory_search`、`memory_write`；禁止监听对话结果并自动写入、自动交接入库、工具报告入库。
 - 能力协作团队会话完全让位：不注入、不装本包工具、不调用嵌入或 OpenViking。团队现有入口、工具、持久化及默认行为不变。
 - 其他普通会话、其他预设、其他团队及普通 subagent 均可使用；session 作用域绑定当前 agent.id，禁止子会话继承父会话私有记忆。
@@ -124,7 +124,7 @@
 包manifest最低要求：
 ```json
 {
-  "name":"@local/dsh-global-memory", "version":"0.1.0", "private":true,
+  "name":"dsh-capability-memory", "version":"0.1.0", "private":true,
   "type":"module", "engines":{"node":">=22"},
   "description":"Explicit memory tools and bounded automatic recall for DSH sessions",
   "exports":{".":"./index.js","./locale/*.json":"./locale/*.json","./icon":"./icon.svg"},
@@ -136,7 +136,7 @@
 ```yaml
 - insert:
     - id: global-memory
-      name: '@local/dsh-global-memory'
+      name: 'dsh-capability-memory'
       config:
         enabled: true
 ```

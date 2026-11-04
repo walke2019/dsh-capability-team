@@ -1,10 +1,13 @@
-    function TeamBoard({ roles, activity, allocations, since, t, open, live, usage, runtimeState, currentMemberId, leadSessionId }) {
-      const cards = boardCards(roles, activity, allocations);
-      const lead = cards.filter(c => c.lead);
-      const mates = cards.filter(c => !c.lead);
+    /**
+     * Team workbench: the pixel office plus a member detail panel. Selection lives here (React) — OfficeScene reports
+     * clicks through `onSelect`; `selectedId` lets a host (or a test) pin the selection from outside.
+     */
+    function TeamBoard({ roles, activity, allocations, since, t, open, live, usage, runtimeState, currentMemberId, leadSessionId, selectedId }) {
+      const cards = boardCards(localizeRoles(roles, t), activity, allocations);
       const running = cards.filter(c => c.status === 'running').length;
-      const canvas = React.useRef(null);
-      const links = useBoardLinks(canvas, cards);
+      const [picked, setPicked] = React.useState({ stageSelected: null });
+      const selected = selectedId !== undefined ? selectedId : (picked?.stageSelected ?? null);
+      const chosen = selected ? cards.find(c => c.id === selected) ?? null : null;
       const openable = c => Boolean(open && !c.lead && c.member?.id && (!currentMemberId || c.member.id !== currentMemberId) && c.status !== 'provisioning' && c.status !== 'failed');
       const tasks = activity?.tasks ?? [];
       const taskRevSig = tasks.map(tk => {
@@ -162,10 +165,12 @@
           running ? badge(fmt(t('live.runningCount'), { n: running }), 'brand', 'run') : null,
           activity?.at ? h('span', { className: 'ctm-sub ctm-bd-at' }, h('i', { className: 'ctm-bd-pulse', 'aria-hidden': true }), t('live.polling')) : null),
         activity?.unavailable ? h('p', { className: 'ctm-ov-note ctm-warn' }, activity.unavailable) : null,
-        h(OfficeStage, { cards, live, t, open, currentMemberId }),
-        h('div', { className: 'ctm-bd-canvas', ref: canvas },
-          h(BoardLinks, { links }),
-          lead.length ? h('div', { className: 'ctm-bd-lead' }, ...lead.map(card)) : null,
-          mates.length ? h('div', { className: 'ctm-bd-mates' }, ...mates.map(card)) : null),
+        h(OfficeStage, { cards, live, t, open, currentMemberId, since, selected: chosen?.id ?? null, onSelect: id => setPicked({ stageSelected: id ?? null }) }),
+        cards.length ? h('section', { className: 'ctm-stage-detail', 'aria-live': 'polite', 'aria-label': t('stage.detail') },
+          chosen ? h('div', { className: 'ctm-stage-detail-head' },
+            h('span', { className: 'ctm-label' }, t('stage.detail')),
+            h('button', { type: 'button', className: 'ctm-btn', onClick: () => setPicked({ stageSelected: null }) }, t('stage.detailClose'))) : null,
+          chosen ? card(chosen) : h('p', { className: 'ctm-sub ctm-stage-detail-hint' }, t('stage.detailHint'))) : null,
         depsView);
     }
+    TeamBoard.detail = (props, id) => TeamBoard({ ...props, selectedId: id }); // test/host hook: board with one member's detail open

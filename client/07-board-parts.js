@@ -47,66 +47,6 @@
           delegated: !card.lead && (status === 'running' || status === 'provisioning' || task?.status === 'in_progress') };
       });
     }
-    /**
-     * Lead → teammate paths in canvas coordinates. First-row cards get an S-curve into their top edge;
-     * lower rows would be hidden behind the row above, so they drop down the gutter beside the card and enter from the side.
-     */
-    function boardLinks(lead, mates, origin) {
-      if (!lead || !mates.length) return [];
-      const x = v => v.toFixed(1);
-      const top = Math.min(...mates.map(m => m.rect.top));
-      const x1 = lead.left + lead.width / 2 - origin.left, y1 = lead.bottom - origin.top;
-      const bus = (lead.bottom + top) / 2 - origin.top;
-      return mates.map(({ id, active, rect }) => {
-        const cx = rect.left + rect.width / 2 - origin.left;
-        if (rect.top - top < 2) {
-          const y2 = rect.top - origin.top, bend = Math.max(12, (y2 - y1) / 2);
-          return { id, active, d: `M${x(x1)} ${x(y1)}C${x(x1)} ${x(y1 + bend)} ${x(cx)} ${x(y2 - bend)} ${x(cx)} ${x(y2)}`, end: [cx, y2] };
-        }
-        // Gutter: halfway to the neighbour in the same row, or the canvas padding when the card stands alone.
-        const row = mates.filter(m => Math.abs(m.rect.top - rect.top) < 2 && m.id !== id);
-        const right = row.filter(m => m.rect.left > rect.left).sort((a, b) => a.rect.left - b.rect.left)[0];
-        const left = row.filter(m => m.rect.left < rect.left).sort((a, b) => b.rect.left - a.rect.left)[0];
-        const gx = (right ? (rect.right + right.rect.left) / 2 : left ? (left.rect.right + rect.left) / 2 : rect.left - 4) - origin.left;
-        const ex = (right ? rect.right : rect.left) - origin.left, ey = rect.top + 16 - origin.top;
-        return { id, active, d: `M${x(x1)} ${x(y1)}V${x(bus)}H${x(gx)}V${x(ey)}H${x(ex)}`, end: [ex, ey] };
-      });
-    }
-    /** Measure the rendered cards and keep one Lead → teammate path each; re-measured on layout changes. */
-    function useBoardLinks(canvas, cards) {
-      const [links, setLinks] = React.useState([]);
-      const signature = cards.map(c => `${c.id}:${c.lead ? 'L' : c.delegated ? 1 : 0}`).join('|');
-      (React.useLayoutEffect ?? React.useEffect)(() => {
-        const root = canvas.current;
-        if (!root) return undefined;
-        const measure = () => {
-          const lead = root.querySelector('.ctm-bd-lead>[data-card]');
-          const mates = [...root.querySelectorAll('.ctm-bd-mates>[data-card]')].map(el => ({
-            id: el.getAttribute('data-card'), active: el.hasAttribute('data-delegated'), rect: el.getBoundingClientRect() }));
-          const next = boardLinks(lead?.getBoundingClientRect(), mates, root.getBoundingClientRect());
-          setLinks(old => JSON.stringify(old) === JSON.stringify(next) ? old : next);
-        };
-        measure();
-        const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
-        if (observer) { observer.observe(root); for (const el of root.querySelectorAll('[data-card]')) observer.observe(el); }
-        else window.addEventListener?.('resize', measure);
-        return () => { observer ? observer.disconnect() : window.removeEventListener?.('resize', measure); };
-      }, [canvas, signature]);
-      return links;
-    }
-    function BoardLinks({ links }) {
-      if (!links.length) return null;
-      // Active paths are keyed by their state, so a new delegation remounts and replays the draw-in.
-      return h('svg', { className: 'ctm-bd-links', 'aria-hidden': true, focusable: 'false' },
-        ...links.map(link => h('g', { key: `${link.id}:${link.active ? 1 : 0}` },
-          h('path', { className: 'ctm-bd-link', d: link.d, ...(link.active ? { 'data-active': '' } : {}) }),
-          link.active ? h('path', { className: 'ctm-bd-link-draw', d: link.d, pathLength: 1 }) : null,
-          link.active ? h('path', { className: 'ctm-bd-link-flow', d: link.d }) : null,
-          link.active ? h('circle', { className: 'ctm-bd-link-dot', r: 2.5 },
-            h('animateMotion', { dur: '1.6s', begin: '0.6s', repeatCount: 'indefinite', path: link.d })) : null,
-          h('circle', { className: 'ctm-bd-link-end', cx: link.end[0], cy: link.end[1], r: 2.5, ...(link.active ? { 'data-active': '' } : {}) }))));
-    }
-
     /** Static model badge mapping: provider/model -> alias & rarity rank (legendary/epic/rare/cloth/default). */
     function modelBadgeInfo(route, t) {
       if (!route) return null;
@@ -134,21 +74,6 @@
       }
       // 未知模型回退显示原名，色阶普通
       return { alias: route, grade: 'default', gradeLabel: null };
-    }
-
-    /** Three Kingdoms static quotes for idle roles. */
-    function characterQuoteKey(roleId) {
-      const map = {
-        lead: 'live.quote.lead',
-        'sun-quan': 'live.quote.lead',
-        'zhuge-liang': 'live.quote.zhuge-liang',
-        'lv-bu': 'live.quote.lv-bu',
-        'diao-chan': 'live.quote.diao-chan',
-        'zhao-yun': 'live.quote.zhao-yun',
-        'chen-lin': 'live.quote.chen-lin',
-        'zhou-yu': 'live.quote.zhou-yu',
-      };
-      return map[roleId] ?? 'live.quote.default';
     }
 
     /** Status bubble for cards: task subject + status text, or idle static lines. */
@@ -188,7 +113,7 @@
         } else if (phase === 'idle') {
           const idleText = label(t, `live.${card.status}`, card.status);
           headBadge = h('span', { className: 'ctm-sub' }, idleText);
-          const qKey = characterQuoteKey(card.role?.id ?? card.id);
+          const qKey = card.role?.quoteKey ?? characterQuoteKey(card.role?.id ?? card.id);
           const quote = t(qKey);
           bodyContent = cur?.summary ? `${cur.summary} · “${quote}”` : `“${quote}”`;
         }
@@ -230,7 +155,7 @@
           h('div', { className: 'ctm-bd-bubble-body ctm-sub' }, t('live.busyNoTask')));
       }
 
-      const qKey = characterQuoteKey(card.role?.id ?? card.id);
+      const qKey = card.role?.quoteKey ?? characterQuoteKey(card.role?.id ?? card.id);
       const quote = t(qKey);
       const idleText = label(t, `live.${card.status}`, card.status);
       return h('div', { className: 'ctm-bd-bubble' },

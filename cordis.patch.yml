@@ -1,7 +1,7 @@
 - insert:
     # Web cards for the capability_* tools (client.js); the Host half is empty.
     - id: capability-team-ui
-      name: '@local/dsh-capability-team'
+      name: 'dsh-capability-team'
     - id: preset-capability-team
       name: '@deepseek-ai/dsh-agent-preset'
       config:
@@ -16,16 +16,17 @@
               prefix: |
                 你在能力协作团队中工作。你的角色以原生团队身份与项目团队配置为准，子角色不得自称主控。
           - id: capability-team-routing
-            name: '@local/dsh-capability-team/roles'
+            name: 'dsh-capability-team/roles'
             config:
               bindings:
-                lead: { displayName: 孙权, capability: orchestrator }
-                zhuge-liang: { displayName: 诸葛亮, capability: technical-director }
-                lv-bu: { displayName: 吕布, capability: backend }
-                diao-chan: { displayName: 貂蝉, capability: frontend }
-                zhao-yun: { displayName: 赵云, capability: research }
-                chen-lin: { displayName: 陈琳, capability: writer }
-                zhou-yu: { displayName: 周瑜, capability: qa }
+                # Neutral default roster; the Three Kingdoms skin is applied per project via capability_team_import { theme: three-kingdoms }.
+                lead: { displayName: Lead, capability: orchestrator }
+                architect: { displayName: Architect, capability: technical-director }
+                backend: { displayName: Backend, capability: backend }
+                frontend: { displayName: Frontend, capability: frontend }
+                researcher: { displayName: Researcher, capability: research }
+                writer: { displayName: Writer, capability: writer }
+                qa: { displayName: QA, capability: qa }
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:

@@ -1,6 +1,16 @@
 # Omni Search for DSH
 
-A vendor-neutral, profile-wide Host-only bundle (`@local/dsh-omni-search`, patch id `omni-search`) exposing multi-engine web search and page fetch, plus user-approved audio transcription, to ordinary sessions, other presets, subagents, and teams:
+[![npm](https://img.shields.io/npm/v/dsh-omni-search.svg)](https://www.npmjs.com/package/dsh-omni-search)
+
+Part of [Capability Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
+
+```bash
+dsh plugin add dsh-omni-search
+```
+
+Requires DSH >= 0.2.1-rc.3 and Node.js >= 22. A settings form on DSH's Plugins page is coming in this release; until then, configure it through the integrations file, environment variables or the DSH credential store as described below.
+
+A vendor-neutral, profile-wide Host-only bundle (`dsh-omni-search`, patch id `omni-search`) exposing multi-engine web search and page fetch, plus user-approved audio transcription, to ordinary sessions, other presets, subagents, and teams:
 
 | Tool | Purpose |
 |---|---|
@@ -46,7 +56,9 @@ omni_fetch  -> { engine, url, title?, content }
 
 Every request uses `redirect: 'error'`, a per-request timeout and a 1 MB response cap; a response that contains the active key is blocked. `omni_fetch` only accepts public http(s) pages: loopback, private, link-local and `.local` targets are rejected before any request.
 
-## Build and enable
+## Build and enable from source
+
+The `dsh plugin add` command above is the normal path. To run from a checkout instead:
 
 1. Run `node packages/omni-search/scripts/build-shared.mjs` from the repository root. Shared adapters and their relative dependency closure are copied verbatim with SHA-256 hashes. Do not edit generated copies; rebuild after changing original sources.
 2. Install this package directory or a package-manager `pack` archive using DSH's native plugin manager as a **profile bundle**, never inside a preset. The patch inserts `omni-search` once.
@@ -58,7 +70,7 @@ The capability-team plugin does not register these tools. Its existing capabilit
 
 ## Read-only configuration
 
-Configuration reads `integrations.json` under `CAPABILITY_TEAM_HOME`, otherwise the existing user `.dsh/capability-team-themes` directory. The document retains its established envelope:
+Configuration reads `integrations.json` under `CAPABILITY_TEAM_HOME`, otherwise `~/.dsh/capability-team-themes/` (`%USERPROFILE%/.dsh/capability-team-themes/` on Windows). The document retains its established envelope:
 
 ```json
 {
@@ -84,7 +96,7 @@ Configuration reads `integrations.json` under `CAPABILITY_TEAM_HOME`, otherwise 
 }
 ```
 
-Only search/audio are used by this bundle. Embedding and memory configuration belong to Global Memory; no configuration is edited here. The shared reader accepts their fields for file compatibility, but this bundle never invokes embedding or memory services.
+Only search/audio are used by this bundle. Embedding and memory configuration belong to [Capability Memory](../global-memory/README.md); no configuration is edited here. The shared reader accepts their fields for file compatibility, but this bundle never invokes embedding or memory services.
 
 | Environment variable | Meaning |
 |---|---|
@@ -99,9 +111,9 @@ Every key name is a DSH credential reference first (keys saved in DSH Settings a
 
 ### Settings from the DSH credential store
 
-Each override variable in the table above (not only the keys) may also be stored as a DSH credential with the same name, for example when a fleet manager pushes settings to every client. A credential wins over the same-named environment variable; an invalid value is ignored, and values are never logged. Override names: `OMNI_SEARCH_BASE_URL`, `OMNI_SEARCH_ENGINES`, `OMNI_FETCH_ENGINES`, `OMNI_SEARCH_PROVIDERS_PATH`, `SEARXNG_URL`, `OMNI_AUDIO_BASE_URL` (plus the memory names listed in the Global Memory README). The source of such a value is shown as `credential:<NAME>`.
+Each override variable in the table above (not only the keys) may also be stored as a DSH credential with the same name, for example when a fleet manager pushes settings to every client. A credential wins over the same-named environment variable; an invalid value is ignored, and values are never logged. Override names: `OMNI_SEARCH_BASE_URL`, `OMNI_SEARCH_ENGINES`, `OMNI_FETCH_ENGINES`, `OMNI_SEARCH_PROVIDERS_PATH`, `SEARXNG_URL`, `OMNI_AUDIO_BASE_URL` (plus the memory names listed in the [Capability Memory README](../global-memory/README.md)). The source of such a value is shown as `credential:<NAME>`.
 
-Breaking change: the former `cpa_*` tool names and `CPA_SEARCH_*` / `CPA_AUDIO_*` variables are no longer recognized.
+Breaking changes: the former `cpa_*` tool names and `CPA_SEARCH_*` / `CPA_AUDIO_*` variables are no longer recognized, and since 0.3.0 the package is published as `dsh-omni-search` (formerly `@local/dsh-omni-search`; patch id `omni-search` unchanged). See the [CHANGELOG](../../CHANGELOG.md).
 
 The custom gateway and audio endpoint must be credential-free https URLs. Never put credentials in headers or URLs in the JSON file. Missing keys explicitly fail; no paid-model fallback is attempted.
 

@@ -1,7 +1,7 @@
 // External integrations (search engines, embeddings, speech, memory) are per-user data, never code: base URLs,
 // paths, headers, models and engine order all come from configuration, and nothing assumes a particular vendor.
 // Keys are never stored: the config names the environment variable (or DSH credential) that holds each key.
-// Read-only layers: environment variables › user integrations.json › defaults. No HTTP/config writer.
+// Read-only layers: bundle settings form (when set) › credentials/environment › user integrations.json › defaults.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defaultRoot } from './theme.js';
@@ -9,6 +9,7 @@ import { defaultRoot } from './theme.js';
 export const SEARCH_ENGINES = Object.freeze(['tavily', 'brave', 'searxng', 'custom']);
 export const FETCH_ENGINES = Object.freeze(['jina', 'tavily', 'custom']);
 export const MEMORY_BACKENDS = Object.freeze(['local', 'openviking']);
+export const SHARED_RECALL_SCOPES = Object.freeze(['current', 'none']);
 export const INTEGRATION_DEFAULTS = Object.freeze({
   // engines: null = auto (every configured engine, in SEARCH_ENGINES order). baseUrl/apiKeyEnv/paths/providers
   // belong to the `custom` engine (any gateway speaking the generic search/fetch protocol). Custom gateways may
@@ -24,7 +25,9 @@ export const INTEGRATION_DEFAULTS = Object.freeze({
   audio: Object.freeze({ baseUrl: null, apiKeyEnv: 'OMNI_AUDIO_API_KEY', path: '/v1/audio/transcriptions', statusPath: null, headers: {}, model: null, timeoutMs: 125000, maxBytes: 8388608 }),
   // Memory hub backend (one of MEMORY_BACKENDS): 'local' (team store only) or 'openviking' (also shared
   // long-term memory on that server). The OpenViking key is optional: a local dev-mode server needs none.
-  memory: Object.freeze({ backend: 'local', url: null, apiKeyEnv: 'OPENVIKING_API_KEY', account: null, user: null, timeoutMs: 8000, recallLimit: 4 }),
+  // sharedRecall (one of SHARED_RECALL_SCOPES) is a deployment choice: 'current' keeps recall local because
+  // shared backends carry no trusted project metadata; 'none' searches the whole shared account.
+  memory: Object.freeze({ backend: 'local', url: null, apiKeyEnv: 'OPENVIKING_API_KEY', account: null, user: null, timeoutMs: 8000, recallLimit: 4, sharedRecall: 'current' }),
 });
 /**
  * Names that override single fields. A list means primary first, then legacy fallbacks: a later name is
@@ -35,7 +38,7 @@ export const ENV_OVERRIDES = Object.freeze({
   search: { baseUrl: 'OMNI_SEARCH_BASE_URL', searxngUrl: 'SEARXNG_URL', engines: 'OMNI_SEARCH_ENGINES', fetchEngines: 'OMNI_FETCH_ENGINES', providersPath: 'OMNI_SEARCH_PROVIDERS_PATH' },
   embeddings: { baseUrl: ['EMBEDDING_BASE_URL', 'CPA_EMBED_BASE_URL'], model: ['EMBEDDING_MODEL', 'CPA_EMBED_MODEL'], dimensions: ['EMBEDDING_DIMENSIONS', 'CPA_EMBED_DIMENSIONS'] },
   audio: { baseUrl: 'OMNI_AUDIO_BASE_URL' },
-  memory: { url: 'OPENVIKING_URL', backend: 'MEMORY_BACKEND' },
+  memory: { url: 'OPENVIKING_URL', backend: 'MEMORY_BACKEND', sharedRecall: 'MEMORY_SHARED_RECALL' },
 });
 /** Every override name (primary and legacy), e.g. for refreshing them from the credential store. */
 export const overrideNames = () => [...new Set(Object.values(ENV_OVERRIDES).flatMap(fields => Object.values(fields).flat()))];
@@ -104,9 +107,14 @@ function validateField(section, key, value) {
     case 'account': case 'user':
       return typeof value === 'string' && /^[\w.@-]{1,64}$/.test(value) ? value : fail(label, '须为 1–64 位字母、数字或 ._@-');
     case 'recallLimit': return integerIn(value, 0, 20, label, '须为 0–20 的整数');
+    case 'sharedRecall': return SHARED_RECALL_SCOPES.includes(value) ? value : fail(label, `须为 ${SHARED_RECALL_SCOPES.join(' 或 ')}`);
     default: return fail(label, '不是支持的字段');
   }
 }
+// Settings layer: the owning bundle's volatile DSH Config (settings-schema.js), read on every resolve.
+let settingsReader = () => ({});
+export function setSettingsReader(fn) { settingsReader = typeof fn === 'function' ? fn : () => ({}); }
+function readSettings() { try { return settingsReader() ?? {}; } catch { return {}; } }
 /** Validate a partial config ({search?, embeddings?}); unknown sections or fields are rejected. */
 export function validateIntegrations(value) {
   if (value === undefined || value === null) return {};
@@ -138,6 +146,7 @@ export function resolveIntegrations({ root = defaultRoot(), env = process.env } 
   const effective = {}, sources = {}, keys = {};
   // The credential store only backs the real process environment (tests pass their own env to isolate).
   const useStore = env === process.env;
+  const settings = useStore ? readSettings() : {};
   for (const section of SECTIONS) {
     effective[section] = {}; sources[section] = {};
     for (const key of Object.keys(INTEGRATION_DEFAULTS[section])) {
@@ -152,6 +161,10 @@ export function resolveIntegrations({ root = defaultRoot(), env = process.env } 
       if (file.value[section]?.[key] !== undefined) { value = file.value[section][key]; source = 'file'; }
       if (override) {
         try { value = validateField(section, key, overrideValue(key, override.raw)); source = override.source; } catch { /* an invalid override is ignored, not trusted */ }
+      }
+      // A field set in the bundle's DSH settings form wins; unset fields keep the layers below.
+      if (useStore && settings[section]?.[key] !== undefined) {
+        try { value = validateField(section, key, settings[section][key]); source = 'settings'; } catch { /* invalid form value ignored */ }
       }
       effective[section][key] = value; sources[section][key] = source;
     }
