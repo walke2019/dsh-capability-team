@@ -52,3 +52,17 @@ test('会话投影按 SessionHeader.agentPreset 判定，并在开局前切换�
   other = projection.apply(other, { type: 'agent-preset/selected', data: { agentPreset: 'default' } });
   other = projection.apply(other, { type: 'x' }); assert.equal(other.capabilityPreset, false);
 });
+
+test('header preset wins over a live Agent whose preset is not composed yet; checkpoints of the old decision are discarded', async () => {
+  const { isolatedProjection } = await import('../preset-guard.js');
+  const definition = { stateVersion: 1, init: () => ({ n: 0 }), apply: s => ({ ...s, n: s.n + 1 }), wire: { view: s => s } };
+  const early = { id: 's', ctx: {} }; // published, but agentPresets has not composed it yet
+  const ctx = { agents: { get: () => early }, agentPresets: { composedPreset: () => undefined }, agentTeams: { tryMembership: () => undefined } };
+  const projection = isolatedProjection(ctx, definition);
+  let team = projection.init({ id: 's', agentPreset: 'capability-team' });
+  assert.equal(team.capabilityPreset, true);
+  team = projection.apply(team, { type: 'request/header' }); assert.equal(team.n, 1);
+  assert.equal(projection.init({ id: 's', agentPreset: 'default' }).capabilityPreset, false, 'another recorded preset stays closed');
+  assert.equal(projection.init({ id: 's' }).capabilityPreset, false, 'no header preset: the live Agent decides, still fail closed');
+  assert.equal(projection.stateVersion, 3);
+});

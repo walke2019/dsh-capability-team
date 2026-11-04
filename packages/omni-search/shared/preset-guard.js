@@ -17,12 +17,18 @@ export function capabilitySession(ctx, session) {
 }
 export function isolatedProjection(ctx, definition) {
   const owns = header => {
+    // DSH's own SessionHeader.agentPreset decides first. The live Agent is only a fallback for headers without it:
+    // a projection can initialise before the Agent's preset is composed, and that early "not ours" used to stick
+    // for the whole session, leaving usage, activity and report empty for real capability-team sessions.
+    const recorded = header?.agentPreset ?? header?.preset;
+    if (recorded !== undefined) return recorded === CAPABILITY_PRESET;
     try {
       const agent = ctx.agents?.get(header?.id ?? header?.sessionId);
-      return agent ? ownsCapabilityTeam(ctx, agent) : (header?.agentPreset ?? header?.preset) === CAPABILITY_PRESET; // SessionHeader.agentPreset
+      return agent ? ownsCapabilityTeam(ctx, agent) : false;
     } catch { return false; }
   };
-  return { ...definition, stateVersion: definition.stateVersion + 1,
+  // +2: checkpoints written by the earlier decision are discarded and refolded from the session log.
+  return { ...definition, stateVersion: definition.stateVersion + 2,
     init(header, inherited) {
       const state = definition.init(header, inherited);
       return { ...state, capabilityPreset: owns(header) };

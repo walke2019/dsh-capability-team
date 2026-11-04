@@ -11,7 +11,7 @@
   "memory-store.js": "5b69e9e546c6ae896cd419feca6a91835608d6d45eb9f9253d5e64f02f969bc4",
   "memory-sync-queue.js": "2f0e09babefa2f786739e41351b83d84f1bae6d38d3bc25fd6488cf80c10b0ba",
   "model-policy.js": "0b3af884b76180d8825b41b2f8bacf82407f0a3af99976019dee3ae622d5cc4e",
-  "preset-guard.js": "7bd1c4b4b93ffdec96a96d4bb6d2e36188f7b51a949c8fdb537f7ad0c024e562",
+  "preset-guard.js": "1d842feda6fff93e79a6e749ec6f0eb05bd6772850d91c22dd5e16b7afd4e1e2",
   "roster-defaults.js": "ee3b31b80227aaa980a9818c13944d02d920e90001c5c51126684f6e176bf45d",
   "session-rotation.js": "b4c449b594dce8689b51150fa65b46ef5e54cc5b6f84f41394454c886404f06d",
   "settings-schema.js": "1b720f6d78a1d5fe4a1ae613262b7d6f5486b40ff93500a2549a43bb4e8d7317",
