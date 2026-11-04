@@ -1,5 +1,7 @@
 // Host half: an owner-only, same-origin SSE endpoint. It never writes the transcript and never takes routes from clients.
 import { PredictionError, parseRequest, predict, readConfig } from './predictor.js';
+import { loadFleetDefaults, withFleetDefaults } from './fleet-defaults.js';
+export { FLEET_KEYS } from './fleet-defaults.js';
 export { Config } from './schema.js';
 export const name = 'autocomplete';
 export const inject = ['connection', 'llm', 'sessions', 'webServer'];
@@ -46,6 +48,17 @@ function refusal(ctx, request, active) {
 export function apply(ctx, live = {}) {
   const active = new Set();
   ctx.effect(() => () => { for (const controller of active) controller.abort(); active.clear(); });
+  // Fleet defaults arrive through the optional credential store and are re-read when settings change.
+  let fleet = {};
+  let credentials = null;
+  const refreshFleet = () => loadFleetDefaults(credentials).then(next => { fleet = next; }, () => {});
+  ctx.inject?.(['credentials'], scoped => {
+    credentials = scoped.credentials;
+    scoped.effect?.(() => () => { credentials = null; fleet = {}; });
+    void refreshFleet();
+  });
+  ctx.on?.('loader/volatile-update', () => void refreshFleet());
+  ctx.on?.('credentials/record-updated', () => void refreshFleet());
   ctx.effect(() => {
     const registered = ctx.webServer.register({ kind: 'exact', path: ENDPOINT, handler: async (request, response) => {
       let started = false;
@@ -57,7 +70,7 @@ export function apply(ctx, live = {}) {
       try {
         const refused = refusal(ctx, request, active);
         if (refused) { json(response, ...refused); return; }
-        const config = readConfig(live);
+        const config = withFleetDefaults(readConfig(live), fleet);
         if (!config.enabled) { json(response, 409, 'disabled'); return; }
         controller = new AbortController();
         active.add(controller);

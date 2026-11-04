@@ -43,6 +43,18 @@ The same package works on every DSH Web client connected to the instance: the lo
 
 `provider` is the ID of a provider you already configured in DSH, never an API key. No credentials are stored by this plugin.
 
+### Fleet defaults (optional)
+
+A fleet manager can set a default route for many instances by writing these plain values to the DSH credential store (for example as Mothership hub integration settings):
+
+| Credential | Value |
+|---|---|
+| `AUTOCOMPLETE_PROVIDER` | provider ID, e.g. `my-gateway` |
+| `AUTOCOMPLETE_MODEL` | model ID, e.g. `fast-model` |
+| `AUTOCOMPLETE_ROUTE_MODE` | optional; `fixed` is implied when provider and model are set, `session` forces session routing |
+
+They are only a default under your own settings: as soon as you pick a route mode or enter a provider or model yourself, your choice wins entirely and the fleet route is ignored. Without these credentials the plugin behaves exactly as described above.
+
 ## Settings
 
 Change them from **Settings → General** or the plugin's card on the Plugins page. Every field is volatile, so changes apply without a restart.
