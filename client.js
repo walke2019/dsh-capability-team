@@ -50,7 +50,7 @@ window.__ModuleLoader__.load({
       'plan.next': '下一步',
       'plan.budget': '本轮自行执行上限 {n} 次',
       'plan.unlimited': '你已确认由主控亲自完成，本轮不限执行次数',
-      'direct.title': '允许主控亲自完成？', 'direct.hint': '允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。', 'direct.allow': '允许', 'direct.deny': '不允许', 'direct.loading': '正在读取待确认的请求…', 'direct.sent': '已允许，主控继续执行。', 'direct.cancelled': '已拒绝，执行限制不变。', 'direct.stale': '确认请求已失效（可能插件已重载或已超时），请中断本轮后重试。', 'direct.native': '这次确认已转到弹出的问答框，请在那里选择。', 'confirm.native': '这次分派确认已转到弹出的问答框，请在那里选择。',
+      'direct.title': '允许主控亲自完成？', 'direct.hint': '允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。', 'direct.allow': '允许', 'direct.deny': '不允许', 'direct.loading': '正在读取待确认的请求…', 'direct.sent': '已允许，主控继续执行。', 'direct.cancelled': '已拒绝，执行限制不变。', 'direct.stale': '确认请求已失效（可能插件已重载或已超时），请中断本轮后重试。', 'direct.native': '这次确认已转到弹出的问答框，请在那里选择。', 'confirm.native': '这次分派确认已转到弹出的问答框，请在那里选择。', 'confirm.docked': '等待你确认：确认面板已显示在下方输入框上方。',
       'mode.delegate': '指派队友',
       'mode.free': '免费模型',
       'mode.direct': '主控处理',
@@ -318,7 +318,7 @@ window.__ModuleLoader__.load({
       'plan.next': 'Next step',
       'plan.budget': 'Up to {n} direct actions this turn',
       'plan.unlimited': 'You confirmed the Lead does this itself; no direct-action cap this turn',
-      'direct.title': 'Let the Lead do this itself?', 'direct.hint': 'Allowing removes the step limit for this turn. It returns with your next message. File rules and permissions stay on.', 'direct.allow': 'Allow', 'direct.deny': 'Do not allow', 'direct.loading': 'Loading the pending request…', 'direct.sent': 'Allowed. The Lead continues.', 'direct.cancelled': 'Refused. The step limit stays on.', 'direct.stale': 'This confirmation request is no longer valid (the plugin may have reloaded or it timed out). Interrupt this turn and try again.', 'direct.native': 'This confirmation moved to the pop-up question box. Answer it there.', 'confirm.native': 'This dispatch confirmation moved to the pop-up question box. Answer it there.',
+      'direct.title': 'Let the Lead do this itself?', 'direct.hint': 'Allowing removes the step limit for this turn. It returns with your next message. File rules and permissions stay on.', 'direct.allow': 'Allow', 'direct.deny': 'Do not allow', 'direct.loading': 'Loading the pending request…', 'direct.sent': 'Allowed. The Lead continues.', 'direct.cancelled': 'Refused. The step limit stays on.', 'direct.stale': 'This confirmation request is no longer valid (the plugin may have reloaded or it timed out). Interrupt this turn and try again.', 'direct.native': 'This confirmation moved to the pop-up question box. Answer it there.', 'confirm.native': 'This dispatch confirmation moved to the pop-up question box. Answer it there.', 'confirm.docked': 'Waiting for you: the confirmation panel is open above the input box below.',
       'mode.delegate': 'Delegate',
       'mode.free': 'Free model',
       'mode.direct': 'Lead handles',
@@ -594,7 +594,7 @@ window.__ModuleLoader__.load({
 .ctm-dc-task p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .ctm-dc-task p[data-clamped]{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ctm-dc-link{font:inherit;font-size:11px;padding:0;border:0;background:none;color:var(--dsw-alias-link);cursor:pointer}
-.ctm-dc-grid{display:grid;grid-template-columns:76px minmax(0,1fr);gap:8px 10px;align-items:start}
+.ctm-dc-grid{display:grid;grid-template-columns:76px minmax(0,360px);gap:8px 10px;align-items:start}
 .ctm-dc-key{padding-top:6px;display:flex;gap:4px;align-items:baseline}
 .ctm-dc-count{font-weight:400;font-variant-numeric:tabular-nums;opacity:.7}
 .ctm-dc-fallbacks{display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -613,6 +613,9 @@ window.__ModuleLoader__.load({
 .ctm-dc-segbtn[aria-checked=true]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent);font-weight:600}
 .ctm-dc-buttons{display:flex;gap:8px;margin-left:auto}
 .ctm-dc-wrap{display:flex;flex-direction:column;gap:6px}
+.ctm-dock{box-sizing:border-box;width:calc(100% - 2 * var(--dsh-composer-side-clearance,16px));max-width:var(--dsh-composer-card-max-width,760px);align-self:center;margin:0 auto 8px;max-height:min(60vh,560px);overflow:auto;border-radius:12px;background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base));box-shadow:var(--dsw-elevation-prominent)}
+.ctm-dock>.ctm-dc{border-color:var(--dsw-alias-brand-primary,var(--dsw-alias-border-l1,rgba(127,127,127,.3)))}
+.ctm-dc-pointer{margin:0;padding-left:2px}
 .ctm-mp{position:relative;min-width:0}
 .ctm-mp-input{box-sizing:border-box;width:100%;font:inherit;font-size:12px;padding:5px 26px 5px 8px;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
 .ctm-mp-input:focus{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color);outline-offset:-1px}
@@ -1100,11 +1103,13 @@ window.__ModuleLoader__.load({
         badges: [mode && t(`mode.${mode}`) !== `mode.${mode}` ? badge(t(`mode.${mode}`), mode === 'delegate' ? 'brand' : undefined, 'mode') : null,
           plan.confirmed?.by === 'user' ? badge(t('confirm.confirmedBy'), 'success', 'confirmed') : null],
         body: body.length ? body : null });
-      // While the call waits for the user, the confirmation card sits right under it, already open.
+      // While the call waits for the user, the confirmation card opens in the dock above the input box (this row is
+      // folded into the turn's steps); without a dock it sits right under this row, already open.
       if (s.state !== 'running') return card;
-      if (mode === 'direct' && s.args.userRequested === true) return h('div', { className: 'ctm-dc-wrap' }, card, h(DirectConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
-      if (mode !== 'delegate') return card;
-      return h('div', { className: 'ctm-dc-wrap' }, card, h(DispatchConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
+      const direct = mode === 'direct' && s.args.userRequested === true;
+      if (!direct && mode !== 'delegate') return card;
+      if (dockedSessions.has(props.sessionId)) return h('div', { className: 'ctm-dc-wrap' }, card, h('p', { className: 'ctm-sub ctm-dc-pointer' }, t('confirm.docked')));
+      return h('div', { className: 'ctm-dc-wrap' }, card, h(direct ? DirectConfirmCard : DispatchConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
     }
 
     // ---------- capability_free_task ----------
@@ -1429,16 +1434,28 @@ window.__ModuleLoader__.load({
       const [query, setQuery] = React.useState('');
       const [active, setActive] = React.useState(0);
       const idRef = React.useRef(null);
+      const inputRef = React.useRef(null);
+      const [place, setPlace] = React.useState(null); // fixed popup position inside the scrolling confirmation dock
+      // In the dock (a scroll box above the input) an absolute popup would be clipped: pin it to the viewport
+      // instead, and open it upward when there is more room above the field than below it.
+      const measure = () => {
+        const el = inputRef.current;
+        if (!el?.getBoundingClientRect || !el.closest?.('.ctm-dock')) return null;
+        const r = el.getBoundingClientRect(), below = window.innerHeight - r.bottom;
+        const base = { position: 'fixed', left: r.left, width: r.width, right: 'auto' };
+        return below < 280 && r.top > below ? { ...base, top: 'auto', bottom: window.innerHeight - r.top + 4 } : { ...base, top: r.bottom + 4 };
+      };
+      const show = () => { if (!open) setPlace(measure()); setOpen(true); };
       if (!idRef.current) idRef.current = `ctm-mp-${++pickerSeq}`;
       const id = idRef.current;
       const ordered = [...options.filter(key => recommended.includes(key)), ...options.filter(key => !recommended.includes(key)).sort((a, b) => splitKey(a)[0].localeCompare(splitKey(b)[0]))];
       const shown = filterRoutes(ordered, query);
-      const close = () => { setOpen(false); setQuery(''); setActive(0); };
+      const close = () => { setOpen(false); setQuery(''); setActive(0); setPlace(null); };
       const pick = key => { if (key) onChange(key); close(); };
       const onKeyDown = event => {
-        if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setActive(i => Math.min(i + 1, shown.length - 1)); }
+        if (event.key === 'ArrowDown') { event.preventDefault(); show(); setActive(i => Math.min(i + 1, shown.length - 1)); }
         else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(i => Math.max(i - 1, 0)); }
-        else if (event.key === 'Enter') { event.preventDefault(); if (open) pick(shown[active]); else setOpen(true); }
+        else if (event.key === 'Enter') { event.preventDefault(); if (open) pick(shown[active]); else show(); }
         else if (event.key === 'Escape') { if (open) { event.preventDefault(); close(); } }
         else if (event.key === 'Tab') close();
       };
@@ -1449,13 +1466,13 @@ window.__ModuleLoader__.load({
         groups[groups.length - 1].items.push({ key, index });
       });
       return h('div', { className: 'ctm-mp', 'data-open': open ? '' : undefined },
-        h('input', { type: 'text', className: 'ctm-mp-input', role: 'combobox', 'aria-label': aria, 'aria-expanded': open, 'aria-controls': `${id}-list`,
+        h('input', { ref: inputRef, type: 'text', className: 'ctm-mp-input', role: 'combobox', 'aria-label': aria, 'aria-expanded': open, 'aria-controls': `${id}-list`,
           'aria-autocomplete': 'list', 'aria-activedescendant': open && shown[active] ? `${id}-${active}` : undefined, disabled, spellCheck: false,
           value: open ? query : value ?? '', placeholder: open ? (value || placeholder) : placeholder,
-          onFocus: () => setOpen(true), onClick: () => setOpen(true), onBlur: close,
-          onChange: e => { setQuery(e.target.value); setActive(0); setOpen(true); }, onKeyDown }),
+          onFocus: show, onClick: show, onBlur: close,
+          onChange: e => { setQuery(e.target.value); setActive(0); show(); }, onKeyDown }),
         h('span', { className: 'ctm-mp-caret', 'aria-hidden': true }, '▾'),
-        open ? h('div', { className: 'ctm-mp-pop' },
+        open ? h('div', { className: 'ctm-mp-pop', style: place ?? undefined },
           h('div', { className: 'ctm-mp-count ctm-sub' }, fmt(t('picker.count'), { n: shown.length, total: options.length })),
           shown.length
             ? h('ul', { id: `${id}-list`, role: 'listbox', className: 'ctm-mp-list' }, ...groups.flatMap(g => [
@@ -1467,6 +1484,47 @@ window.__ModuleLoader__.load({
                 h('span', { className: 'ctm-mp-model' }, key), key === value ? h('span', { className: 'ctm-mp-check', 'aria-hidden': true }, '✓') : null)),
             ]))
             : h('div', { className: 'ctm-mp-empty ctm-sub' }, t('picker.empty'))) : null);
+    }
+
+    // ---------- confirmation dock above the composer ----------
+    // A plan call's own row sits inside the turn's folded steps, so a card there is easy to miss. While the Lead
+    // session runs, the dock asks the server for its latest pending confirmation and shows the card right above
+    // the input box; the plan row then only points here. Sessions that are not Leads answer 404 and stop polling.
+    const DOCK_POLL_MS = 2000; // well inside the server's 8 s grace, so the native question box stays a fallback
+    const dockedSessions = new Set(); // sessions whose conversation shows the dock; plan rows render a pointer there
+    function ConfirmDock({ sessionId, useSession, t }) {
+      const running = typeof useSession === 'function' ? useSession(s => !!s?.running) : true;
+      const [pending, setPending] = React.useState(null); // { callId, kind } of the latest pending request
+      React.useEffect(() => {
+        if (!sessionId) return undefined;
+        dockedSessions.add(sessionId);
+        return () => { dockedSessions.delete(sessionId); };
+      }, [sessionId]);
+      React.useEffect(() => {
+        if (!sessionId || !running) { setPending(null); return undefined; }
+        const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+        let live = true, timer = null;
+        const poll = async () => {
+          timer = null;
+          try {
+            const res = await fetch(apiUrl(CONFIRM_PATH, { sessionId }), { signal: ctrl?.signal });
+            if (!live) return;
+            if (res.status === 404) { setPending(null); return; } // not a capability-team Lead: nothing to confirm here
+            const body = res.ok ? await res.json() : null;
+            if (!live) return;
+            const next = body?.status === 'pending' && body.callId ? { callId: body.callId, kind: body.kind === 'direct' ? 'direct' : 'dispatch' } : null;
+            setPending(prev => (prev?.callId === next?.callId && prev?.kind === next?.kind ? prev : next));
+          } catch (e) { if (!live || e?.name === 'AbortError') return; }
+          if (live) timer = setTimeout(poll, DOCK_POLL_MS);
+        };
+        poll();
+        return () => { live = false; ctrl?.abort(); if (timer) clearTimeout(timer); };
+      }, [sessionId, running]);
+      if (!pending) return null;
+      const Card = pending.kind === 'direct' ? DirectConfirmCard : DispatchConfirmCard;
+      return h('div', { className: 'ctm-dock', 'data-kind': pending.kind,
+        // A pinned picker popup would drift from its field while the dock scrolls: close it by dropping focus.
+        onScroll: e => { const f = typeof document !== 'undefined' ? document.activeElement : null; if (f && e.currentTarget.contains(f) && f.classList?.contains('ctm-mp-input')) f.blur(); } }, h(Card, { key: pending.callId, sessionId, callId: pending.callId, t }));
     }
 
     // ---------- right sidebar: team overview ----------
@@ -4302,7 +4360,7 @@ window.__ModuleLoader__.load({
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DirectConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DirectConfirmCard, ConfirmDock, dockedSessions, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {
@@ -4362,6 +4420,9 @@ window.__ModuleLoader__.load({
         }));
         // Each view receives `t`; fall back to the bound translator when the slot does not inject one.
         const withT = View => function CapabilityToolView(props) { return h(View, { ...props, t: props.t ?? bound }); };
+        // Pending dispatch / direct confirmations open right above the input box, where the user sees them.
+        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({ name: 'conversation.input.dock', id: 'capability-team-confirm', order: 5,
+          locale: NS, inject: sessionId => ({ sessionId }) }, withT(ConfirmDock)));
         for (const [key, View] of Object.entries(VIEWS)) {
           // `inject` hands each view its session id, which the dispatch confirmation card needs.
           ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name: 'tool.call.toolview', key, locale: NS, inject: sessionId => ({ sessionId }) }, withT(View)));

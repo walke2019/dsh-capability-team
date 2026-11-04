@@ -93,9 +93,11 @@ export function validateAnswer(offered, answer) {
   }
   return { decision: 'confirm', scope, routes };
 }
-/** Public view of a pending request for the card. */
+/** Public view of a pending request for the card; without a callId, the Lead's latest one (for the composer dock). */
 export function pendingView(leadId, callId) {
-  const request = leads.get(leadId)?.pending.get(callId);
+  const pending = leads.get(leadId)?.pending;
+  if (!callId && pending?.size) callId = [...pending.keys()].at(-1);
+  const request = pending?.get(callId);
   if (!request) return { schemaVersion: 1, status: 'none' };
   request.lastSeenAt = Date.now(); // heartbeat: the card keeps polling while it is on screen
   // The native question box is already open for this request: the card only points there, so one question has one place to answer.
@@ -257,7 +259,7 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
     },
   };
 }
-/** GET ?sessionId=&callId= → pending view; POST {sessionId, callId, decision, scope, routes, catalogVersion}. */
+/** GET ?sessionId=[&callId=] → pending view (latest one without callId); POST {sessionId, callId, decision, scope, routes, catalogVersion}. */
 import { ownsCapabilityTeam } from './preset-guard.js';
 export async function handleDispatchConfirm(ctx, request) {
   const fail = (status, code, message) => Response.json({ code, message }, { status });

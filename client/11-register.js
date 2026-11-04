@@ -178,7 +178,7 @@
     };
 
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
-    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DirectConfirmCard, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
+    if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DirectConfirmCard, ConfirmDock, dockedSessions, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
     const plugin = {
       inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {
@@ -238,6 +238,9 @@
         }));
         // Each view receives `t`; fall back to the bound translator when the slot does not inject one.
         const withT = View => function CapabilityToolView(props) { return h(View, { ...props, t: props.t ?? bound }); };
+        // Pending dispatch / direct confirmations open right above the input box, where the user sees them.
+        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({ name: 'conversation.input.dock', id: 'capability-team-confirm', order: 5,
+          locale: NS, inject: sessionId => ({ sessionId }) }, withT(ConfirmDock)));
         for (const [key, View] of Object.entries(VIEWS)) {
           // `inject` hands each view its session id, which the dispatch confirmation card needs.
           ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name: 'tool.call.toolview', key, locale: NS, inject: sessionId => ({ sessionId }) }, withT(View)));

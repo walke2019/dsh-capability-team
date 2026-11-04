@@ -274,3 +274,17 @@ test('HTTP：GET 读取等待中的请求，POST 需要同源与 JSON', async ()
   assert.equal(ok.status, 200);
   assert.equal((await p).asked, true);
 });
+
+test('不带 callId 时返回该主控最新一条待确认请求（供输入框上方的确认面板发现）', async () => {
+  forgetLead('L10');
+  assert.equal(pendingView('L10', '').status, 'none');
+  const confirm = createDispatchConfirm({ llm }, team, { graceMs: 1000 });
+  const p = confirm.confirm(exec('L10', 'd1'), plan, effective, { disabledRoutes: [] }, 'always');
+  await flush();
+  const view = pendingView('L10', '');
+  assert.equal(view.status, 'pending');
+  assert.equal(view.callId, 'd1');
+  answerPending('L10', view.callId, { decision: 'cancel' });
+  await assert.rejects(p, /用户取消了这次分派/);
+  assert.equal(pendingView('L10', '').status, 'none');
+});

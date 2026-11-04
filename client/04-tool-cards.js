@@ -35,11 +35,13 @@
         badges: [mode && t(`mode.${mode}`) !== `mode.${mode}` ? badge(t(`mode.${mode}`), mode === 'delegate' ? 'brand' : undefined, 'mode') : null,
           plan.confirmed?.by === 'user' ? badge(t('confirm.confirmedBy'), 'success', 'confirmed') : null],
         body: body.length ? body : null });
-      // While the call waits for the user, the confirmation card sits right under it, already open.
+      // While the call waits for the user, the confirmation card opens in the dock above the input box (this row is
+      // folded into the turn's steps); without a dock it sits right under this row, already open.
       if (s.state !== 'running') return card;
-      if (mode === 'direct' && s.args.userRequested === true) return h('div', { className: 'ctm-dc-wrap' }, card, h(DirectConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
-      if (mode !== 'delegate') return card;
-      return h('div', { className: 'ctm-dc-wrap' }, card, h(DispatchConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
+      const direct = mode === 'direct' && s.args.userRequested === true;
+      if (!direct && mode !== 'delegate') return card;
+      if (dockedSessions.has(props.sessionId)) return h('div', { className: 'ctm-dc-wrap' }, card, h('p', { className: 'ctm-sub ctm-dc-pointer' }, t('confirm.docked')));
+      return h('div', { className: 'ctm-dc-wrap' }, card, h(direct ? DirectConfirmCard : DispatchConfirmCard, { sessionId: props.sessionId, callId: props.callId, t }));
     }
 
     // ---------- capability_free_task ----------
