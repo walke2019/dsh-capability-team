@@ -6,6 +6,19 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-11-05
+
+### Added
+
+- Show dispatch confirmation above the composer and display the model each member actually requested.
+- Let the Lead follow the conversation's selected model with same-tier fallback routing.
+- Provide an external-agent memory CLI for explicit recall and writes.
+
+### Fixed
+
+- Determine capability-session projections from the session header before the live agent preset.
+- Publish the changes through source commit `8603890` under a new immutable package version instead of reusing 4.0.0.
+
 ## [4.0.0] - 2026-11-03
 
 ### Changed

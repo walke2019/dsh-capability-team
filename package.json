@@ -1,6 +1,6 @@
 {
   "name": "dsh-capability-team",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Capability-routed multi-agent team preset for DeepSeek Harness (DSH): per-role model routing, same-tier failover and conversational team configuration",
   "license": "MIT",
   "author": "walke2019",
