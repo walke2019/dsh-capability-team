@@ -52,6 +52,7 @@
   },
   "files": [
     "roles.js",
+    "lead-route.js",
     "config.js",
     "roster-defaults.js",
     "single-model.js",

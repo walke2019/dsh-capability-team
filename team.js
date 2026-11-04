@@ -89,7 +89,10 @@ export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = 
       const role = resolveRole(membership, effective);
       // Routes are confirmed per role, so a rotation successor (<role>-rN) keeps the route the user chose.
       const confirmed = membership?.role === 'teammate' && membership.root ? confirmedRoute(membership.root.id, baseName(membership.name)) : undefined;
-      return applyModelPolicy(withConfirmedRoute(role, confirmed), policy.disabledRoutes);
+      const resolved = applyModelPolicy(withConfirmedRoute(role, confirmed), policy.disabledRoutes);
+      // The Lead follows the user's pick (lead-route.js), which needs its tier's models and the policy to stay same-tier.
+      return membership?.role === 'teammate' ? resolved
+        : { ...resolved, leadContext: { tierModels: [...(effective.tiers?.[role.tier] ?? [])], disabledRoutes: [...policy.disabledRoutes] } };
     },
     // After a save, the saving Lead moves to the configured root if it was a different directory.
     repin(agent, project) { pins.set(agent, project); },

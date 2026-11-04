@@ -1,4 +1,5 @@
 import { allocatedRequest } from './allocation.js';
+import { followUserChoice, leadRequest } from './lead-route.js';
 import { budgetDenial, sessionUsage } from './usage.js';
 import { createLongContext, promptTokens } from './long-context.js';
 import { ensurePreset } from './access.js';
@@ -16,7 +17,7 @@ export const policy = `能力协作规则：
 角色显示名、职责、能力与模型分配以“项目团队配置”上下文为准。创建和联系队友只使用其中的稳定内部id，显示名不作为调用目标。
 主控的工作流：每收到一个新的用户需求，先（可做少量只读分析）调用 capability_dispatch_plan——分析需求涉及的领域与能力，按性质分流：多步骤或专业任务按名册职责选择最合适的角色并写明各自任务与验收标准（delegate）；长篇纯文本（总结、翻译、起草、整理给定材料）以及项目免费模型工具级别（团队上下文中的 freeTools）允许的读写文件任务交给免费模型（free，之后只调用 capability_free_task 并验收；不含密钥或敏感内容，免费模型不能执行命令）；需要动手的一两步小事或两三句能答的问答由主控自己处理（direct）并说明理由。用户明确要求主控亲自完成时，选择 direct 并传 userRequested=true，用户在确认卡片上允许后本轮不限执行次数；用户没有这样要求时不要传。delegate 后主控只负责派发、协调、等待与验收，不亲自执行 shell、写文件、检索等专业工作；可并行的角色同时派发，用看板跟踪。需求变化时重新调用以替换计划。该流程由工具约束强制执行，被拒绝时按提示调整计划而不是绕过。
 按需创建计划内的已登记队友，已存在的队友用 send_message 续派，不预先启动空任务、不重复创建、不全员出动；需要配置中没有的角色时，先加载 project-role-theme 技能经用户确认登记，再创建。子角色只完成自己的任务并向 lead 汇报，不递归建队。
-每次请求由路由插件按角色能力强制选择模型；主模型经多次重试仍不可用时，只切换到项目配置中同档位的已确认备选，不降档；全部失败则报告，不得自行更换。不要使用通用 subagent 绕过角色路由。
+主控的模型跟随用户在对话中的选择；队友的每次请求由路由插件按角色能力强制选择模型；主模型经多次重试仍不可用时，只切换到项目配置中同档位的已确认备选，不降档；全部失败则报告，不得自行更换。不要使用通用 subagent 绕过角色路由。
 任务通过原生团队看板流转：检查、认领、执行、验证、完成；并行写入必须划分文件范围。主控等待必要队友后验收交付。
 范围要守：只做分给你的任务；验证不了的项目如实报告缺什么，不去调研任务以外的系统（如宿主安装包、认证机制、其他项目），也不为确认一个细节通读大文件。
 协调要省：队友的每条消息和每次看板变更都会唤醒正在等待的主控，多一次协调就多一次主控模型请求。队友只在认领时把任务标为进行中、完成时标为完成，不为中间进度更新看板；用 send_message 只汇报一次最终结果（结论、改动、验证证据），只有遇到阻塞或需要主控决策时才中途联系，不发进度通报、不回复确认收到。主控派发后调用 wait_agent 时把 timeoutMs 设为 600000，醒来后只处理最终结果、阻塞或决策请求，不回复进度消息、不追问状态；所有派出的队友都完成后再统一验收。有前置依赖的任务等前置完成后再派发，不提前发“等我通知”。队友不调用 wait_agent：没有可做的事就结束本轮，收到消息会被自动唤醒。
@@ -45,7 +46,12 @@ export function apply(ctx, team, failover, observability, taskControl) {
   ctx.on('agent/request', async ({ agent, turn, step }, next) => {
     const previous = await next();
     if (!team.owns(agent)) return previous;
-    const role = await team.resolve(agent);
+    const resolved = await team.resolve(agent);
+    const lead = ctx.agentTeams?.tryMembership?.(agent)?.role === 'lead';
+    const { leadContext, ...configuredRole } = resolved;
+    // The Lead uses the model the user picked in the conversation; teammates are routed strictly by role.
+    const role = lead ? followUserChoice(configuredRole, previous, leadContext) : configuredRole;
+    if (role.userChoiceRejected) ctx.logger?.warn?.(`capability-team: 所选模型 ${role.userChoiceRejected} 已被全局模型策略禁用，主控改用配置路由`);
     // Fail closed: silently inheriting the Lead model defeats capability tiers and hides misconfiguration.
     if (role.unassigned) throw new Error(`角色 ${role.displayName ?? role.id}（${role.capability}）未分配合格模型，已阻止请求；请配置该能力的渠道与模型，不会自动沿用主控模型或降档。只有一个可用模型时，可让主控调用 capability_team_save（single_model=use-default）开启单模型模式，经你在确认框中同意后，未分配角色统一使用 DSH 当前默认模型（无备选、可随时关闭）。`);
     // DSH's own sandbox preset for read-only roles; re-checked every request so config edits take effect.
@@ -65,7 +71,7 @@ export function apply(ctx, team, failover, observability, taskControl) {
         observability.request(agent, { turn, step, role, routed, selected });
       } catch { /* telemetry must never change model selection */ }
     }
-    return allocatedRequest(previous, selected);
+    return (lead && leadRequest(previous, selected)) || allocatedRequest(previous, selected);
   });
   ctx.on('agent/request-error', async ({ agent, failure, signal }, next) => {
     const downstream = await next(); // DSH provider retry policy keeps priority.

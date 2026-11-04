@@ -23,7 +23,7 @@ function fakeCtx(membership, cwd) {
     error: (agent, failure, downstream) => listeners['agent/request-error']({ agent, failure, signal: new AbortController().signal }, async () => downstream) };
 }
 const apply = (ctx, team, failover = createFailover({ sleep: async () => true })) => applyRoles(ctx, team, failover);
-test('每个默认角色按能力路由，且不发起模型调用', async () => {
+test('队友按能力路由，主控跟随用户在对话中选择的模型，且不发起模型调用', async () => {
   const root = await mkdtemp(join(tmpdir(), 'route-'));
   try {
     for (const [id, role] of Object.entries(seed.roles)) {
@@ -31,7 +31,9 @@ test('每个默认角色按能力路由，且不发起模型调用', async () =>
       const f = fakeCtx(() => m, () => root);
       apply(f.ctx, createTeam(f.ctx, {}, { root }));
       const c = base.capabilities[role.capability];
-      assert.deepEqual(await f.request({}, { provider: 'x', model: 'y', reasoningEffort: 'max', maxTokens: 9 }), { provider: c.provider, model: c.model });
+      const picked = { provider: 'x', model: 'y', reasoningEffort: 'max', maxTokens: 9 };
+      // The Lead keeps the user's pick and its request settings; teammates get their capability route, settings dropped.
+      assert.deepEqual(await f.request({}, picked), id === 'lead' ? picked : { provider: c.provider, model: c.model });
     }
   } finally { await rm(root, { recursive: true, force: true }); }
 });
