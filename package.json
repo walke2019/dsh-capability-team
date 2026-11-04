@@ -91,6 +91,7 @@
     "tests/helpers/*.mjs",
     "scripts/check.mjs",
     "scripts/build-client.mjs",
+    "scripts/memory-cli.mjs",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg"
