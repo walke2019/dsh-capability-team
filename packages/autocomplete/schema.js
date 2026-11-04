@@ -1,6 +1,8 @@
 // Settings for composer autocomplete. No credentials live here: fixed routing names an existing provider and model.
+// schemastery is a direct dependency (the version DSH ships), so the settings form appears on every install layout.
+// On some layouts (e.g. a pnpm-managed DSH) a peer cannot be resolved from the profile and the form silently vanished.
 let Schema = null;
-try { Schema = (await import('@deepseek-ai/schemastery')).default; } catch { /* host without schemastery: no settings form */ }
+try { Schema = (await import('@deepseek-ai/schemastery')).default; } catch { /* still optional: the endpoint works without a form */ }
 
 export const DEFAULT_CONFIG = Object.freeze({
   enabled: true,

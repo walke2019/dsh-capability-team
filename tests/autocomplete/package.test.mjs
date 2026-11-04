@@ -29,5 +29,10 @@ test('actual autocomplete archive is self-contained and declares bundle and clie
   assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
   assert.equal(pkg.dsh.client.platform, 'web');
+  // The settings form only appears when the host can read a real schemastery Config. A peer dependency is not
+  // resolvable from the profile on every install layout, so the package must depend on it directly.
+  assert.ok(pkg.dependencies?.['@deepseek-ai/schemastery'], 'schemastery must be a direct dependency');
+  assert.equal(pkg.peerDependencies?.['@deepseek-ai/schemastery'], undefined);
+  assert.ok(pkg.files.includes('locale/*.json') && pkg.exports['./locale/*.json'], 'bilingual metadata ships and is exported');
   assert.match(await readFile(join(temp, 'package/client.js'), 'utf8'), /^\/\/ @generated/);
 });
