@@ -201,6 +201,36 @@ test('模型选择器：多词搜索、按渠道分组、键盘选择', async ()
   assert.ok(text(tree).includes('picker.empty'));
 });
 
+test('卡片内的模型选择弹层横向对齐整张 .ctm-dock 卡片，纵向仍按输入框决定上下', () => {
+  let cursor = 0; const states = [];
+  const React = { createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat() }),
+    useState(i) { const n = cursor++; if (!(n in states)) states[n] = i; return [states[n], v => { states[n] = typeof v === 'function' ? v(states[n]) : v; }]; },
+    useRef(v) { const n = cursor++; return states[n] ??= { current: v }; }, useEffect() {}, useMemo: f => f() };
+  let picker;
+  const win = { innerHeight: 800, __ModuleLoader__: { load: spec => spec.factory(() => React) }, __ctmTestHook: x => { picker = x.ModelPicker; } };
+  new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({ window: win });
+  const render = () => { cursor = 0; return picker({ value: '', options: ['p/m'], onChange() {}, label: 'model', placeholder: 'search', t: k => k }); };
+  const pop = tree => find(tree, n => n.props?.className === 'ctm-mp-pop');
+  const dockRect = { left: 10, width: 600, top: 300, bottom: 700 };
+  const open = (rect, inDock = true) => {
+    let tree = render();
+    const input = find(tree, n => n.type === 'input');
+    input.props.ref.current = { getBoundingClientRect: () => rect, closest: sel => (inDock && sel === '.ctm-dock' ? { getBoundingClientRect: () => dockRect } : null) };
+    input.props.onFocus(); tree = render();
+    const style = pop(tree).props.style;
+    find(tree, n => n.type === 'input').props.onBlur(); render();
+    return style;
+  };
+  const down = open({ left: 200, width: 150, top: 320, bottom: 350 });
+  assert.equal(down.position, 'fixed');
+  assert.equal(down.left, 10); assert.equal(down.width, 600);
+  assert.equal(down.top, 354, '下方空间足够时向下展开');
+  const up = open({ left: 200, width: 150, top: 640, bottom: 670 });
+  assert.equal(up.left, 10); assert.equal(up.width, 600);
+  assert.equal(up.top, 'auto'); assert.equal(up.bottom, 800 - 640 + 4, '下方空间不足时向上展开');
+  assert.equal(open({ left: 200, width: 150, top: 320, bottom: 350 }, false), undefined, '卡片外不改定位');
+});
+
 test('卡片标出“按你的习惯”与最近失败的模型；计划卡片列出看板任务', async () => {
   const learned = { ...pending, routes: [{ ...pending.routes[0], fallbacks: [{ provider: 'provider-a', model: 'm2' }],
     learned: { habit: { count: 3, of: 4, settled: true }, unhealthy: { 'provider-a/m2': 2, 'provider-a/m1': 1 } } }] };

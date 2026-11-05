@@ -16,12 +16,14 @@
       const inputRef = React.useRef(null);
       const [place, setPlace] = React.useState(null); // fixed popup position inside the scrolling confirmation dock
       // In the dock (a scroll box above the input) an absolute popup would be clipped: pin it to the viewport
-      // instead, and open it upward when there is more room above the field than below it.
+      // instead, span the dock card's full width, and open it upward when there is more room above the field than below it.
       const measure = () => {
         const el = inputRef.current;
-        if (!el?.getBoundingClientRect || !el.closest?.('.ctm-dock')) return null;
+        const dock = el?.getBoundingClientRect ? el.closest?.('.ctm-dock') : null;
+        if (!dock) return null;
         const r = el.getBoundingClientRect(), below = window.innerHeight - r.bottom;
-        const base = { position: 'fixed', left: r.left, width: r.width, right: 'auto' };
+        const d = dock.getBoundingClientRect?.() ?? r;
+        const base = { position: 'fixed', left: d.left, width: d.width, right: 'auto' };
         return below < 280 && r.top > below ? { ...base, top: 'auto', bottom: window.innerHeight - r.top + 4 } : { ...base, top: r.bottom + 4 };
       };
       const show = () => { if (!open) setPlace(measure()); setOpen(true); };
