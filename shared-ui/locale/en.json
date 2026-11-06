@@ -3,6 +3,7 @@
   "lock.default": "Default from Mothership",
   "lock.hint": "Change it in the Mothership",
   "value.managed": "Managed",
+  "value.default": "Using Mothership default",
   "secret.unset": "Not set",
   "secret.stored": "Set (stored)",
   "secret.env": "Set (environment)",

@@ -36,7 +36,8 @@ function mount({ file = 'packages/omni-search/client.js', form, described = {}, 
   host.plugin.apply({
     effect: fn => fn(), locale: { register: (ns, dicts) => { Object.assign(dictionaries, dicts); }, bind: () => t },
     slots: { inject: (_n, fn) => fn(), register: (options, component) => registered.push({ options, component }) },
-    inject: (names, fn) => { if (names[0] === 'remote.credentials') fn({ remote: { credentials: credentials ?? { describe: async refs => ({ ok: true, value: Object.fromEntries(refs.filter(r => described[r]).map(r => [r, described[r]])) }), set: async () => ({ ok: true }), unset: async () => ({ ok: true }) } }, effect() {} }); if (names[0] === 'configForms') fn({ configForms: null, effect() {} }); },
+    remote: { credentials: credentials ?? { describe: async refs => ({ ok: true, value: Object.fromEntries(refs.filter(r => described[r]).map(r => [r, described[r]])) }), set: async () => ({ ok: true }), unset: async () => ({ ok: true }) }, $on: () => () => {} },
+    configForms: null,
   });
   const entry = registered[0];
   const props = view => ({ view, form, t });
@@ -220,5 +221,40 @@ test('manifest reload keeps the known lock on a transient failure and does not r
     tree = m.render('page');
     await walk(tree).find(n => n.props?.['data-action'] === 'save').props.onClick();
     assert.deepEqual(form.writes, [], 'a failed refresh keeps the previously known lock');
+  } finally { globalThis.__panelFetch = async () => ({ ok: false }); }
+});
+
+test('every generated client declares remote.credentials and configForms statically', () => {
+  const required = ['slots', 'locale', 'remote', 'remote.credentials', 'configForms'];
+  for (const file of ['packages/global-memory/client.js', 'packages/omni-search/client.js', 'packages/autocomplete/client.js']) {
+    const { plugin } = boot(file);
+    for (const name of required) assert.ok(plugin.inject.includes(name), `${file}: inject lists ${name}`);
+  }
+  const root = readFileSync(new URL('../client.js', import.meta.url), 'utf8').match(/inject: \[([^\]]*)\]/g) ?? [];
+  assert.ok(root.some(list => required.every(name => list.includes(`'${name}'`))), 'root client.js inject lists the required services');
+});
+
+test('a secret row leaves "unknown" once ctx.remote.credentials.describe resolves,', async () => {
+  const host = mount({ form: readyForm(), described: { TAVILY_API_KEY: { configured: true, source: 'file', writable: true } } });
+  assert.ok(host.entry, 'panel registered with services taken directly from ctx');
+  host.host.rerender();
+  const stateOf = () => walk(host.render('page')).find(n => n.props?.['data-field'] === 'TAVILY_API_KEY');
+  assert.equal(walk(stateOf()).find(n => n.props?.['data-secret-state']).props['data-secret-state'], 'unknown');
+  await host.host.runEffects(); await settle();
+  assert.equal(walk(stateOf()).find(n => n.props?.['data-secret-state']).props['data-secret-state'], 'stored');
+});
+
+test('an unlocked managed field shows the "using default" placeholder and never a value', async () => {
+  globalThis.__panelFetch = async () => ({ ok: true, status: 200, json: async () => ({ revision: 1, entries: [{ ref: 'OMNI_SEARCH_BASE_URL', locked: false, secret: false }, { ref: 'SEARXNG_URL', locked: true, secret: false }] }) });
+  try {
+    const m = mount({ form: readyForm() });
+    m.render('page'); await m.host.runEffects(); await settle();
+    const tree = m.render('page');
+    const inputOf = id => walk(walk(tree).find(n => n.props?.['data-field'] === id)).find(n => n.type === 'input');
+    assert.equal(inputOf('baseUrl').props.placeholder, 'value.default');
+    assert.equal(inputOf('baseUrl').props.value, '');
+    assert.equal(inputOf('searxngUrl').props.placeholder, 'value.managed');
+    assert.equal(m.dictionaries.en['value.default'], 'Using Mothership default');
+    assert.equal(m.dictionaries.zh['value.default'], '使用母舰默认值');
   } finally { globalThis.__panelFetch = async () => ({ ok: false }); }
 });

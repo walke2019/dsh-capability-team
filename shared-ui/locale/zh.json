@@ -3,6 +3,7 @@
   "lock.default": "母舰默认值",
   "lock.hint": "请在母舰中修改",
   "value.managed": "已托管",
+  "value.default": "使用母舰默认值",
   "secret.unset": "未设置",
   "secret.stored": "已设置（已保存）",
   "secret.env": "已设置（环境变量）",

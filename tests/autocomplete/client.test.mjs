@@ -29,7 +29,7 @@ test('registers the composer overlay, settings row and bundle config card', () =
   plugin.apply({
     locale: { register: (ns, dicts) => { dictionaries = dicts; }, bind: () => key => key },
     effect: fn => fn(),
-    inject: (names, fn) => fn({ configForms: { get: name => ({ name }) }, effect() {} }),
+    configForms: { get: name => ({ name }) },
     slots: { inject: (_n, fn) => fn(), register: (meta, component) => registered.push({ meta, component }) },
   });
   assert.deepEqual(registered.map(r => r.meta.name), ['conversation.input.overlay', 'conversation.input.dock', 'conversation.input.right',

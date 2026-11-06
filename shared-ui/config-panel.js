@@ -134,7 +134,7 @@ export function createPanelKit(React) {
     }
     if (field.kind === 'enum') return h('select', { ...common, value: value ?? '', style: ui.input, onChange: event => onChange(event.target.value) },
       h('option', { value: '' }, t('opt.default')), field.options.map(option => h('option', { key: option, value: option }, t(`opt.${option}`))));
-    const props = { ...common, style: ui.input, value: value ?? '', placeholder: mode === 'locked' ? t('value.managed') : undefined, onChange: event => onChange(event.target.value) };
+    const props = { ...common, style: ui.input, value: value ?? '', placeholder: mode === 'locked' ? t('value.managed') : mode === 'default' ? t('value.default') : undefined, onChange: event => onChange(event.target.value) };
     return field.kind === 'number' ? h('input', { ...props, type: 'number', min: field.min, max: field.max, step: field.step }) : h('input', { ...props, type: field.kind === 'url' ? 'url' : 'text' });
   }
 
@@ -205,26 +205,23 @@ export function createPanelKit(React) {
   }
 
   /**
-   * Register dictionaries and the `plugins.bundle.config` slot entry of one panel. Optional host services are
-   * reached through ctx.inject, so a host without them still mounts the plugin (non-secret fields then read-only).
+   * Register dictionaries and the `plugins.bundle.config` slot entry of one panel. The host services
+   * (`remote.credentials`, `configForms`) come from the plugin's static `inject` list; null checks keep a
+   * test or odd host mounting (non-secret fields then read-only).
    */
   function registerConfigPanel(ctx, { panel, ns, dictionaries, summaryOnly = false }) {
     const services = { credentials: null, on: null, forms: null };
     // A summary-only entry reuses the host plugin's own namespace (its dictionaries are merged by the caller).
     if (!summaryOnly) ctx.effect?.(() => ctx.locale.register(ns, dictionaries), `${ns}: dictionaries`);
-    if (!summaryOnly) {
-      ctx.inject?.(['remote.credentials'], scoped => {
-        if (!scoped?.remote?.credentials) return;
-        services.credentials = scoped.remote.credentials;
-        services.on = typeof scoped.remote.$on === 'function' ? (event, listener) => scoped.remote.$on(event, listener) : null;
-        scoped.effect?.(() => () => { services.credentials = null; services.on = null; });
-      });
-      ctx.inject?.(['configForms'], scoped => {
-        if (!scoped?.configForms) return;
-        services.forms = scoped.configForms;
-        scoped.effect?.(() => () => { services.forms = null; });
-      });
+    // The plugin declares `remote.credentials` and `configForms` statically in its `inject` list (a dynamic
+    // ctx.inject callback never fired in the real host), so both are read directly from the context here.
+    const remote = ctx.remote;
+    if (remote?.credentials) {
+      services.credentials = remote.credentials;
+      services.on = typeof remote.$on === 'function' ? (event, listener) => remote.$on(event, listener) : null;
     }
+    if (ctx.configForms) services.forms = ctx.configForms;
+    if (!summaryOnly) ctx.effect?.(() => () => { services.credentials = null; services.on = null; services.forms = null; }, `${ns}: services`);
     const t = ctx.locale.bind(ns);
     ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({ name: 'plugins.bundle.config', key: panel.bundle, locale: ns },
       props => (summaryOnly ? h(IntegrationsSummary, { view: props?.view, services, t: props?.t ?? t })
