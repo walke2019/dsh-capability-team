@@ -23,7 +23,7 @@ test('profile bundle registers valid tools independent of team/preset and cleans
   const f = await fixture(t);
   // Zero config: four tools, no provider param, no providers tool (that belongs to the custom engine).
   apply(f.ctx);
-  assert.deepEqual(inject, ['tools','workingDirectory','userQuestions']);
+  assert.deepEqual(inject, ['tools', 'workingDirectory', 'userQuestions']);
   assert.deepEqual([...f.defs.keys()], ['omni_search','omni_fetch','omni_transcribe','omni_transcribe_status']);
   assert.equal(f.defs.get('omni_search').parameters.properties.provider, undefined);
   for (const def of f.defs.values()) assert.doesNotThrow(() => assertToolSchema(def.parameters));

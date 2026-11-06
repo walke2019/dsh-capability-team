@@ -1,0 +1,14 @@
+{
+  "enabled": "启用搜索和语音服务及工具。",
+  "engines": "按回退顺序排列的搜索引擎。",
+  "fetchEngines": "按回退顺序排列的网页提取引擎。",
+  "searxngUrl": "SearXNG 实例地址。",
+  "baseUrl": "自定义搜索网关地址。",
+  "tavilyKeyEnv": "Tavily API 密钥的凭据引用。",
+  "braveKeyEnv": "Brave API 密钥的凭据引用。",
+  "searxngKeyEnv": "SearXNG API 密钥的凭据引用。",
+  "jinaKeyEnv": "Jina API 密钥的凭据引用。",
+  "apiKeyEnv": "搜索网关 API 密钥的凭据引用。",
+  "audioBaseUrl": "云端语音转写网关地址。",
+  "audioKeyEnv": "语音网关 API 密钥的凭据引用。"
+}
