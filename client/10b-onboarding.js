@@ -111,8 +111,8 @@
       React.useEffect(() => { if (acknowledged && !explicit) complete?.(); }, [acknowledged, explicit]);
       if (snapshot.status === 'loading' || !status || (acknowledged && !explicit)) return null;
       const dismiss = async () => { if (snapshot.status === 'ready' && snapshot.writable !== false) { try { await form.set('welcomeVersion', WELCOME_VERSION); } catch { /* in-memory completion still applies */ } } complete?.(); };
-      return h('div', { role: 'dialog', 'aria-modal': 'true', className: 'ctm-onb-modal', style: { position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.35)' } },
-        h('div', { style: { maxWidth: '520px', width: 'calc(100% - 48px)', background: 'var(--dsw-alias-bg-layer-2)', borderRadius: '12px', padding: '16px' } },
+      return h('div', { role: 'dialog', 'aria-modal': 'true', className: 'ctm-onb-modal', style: { position: 'fixed', inset: 0, zIndex: 'var(--aw-z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--dsw-alias-bg-mask-2)' } },
+        h('div', { style: { maxWidth: '520px', width: 'calc(100% - 48px)', background: 'var(--dsw-alias-bg-layer-2)', color: 'var(--dsw-alias-label-primary)', borderRadius: 'var(--dsw-radius-lg)', boxShadow: 'var(--dsw-shadow-lv3)', padding: '16px' } },
           h(OnboardingCard, { status, enable, t, onDismiss: dismiss })));
     }
     // Settings forms for the standalone bundles, rendered from this client (they ship no client half of their own).
