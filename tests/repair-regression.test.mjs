@@ -109,9 +109,9 @@ test('修复：预设未注册或激活失败时不能报告已就绪', async ()
   const ctx = { agentPresets: { composedPreset: () => 'capability-team', list: async () => [] },
     tools: { schemas: () => ['capability_team_read', 'capability_dispatch_plan', 'capability_free_task'].map(name => ({ name })) } };
   try {
-    const missing = await inspectTeamRuntime(ctx, agent); assert.equal(missing.ready, false); assert.match(missing.explanation, /未注册/);
+    const missing = await inspectTeamRuntime(ctx, agent); assert.equal(missing.ready, false); assert.match(missing.explanation, /not registered/);
     ctx.agentPresets.list = async () => [{ id: 'capability-team', broken: 'fixture load failed' }];
-    const broken = await inspectTeamRuntime(ctx, agent); assert.equal(broken.ready, false); assert.match(broken.explanation, /激活失败/);
+    const broken = await inspectTeamRuntime(ctx, agent); assert.equal(broken.ready, false); assert.match(broken.explanation, /activation failed/);
   } finally { off(); }
 });
 test('修复：团队服务尚未就绪时只读诊断保留自身日志而非整体崩溃', async () => {

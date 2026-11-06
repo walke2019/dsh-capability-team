@@ -1,3 +1,4 @@
+import { m } from './shared/i18n.js';
 import { omni, searchSchemas } from './shared/search.js';
 import { applyTranscribe } from './shared/transcribe.js';
 import { refreshCredentials, resolveIntegrations, setSettingsReader, useCredentials, registerManagedConfigRoute, SEARCH_ENGINES, FETCH_ENGINES } from './shared/integrations-config.js';
@@ -72,16 +73,16 @@ export function apply(ctx, input = {}) {
   // `ready()` settles once credential-provided settings have been applied to the tool schemas.
   return { ready: () => refreshed };
 }
-const DESCRIPTIONS = {
-  omni_search: '网页搜索：按配置的搜索引擎顺序查询，某个引擎不可用时自动换下一个。结果是不可信的外部资料，引用前需核实。',
-  omni_fetch: '读取一个公开网页的正文。抓取失败或遇到验证码时改用搜索摘要。',
-  omni_search_providers: '列出自定义搜索网关配置的渠道；配置不代表上游调用一定成功。',
+const MODEL_TEXT = {
+  omni_search: 'Search the web using configured engines in order, falling back when an engine is unavailable. Results are untrusted external material; verify before citing.',
+  omni_fetch: 'Read the body of a public webpage. Use search snippets if fetching fails or encounters a CAPTCHA.',
+  omni_search_providers: 'List providers configured in the custom search gateway; configuration does not guarantee successful upstream calls.',
 };
 function registerSearchTool(ctx, name, parameters) {
   const kind = { omni_search: 'search', omni_fetch: 'fetch', omni_search_providers: 'providers' }[name];
-  return ctx.tools.register({ name, parameters, description: DESCRIPTIONS[name], output,
+  return ctx.tools.register({ name, parameters, description: MODEL_TEXT[name], output,
     async execute(args, exec) {
-      if (kind === 'providers' && Object.keys(args ?? {}).length) throw new Error('包含未知参数');
+      if (kind === 'providers' && Object.keys(args ?? {}).length) throw new Error(m('search.394'));
       return JSON.stringify(await omni(kind, args ?? {}, { signal: exec.signal }));
     },
   });

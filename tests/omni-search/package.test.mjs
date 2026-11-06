@@ -5,7 +5,7 @@ import { join, dirname, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { temporaryArchive } from '../../scripts/pack-package.mjs';
 import { pathToFileURL } from 'node:url';
-test('actual omni-search archive has standalone import closure and no client/config writer', async t => {
+test('actual omni-search archive has standalone import closure, web client and no config writer', async t => {
   const temp = await mkdtemp(join(tmpdir(), 'omni-pack-')); t.after(() => rm(temp, { recursive: true, force: true }));
   const archive = await temporaryArchive(t, 'packages/omni-search');
   for (let pos = 0; pos + 512 <= archive.length;) {
@@ -21,7 +21,8 @@ test('actual omni-search archive has standalone import closure and no client/con
   const plugin = await import(pathToFileURL(join(temp, 'package/index.js')));
   assert.equal(typeof plugin.apply, 'function');
   const pkg = JSON.parse(await readFile(join(temp, 'package/package.json'), 'utf8'));
-  assert.equal(pkg.dsh.client, undefined); assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
+  assert.equal(pkg.dsh.client.platform, 'web'); assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
+  assert.match(await readFile(join(temp, 'package/client.js'), 'utf8'), /__ModuleLoader__/);
   const config = await import(pathToFileURL(join(temp, 'package/shared/integrations-config.js')));
   assert.equal(config.handleIntegrations, undefined); assert.equal(config.saveIntegrations, undefined);
 });

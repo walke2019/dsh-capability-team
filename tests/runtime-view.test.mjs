@@ -44,7 +44,7 @@ test('团队活动只读取宿主名册与看板，过滤已删除任务，读�
   assert.deepEqual(result.tasks, [{ id: 1, subject: 'a', status: 'in_progress', ownerName: 'lead' }]);
   const broken = teamActivity({ get: () => ({ listMembers() { throw new Error('not a member'); } }) }, {});
   assert.deepEqual(broken.members, []); assert.match(broken.unavailable, /not a member/);
-  assert.match(teamActivity({}, {}).unavailable, /团队服务/);
+  assert.match(teamActivity({}, {}).unavailable, /team services/);
 });
 
 test('状态命令输出压缩目录行并去掉重复字段，客户端可还原', async () => {

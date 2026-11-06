@@ -55,9 +55,10 @@ test('召回是只读的：不更新命中计数，不改动记忆文件', async
 
 test('注入块含固定标题，总长（含标题）不超预算，并对记忆正文脱敏', () => {
   const mk = (text, kind = 'pitfall', scope = { kind: 'project', project: 'p' }) => ({ memory: { kind, scope, text } });
-  const block = formatRecall([mk('第一条坑'), mk('a'.repeat(500)), mk('跨项目决定', 'decision', { kind: 'global' })], 80);
+  const budget = RECALL_HEADER.length + 60;
+  const block = formatRecall([mk('第一条坑'), mk('a'.repeat(500)), mk('跨项目决定', 'decision', { kind: 'global' })], budget);
   assert.ok(block.startsWith(RECALL_HEADER));
-  assert.ok(block.length <= 80);
+  assert.ok(block.length <= budget);
   assert.match(block, /- \[pitfall\] 第一条坑/);
   assert.match(block, /- \[decision·global\] 跨项目决定/);
   assert.doesNotMatch(block, /aaaa/);

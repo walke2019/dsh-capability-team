@@ -1,4 +1,5 @@
 /** Profile-wide, read-only diagnostics; never activates routing for unrelated sessions. */
+import { m, t } from './i18n.js';
 import { readTeamSnapshot, saveTeamPolicy } from './runtime-view.js';
 import { readRequestEvidence, readTeamEvidence } from './request-evidence.js';
 import { applyConfigProjection } from './config-projection.js';
@@ -19,11 +20,11 @@ export const Config = z ? z.object({ welcomeVersion: z.string().volatile() }) : 
  */
 export function teamActivity(ctx, agent) {
   const teams = ctx.get?.('agentTeams');
-  if (!teams) return { members: [], tasks: [], unavailable: '当前宿主未提供团队服务' };
+  if (!teams) return { members: [], tasks: [], unavailable: t('ui.593') };
   let members, tasks = [];
   try {
     members = teams.listMembers(agent).map(m => ({ id: m.id, name: m.name, role: m.role, status: m.status, diagnostics: m.diagnostics ?? [] }));
-  } catch (error) { return { members: [], tasks: [], unavailable: `团队成员读取失败：${error.message ?? error}` }; }
+  } catch (error) { return { members: [], tasks: [], unavailable: t('ui.594', { 0: error.message ?? error }) }; }
   try {
     tasks = (teams.listTasks?.(agent) ?? []).filter(task => task.status !== 'deleted')
       .map(task => ({ id: task.id, subject: task.subject, status: task.status, ...(task.ownerName ? { ownerName: task.ownerName } : {}) }));
@@ -53,14 +54,13 @@ export async function inspectTeamRuntime(ctx, agent) {
     memberEvidence,
     team, teamError,
     activity: preset === 'capability-team' ? teamActivity(ctx, agent) : null,
-    explanation: !definition ? '能力协作团队预设尚未注册，请在插件管理器检查本地扩展是否启用。'
-      : definition.broken ? `能力协作团队预设激活失败：${definition.broken}`
-      : preset !== 'capability-team'
-      ? '本会话未挂载能力协作团队预设；安装插件或重启不会自动迁移已经开始的会话。请新建会话，在模式选择中选择“能力协作团队”，再打开团队总览读取状态；原会话保留不变。'
-      : missingTools.length ? `预设名称存在，但本会话缺少能力团队工具：${missingTools.join('、')}。可能原因：插件在本会话创建之后才加载或中途重载，主控专属工具未随会话创建装入。处置：先刷新状态（插件会在下一步自动补装）；刷新后仍缺失，请新建会话并在模式选择中选择“能力协作团队”。`
-      : teamError ? '后台工具存在，但团队配置读取失败；当前不可管理模型，请查看具体错误。'
-      : team === null ? '后台工具存在，但本会话配置读取器尚未就绪；请刷新，若持续出现则检查预设激活。'
-      : '能力团队后台工具和配置读取已就绪；这不代表角色模型请求已经验证成功。',
+    explanation: !definition ? t('ui.595')
+      : definition.broken ? t('ui.596', { 0: definition.broken })
+      : preset !== 'capability-team' ? t('ui.597')
+      : missingTools.length ? t('ui.598', { 0: missingTools.join(', ') })
+      : teamError ? t('ui.599')
+      : team === null ? t('ui.600')
+      : t('ui.601'),
   };
 }
 /**
@@ -84,9 +84,9 @@ export function compactStatus(status) {
   return { ...out, team: { ...teamRest, modelPolicy: { ...policyRest, rows: (rows ?? []).map(tuple) } } };
 }
 export async function savePolicyCommand(ctx, { agent, rawInput }) {
-  if (ctx.agentPresets.composedPreset(agent.ctx) !== 'capability-team') throw new Error('当前会话未启用能力协作团队，未保存');
+  if (ctx.agentPresets.composedPreset(agent.ctx) !== 'capability-team') throw new Error(m('ui.602'));
   const input = JSON.parse(rawInput);
-  if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(k => !['disabledRoutes', 'expectedRevision'].includes(k))) throw new Error('无效的模型策略参数');
+  if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(k => !['disabledRoutes', 'expectedRevision'].includes(k))) throw new Error(m('ui.603'));
   const result = await saveTeamPolicy(agent, input.disabledRoutes, input.expectedRevision);
   return { kind: 'success', text: JSON.stringify(result) };
 }
@@ -101,13 +101,13 @@ export function apply(ctx) {
   ctx.inject?.(['settings'], scoped => { scoped.effect(() => scoped.settings.configure({ auto: false }, ctx.fiber)); });
   ctx.effect(() => ctx.commands.register({
     name: 'capability-model-policy',
-    description: '保存全局模型禁用列表与前缀规则；对所有能力协作团队会话从下一次请求起生效。',
-    input: { hint: '模型策略JSON' },
+    description: t('ui.604'),
+    input: { hint: t('ui.605') },
     handler: invocation => savePolicyCommand(ctx, invocation),
   }));
   ctx.effect(() => ctx.commands.register({
     name: 'capability-status',
-    description: '只读检查本会话的能力团队预设和后台工具是否真正挂载，不调用模型。',
+    description: t('ui.606'),
     handler: async ({ agent }) => ({ kind: 'success', text: JSON.stringify(compactStatus(await inspectTeamRuntime(ctx, agent))) }),
   }));
 }

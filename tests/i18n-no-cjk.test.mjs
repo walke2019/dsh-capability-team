@@ -11,7 +11,7 @@ function sources(dir = root) {
     if (['locale', 'tests', 'node_modules', '.git', '.work'].includes(entry.name)) return [];
     const path = join(dir, entry.name), name = relative(root, path).split('\\').join('/');
     if (entry.isDirectory()) return /^packages\/[^/]+\/shared$/.test(name) ? [] : sources(path);
-    if (!/\.(?:js|mjs)$/.test(name) || name === 'client.js' || /^packages\/[^/]+\/client\.js$/.test(name) || name === 'client/00-core-zh.js' || name === 'brand.js') return [];
+    if (!/\.(?:js|mjs)$/.test(name) || name === 'client.js' || /^packages\/[^/]+\/client\.js$/.test(name) || name === 'client/00-core-zh.js' || name === 'packages/autocomplete/client/00a-dict-zh.js' || name === 'brand.js') return [];
     return [name];
   });
 }

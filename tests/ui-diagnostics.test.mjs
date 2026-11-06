@@ -8,8 +8,8 @@ test('缺少主控工具时诊断写明原因与处置', async () => {
   const s = await inspectTeamRuntime(context(['capability_team_read']), agent);
   assert.equal(s.ready, false);
   assert.deepEqual(s.missingTools, ['capability_dispatch_plan', 'capability_free_task']);
-  assert.match(s.explanation, /capability_dispatch_plan、capability_free_task/);
-  assert.match(s.explanation, /会话创建之后才加载或中途重载/);
-  assert.match(s.explanation, /刷新.*仍缺失.*新建会话.*能力协作团队/);
-  assert.doesNotMatch(s.explanation, /检查预设激活诊断/);
+  assert.match(s.explanation, /capability_dispatch_plan, capability_free_task/);
+  assert.match(s.explanation, /loaded after session creation or reloaded mid-session/);
+  assert.match(s.explanation, /Refresh.*still missing.*create a session with Capability Team/);
+  assert.doesNotMatch(s.explanation, /check preset activation/);
 });

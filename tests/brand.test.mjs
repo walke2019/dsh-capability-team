@@ -76,11 +76,7 @@ test('shared closures ship brand.js', async () => {
 const ALLOWED = new Set(['CHANGELOG.md', 'brand.js', 'docs/migration-aiwuk.md', 'tests/brand.test.mjs',
   'packages/global-memory/README.md', 'packages/omni-search/README.md']); // the last two keep a short rename history note
 // Files owned by other work packages that still carry old names; shrink this list as they land.
-const PENDING_OWNERS = new Set([
-  'ui.js', 'client/10b-onboarding.js', 'tests/client-onboarding.test.mjs',
-  'packages/global-memory/index.js',
-  'packages/autocomplete/client/00-core.js', 'tests/autocomplete/client.test.mjs',
-]);
+const PENDING_OWNERS = new Set();
 const GENERATED = /^(client\.js|packages\/autocomplete\/client\.js|packages\/[^/]+\/shared\/)/;
 // Skips URLs (github.com/.../dsh-capability-team), storage keys and file globs (dsh-capability-team-locale, local-dsh-...).
 const OLD_NAME = /(?<![\w@./-])(?:dsh-capability-(?:team|autocomplete|memory)|dsh-omni-search|@dsh-mothership\/connector(?:-bundle|-updater)?)(?![\w-])/g;

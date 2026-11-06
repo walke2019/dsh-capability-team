@@ -13,9 +13,9 @@ test('保存命令校验会话绑定并调用同一策略存储操作', async ()
     const result = await savePolicyCommand(ctx, { agent, rawInput: JSON.stringify({ disabledRoutes: ['p/m'], expectedRevision: 4 }) });
     assert.equal(JSON.parse(result.text).revision, 5);
     await assert.rejects(savePolicyCommand(ctx, { agent, rawInput: '{bad' }));
-    await assert.rejects(savePolicyCommand(ctx, { agent, rawInput: '{"unexpected":1}' }), /无效/);
+    await assert.rejects(savePolicyCommand(ctx, { agent, rawInput: '{"unexpected":1}' }), /Invalid model policy parameters/);
     ctx.agentPresets.composedPreset = () => 'standard';
-    await assert.rejects(savePolicyCommand(ctx, { agent, rawInput: '{}' }), /未启用/);
+    await assert.rejects(savePolicyCommand(ctx, { agent, rawInput: '{}' }), /not enabled/);
     assert.equal(calls, 1);
   } finally { off(); }
 });

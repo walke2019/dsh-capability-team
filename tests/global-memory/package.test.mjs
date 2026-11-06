@@ -54,7 +54,9 @@ test('9 actual packed archive imports outside repository with no parent dependen
   assert.equal(typeof plugin.apply, 'function');
   assert.deepEqual(plugin.inject, ['agents','systemPrompt','tools','workingDirectory','agentPresets']);
   const pkg = JSON.parse(await readFile(join(temp, 'package/package.json'), 'utf8'));
-  assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml'); assert.equal(pkg.dsh.client, undefined);
+  assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
+  assert.equal(pkg.dsh.client.platform, 'web');
+  assert.ok(entries.includes('package/client.js'));
   const effects = []; const ctx = { effect: fn => effects.push(fn()) };
   plugin.apply(ctx, { enabled: false }); assert.throws(() => plugin.apply(ctx, { enabled: false }), /already installed/);
   effects.forEach(fn => fn?.());

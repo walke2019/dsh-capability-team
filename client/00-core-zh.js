@@ -3,6 +3,17 @@
     const NS = 'capability-team';
 
     const zh = {
+      'onb.title': '能力协作团队：三步开始', 'onb.step1': '1. 启用官方 Agent Teams', 'onb.step2': '2. 模型档位匹配', 'onb.step3': '3. 开始第一个团队任务',
+      'onb.teamReady': '官方 Agent Teams 服务已运行。',
+      'onb.teamMissing': '能力协作团队建立在官方实验包 {name} 之上；它当前未启用，团队功能不会启动。',
+      'onb.teamWarning': '注意：启用后对本配置档（profile）中的所有会话生效，并停用原生的通用子代理工具（subagent / fork 等），改由团队工具委派。只有你点击下方按钮才会启用。',
+      'onb.enable': '启用 Agent Teams', 'onb.enabling': '正在启用…', 'onb.applied': '已启用并生效。请刷新页面后新建会话。',
+      'onb.restart': '已启用，需要重启 DSH 后生效（原因：{reason}）。', 'onb.failed': '启用失败，错误码：{code}。也可在“插件”页手动启用。',
+      'onb.noManager': '当前连接不能管理插件；请在侧栏“插件”页手动启用 {name}。',
+      'onb.coverage': '{covered}/{total} 项能力已在你的模型目录中匹配到合格档位（共 {models} 个模型）。', 'onb.coverageUnknown': '模型目录暂不可读；稍后在团队总览中查看。',
+      'onb.unassigned': '未匹配：{list}。这些角色的请求会被阻止；可补充渠道，或让主控开启单模型模式（需你确认）。',
+      'onb.newSession': '新建会话 → 在模式选择中选择“能力协作团队”，然后直接描述任务。', 'onb.dismiss': '知道了', 'onb.later': '稍后',
+      'roles.singleModel': '单模型模式', 'roles.singleModelHint': '未分配模型的角色统一使用你确认的单个模型；无备选，失败直接报告。',
       'role.name.lead': '主控', 'role.name.architect': '技术总监', 'role.name.backend': '后端', 'role.name.frontend': '前端',
       'role.name.researcher': '研究员', 'role.name.writer': '文档', 'role.name.qa': '测试',
       'live.quote.lead': '目标已明确，分工就绪。', 'live.quote.architect': '先定方案与接口，再动手。', 'live.quote.backend': '接口与数据，随时待命。',

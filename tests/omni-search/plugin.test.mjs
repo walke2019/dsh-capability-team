@@ -14,7 +14,7 @@ async function fixture(t) {
   t.after(async () => { if (old === undefined) delete process.env.CAPABILITY_TEAM_HOME; else process.env.CAPABILITY_TEAM_HOME = old; await rm(root, { recursive: true, force: true }); });
   const defs = new Map(), disposers = []; let consent = false, asked = 0;
   const ctx = { tools: { register: def => { assert.ok(!defs.has(def.name)); defs.set(def.name, def); return () => defs.delete(def.name); } }, effect: fn => disposers.push(fn()),
-    workingDirectory: { ensure: async () => root }, userQuestions: { ask: async () => { asked++; return { answers: [{ id: 'upload', selected: consent ? ['允许上传'] : ['拒绝'] }] }; } },
+    workingDirectory: { ensure: async () => root }, userQuestions: { ask: async ({ questions }) => { asked++; return { answers: [{ id: 'upload', selected: [questions[0].options[consent ? 0 : 1].label] }] }; } },
     inject: (deps, fn) => { if (deps.includes('credentials')) fn({ credentials: { resolve: async () => ({ value: 'credential-test-key' }) }, effect: fn => disposers.push(fn()) }); },
   };
   return { root, ctx, defs, dispose: () => disposers.reverse().forEach(fn => fn?.()), allow: () => { consent = true; }, asked: () => asked };
@@ -57,7 +57,7 @@ test('credential service is resolved, search/fetch execute in any session; trans
   assert.match(await f.defs.get('omni_search').execute({ query: 'probe' }, exec), /reference/);
   assert.match(await f.defs.get('omni_fetch').execute({ url: 'https://public.example.com' }, exec), /reference page/);
   assert.match(await f.defs.get('omni_search_providers').execute({}, exec), /available/);
-  await assert.rejects(f.defs.get('omni_transcribe').execute({ file_path: 'clip.wav' }, exec), /未授权/);
+  await assert.rejects(f.defs.get('omni_transcribe').execute({ file_path: 'clip.wav' }, exec), /did not authorize/);
   assert.equal(uploads, 0); f.allow();
   assert.match(await f.defs.get('omni_transcribe').execute({ file_path: 'clip.wav' }, exec), /transcript/);
   assert.equal(uploads, 1); assert.equal(f.asked(), 2); f.dispose();

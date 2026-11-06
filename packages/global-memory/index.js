@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { t } from './shared/i18n.js';
 import { configuration, defaults } from './config.js';
 import { createRuntime } from './runtime.js';
 import { memoryService } from './tools.js';
@@ -107,7 +108,7 @@ export function apply(ctx, input = {}) {
     timer.unref?.(); timers.add(timer); return timer;
   };
   // The selected backend is created on first use; each backend keeps its own queue file for this package.
-  backend = createMemoryBackend({ lazy: true, label: '全局记忆', schedule,
+  backend = createMemoryBackend({ lazy: true, label: t('memory.globalLabel'), schedule,
     queuePath: name => join(defaultRoot(), 'memory', `global-memory-${name}-queue.json`) });
   const secrets = async () => { await refreshCredentials().catch(() => {}); return knownSecretValues(); };
   return createRuntime(ctx, config, memoryService({ store, embedder, backend, secrets, config }), store);
