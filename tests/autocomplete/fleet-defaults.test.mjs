@@ -68,7 +68,7 @@ test('a locked fleet route beats the local route; unlocked stays a default', asy
     resolve: async name => ({ AUTOCOMPLETE_PROVIDER: { value: 'gateway', source: 'file' }, AUTOCOMPLETE_MODEL: { value: 'fast-model', source: 'file' } })[name] });
   const own = { ...DEFAULT_CONFIG, routeMode: 'fixed', provider: 'mine', model: 'm' };
   const lockedRoute = await loadFleetDefaults(manifest(true));
-  assert.equal(lockedRoute.locked, true);
+  assert.deepEqual(lockedRoute.locked, { provider: 'gateway', model: 'fast-model' }, 'a locked ref without a managed value contributes nothing');
   const won = withFleetDefaults(own, lockedRoute);
   assert.deepEqual([won.routeMode, won.provider, won.model], ['fixed', 'gateway', 'fast-model']);
   assert.equal(Object.hasOwn(won, 'locked'), false, 'the lock flag never leaks into the config');
@@ -86,4 +86,44 @@ test('a locked ref ignores an environment-sourced value; the manifest file is th
     const store = { resolve: async name => ({ AUTOCOMPLETE_PROVIDER: { value: 'from-env', source: 'env' }, AUTOCOMPLETE_MODEL: { value: 'm', source: 'file' } })[name] };
     assert.deepEqual(await loadFleetDefaults(store, { home }), {}, 'locked provider from the environment is not trusted, so the route is incomplete');
   } finally { await rm(home, { recursive: true, force: true }); }
+});
+
+// Per-field locks: every locked field overrides its own local field; unlocked values keep the one-unit default rule.
+const store = (lockedRefs, values) => ({
+  readRecord: async () => ({ kind: 'grant', payload: { revision: 2, entries: lockedRefs.map(ref => ({ ref, locked: true, secret: false })) } }),
+  resolve: async name => (values[name] === undefined ? undefined : { value: values[name], source: 'file' }),
+});
+const effective = async (local, lockedRefs, values) => {
+  const { routeMode, provider, model } = withFleetDefaults({ ...DEFAULT_CONFIG, ...local }, await loadFleetDefaults(store(lockedRefs, values), { home: '/nonexistent' }));
+  return [routeMode, provider, model];
+};
+
+test('only the model is locked: it overrides the local model, provider and mode stay local', async () => {
+  assert.deepEqual(await effective({ routeMode: 'fixed', provider: 'mine', model: 'mine-model' }, ['AUTOCOMPLETE_MODEL'], { AUTOCOMPLETE_MODEL: 'managed-model' }), ['fixed', 'mine', 'managed-model']);
+});
+
+test('only the route mode is locked to session: it wins over a local fixed route', async () => {
+  assert.deepEqual(await effective({ routeMode: 'fixed', provider: 'mine', model: 'mine-model' }, ['AUTOCOMPLETE_ROUTE_MODE'], { AUTOCOMPLETE_ROUTE_MODE: 'session' }), ['session', 'mine', 'mine-model']);
+});
+
+test('a locked provider combines with the local model; a locked provider without any model fails safe to session', async () => {
+  assert.deepEqual(await effective({ routeMode: 'fixed', provider: 'mine', model: 'mine-model' }, ['AUTOCOMPLETE_PROVIDER'], { AUTOCOMPLETE_PROVIDER: 'managed-gw' }), ['fixed', 'managed-gw', 'mine-model']);
+  assert.deepEqual(await effective({ routeMode: 'fixed', provider: 'mine' }, ['AUTOCOMPLETE_PROVIDER'], { AUTOCOMPLETE_PROVIDER: 'managed-gw' }), ['session', 'managed-gw', ''], 'incomplete fixed route is never used');
+});
+
+test('a locked fixed mode with an incomplete route fails safe to session', async () => {
+  assert.deepEqual(await effective({}, ['AUTOCOMPLETE_ROUTE_MODE'], { AUTOCOMPLETE_ROUTE_MODE: 'fixed' }), ['session', '', '']);
+  assert.deepEqual(await effective({ model: 'mine-model' }, ['AUTOCOMPLETE_ROUTE_MODE'], { AUTOCOMPLETE_ROUTE_MODE: 'fixed' }), ['session', '', 'mine-model']);
+  assert.deepEqual(await effective({ provider: 'p', model: 'm' }, ['AUTOCOMPLETE_ROUTE_MODE'], { AUTOCOMPLETE_ROUTE_MODE: 'fixed' }), ['fixed', 'p', 'm'], 'a complete route stays fixed');
+});
+
+test('locked fields combine with an unlocked default route; an invalid locked value is ignored', async () => {
+  // Unlocked mode fills an untouched config; the locked model still overrides its own field.
+  assert.deepEqual(await effective({}, ['AUTOCOMPLETE_MODEL'], { AUTOCOMPLETE_ROUTE_MODE: 'session', AUTOCOMPLETE_MODEL: 'locked-model' }), ['session', '', 'locked-model']);
+  // An unlocked provider alone is an incomplete fleet route (dropped); the locked model never completes it by itself.
+  assert.deepEqual(await effective({}, ['AUTOCOMPLETE_MODEL'], { AUTOCOMPLETE_PROVIDER: 'gateway', AUTOCOMPLETE_MODEL: 'locked-model' }), ['session', '', 'locked-model']);
+  assert.deepEqual(await effective({ routeMode: 'fixed', provider: 'p', model: 'm' }, ['AUTOCOMPLETE_MODEL'], { AUTOCOMPLETE_MODEL: 'bad id!' }), ['fixed', 'p', 'm']);
+  const loaded = await loadFleetDefaults(store(['AUTOCOMPLETE_MODEL'], { AUTOCOMPLETE_MODEL: 'x-model' }), { home: '/nonexistent' });
+  assert.deepEqual(loaded, { locked: { model: 'x-model' } });
+  assert.equal(Object.hasOwn(withFleetDefaults({ ...DEFAULT_CONFIG }, loaded), 'locked'), false);
 });
