@@ -22,7 +22,7 @@ import { createTokenDiscipline } from './token-discipline.js';
 import { createRouteHealth, mergeHealth } from './route-health.js';
 import { createRotation } from './session-rotation.js';
 import { createMemoryHub } from './memory-hub.js';
-import { knownSecretValues, refreshCredentials, setCredentialResolver } from './integrations-config.js';
+import { knownSecretValues, refreshCredentials, releaseCredentials, useCredentials } from './integrations-config.js';
 export const inject = ['agents', 'agentTeams', 'systemPrompt', 'tools', 'workingDirectory', 'skills', 'llm', 'userQuestions'];
 import { configureI18n } from './i18n.js';
 export function apply(host, config = {}) {
@@ -32,7 +32,14 @@ export function apply(host, config = {}) {
   const team = createTeam(ctx, config); // Validates preset bindings up front.
   // Memory endpoints/models are read-only user file/environment configuration.
   // Keys come from DSH's own credential store first (Settings → credentials), the environment second.
-  setCredentialResolver(async name => (await ctx.get?.('credentials')?.resolve(name))?.value);
+  // The same binding also feeds the managed manifest reader, so locked fields win over local settings.
+  ctx.inject?.(['credentials'], scoped => {
+    const service = scoped.credentials;
+    if (!service) return;
+    useCredentials(service);
+    scoped.effect?.(() => () => releaseCredentials(service));
+    void refreshCredentials().catch(() => {});
+  });
   // Settings may also arrive as same-named credentials (e.g. MEMORY_BACKEND pushed by a fleet manager).
   void refreshCredentials().catch(() => {});
   void team.refresh(); // First catalog match in the background; requests await it if still pending.
