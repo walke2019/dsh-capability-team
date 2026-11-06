@@ -2,7 +2,6 @@
 
 **Your AI team, each doing what it is best at: expensive models only take hard work, and one failing model never stops the team.**
 
-[![npm](https://img.shields.io/npm/v/@aiwuk/team.svg)](https://www.npmjs.com/package/@aiwuk/team)
 [![CI](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml/badge.svg)](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![DSH >= 0.2.2-rc.1](https://img.shields.io/badge/DSH-%3E%3D%200.2.2--rc.1-6f42c1.svg)

@@ -1,7 +1,5 @@
 # AIWUK Search for DSH
 
-[![npm](https://img.shields.io/npm/v/@aiwuk/search.svg)](https://www.npmjs.com/package/@aiwuk/search)
-
 Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
 
 ```bash

@@ -2,7 +2,6 @@
 
 **你的 AI 团队，各展所长：贵的模型只干难活，一个模型挂了团队照常运转。**
 
-[![npm](https://img.shields.io/npm/v/@aiwuk/team.svg)](https://www.npmjs.com/package/@aiwuk/team)
 [![CI](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml/badge.svg)](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![DSH >= 0.2.2-rc.1](https://img.shields.io/badge/DSH-%3E%3D%200.2.2--rc.1-6f42c1.svg)
