@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Client-visible per-session counter of successful team-configuration changes: capability_team_save / _import
 // results and /capability-model-policy saves. The overview re-reads its configuration snapshot only when this
 // number moves, so every tab stays current without running the (conversation-logged) status command on a timer.
@@ -6,12 +7,12 @@ export const CONFIG_KEY = 'capabilityTeamConfig';
 const SAVE_TOOLS = ['capability_team_save', 'capability_team_import'];
 const POLICY_COMMAND = 'capability-model-policy';
 const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v);
-const schema = (check, label) => ({ parse(value) { if (!check(value)) throw new Error(`${label} 格式无效`); return value; } });
+const schema = (check, label) => ({ parse(value) { if (!check(value)) throw new Error(modelText('config-projection.047', { 0: label })); return value; } });
 const isIds = v => Array.isArray(v) && v.length <= 64 && v.every(id => typeof id === 'string');
 export const configDefinition = {
   key: CONFIG_KEY,
   stateVersion: 1,
-  stateSchema: schema(v => isMap(v) && Number.isSafeInteger(v.version) && isIds(v.pending), 'capabilityTeamConfig 状态'),
+  stateSchema: schema(v => isMap(v) && Number.isSafeInteger(v.version) && isIds(v.pending), modelText('config-projection.048')),
   init: () => ({ version: 0, pending: [] }),
   apply(state, event) {
     const d = event.data ?? {};
@@ -26,7 +27,7 @@ export const configDefinition = {
     return { version: state.version + (ok ? 1 : 0), pending: state.pending.filter(p => p !== id) };
   },
   wire: {
-    viewSchema: schema(v => isMap(v) && Number.isSafeInteger(v.version), 'capabilityTeamConfig 视图'),
+    viewSchema: schema(v => isMap(v) && Number.isSafeInteger(v.version), modelText('config-projection.049')),
     view: state => ({ version: state.version }),
   },
 };

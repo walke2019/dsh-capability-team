@@ -41,7 +41,7 @@ test('5 session never embeds/syncs/revokes; parent/child isolation; all redacted
   await f.service.write(who, { kind: 'note', text: 'private-test-secret reusable lesson', scope: 'project' });
   const results = await f.service.search(who, { query: 'reusable lesson' });
   assert.doesNotMatch(JSON.stringify(results), /private-test-secret/);
-  assert.match(JSON.stringify(results), /已隐去凭据/);
+  assert.match(JSON.stringify(results), /Credentials redacted/);
 });
 test('6 strict scopes exclude role, respect k/JSON budget and explicit none', async t => {
   const f = await fixture(t);

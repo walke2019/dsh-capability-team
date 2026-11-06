@@ -53,6 +53,7 @@
   },
   "files": [
     "brand.js",
+    "i18n.js",
     "roles.js",
     "lead-route.js",
     "config.js",

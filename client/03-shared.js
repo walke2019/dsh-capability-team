@@ -23,7 +23,7 @@
     const baseName = name => String(name ?? '').replace(/-r\d+$/, '');
     const firstLine = text => { const s = String(text ?? '').trim(); const i = s.indexOf('\n'); return i === -1 ? s : s.slice(0, i); };
     const parse = raw => { if (typeof raw !== 'string' || !raw) return undefined; try { const v = JSON.parse(raw); return v && typeof v === 'object' ? v : undefined; } catch { return undefined; } };
-    const cleanError = text => String(text ?? '').replace(/^(?:Error|错误)[:：]\s*/, '');
+    const cleanError = text => String(text ?? '').replace(/^(?:Error|\u9519\u8bef)[:：]\s*/, '');
     /** Durable result blocks flatten like the host's generic row: text parts joined, others as JSON. */
     function resultText(block) {
       const parts = (block.content ?? []).map(item => item.type === 'text' ? item.text : JSON.stringify(item, null, 2));

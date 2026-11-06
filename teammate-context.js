@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Keep a teammate's fixed prompt small. Measured: before any work a teammate carried ~110k characters
 // (a 326-entry skill catalog of 56k, 57 tool schemas of 40k, system and runtime context), about 55k tokens.
 // 1. Lead-only plugin tools are registered on the lead's agent only, teammate-only tools on teammates only.
@@ -24,7 +25,7 @@ export function scopeTools(ctx) {
   // preset is recomposed without agent/created or agent/disposed), so each one keeps its disposer and every call
   // re-checks the preset: these tools must never act outside the capability-team preset.
   const gated = (def, agent) => ({ ...def, async execute(args, exec) {
-    if (!ownsCapabilityTeam(ctx, exec?.agent ?? agent)) throw new Error('该工具仅限能力协作团队预设使用');
+    if (!ownsCapabilityTeam(ctx, exec?.agent ?? agent)) throw new Error(modelText('teammate-context.496'));
     return def.execute(args, exec);
   } });
   const uninstall = agent => {
@@ -95,7 +96,7 @@ export function validateSkillsPolicy(value, label) {
   if (value === undefined) return undefined;
   if (['compact', 'full', 'none'].includes(value)) return value;
   if (Array.isArray(value) && value.length <= 200 && value.every(v => typeof v === 'string' && /^[\w.:@/-]+\*?$/.test(v))) return [...new Set(value)];
-  throw new Error(`${label} 的 skills 须为 compact / full / none 或技能名列表（可用 * 结尾表示前缀）`);
+  throw new Error(modelText('teammate-context.497', { 0: label }));
 }
 /**
  * Shorten the skill catalog for teammates. Registered with `prepend` so it is the outermost agent/pre-step

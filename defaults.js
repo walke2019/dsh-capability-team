@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Default matching rules: classify whatever chat models the user's DSH channels expose
 // (official APIs, OpenAI-compatible gateways, self-hosted relays) into capability tiers,
 // then fill every capability that has no explicit route with a primary and same-tier backups.
@@ -104,9 +105,9 @@ const down = tier => TIER_ORDER[Math.max(0, TIER_ORDER.indexOf(tier) - 1)];
  * refused here: they are merely left ungraded, and a user may pick them explicitly.
  */
 export function unroutableReason(modelId) {
-  if (FREE.test(String(modelId).toLowerCase())) return '免费或试用变体';
+  if (FREE.test(String(modelId).toLowerCase())) return modelText('defaults.160');
   const norm = normalizeModelId(modelId);
-  if (NON_CHAT.test(norm) || VENDOR_RULES.find(r => r.match.test(norm))?.exclude?.test(norm)) return '非聊天或不支持工具调用的模型';
+  if (NON_CHAT.test(norm) || VENDOR_RULES.find(r => r.match.test(norm))?.exclude?.test(norm)) return modelText('defaults.161');
   return undefined;
 }
 /** Classify one id on its own; generation (legacy) is decided against the whole catalog in autoMatch. */
@@ -203,17 +204,17 @@ export function autoMatch(entries, capabilities, options = {}) {
   const routes = {}; const report = [];
   for (const [id, cap] of Object.entries(capabilities)) {
     const start = TIER_ORDER.indexOf(cap.tier);
-    if (start < 0) { report.push({ capability: id, status: 'unassigned', reason: `档位 ${cap.tier} 不是标准档位，需手动指定模型` }); continue; }
+    if (start < 0) { report.push({ capability: id, status: 'unassigned', reason: modelText('defaults.162', { 0: cap.tier }) }); continue; }
     const has = t => eligible.some(c => c.tier === t);
     // Never fill a required capability with a lower tier just to make the roster look ready.
     const tier = TIER_ORDER.slice(start).find(has);
-    if (!tier) { report.push({ capability: id, status: 'unassigned', reason: `DSH目录中没有 ${cap.tier} 档或更高档模型；不降档，请补充渠道或显式调整能力配置` }); continue; }
+    if (!tier) { report.push({ capability: id, status: 'unassigned', reason: modelText('defaults.163', { 0: cap.tier }) }); continue; }
     const pool = eligible.filter(c => c.tier === tier).sort(ranker(cap.prefer ?? [], providerOrder));
     const [primary] = pool;
     const fallbacks = pickFallbacks(pool, primary);
     const delta = TIER_ORDER.indexOf(tier) - start;
     const status = delta === 0 ? 'matched' : delta > 0 ? 'upgraded' : 'below-tier';
-    const reason = { matched: undefined, upgraded: `${cap.tier} 档无可用模型，改用更高的 ${tier} 档`, 'below-tier': `目录中没有 ${cap.tier} 档或更高档模型，暂用最强的 ${tier} 档，建议补充渠道` }[status];
+    const reason = { matched: undefined, upgraded: modelText('defaults.164', { 0: cap.tier, 1: tier }), 'below-tier': modelText('defaults.165', { 0: cap.tier, 1: tier }) }[status];
     routes[id] = { provider: primary.provider, model: primary.model, tier, fallbacks };
     report.push({ capability: id, status, tier, primary: `${primary.provider}/${primary.model}`, fallbacks: fallbacks.map(f => `${f.provider}/${f.model}`), ...(reason ? { reason } : {}) });
   }

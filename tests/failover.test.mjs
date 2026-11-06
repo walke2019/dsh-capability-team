@@ -66,9 +66,9 @@ test('未注册渠道的备选被跳过', async () => {
   assert.equal(f.route(agent, 1, 1, role).model, 'claude-opus-4-8');
 });
 test('备选必须同档位且不重复，策略可配置', () => {
-  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'provider-a', model: 'gpt-6-luna' }] } } }, fixed), /同一档位/);
-  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'win', model: 'gpt-6.1-sol' }] } } }, fixed), /重复/);
-  assert.throws(() => effectiveConfig({ failover: { retries: 99 } }, fixed), /追加重试/);
+  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'provider-a', model: 'gpt-6-luna' }] } } }, fixed), /not tier/);
+  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'win', model: 'gpt-6.1-sol' }] } } }, fixed), /[Dd]uplicate/);
+  assert.throws(() => effectiveConfig({ failover: { retries: 99 } }, fixed), /Additional retries/);
   assert.equal(effectiveConfig({ failover: { retries: 4, cooldownMs: 30000 } }, fixed).failover.retries, 4);
 });
 test('DSH自带重试优先，之后由容灾层接管并改写下一次请求', async () => {

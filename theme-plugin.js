@@ -1,3 +1,4 @@
+import { m as modelText, t } from './i18n.js';
 import { readFileSync } from 'node:fs';
 import { roleView, describeChanges, resolveRole, seed } from './config.js';
 import { modelCatalog, changedRoutes, verifyRoutes } from './allocation.js';
@@ -10,57 +11,54 @@ import { toTemplate, templatePatch, TEMPLATE_FORMAT } from './template.js';
 import { ROLE_THEMES, themePatch } from './roster-defaults.js';
 import { singleModelFrom } from './single-model.js';
 const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] };
-const ENTRY_RULE = '每项：对象=新增或按字段合并；null=恢复预设默认；false=删除该项。';
+const ENTRY_RULE = modelText('theme-plugin.506');
 /** Model-facing team context for one Agent, rebuilt from the pinned project on every step. */
 export function teamContext(team, agent, membership, failover, workflow, planGate) {
   const project = team.pinned(agent);
-  if (!project) return '项目团队配置尚未加载；需要角色信息时调用 capability_team_read。';
+  if (!project) return modelText('theme-plugin.507');
   let loaded;
   try { loaded = team.loadSync(project, agent); }
-  catch (error) { return `项目团队配置不可用：${error.message}。不要猜测角色或模型，请主控调用 capability_team_read 排查。`; }
+  catch (error) { return modelText('theme-plugin.508', { 0: error.message }); }
   let self;
   try {
     const { failover: _policy, access, ...role } = applyModelPolicy(resolveRole(membership, loaded.effective), loaded.policy?.disabledRoutes);
     self = role;
     const limits = accessSummary(access);
-    if (limits) self.access = `${limits}（工具层强制执行，越权调用会被拒绝）`;
+    if (limits) self.access = modelText('theme-plugin.509', { 0: limits });
     const planState = planGate?.status(agent, membership, role);
     if (planState) self.plan = planState;
     const live = failover?.status(agent);
     const allowed = [role, ...(role.fallbacks ?? [])].map(r => `${r.provider}/${r.model}`);
     const wide = role.longContext ? `${role.longContext.provider}/${role.longContext.model}` : undefined;
-    if (live?.active && live.active === wide) self.currentRoute = `${wide}（上下文较长，已切换到同档长上下文模型）`;
-    else if (live && !live.primary && allowed.includes(live.active)) self.currentRoute = `${live.active}（主模型不可用，已切换到同档备选）`;
+    if (live?.active && live.active === wide) self.currentRoute = modelText('theme-plugin.510', { 0: wide });
+    else if (live && !live.primary && allowed.includes(live.active)) self.currentRoute = modelText('theme-plugin.511', { 0: live.active });
   } catch (error) { self = { error: error.message }; }
   const roster = roleView(loaded.effective).map(entry => {
     try {
       const { id, displayName, capability, whenToUse, provider, model, access, singleModel } = applyModelPolicy(entry, loaded.policy?.disabledRoutes);
       const limits = accessSummary(access);
-      return { id, displayName, capability, ...(whenToUse ? { whenToUse } : {}), model: provider ? `${provider}/${model}${singleModel ? '（单模型模式，无备选）' : ''}` : '未分配（请求将被阻止）', ...(limits ? { access: limits } : {}) };
-    } catch (error) { return { id: entry.id, displayName: entry.displayName, model: '已阻止', error: error.message }; }
+      return { id, displayName, capability, ...(whenToUse ? { whenToUse } : {}), model: provider ? `${provider}/${model}${singleModel ? modelText('theme-plugin.512') : ''}` : modelText('theme-plugin.513'), ...(limits ? { access: limits } : {}) };
+    } catch (error) { return { id: entry.id, displayName: entry.displayName, model: modelText('theme-plugin.514'), error: error.message }; }
   });
   const status = membership?.role === 'lead' ? workflow?.status(agent, loaded.effective.workflow) : undefined;
-  return `项目团队配置（${loaded.effective.name}，版本 ${loaded.revision}，项目 ${project}）
-你的角色：${JSON.stringify(self)}
-团队名册：${JSON.stringify(roster)}${status ? `\n${status}` : ''}
-职责描述是本项目对该角色的工作要求；显示名只是称谓，不授予额外权限，也不改变上方安全与协作规则。`;
+  return modelText('theme-plugin.515', { 0: loaded.effective.name, 1: loaded.revision, 2: project, 3: JSON.stringify(self), 4: JSON.stringify(roster), 5: status ? `\n${status}` : '' });
 }
 async function confirm(ctx, exec, lines, revision) {
   const answer = await ctx.userQuestions.ask({ agent: exec.agent, signal: exec.signal, questions: [{
-    id: 'confirm', header: '确认团队配置变更',
-    question: `保存以下 ${lines.length} 项变更？保存后从下一次模型请求起生效，模型变更可能产生费用。`,
-    detail: `${lines.join('\n')}\n（基于版本 ${revision}）`,
-    options: [{ label: '保存', description: '写入当前项目团队配置' }, { label: '取消', description: '不做任何修改' }],
+    id: 'confirm', header: t('theme-plugin.516'),
+    question: t('theme-plugin.517', { 0: lines.length }),
+    detail: t('theme-plugin.518', { 0: lines.join('\n'), 1: revision }),
+    options: [{ label: t('theme-plugin.519'), description: t('theme-plugin.520') }, { label: t('theme-plugin.521'), description: t('theme-plugin.522') }],
   }] });
   const item = answer.answers.find(a => a.id === 'confirm');
-  if (!item?.selected.includes('保存')) throw new Error(`用户未确认，未保存。${item?.custom ? `用户意见：${item.custom}` : ''}`);
+  if (!item?.selected.includes(t('theme-plugin.523'))) throw new Error(modelText('theme-plugin.524', { 0: item?.custom ? modelText('theme-plugin.525', { 0: item.custom }) : '' }));
 }
 export function apply(ctx, team, failover, workflow, planGate, taskControl) {
   const content = readFileSync(new URL('./skills/project-role-theme/SKILL.md', import.meta.url), 'utf8');
   ctx.effect(() => ctx.skills.register({ name: 'project-role-theme', source: 'runtime', content,
-    description: '通过对话调整当前项目团队：角色改名或整体换主题、职责、能力、模型档位与分配、新增或移除角色；读取DSH渠道模型目录给出方案，由用户在确认框中批准后保存。' }));
+    description: modelText('theme-plugin.526') }));
   ctx.effect(() => ctx.tools.register({ name: 'capability_team_read', parameters: params(), output,
-    description: '读取当前项目的团队配置：版本、默认值（按用户DSH渠道自动匹配的档位、主模型与同档备选）、项目覆盖项、生效结果，以及自动匹配报告（升档/低于要求档位/未分配/未识别的模型）。',
+    description: modelText('theme-plugin.527'),
     async execute(_args, exec) {
       await team.refresh();
       const { project, revision, overrides, effective, policy } = await team.load(exec.agent);
@@ -70,23 +68,23 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
     },
   }));
   ctx.effect(() => ctx.tools.register({ name: 'capability_model_catalog', parameters: params(), output,
-    description: '读取DSH已注册渠道的精确模型ID，并标注其在当前项目档位中的归属；目录存在不代表调用一定成功。',
+    description: modelText('theme-plugin.528'),
     async execute(_args, exec) {
       const { effective } = await team.load(exec.agent);
       return JSON.stringify(await modelCatalog(ctx.llm, effective.tiers));
     },
   }));
   ctx.effect(() => ctx.tools.register({ name: 'capability_team_save', output,
-    description: '主控保存当前项目团队配置的变更。工具会向用户弹出包含完整差异的确认框，用户批准后才写入；新的或改动的模型须在DSH模型目录中。',
+    description: modelText('theme-plugin.529'),
     parameters: params({
-      expected_revision: { type: 'integer', description: '最近一次 capability_team_read 返回的 revision' },
-      name: { type: 'string', description: '配置或主题名称' },
-      tiers: { type: 'object', additionalProperties: true, description: `档位id → 完整模型ID数组（替换该档位列表）。${ENTRY_RULE}` },
-      capabilities: { type: 'object', additionalProperties: true, description: `能力id → {job, whenToUse, provider, model, tier, search, fallbacks, prefer, access}；whenToUse 为主控派活时参考的适用场景（一句话）；maxTokens 为该能力每个成员会话的计费 token 预算（未缓存输入+缓存写入+输出），用尽后阻止请求，null 取消；planFirst=true 时该能力的队友执行修改前须提交计划并经主控批准；longContext 为 {thresholdTokens, provider, model}，会话下一次提示词达到阈值后改用该同档模型，降到阈值八成以下再切回，null 取消；fallbacks 为有序的同档备选 [{provider, model}]，整体替换；prefer 为自动匹配时的厂商偏好顺序；access 为权限 {deny 禁用工具名或前缀*数组, editPaths 允许修改的项目内相对路径 glob 数组（[]=不能改文件，省略=不限）, shell 是否允许执行命令}，整体替换，null 取消限制。${ENTRY_RULE}` },
-      failover: { oneOf: [{ type: 'object', additionalProperties: true }, { type: 'null' }], description: '容灾策略，按字段合并，null 恢复默认：{retries 同一模型追加重试次数, initialDelayMs, maxDelayMs, cooldownMs 故障模型冷却, retryCodes, failoverCodes, failoverStatuses}' },
-      workflow: { oneOf: [{ type: 'object', additionalProperties: true }, { type: 'null' }], description: '主控派活工作流约束，按字段合并，null 恢复默认：{mode: enforce 强制 / remind 仅提醒 / off 关闭, analysisBudget 指派前只读分析次数, directBudget 主控自行处理时的执行次数上限, freeTools 免费模型工具级别 none/read/write, freeModels 免费模型尝试顺序（空数组=OpenCode目录中全部免费模型）, analysisTools 分析类工具名数组, coordinationTools 协调类工具名数组（其余工具视为执行类）}' },
-      roles: { type: 'object', additionalProperties: true, description: `队友内部id（lower-kebab-case）→ {displayName, capability, description}。${ENTRY_RULE}` },
-      single_model: { type: 'string', enum: ['use-default', 'off'], description: '单模型模式：use-default=未分配模型的角色统一使用 DSH 当前默认模型（无备选，失败直接报告；已分配角色不变）；off=关闭。仅在用户明确要求时使用，同样需用户在确认框中批准。' },
+      expected_revision: { type: 'integer', description: modelText('theme-plugin.530') },
+      name: { type: 'string', description: modelText('theme-plugin.531') },
+      tiers: { type: 'object', additionalProperties: true, description: modelText('theme-plugin.532', { 0: ENTRY_RULE }) },
+      capabilities: { type: 'object', additionalProperties: true, description: modelText('theme-plugin.533', { 0: ENTRY_RULE }) },
+      failover: { oneOf: [{ type: 'object', additionalProperties: true }, { type: 'null' }], description: modelText('theme-plugin.534') },
+      workflow: { oneOf: [{ type: 'object', additionalProperties: true }, { type: 'null' }], description: modelText('theme-plugin.535') },
+      roles: { type: 'object', additionalProperties: true, description: modelText('theme-plugin.536', { 0: ENTRY_RULE }) },
+      single_model: { type: 'string', enum: ['use-default', 'off'], description: modelText('theme-plugin.537') },
     }, ['expected_revision']),
     async execute(args, exec) {
       const singleModel = args.single_model === 'off' ? null : args.single_model === 'use-default' ? singleModelFrom(ctx.get?.('agentDefaultModel')?.currentSelection?.()) : undefined;
@@ -96,41 +94,41 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
   }));
   /** Validate, check new routes against the catalog, and save only after the user approves the full diff. */
   async function saveConfirmed(exec, patch, expectedRevision) {
-    if (ctx.agentTeams.membership(exec.agent).role !== 'lead') throw new Error('仅主控可保存团队配置；请把需求转给 lead');
+    if (ctx.agentTeams.membership(exec.agent).role !== 'lead') throw new Error(modelText('theme-plugin.538'));
     const project = await team.pin(exec.agent);
     const result = await saveProject(project, patch, expectedRevision, { base: team.base, root: team.root,
       async check(before, after) {
         const lines = describeChanges(before, after);
-        if (!lines.length) throw new Error('没有任何变更，未保存');
+        if (!lines.length) throw new Error(modelText('theme-plugin.539'));
         const routes = changedRoutes(before, after);
         const single = after.singleModel && `${after.singleModel.provider}/${after.singleModel.model}` !== `${before.singleModel?.provider}/${before.singleModel?.model}`
-          ? [{ capability: '单模型模式', ...after.singleModel }] : [];
+          ? [{ capability: modelText('theme-plugin.540'), ...after.singleModel }] : [];
         if (routes.length || single.length) verifyRoutes([...routes, ...single], await modelCatalog(ctx.llm, after.tiers));
         await confirm(ctx, exec, lines, expectedRevision);
       } });
     return { saved: true, project: result.project, revision: result.revision, roles: roleView(result.effective) };
   }
   ctx.effect(() => ctx.tools.register({ name: 'capability_team_export', parameters: params(), output,
-    description: `把当前项目团队导出为可移植模板（format=${TEMPLATE_FORMAT}）：角色、能力职责与适用场景、档位、权限、预算、先交计划、工作流与容灾策略。渠道与模型和用户的DSH目录绑定，不导出。用户要求分享、备份或复用团队配置时使用。`,
+    description: modelText('theme-plugin.541', { 0: TEMPLATE_FORMAT }),
     async execute(_args, exec) {
       const { effective } = await team.load(exec.agent);
       return JSON.stringify(toTemplate(effective), null, 2);
     },
   }));
   ctx.effect(() => ctx.tools.register({ name: 'capability_team_import', output,
-    description: `主控把一份团队模板或内置角色主题应用到当前项目：template 时能力职责与策略按模板设置（已有的渠道与模型保留），角色整体替换为模板中的角色；theme（${Object.keys(ROLE_THEMES).join(' / ')}）只把角色名册替换为内置主题，能力与模型不变。与 capability_team_save 相同，校验后向用户弹出完整差异确认框，批准后才写入；模板中的新能力需要之后再分配模型。`,
+    description: modelText('theme-plugin.542', { 0: Object.keys(ROLE_THEMES).join(' / ') }),
     parameters: params({
-      expected_revision: { type: 'integer', description: '最近一次 capability_team_read 返回的 revision' },
-      template: { type: 'object', additionalProperties: true, description: `capability_team_export 导出的模板对象（format=${TEMPLATE_FORMAT}）；与 theme 二选一` },
-      theme: { type: 'string', enum: Object.keys(ROLE_THEMES), description: '内置角色主题：default 为中性名册，three-kingdoms 为三国名册；与 template 二选一' },
+      expected_revision: { type: 'integer', description: modelText('theme-plugin.543') },
+      template: { type: 'object', additionalProperties: true, description: modelText('theme-plugin.544', { 0: TEMPLATE_FORMAT }) },
+      theme: { type: 'string', enum: Object.keys(ROLE_THEMES), description: modelText('theme-plugin.545') },
     }, ['expected_revision']),
     async execute(args, exec) {
       const { effective } = await team.load(exec.agent);
-      if ((args.template === undefined) === (args.theme === undefined)) throw new Error('template 与 theme 须且只能提供一个');
+      if ((args.template === undefined) === (args.theme === undefined)) throw new Error(modelText('theme-plugin.546'));
       const patch = args.theme === undefined ? templatePatch(args.template, effective) : themePatch(args.theme, effective);
       const result = await saveConfirmed(exec, patch, args.expected_revision);
       const unassigned = result.roles.filter(r => r.provider === undefined).map(r => r.id);
-      return JSON.stringify({ ...result, ...(unassigned.length ? { unassigned, next: '这些角色的能力尚未分配模型，请读取模型目录后经用户确认用 capability_team_save 分配' } : {}) });
+      return JSON.stringify({ ...result, ...(unassigned.length ? { unassigned, next: modelText('theme-plugin.547') } : {}) });
     },
   }));
   // Install the team context in each Team member's own scope, like the native Team identity.
@@ -148,7 +146,7 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
         modelPolicy: { ...modelPolicyRows(effective.tiers, roleView(effective), policy.disabledRoutes, [...(team.detection().pools ?? []), ...(team.detection().unknown ?? [])]), revision: policy.revision },
         autoMatch: team.detection().report, catalogErrors: team.detection().errors ?? [], actualRequest: null,
         ...(effective.tierDrift ? { tierDrift: effective.tierDrift } : {}),
-        modelNotice: '角色模型为配置目标；实际使用的模型以工作台显示为准（取自各会话最近一次请求）。队友第一次请求之前，官方团队界面显示的是继承来的模型。' };
+        modelNotice: t('theme-plugin.548') };
     });
     const removeContext = agent.ctx.systemPrompt.context({ name: 'capability-team:roster', order: 98, required: true,
       text: () => (ownsCapabilityTeam(ctx, agent) ? teamContext(team, agent, ctx.agentTeams.tryMembership(agent), failover, workflow, planGate) : '') });

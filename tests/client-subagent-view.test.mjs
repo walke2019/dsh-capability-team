@@ -147,7 +147,7 @@ test('语言切换按键与 localStorage 交互', () => {
   assert.ok(toggleBtn, 'Language toggle button must be present in header');
   // No `t` is injected by this harness call, so Overview falls back to its own real dictionary (item 3) instead
   // of echoing the raw key; the default locale is English, so the toggle's own label reads the target "中文".
-  assert.ok(JSON.stringify(toggleBtn).includes('中文'));
+  assert.ok(JSON.stringify(toggleBtn).includes('Chinese'));
 
   toggleBtn.props.onClick();
   // 默认从 en 切到 zh
@@ -169,7 +169,7 @@ test('item 3（真实双语渲染）：不注入 t 时默认渲染英文，切�
   assert.ok(title1);
   assert.deepEqual(title1.children, ['Team overview'], '默认必须渲染英文真实译文，不是原始 key 或中文');
   const toggleBtn1 = h.find(tree, n => n.props?.className?.includes('ctm-lang-toggle'));
-  assert.deepEqual(toggleBtn1.children, ['中文'], '英文状态下，切换按钮文案应为目标语言"中文"');
+  assert.deepEqual(toggleBtn1.children, ['Chinese'], '英文状态下，切换按钮文案应为目标语言"中文"');
 
   // Toggle to Chinese.
   toggleBtn1.props.onClick();
@@ -207,7 +207,7 @@ test('宿主传入 t 时，点按钮仍能切换语言并写入 localStorage', (
   const title2 = h.find(tree, n => n.props?.className === 'ctm-ov-title');
   assert.deepEqual(title2.children, ['Team overview'], '点击切换后即使宿主传入了 t，也必须使用插件自有词典渲染英文');
   const toggleBtn2 = h.find(tree, n => n.props?.className?.includes('ctm-lang-toggle'));
-  assert.deepEqual(toggleBtn2.children, ['中文'], '英文状态下切换按钮文案应为"中文"');
+  assert.deepEqual(toggleBtn2.children, ['Chinese'], '英文状态下切换按钮文案应为"中文"');
 
   // 3. 再次点击切回中文并持久化
   toggleBtn2.props.onClick();

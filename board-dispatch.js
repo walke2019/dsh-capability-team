@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Dispatch on DSH's shared task board, the way the official team works: every assignment becomes board tasks
 // (subject, description, write scopes, dependencies), ready tasks are reassigned to their member as soon as it
 // exists, members follow list → get → claim → work → complete, and a rotation successor inherits the open
@@ -7,13 +8,13 @@ import { baseName } from './session-rotation.js';
 import { restrictiveToolName } from './tool-names.js';
 const MAX_TASKS = 12;
 const text = (v, max, label) => {
-  if (typeof v !== 'string' || !v.trim() || v.length > max) throw new Error(`${label}须为1–${max}字符`);
+  if (typeof v !== 'string' || !v.trim() || v.length > max) throw new Error(modelText('board-dispatch.029', { 0: label, 1: max }));
   return v.trim();
 };
 /** Workspace-relative scope like DSH's: no leading slash, no "." or ".." segments. */
 export function normalizeScope(value) {
   const s = String(value ?? '').replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/+$/, '');
-  if (!s || s.startsWith('/') || /^[a-z]:/i.test(s) || s.split('/').some(seg => !seg || seg === '.' || seg === '..')) throw new Error(`写入范围 ${JSON.stringify(value)} 须为项目内相对路径`);
+  if (!s || s.startsWith('/') || /^[a-z]:/i.test(s) || s.split('/').some(seg => !seg || seg === '.' || seg === '..')) throw new Error(modelText('board-dispatch.030', { 0: JSON.stringify(value) }));
   return s;
 }
 /** A path is inside a scope when it is the scope or below it (same rule as DSH's overlap check). */
@@ -33,19 +34,19 @@ export function planTasks(assignments, rawTasksByRole) {
   for (const a of assignments) {
     const raw = arrayArg(rawTasksByRole[a.role]);
     const list = raw === undefined ? [{ subject: a.task.split('\n')[0].slice(0, 120), description: a.task }] : raw;
-    if (!Array.isArray(list) || !list.length || list.length > MAX_TASKS) throw new Error(`角色 ${a.role} 的 tasks 须为 1–${MAX_TASKS} 项的数组`);
+    if (!Array.isArray(list) || !list.length || list.length > MAX_TASKS) throw new Error(modelText('board-dispatch.031', { 0: a.role, 1: MAX_TASKS }));
     for (const [i, t] of list.entries()) {
-      const label = `角色 ${a.role} 的第${i + 1}个子任务`;
-      const key = t.key === undefined ? `${a.role}#${i + 1}` : text(String(t.key), 64, `${label}的 key`);
-      if (keys.has(key)) throw new Error(`子任务 key ${key} 重复`);
+      const label = modelText('board-dispatch.032', { 0: a.role, 1: i + 1 });
+      const key = t.key === undefined ? `${a.role}#${i + 1}` : text(String(t.key), 64, modelText('board-dispatch.033', { 0: label }));
+      if (keys.has(key)) throw new Error(modelText('board-dispatch.034', { 0: key }));
       const blockedBy = (arrayArg(t.blocked_by ?? t.blockedBy) ?? []).map(String);
-      if (!Array.isArray(blockedBy)) throw new Error(`${label}的 blocked_by 须为数组`);
-      for (const b of blockedBy) if (!keys.has(b)) throw new Error(`${label}依赖的 ${b} 必须是前面已列出的子任务 key`);
+      if (!Array.isArray(blockedBy)) throw new Error(modelText('board-dispatch.035', { 0: label }));
+      for (const b of blockedBy) if (!keys.has(b)) throw new Error(modelText('board-dispatch.036', { 0: label, 1: b }));
       const scopes = arrayArg(t.write_scopes ?? t.writeScopes) ?? [];
-      if (!Array.isArray(scopes) || scopes.length > 20) throw new Error(`${label}的 write_scopes 须为不超过20项的数组`);
+      if (!Array.isArray(scopes) || scopes.length > 20) throw new Error(modelText('board-dispatch.037', { 0: label }));
       keys.add(key);
-      out.push({ key, role: a.role, displayName: a.displayName, subject: text(t.subject, 200, `${label}的标题`),
-        description: text(t.description ?? a.task, 16000, `${label}的说明`), writeScopes: [...new Set(scopes.map(normalizeScope))], blockedBy });
+      out.push({ key, role: a.role, displayName: a.displayName, subject: text(t.subject, 200, modelText('board-dispatch.038', { 0: label })),
+        description: text(t.description ?? a.task, 16000, modelText('board-dispatch.039', { 0: label })), writeScopes: [...new Set(scopes.map(normalizeScope))], blockedBy });
     }
   }
   return out;
@@ -83,7 +84,7 @@ export function createBoardDispatch(ctx, team) {
       const tasks = planTasks(plan.assignments, rawTasksByRole);
       const ids = new Map(); const byRole = {};
       for (const t of tasks) {
-        const view = await teams().createTask(lead, { subject: t.subject, description: `${t.description}\n\n指派给：${t.displayName ?? t.role}（${t.role}）`,
+        const view = await teams().createTask(lead, { subject: t.subject, description: modelText('board-dispatch.040', { 0: t.description, 1: t.displayName ?? t.role, 2: t.role }),
           blockedBy: t.blockedBy.map(k => ids.get(k)), writeScopes: t.writeScopes });
         ids.set(t.key, view.id);
         boardOf(lead).set(view.id, { role: t.role, key: t.key });
@@ -124,7 +125,7 @@ export function createBoardDispatch(ctx, team) {
       const rel = relative(project, resolve(ctx.workingDirectory?.get?.(exec.agent.session) ?? project, raw)).split('\\').join('/');
       if (!rel || rel.startsWith('../') || isAbsolute(rel)) return undefined;
       if (scopes.some(s => inScope(rel, s))) return undefined;
-      return `${rel} 不在你认领的看板任务（${held.map(t => t.id).join('、')}）的写入范围内：${[...new Set(scopes)].join('、')}。需要改这个文件时，先 send_message 请 lead 调整任务范围或另建任务。`;
+      return modelText('board-dispatch.041', { 0: rel, 1: held.map(t => t.id).join('、'), 2: [...new Set(scopes)].join('、') });
     },
     /** Runtime context for a teammate: its board tasks and the DSH board workflow. Empty when it has none. */
     context(agent) {
@@ -132,8 +133,8 @@ export function createBoardDispatch(ctx, team) {
       if (m?.role !== 'teammate' || !m.root) return '';
       const mine = listTasks(m.root).filter(t => t.status !== 'completed' && (t.ownerName === m.name || (!t.ownerName && boardOf(m.root).get(t.id)?.role === baseName(m.name))));
       if (!mine.length) return '';
-      const line = t => `${t.id}「${t.subject}」${t.ownerName === m.name ? '（已分给你，进行中）' : t.ready ? '（待认领）' : `（等待 ${t.blockedBy.join('、')}）`}${t.writeScopes?.length ? ` 写入范围：${t.writeScopes.join('、')}` : ''}`;
-      return `【看板任务】${mine.map(line).join('；')}。按 DSH 看板流程：team_task_get 读最新版本 → 待认领的用 team_task_update claim → 执行 → complete；只改写入范围内的文件，做完一项再认领下一项。`;
+      const line = t => `${t.id}「${t.subject}」${t.ownerName === m.name ? modelText('board-dispatch.042') : t.ready ? modelText('board-dispatch.043') : modelText('board-dispatch.044', { 0: t.blockedBy.join('、') })}${t.writeScopes?.length ? modelText('board-dispatch.045', { 0: t.writeScopes.join('、') }) : ''}`;
+      return modelText('board-dispatch.046', { 0: mine.map(line).join('；') });
     },
   };
   return api;

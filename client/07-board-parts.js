@@ -62,23 +62,23 @@
       const p = provider.toLowerCase();
       const m = rawModel.toLowerCase();
 
-      // Free / OpenCode channels -> "布衣"
+      // Free / OpenCode channels use the cloth grade
       if (p === 'opencode' || m.includes('free') || p.includes('free') || m.startsWith('free-')) {
-        return { alias: rawModel, grade: 'cloth', gradeLabel: t ? t('model.grade.cloth') : '布衣' };
+        return { alias: rawModel, grade: 'cloth', gradeLabel: t ? t('model.grade.cloth') : en['model.grade.cloth'] };
       }
-      // claude-opus-* -> 传说金
+      // claude-opus-* uses the legendary grade
       if (m.includes('claude-opus') || m.includes('claude-3-opus') || m.includes('opus')) {
-        return { alias: rawModel, grade: 'legendary', gradeLabel: t ? t('model.grade.legendary') : '传说金' };
+        return { alias: rawModel, grade: 'legendary', gradeLabel: t ? t('model.grade.legendary') : en['model.grade.legendary'] };
       }
-      // gpt-6.1-sol -> 史诗紫
+      // gpt-6.1-sol uses the epic grade
       if (m.includes('gpt-6.1-sol') || m.includes('-sol')) {
-        return { alias: rawModel, grade: 'epic', gradeLabel: t ? t('model.grade.epic') : '史诗紫' };
+        return { alias: rawModel, grade: 'epic', gradeLabel: t ? t('model.grade.epic') : en['model.grade.epic'] };
       }
-      // gemini-*-flash -> 稀有蓝
+      // gemini-*-flash uses the rare grade
       if (m.includes('gemini') && m.includes('flash')) {
-        return { alias: rawModel, grade: 'rare', gradeLabel: t ? t('model.grade.rare') : '稀有蓝' };
+        return { alias: rawModel, grade: 'rare', gradeLabel: t ? t('model.grade.rare') : en['model.grade.rare'] };
       }
-      // 未知模型回退显示原名，色阶普通
+      // Unknown models retain their original name and default grade
       return { alias: route, grade: 'default', gradeLabel: null };
     }
 
@@ -89,7 +89,7 @@
       const memberId = card.member?.id;
       const act = memberId ? live?.projections?.(memberId)?.capabilityTeamActivity : undefined;
 
-      // 检查 capabilityTeamActivity 投影
+      // Inspect the capabilityTeamActivity projection
       if (act && typeof act === 'object') {
         if (act.schemaVersion !== 1) {
           return h('div', { className: 'ctm-bd-bubble' },
@@ -214,7 +214,7 @@
           h('div', { className: 'ctm-us-meter', 'data-tone': cpTone, role: 'presentation' },
             h('i', { style: { width: `${(cpRatio * 100).toFixed(1)}%` } })));
       } else {
-        // Missing data shows "未知" without false meters
+        // Missing data shows unknown without false meters
         cpNode = h('div', { className: 'ctm-bd-meter-row', key: 'pressure-unknown' },
           h('div', { className: 'ctm-bd-meter-labels' },
             h('span', null, t('live.contextPressure')),

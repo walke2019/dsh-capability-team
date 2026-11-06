@@ -37,9 +37,9 @@ test('脱敏：常见密钥格式与已知凭据值都被隐去，正文保留',
   ].join('\n');
   const out = redactSecrets(text, [secret, 'short']);
   for (const leak of ['sk-abc123', 'abcdefghijklmnop1234', 'ghp_', 'pa55word', 'supersecretvalue1', secret, 'AKIAB']) assert.ok(!out.includes(leak), leak);
-  assert.match(out, /Bearer \[已隐去凭据\]/);
-  assert.match(out, /https:\/\/\[已隐去凭据\]@example\.com/);
-  assert.match(out, /api_key=\[已隐去凭据\]/);
+  assert.match(out, /Bearer \[Credentials redacted\]/);
+  assert.match(out, /https:\/\/\[Credentials redacted\]@example\.com/);
+  assert.match(out, /api_key=\[Credentials redacted\]/);
   assert.ok(out.includes('调用') && out.includes('失败'), '正文保留');
   assert.equal(redactSecrets('普通的踩坑：Windows 路径用 path.join'), '普通的踩坑：Windows 路径用 path.join');
 });
@@ -79,8 +79,8 @@ test('OpenViking：批量提交为一个会话，带密钥头；失败保留队�
     'POST /api/v1/sessions', `POST /api/v1/sessions/${OV_SESSION_PREFIX}-42/messages`, `POST /api/v1/sessions/${OV_SESSION_PREFIX}-42/messages`, `POST /api/v1/sessions/${OV_SESSION_PREFIX}-42/commit`]);
   assert.equal(up.calls[0].headers['X-API-Key'], 'ov-test-key-0123456789');
   assert.equal(up.calls[0].headers['X-OpenViking-Account'], 'team');
-  assert.match(up.calls[1].body.content, /^【能力团队踩坑 · 项目 demo · 角色 backend】别整文件覆盖$/);
-  assert.match(up.calls[2].body.content, /决定/);
+  assert.match(up.calls[1].body.content, /^【能力团队Pitfall · Project demo · Role backend】别整文件覆盖$/);
+  assert.match(up.calls[2].body.content, /Decision/);
 });
 
 test('OpenViking：召回映射成记忆结果；服务器不可用时返回空并记录错误', async () => {
@@ -142,7 +142,7 @@ test('后端工厂：local 为空实现，openviking 走现有实现；未知 id
   assert.deepEqual(paths, ['openviking'], '队列路径按后端 id 区分');
   assert.equal(ov.enqueue({ kind: 'note', scope: { kind: 'project' }, text: '中性前缀' }, { project: 'demo' }), true);
   await ov.flush();
-  assert.equal(srv.calls[1].body.content, '【记忆 · 项目 demo】中性前缀', '默认不带调用方名称');
+  assert.equal(srv.calls[1].body.content, '【Memory · Project demo】中性前缀', '默认不带调用方名称');
   const lazy = createMemoryBackend({ lazy: true, settings: settings(), schedule: noTimer, queuePath: name => { paths.push(`lazy:${name}`); return null; } });
   assert.equal(paths.length, 1, 'lazy 时不提前创建');
   assert.equal(lazy.pending(), 0);
@@ -151,7 +151,7 @@ test('后端工厂：local 为空实现，openviking 走现有实现；未知 id
   const gm = createOpenViking({ settings: settings(), label: '全局记忆', fetcher: g.fetcher, schedule: noTimer });
   gm.enqueue({ kind: 'decision', scope: { kind: 'global' }, text: '统一用 path.join' }, {});
   await gm.flush();
-  assert.equal(g.calls[1].body.content, '【全局记忆决定】统一用 path.join');
+  assert.equal(g.calls[1].body.content, '【全局记忆Decision】统一用 path.join');
 });
 
 test('存储：另一进程追加的记忆会被重新读入，清理时不丢失', async () => {

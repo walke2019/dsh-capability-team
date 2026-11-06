@@ -37,7 +37,7 @@
         const before = snapshot.get(m.id)?.usage;
         const route = trustedRoute(values, before);
         const ownUsage = values?.capabilityTeamUsage;
-        // 预算与用量严格对齐后端契约：只读 capabilityTeamUsage / snapshot own usage，绝不读宿主 tokenUsage 避免 fork 偏差
+        // Follow the backend usage contract: read capabilityTeamUsage / snapshot own usage, never host tokenUsage (fork skew)
         const totals = ownUsage?.totals ?? before?.totals;
         const routes = (ownUsage?.routes?.length ? ownUsage.routes : before?.routes) ?? [];
         const coverage = ownUsage?.coverage ?? (before?.coverage ?? (totals ? 'complete' : 'unknown'));

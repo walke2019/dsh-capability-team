@@ -27,18 +27,18 @@ function harness(overrides = {}) {
 test('默认配置启用强制工作流，档位/工具清单可校验', () => {
   assert.equal(W.mode, 'enforce');
   assert.ok(W.coordinationTools.includes('spawn_teammate'));
-  assert.throws(() => effectiveConfig({ workflow: { mode: 'always' } }, base), /工作流模式/);
-  assert.throws(() => effectiveConfig({ workflow: { analysisTools: ['read'], coordinationTools: ['read'] } }, base), /不能同时/);
-  assert.throws(() => effectiveConfig({ workflow: { extra: 1 } }, base), /未知字段/);
+  assert.throws(() => effectiveConfig({ workflow: { mode: 'always' } }, base), /Workflow mode/);
+  assert.throws(() => effectiveConfig({ workflow: { analysisTools: ['read'], coordinationTools: ['read'] } }, base), /cannot be both/);
+  assert.throws(() => effectiveConfig({ workflow: { extra: 1 } }, base), /unknown fields/);
 });
 
 test('未制定计划时：少量只读分析可以，执行类工具被拒绝并引导调用 capability_dispatch_plan', () => {
   const h = harness();
   h.user();
   for (let i = 0; i < W.analysisBudget; i++) assert.equal(h.call(h.lead, 'read'), undefined);
-  assert.match(h.call(h.lead, 'read'), /只读分析已用满/);
+  assert.match(h.call(h.lead, 'read'), /read-only analysis budget exhausted/);
   assert.match(h.call(h.lead, 'pwsh'), /capability_dispatch_plan/);
-  assert.match(h.call(h.lead, 'spawn_teammate', { name: 'backend' }), /先调用 capability_dispatch_plan/);
+  assert.match(h.call(h.lead, 'spawn_teammate', { name: 'backend' }), /Call capability_dispatch_plan/);
   assert.equal(h.call(h.lead, 'list_agents'), undefined, '协调类工具不受限');
 });
 
@@ -53,13 +53,13 @@ test('delegate：只能创建计划内角色，主控不能亲自执行', async 
   h.user();
   const out = await h.plan({ analysis: '需要后端接口和测试', mode: 'delegate', assignments: [{ role: 'backend', task: '实现接口' }, { role: 'qa', task: '回归测试' }] });
   const result = JSON.parse(out);
-  assert.equal(result.decision, '指派队友');
+  assert.equal(result.decision, 'Delegate to teammates');
   assert.deepEqual(result.assignments.map(a => [a.displayName, a.role, a.task]), [['Backend', 'backend', '实现接口'], ['QA', 'qa', '回归测试']]);
   assert.ok(result.assignments.every(a => a.capability && a.model), '每项带能力与模型');
   assert.equal(h.call(h.lead, 'spawn_teammate', { name: 'backend' }), undefined);
-  assert.match(h.call(h.lead, 'spawn_teammate', { name: 'frontend' }), /不在本轮指派计划/);
-  assert.match(h.call(h.lead, 'pwsh'), /主控只负责分派/);
-  assert.match(h.call(h.lead, 'write'), /主控只负责分派/);
+  assert.match(h.call(h.lead, 'spawn_teammate', { name: 'frontend' }), /not assigned in this turn's plan/);
+  assert.match(h.call(h.lead, 'pwsh'), /Lead only dispatches/);
+  assert.match(h.call(h.lead, 'write'), /Lead only dispatches/);
   assert.equal(h.call(h.lead, 'read'), undefined, '验收时可只读查看');
   assert.match(h.wf.status(h.lead, W), /Backend\(backend\)、QA\(qa\)/);
 });
@@ -69,10 +69,10 @@ test('direct：有理由且执行次数有限，超出后要求改为指派', as
   h.user();
   await h.plan({ analysis: '查看版本号', mode: 'direct', reason: '单条命令即可' });
   for (let i = 0; i < W.directBudget; i++) assert.equal(h.call(h.lead, 'pwsh'), undefined);
-  assert.match(h.call(h.lead, 'pwsh'), /已达本轮上限/);
+  assert.match(h.call(h.lead, 'pwsh'), /reached this turn's direct execution limit/);
   // Replanning replaces the plan.
   await h.plan({ analysis: '扩大为排查', mode: 'delegate', assignments: [{ role: 'researcher', task: '排查' }] });
-  assert.match(h.call(h.lead, 'pwsh'), /主控只负责分派/);
+  assert.match(h.call(h.lead, 'pwsh'), /Lead only dispatches/);
 });
 
 test('direct + userRequested：没有确认通道时模型声明不生效，仍受执行预算限制', async () => {
@@ -83,15 +83,15 @@ test('direct + userRequested：没有确认通道时模型声明不生效，仍�
   assert.equal(out.userRequested, undefined);
   assert.equal(h.wf.state(h.lead).plan.userRequested, undefined);
   for (let i = 0; i < W.directBudget; i++) assert.equal(h.call(h.lead, 'pwsh'), undefined);
-  assert.match(h.call(h.lead, 'pwsh'), /已达本轮上限/);
+  assert.match(h.call(h.lead, 'pwsh'), /reached this turn's direct execution limit/);
   assert.doesNotMatch(h.wf.status(h.lead, W), /不限执行/);
   assert.doesNotMatch(out.next, /不限执行/);
   // Model flags and user-looking reason strings never establish confirmation.
   h.user();
   await h.plan({ analysis: '小事', mode: 'direct', reason: '一条命令', userRequested: 'yes' });
   for (let i = 0; i < W.directBudget; i++) assert.equal(h.call(h.lead, 'pwsh'), undefined);
-  assert.match(h.call(h.lead, 'pwsh'), /已达本轮上限/);
-  assert.match(decide({ plan: { mode: 'direct', userRequested: true }, directUsed: W.directBudget }, { name: 'pwsh' }, W), /已达本轮上限/);
+  assert.match(h.call(h.lead, 'pwsh'), /reached this turn's direct execution limit/);
+  assert.match(decide({ plan: { mode: 'direct', userRequested: true }, directUsed: W.directBudget }, { name: 'pwsh' }, W), /reached this turn's direct execution limit/);
   assert.equal(validatePlan({ analysis: 'a', mode: 'free', reason: 'r', userRequested: true }, effective).userRequested, undefined);
 });
 
@@ -100,17 +100,17 @@ test('free：只能调用免费通道，主控不能自己执行；其他模式�
   h.user();
   assert.match(h.call(h.lead, 'capability_free_task'), /capability_dispatch_plan/);
   const out = await h.plan({ analysis: '总结给定的长文', mode: 'free', reason: '纯文本、输出长、无敏感内容' });
-  assert.match(out, /交给免费模型/);
-  assert.match(out, /没有工具/);
+  assert.match(out, /free model/);
+  assert.match(out, /no tools/);
   assert.equal(h.call(h.lead, 'capability_free_task'), undefined);
-  assert.match(h.call(h.lead, 'pwsh'), /本轮已选择 free/);
-  assert.match(h.call(h.lead, 'spawn_teammate', { name: 'backend' }), /不在本轮指派计划/);
+  assert.match(h.call(h.lead, 'pwsh'), /This turn selected free/);
+  assert.match(h.call(h.lead, 'spawn_teammate', { name: 'backend' }), /not assigned in this turn's plan/);
   assert.equal(h.call(h.lead, 'read'), undefined, '验收可只读查看');
   await h.plan({ analysis: '改为小事', mode: 'direct', reason: '一条命令' });
-  assert.match(h.call(h.lead, 'capability_free_task'), /不是 free/);
+  assert.match(h.call(h.lead, 'capability_free_task'), /not free/);
 });
 test('free 计划提示随工具级别变化，级别与模型列表可校验', async () => {
-  for (const [tools, re] of [['none', /没有工具/], ['read', /读取和搜索项目文件/], ['write', /新建和编辑项目文件/]]) {
+  for (const [tools, re] of [['none', /no tools/], ['read', /read and search project files/], ['write', /create and edit project files/]]) {
     const h = harness({ workflow: { freeTools: tools } });
     h.user();
     assert.match(await h.plan({ analysis: 'a', mode: 'free', reason: 'r' }), re, tools);
@@ -118,8 +118,8 @@ test('free 计划提示随工具级别变化，级别与模型列表可校验', 
   assert.equal(effective.workflow.freeTools, 'none', '默认无工具');
   assert.deepEqual(effective.workflow.freeModels, [], '默认使用目录中全部免费模型');
   assert.throws(() => effectiveConfig({ workflow: { freeTools: 'shell' } }, base), /none \/ read \/ write/);
-  assert.throws(() => effectiveConfig({ workflow: { freeModels: 'x' } }, base), /免费模型列表/);
-  assert.throws(() => validatePlan({ analysis: 'a', mode: 'free' }, effective), /理由/);
+  assert.throws(() => effectiveConfig({ workflow: { freeModels: 'x' } }, base), /Free-model list/);
+  assert.throws(() => validatePlan({ analysis: 'a', mode: 'free' }, effective), /[Rr]eason/);
 });
 test('新的用户消息开启新一轮，队友汇报不重置计划', async () => {
   const h = harness();
@@ -128,7 +128,7 @@ test('新的用户消息开启新一轮，队友汇报不重置计划', async ()
   h.claimed({ source: { kind: 'team' } });
   assert.match(h.wf.status(h.lead, W), /backend/);
   h.user();
-  assert.match(h.wf.status(h.lead, W), /尚未指派/);
+  assert.match(h.wf.status(h.lead, W), /not dispatched yet/);
   assert.match(h.call(h.lead, 'pwsh'), /capability_dispatch_plan/);
 });
 
@@ -142,12 +142,12 @@ test('remind / off 模式不拦截', () => {
 });
 
 test('计划校验：未登记角色、指派给主控、direct 无理由、delegate 无指派均被拒绝', () => {
-  assert.throws(() => validatePlan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'ghost', task: 't' }] }, effective), /未在当前项目团队配置中登记/);
-  assert.throws(() => validatePlan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'lead', task: 't' }] }, effective), /主控自己/);
-  assert.throws(() => validatePlan({ analysis: 'a', mode: 'direct' }, effective), /理由/);
-  assert.throws(() => validatePlan({ analysis: 'a', mode: 'delegate', assignments: [] }, effective), /至少/);
-  assert.throws(() => validatePlan({ analysis: 'a', mode: 'direct', reason: 'r', assignments: [{ role: 'backend', task: 't' }] }, effective), /不能同时/);
-  assert.throws(() => validatePlan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'backend', task: 't' }, { role: 'backend', task: 'u' }] }, effective), /重复/);
+  assert.throws(() => validatePlan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'ghost', task: 't' }] }, effective), /not registered in this project/);
+  assert.throws(() => validatePlan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'lead', task: 't' }] }, effective), /Lead itself/);
+  assert.throws(() => validatePlan({ analysis: 'a', mode: 'direct' }, effective), /[Rr]eason/);
+  assert.throws(() => validatePlan({ analysis: 'a', mode: 'delegate', assignments: [] }, effective), /at least/);
+  assert.throws(() => validatePlan({ analysis: 'a', mode: 'direct', reason: 'r', assignments: [{ role: 'backend', task: 't' }] }, effective), /cannot also assign teammates/);
+  assert.throws(() => validatePlan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'backend', task: 't' }, { role: 'backend', task: 'u' }] }, effective), /assigned twice/);
 });
 
 test('计划随项目配置的角色变化：对话新增的角色可被指派', () => {
@@ -169,8 +169,8 @@ test('对话保存：workflow 按字段合并、null 恢复默认，变更出现
   assert.deepEqual(o2.workflow, { directBudget: 5, mode: 'remind' });
   assert.equal(applyPatch(o2, { workflow: null }).workflow, undefined);
   const lines = describeChanges(effective, effectiveConfig(o2, base));
-  assert.ok(lines.some(l => l.startsWith('工作流约束')), lines.join('\n'));
-  assert.throws(() => applyPatch({}, { workflow: { bogus: 1 } }), /未知字段/);
+  assert.ok(lines.some(l => l.startsWith('Workflow constraints')), lines.join('\n'));
+  assert.throws(() => applyPatch({}, { workflow: { bogus: 1 } }), /unknown fields/);
 });
 
 test('delegate 计划把被指派的角色交给 onDelegate（用于让旧的队友计划批准失效）；planFirst 写入指派结果', async () => {

@@ -64,9 +64,9 @@ test('aliased calls still count reads, edits and PowerShell test evidence', () =
 test('rotation 配置校验', () => {
   assert.deepEqual(validateRotation(undefined), ROTATION);
   assert.equal(validateRotation(false), false);
-  assert.throws(() => validateRotation({ softRatio: 2 }), /0–1/);
-  assert.throws(() => validateRotation({ softCompactions: 5, hardCompactions: 3 }), /软阈值/);
-  assert.throws(() => validateRotation({ nope: 1 }), /不支持/);
+  assert.throws(() => validateRotation({ softRatio: 2 }), /greater than 0 and at most 1/);
+  assert.throws(() => validateRotation({ softCompactions: 5, hardCompactions: 3 }), /soft thresholds/);
+  assert.throws(() => validateRotation({ nope: 1 }), /does not support/);
   assert.deepEqual(effectiveConfig({}).workflow.rotation, ROTATION);
 });
 
@@ -77,7 +77,7 @@ test('接替者沿用原角色的模型和权限', () => {
   const successor = resolveRole({ role: 'teammate', name: `${id}-r3` }, effective);
   assert.equal(successor.id, id);
   assert.equal(successor.model, original.model);
-  assert.throws(() => resolveRole({ role: 'teammate', name: 'nobody-r2' }, effective), /未在当前项目的团队配置中登记/);
+  assert.throws(() => resolveRole({ role: 'teammate', name: 'nobody-r2' }, effective), /is not registered in this project's team configuration/);
 });
 
 function fakeTeam(root, members, { tasks = [] } = {}) {
@@ -113,7 +113,7 @@ test('交接写入并带上插件采集的事实；轮换生成接替者与调�
   assert.match(plan.next, /interrupt_agent target=diao-chan/);
   assert.match(plan.next, /task-3/);
   assert.equal(r.plannedSuccessor('lead-1', 'diao-chan-r2'), true);
-  assert.match(r.guard({ agent: lead, name: 'send_message', arguments: { target: 'diao-chan' } }), /已交接给 diao-chan-r2/);
+  assert.match(r.guard({ agent: lead, name: 'send_message', arguments: { target: 'diao-chan' } }), /handed off to diao-chan-r2/);
   const fresh = createRotation(ctx, team, { diffStat: async () => null });
   assert.equal((await fresh.readHandoff('lead-1', 'diao-chan')).written.remaining, 'B 未做', '交接持久化到磁盘');
 });
@@ -125,7 +125,7 @@ test('名额用完时不轮换，改为省上下文模式', async () => {
   const r = createRotation(ctx, team, { diffStat: async () => null });
   const out = await r.rotate(lead, { role: 'r1', without_handoff: true });
   assert.equal(out.rotated, false);
-  assert.match(out.reason, /名额已用完（8\/8）/);
+  assert.match(out.reason, /capacity exhausted \(8\/8\)/);
 });
 
 test('硬线时主控不能再给该队友派新活', () => {
@@ -135,7 +135,7 @@ test('硬线时主控不能再给该队友派新活', () => {
   ctx.effect = () => {}; ctx.tools = { guard() {}, register() {} };
   r.register();
   for (let i = 0; i < 3; i++) ctx.onEvent(agents.get('m1').session = { id: 'm1' }, { type: 'compaction/end', data: {} });
-  for (const name of ['send_message', 'brisk_send_message', 'mcp__s__brisk_send_message']) assert.match(r.guard({ agent: lead, name, arguments: { target: 'diao-chan' } }), /已到轮换线.*capability_rotate_member/);
+  for (const name of ['send_message', 'brisk_send_message', 'mcp__s__brisk_send_message']) assert.match(r.guard({ agent: lead, name, arguments: { target: 'diao-chan' } }), /reached the session rotation threshold.*capability_rotate_member/);
 });
 
 test('接替者沿用用户为该角色确认的路由', async () => {

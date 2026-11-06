@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Dispatch workflow: for each user request the Lead analyses the conversation, then either assigns
 // registered roles or justifies handling it alone. A tool guard enforces the declared plan, so the
 // Lead cannot silently do specialist work itself. All limits are project data (config.workflow).
@@ -14,11 +15,11 @@ const output = { schema: { type: 'string' }, render: (_args, value) => [{ type: 
 /** Classify one tool name for the Lead under the given workflow policy. */
 export const FREE_TOOL = 'capability_free_task';
 const FREE_TOOL_TEXT = {
-  none: '本项目免费模型没有工具，只能看到 prompt 中的文字',
-  read: '本项目免费模型可读取和搜索项目文件，不能修改文件或执行命令',
-  write: '本项目免费模型可读取、新建和编辑项目文件，不能执行命令、联网或访问项目外路径',
+  none: modelText('workflow.608'),
+  read: modelText('workflow.609'),
+  write: modelText('workflow.610'),
 };
-const DECISION = { delegate: '指派队友', free: '交给免费模型', direct: '主控自行处理' };
+const DECISION = { delegate: modelText('workflow.611'), free: modelText('workflow.612'), direct: modelText('workflow.613') };
 const OWN_TOOLS = ['capability_dispatch_plan', 'capability_submit_plan', 'capability_review_plan', 'capability_task_budget', 'capability_member_override', 'capability_handoff', 'capability_rotate_member', 'capability_memory_search', 'capability_memory_write', 'capability_model_prefs'];
 /** Hosts may expose tools as `mcp__<server>__<word>_<name>` (e.g. `brisk_spawn_teammate`); match on `<name>`. */
 export function canonicalTool(name, workflow) {
@@ -44,74 +45,74 @@ export function toolClass(name, workflow) {
 export function decide(state, exec, workflow) {
   const kind = toolClass(exec.name, workflow);
   const plan = state.plan;
-  const replan = '重新调用 capability_dispatch_plan';
+  const replan = modelText('workflow.614');
   if (kind === 'coordination') {
     if (canonicalTool(exec.name, workflow) !== 'spawn_teammate') return undefined;
     const name = exec.arguments?.name;
-    if (!plan) return `创建队友前先调用 capability_dispatch_plan：分析本次需求，指派合适的已登记角色（角色与适用场景见团队上下文的名册）。`;
+    if (!plan) return modelText('workflow.615');
     if (plan.mode !== 'delegate' || !plan.assignments.some(a => a.role === name)) {
-      return `队友 ${name} 不在本轮指派计划中（当前：${planSummary(plan)}）。需要该角色时先${replan}把它加入指派。`;
+      return modelText('workflow.616', { 0: name, 1: planSummary(plan), 2: replan });
     }
     return undefined;
   }
   if (!plan) {
     if (kind === 'analysis' && state.analysisUsed < workflow.analysisBudget) { state.analysisUsed += 1; return undefined; }
-    const why = kind === 'analysis' ? `指派前的只读分析已用满 ${workflow.analysisBudget} 次` : `${exec.name} 属于执行类操作`;
-    return `${why}。主控必须先调用 capability_dispatch_plan：分析用户这次的需求涉及哪些能力，指派最合适的已登记角色（角色与适用场景见团队上下文的名册）；长篇纯文本（总结、翻译、起草、整理给定材料）选 free 交给免费模型；只有简单问答或一两步即可完成的小事才选择 direct 并说明理由。用户明确要求主控亲自完成时，选择 direct 并传 userRequested=true，由用户在确认卡片上放行。`;
+    const why = kind === 'analysis' ? modelText('workflow.617', { 0: workflow.analysisBudget }) : modelText('workflow.618', { 0: exec.name });
+    return modelText('workflow.619', { 0: why });
   }
   if (kind === 'free') {
     if (plan.mode === 'free') return undefined;
-    return `本轮计划为 ${planSummary(plan)}，不是 free。需要把长篇纯文本交给免费模型时，先${replan}选择 free。`;
+    return modelText('workflow.620', { 0: planSummary(plan), 1: replan });
   }
   if (kind === 'analysis') return undefined;
   if (plan.mode === 'free') {
-    return `本轮已选择 free：主控只调用 ${FREE_TOOL} 转交并验收结果，不直接执行 ${exec.name}。需要动手操作时，${replan}改为 direct 或 delegate。`;
+    return modelText('workflow.621', { 0: FREE_TOOL, 1: exec.name, 2: replan });
   }
   if (plan.mode === 'delegate') {
-    return `本轮已指派给 ${planSummary(plan)}，主控只负责分派、协调与验收，不直接执行 ${exec.name}。把这项操作作为任务交给对应队友（send_message 或看板任务）；需要验证时交给测试角色。确需亲自处理时，${replan}改为 direct 并说明理由。`;
+    return modelText('workflow.622', { 0: planSummary(plan), 1: exec.name, 2: replan });
   }
   // Only the user's answer on the confirmation card sets this; plan fields supplied by the model never waive the budget.
   if (state.directConfirmed) return undefined;
   if (state.directUsed < workflow.directBudget) { state.directUsed += 1; return undefined; }
-  return `主控自行处理的执行操作已达本轮上限 ${workflow.directBudget} 次，说明这不是一两步的小事。请${replan}，把剩余工作指派给合适的队友。用户明确要求主控亲自完成时，${replan}并传 userRequested=true，经用户确认后才放开。`;
+  return modelText('workflow.623', { 0: workflow.directBudget, 1: replan, 2: replan });
 }
 
 export function planSummary(plan) {
-  if (!plan) return '未规划';
-  if (plan.mode === 'direct') return `主控自行处理（${plan.reason}）`;
-  if (plan.mode === 'free') return `免费模型处理（${plan.reason}）`;
+  if (!plan) return modelText('workflow.624');
+  if (plan.mode === 'direct') return modelText('workflow.625', { 0: plan.reason });
+  if (plan.mode === 'free') return modelText('workflow.626', { 0: plan.reason });
   return plan.assignments.map(a => `${a.displayName ?? a.role}(${a.role})`).join('、');
 }
 
 /** Validate a dispatch plan against the effective team configuration. */
 export function validatePlan(args, effective) {
   const text = (v, max, label) => {
-    if (typeof v !== 'string' || !v.trim() || v.length > max) throw new Error(`${label}须为1–${max}字符`);
+    if (typeof v !== 'string' || !v.trim() || v.length > max) throw new Error(modelText('workflow.627', { 0: label, 1: max }));
     return v.trim();
   };
-  const analysis = text(args.analysis, 4000, '需求分析');
-  if (!['direct', 'delegate', 'free'].includes(args.mode)) throw new Error('mode 须为 delegate（指派队友）、free（长篇纯文本交给免费模型）或 direct（主控自行处理）');
+  const analysis = text(args.analysis, 4000, modelText('workflow.628'));
+  if (!['direct', 'delegate', 'free'].includes(args.mode)) throw new Error(modelText('workflow.629'));
   const assignments = arrayArg(args.assignments) ?? [];
-  if (!Array.isArray(assignments) || assignments.length > 20) throw new Error('assignments 须为不超过20项的数组');
+  if (!Array.isArray(assignments) || assignments.length > 20) throw new Error(modelText('workflow.630'));
   if (args.mode !== 'delegate') {
-    if (assignments.length) throw new Error(`${args.mode} 模式不能同时指派队友；需要队友时使用 delegate`);
-    const plan = { mode: args.mode, analysis, reason: text(args.reason, 500, `${args.mode} 模式的理由`), assignments: [] };
+    if (assignments.length) throw new Error(modelText('workflow.631', { 0: args.mode }));
+    const plan = { mode: args.mode, analysis, reason: text(args.reason, 500, modelText('workflow.632', { 0: args.mode })), assignments: [] };
     // userRequested stays out of the plan: only the user's answer, held in workflow state, can lift the budget.
     return plan;
   }
-  if (!assignments.length) throw new Error('delegate 模式至少指派一个角色');
+  if (!assignments.length) throw new Error(modelText('workflow.633'));
   const seen = new Set();
   const list = assignments.map((a, i) => {
-    const role = text(a?.role, 64, `第${i + 1}项指派的角色`);
-    if (role === 'lead') throw new Error('不能把任务指派给主控自己');
+    const role = text(a?.role, 64, modelText('workflow.634', { 0: i + 1 }));
+    if (role === 'lead') throw new Error(modelText('workflow.635'));
     const entry = effective.roles[role];
-    if (!entry) throw new Error(`角色 ${role} 未在当前项目团队配置中登记；可用：${Object.keys(effective.roles).filter(r => r !== 'lead').join('、')}。需要新角色时先加载 project-role-theme 技能经用户确认登记`);
-    if (seen.has(role)) throw new Error(`角色 ${role} 重复指派；把同一角色的工作合并为一项`);
+    if (!entry) throw new Error(modelText('workflow.636', { 0: role, 1: Object.keys(effective.roles).filter(r => r !== 'lead').join('、') }));
+    if (seen.has(role)) throw new Error(modelText('workflow.637', { 0: role }));
     seen.add(role);
-    if (a.complexity !== undefined && !['simple','medium','complex'].includes(a.complexity)) throw new Error('无效 complexity');
-    return { role, complexity: a.complexity ?? 'medium', displayName: entry.displayName, capability: entry.capability, task: text(a.task, 2000, `角色 ${role} 的任务`) };
+    if (a.complexity !== undefined && !['simple','medium','complex'].includes(a.complexity)) throw new Error(modelText('workflow.638'));
+    return { role, complexity: a.complexity ?? 'medium', displayName: entry.displayName, capability: entry.capability, task: text(a.task, 2000, modelText('workflow.639', { 0: role })) };
   });
-  return { mode: 'delegate', analysis, ...(args.reason ? { reason: text(args.reason, 500, '理由') } : {}), assignments: list };
+  return { mode: 'delegate', analysis, ...(args.reason ? { reason: text(args.reason, 500, modelText('workflow.640')) } : {}), assignments: list };
 }
 
 import { ownsCapabilityTeam } from './preset-guard.js';
@@ -139,7 +140,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
       if (!isLead(exec.agent)) return undefined;
       let effective;
       try { effective = effectiveOf(exec.agent); }
-      catch (error) { return `团队配置读取失败，已停止执行：${error.message}`; }
+      catch (error) { return modelText('workflow.641', { 0: error.message }); }
       const workflow = effective.workflow;
       if (workflow.mode !== 'enforce') return undefined;
       // A successor planned by capability_rotate_member stands in for its assigned role.
@@ -154,39 +155,39 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
     status(agent, workflow) {
       if (workflow.mode === 'off') return undefined;
       const s = state(agent);
-      const head = workflow.mode === 'enforce' ? '工作流约束（强制）' : '工作流约束（提醒）';
+      const head = workflow.mode === 'enforce' ? modelText('workflow.642') : modelText('workflow.643');
       // Budgets only, no running counters: a counter changes every step and would resend the whole runtime
       // context snapshot each time. The guard still enforces the limits and says how many were used.
-      const direct = s.plan?.mode !== 'direct' ? '' : s.directConfirmed ? '，用户已确认主控亲自完成，本轮不限执行次数' : `，自行执行上限 ${workflow.directBudget} 次`;
-      const plan = s.plan ? `本次需求的指派：${planSummary(s.plan)}${direct}`
-        : `本次需求尚未指派：先调用 capability_dispatch_plan（指派前最多只读分析 ${workflow.analysisBudget} 次）`;
-      return `${head}：${plan}。免费模型工具级别：${workflow.freeTools}`;
+      const direct = s.plan?.mode !== 'direct' ? '' : s.directConfirmed ? modelText('workflow.644') : modelText('workflow.645', { 0: workflow.directBudget });
+      const plan = s.plan ? modelText('workflow.646', { 0: planSummary(s.plan), 1: direct })
+        : modelText('workflow.647', { 0: workflow.analysisBudget });
+      return modelText('workflow.648', { 0: head, 1: plan, 2: workflow.freeTools });
     },
     register() {
       ctx.effect(() => ctx.tools.guard(exec => this.guard(exec)));
       ctx.on('agent/inbox/claimed', ({ agent, message }) => this.onClaimed(agent, message));
       ctx.effect(() => ctx.tools.register({ name: 'capability_dispatch_plan', output,
-        description: '主控处理每个新的用户需求时首先调用：分析对话中的需求涉及哪些能力，按性质分流——多步骤或专业任务指派已登记角色（delegate）；长篇纯文本（总结、翻译、起草、整理给定材料）以及项目允许范围内的读写文件小任务交给免费模型（free，不含密钥或敏感内容，不能执行命令）；需要动手的一两步小事或两三句能答的问答由主控自己处理（direct）。用户明确要求主控亲自完成时，选 direct 并传 userRequested=true，用户确认后本轮不限执行次数。计划对用户可见，并约束本轮后续操作：delegate 时主控只创建计划内的队友并协调验收；free 时只能调用 capability_free_task；direct 时自行执行次数有上限，只有用户在确认卡片上放行才能解除。需求变化时可再次调用替换计划。',
+        description: modelText('workflow.649'),
         parameters: params({
-          analysis: { type: 'string', description: '需求分析：用户要的结果、涉及的领域与能力、复杂度、可并行的部分' },
-          mode: { type: 'string', enum: ['delegate', 'free', 'direct'], description: 'delegate=指派队友；free=长篇纯文本交给免费模型；direct=主控自行处理（简单问答、一两步的小事，或用户明确要求主控亲自完成）' },
-          reason: { type: 'string', description: 'free 与 direct 时必填：为什么这样分流' },
-          userRequested: { type: 'boolean', description: 'direct 时可选：用户明确要求主控亲自完成时传 true。会向用户弹出确认，用户允许后本轮不限执行次数；用户拒绝则计划不生效' },
-          assignments: { type: 'array', description: 'delegate 时必填：每个角色一项，role 用团队名册中的内部id', items: params({
-            role: { type: 'string', description: '团队名册中的内部id，不用显示名' },
-            complexity: { type: 'string', enum: ['simple','medium','complex'], description: '任务复杂度，默认medium：15/40/80步' },
-            task: { type: 'string', description: '交给该角色的具体任务、交付物与验收标准' },
-            tasks: { type: 'array', description: '可选：把这个角色的工作拆成看板子任务（会直接建在 DSH 团队看板上）。不填则整项作为一个看板任务', items: params({
-              key: { type: 'string', description: '本计划内唯一的短标识，供 blocked_by 引用' },
-              subject: { type: 'string', description: '子任务标题' },
-              description: { type: 'string', description: '子任务说明与验收标准' },
-              write_scopes: { type: 'array', items: { type: 'string' }, description: '会修改的项目内相对路径（文件或目录）；并行任务的写入范围不要重叠' },
-              blocked_by: { type: 'array', items: { type: 'string' }, description: '必须先完成的子任务 key（只能引用计划中排在前面的子任务）' },
+          analysis: { type: 'string', description: modelText('workflow.650') },
+          mode: { type: 'string', enum: ['delegate', 'free', 'direct'], description: modelText('workflow.651') },
+          reason: { type: 'string', description: modelText('workflow.652') },
+          userRequested: { type: 'boolean', description: modelText('workflow.653') },
+          assignments: { type: 'array', description: modelText('workflow.654'), items: params({
+            role: { type: 'string', description: modelText('workflow.655') },
+            complexity: { type: 'string', enum: ['simple','medium','complex'], description: modelText('workflow.656') },
+            task: { type: 'string', description: modelText('workflow.657') },
+            tasks: { type: 'array', description: modelText('workflow.658'), items: params({
+              key: { type: 'string', description: modelText('workflow.659') },
+              subject: { type: 'string', description: modelText('workflow.660') },
+              description: { type: 'string', description: modelText('workflow.661') },
+              write_scopes: { type: 'array', items: { type: 'string' }, description: modelText('workflow.662') },
+              blocked_by: { type: 'array', items: { type: 'string' }, description: modelText('workflow.663') },
             }, ['subject']) },
           }, ['role', 'task']) },
         }, ['analysis', 'mode']),
         async execute(args, exec) {
-          if (!isLead(exec.agent)) throw new Error('只有主控制定指派计划；子角色完成自己的任务并向 lead 汇报');
+          if (!isLead(exec.agent)) throw new Error(modelText('workflow.664'));
           const { effective, policy } = await team.load(exec.agent);
           const plan = validatePlan(args, effective);
           // Board subtasks are validated before the user is asked, so a malformed split never reaches the card.
@@ -199,7 +200,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
           const cycle = state(exec.agent);
           const directConfirmed = plan.mode === 'direct' && args.userRequested === true && effective.workflow.mode === 'enforce' && dispatchConfirm
             ? await dispatchConfirm.confirmDirect(exec, plan) : false;
-          if (directConfirmed && state(exec.agent) !== cycle) throw new Error('确认期间用户发来了新消息，这次放行已失效。请按新消息重新制定计划。');
+          if (directConfirmed && state(exec.agent) !== cycle) throw new Error(modelText('workflow.665'));
           const s = state(exec.agent);
           s.plan = plan;
           s.directConfirmed = directConfirmed;
@@ -209,22 +210,22 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
           const result = { mode: plan.mode, decision: DECISION[plan.mode], analysis: plan.analysis, ...(plan.reason ? { reason: plan.reason } : {}) };
           if (plan.mode === 'direct') {
             Object.assign(result, directConfirmed
-              ? { directBudget: null, directUsed: s.directUsed, confirmed: { by: 'user', scope: 'turn' }, next: '用户已确认由主控亲自完成：本轮不限执行次数，用户发下一条消息时恢复限制。文件规则和权限不变。' }
-              : { directBudget: effective.workflow.directBudget, directUsed: s.directUsed, next: `主控自行处理，本轮执行上限 ${effective.workflow.directBudget} 次；超出后须改为指派。` });
+              ? { directBudget: null, directUsed: s.directUsed, confirmed: { by: 'user', scope: 'turn' }, next: modelText('workflow.666') }
+              : { directBudget: effective.workflow.directBudget, directUsed: s.directUsed, next: modelText('workflow.667', { 0: effective.workflow.directBudget }) });
           } else if (plan.mode === 'free') {
             Object.assign(result, { freeTools: effective.workflow.freeTools,
-              next: `调用 capability_free_task，把完整材料与要求放进 prompt；${FREE_TOOL_TEXT[effective.workflow.freeTools]}。主控只验收结果（有文件改动时只读核对改动）；免费模型全部不可用时如实报告，不改用付费模型。` });
+              next: modelText('workflow.668', { 0: FREE_TOOL_TEXT[effective.workflow.freeTools] }) });
           } else {
             result.assignments = plan.assignments.map(a => {
               const c = effective.capabilities[a.capability];
               const limits = accessSummary(c.access);
               const route = confirmation?.routes.find(r => r.role === a.role);
-              const model = route?.primary ? `${route.primary.provider}/${route.primary.model}` : c.provider ? `${c.provider}/${c.model}` : '会话模型';
+              const model = route?.primary ? `${route.primary.provider}/${route.primary.model}` : c.provider ? `${c.provider}/${c.model}` : modelText('workflow.669');
               const fallbacks = (route?.fallbacks ?? c.fallbacks ?? []).slice(0, 3).map(f => `${f.provider}/${f.model}`);
               return { role: a.role, complexity: a.complexity, estimatedSteps: {simple:15,medium:40,complex:80}[a.complexity], displayName: a.displayName, capability: a.capability, model, fallbacks, ...(limits ? { access: limits } : {}),
-                ...(c.planFirst ? { planFirst: '执行前会提交计划，需主控用 capability_review_plan 批准' } : {}), task: a.task };
+                ...(c.planFirst ? { planFirst: modelText('workflow.670') } : {}), task: a.task };
             });
-            result.next = '已存在的队友用 send_message 派发，不存在的用 spawn_teammate（name 用内部id）创建；可并行的同时派发，每项任务在看板建一条即可；有前置依赖的任务等前置完成后再派发，不提前发“等我通知”。派发时要求队友完成后只汇报一次最终结果、不发进度通报。之后用 wait_agent（timeoutMs=600000）等待，醒来只处理最终结果、阻塞或决策请求；主控只协调与验收，不亲自执行。';
+            result.next = modelText('workflow.671');
           }
           if (plan.mode !== 'free' && (effective.workflow.fileLimits || effective.workflow.tokens)) result.fileRules = [fileLimitRules(effective.workflow.fileLimits), tokenRuleText(effective.workflow.tokens)].filter(Boolean).join('\n');
           if (plan.mode === 'delegate' && board) {
@@ -232,9 +233,9 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
               const byRole = await board.create(exec.agent, plan, rawTasks);
               if (byRole) {
                 for (const a of result.assignments) a.boardTasks = byRole[a.role] ?? [];
-                result.next = '已按计划在 DSH 团队看板上建好任务（见各角色的 boardTasks）。已存在的队友已自动分到可开始的任务，用 send_message 通知它；不存在的用 spawn_teammate（name 用内部id）创建，开工时插件会把它的任务自动分给它。消息里写明任务编号，并要求按看板流程：认领 → 执行 → complete，只改写入范围内的文件，完成后只汇报一次最终结果。被依赖挡住的任务只留在看板上，先不要发给对应队友，也不要发“等我通知再开始”；等前置任务完成后再用 send_message 派发（队友空闲时消息会自动唤醒它）。之后用 wait_agent（timeoutMs=600000）等待；收尾前用 team_task_list 确认没有进行中的任务。';
+                result.next = modelText('workflow.672');
               }
-            } catch (error) { result.boardError = `看板任务创建失败：${error.message}；请改用 team_task_create 手动建任务`; }
+            } catch (error) { result.boardError = modelText('workflow.673', { 0: error.message }); }
           }
           if (confirmation?.asked) result.confirmed = { by: 'user', scope: confirmation.scope, changed: confirmation.routes.filter(r => r.changed).map(r => r.role) };
           return JSON.stringify(result);

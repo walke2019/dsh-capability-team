@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // OpenViking backend for the memory hub (integrations.memory.backend = 'openviking').
 // The team's own store stays the source for role/session-scoped recall; every memory is also sent to the
 // OpenViking server, which extracts and indexes it as long-term memory shared by every agent and session that
@@ -15,7 +16,7 @@ const MAX_BATCH = 40;
 export function memorySettings(resolved = resolveIntegrations()) {
   return { config: resolved.effective.memory, key: keyOf('memory', resolved) };
 }
-// `label` names the caller (e.g. '能力团队' for the team plugin, '全局记忆' for global-memory) at the start of
+// `label` names the caller (e.g. 'Capability Team' for the team plugin, 'Global Memory' for global-memory) at the start of
 // every message sent upstream; the default is neutral (no caller name).
 export function createOpenViking({ settings, queuePath, label = '', warn = () => {}, fetcher = fetch, now = Date.now, schedule = (fn, ms) => { const t = setTimeout(fn, ms); t.unref?.(); return t; } } = {}) {
   const current = () => settings ?? memorySettings();
@@ -35,9 +36,9 @@ export function createOpenViking({ settings, queuePath, label = '', warn = () =>
       const response = await fetcher(`${config.url}/api/v1${path}`, { method, headers, redirect: 'error',
         body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs ?? config.timeoutMs) });
       const text = await response.text();
-      if (!response.ok) throw new Error(`OpenViking HTTP ${response.status}${response.status === 401 || response.status === 403 ? '（检查 OpenViking 密钥或账号）' : ''}`);
-      let data; try { data = JSON.parse(text); } catch { throw new Error('OpenViking 返回非JSON数据'); }
-      if (data?.status && data.status !== 'ok') throw new Error(`OpenViking 返回 ${String(data.status).slice(0, 40)}`);
+      if (!response.ok) throw new Error(`OpenViking HTTP ${response.status}${response.status === 401 || response.status === 403 ? modelText('memory-openviking.298') : ''}`);
+      let data; try { data = JSON.parse(text); } catch { throw new Error(modelText('memory-openviking.299')); }
+      if (data?.status && data.status !== 'ok') throw new Error(modelText('memory-openviking.300', { 0: String(data.status).slice(0, 40) }));
       return data?.result ?? data;
     },
     /** Queue one memory for the next commit; the text is already redacted by the hub. */
@@ -45,8 +46,8 @@ export function createOpenViking({ settings, queuePath, label = '', warn = () =>
       if (!api.enabled) return false;
       // Only the project's folder name goes upstream: the full path exposes this machine's layout and user name.
       const projectName = String(who?.project ?? '').split(/[\\/]/).filter(Boolean).pop();
-      const where = [projectName ? `项目 ${projectName}` : null, memory.scope?.kind === 'role' ? `角色 ${memory.scope.role}` : null].filter(Boolean).join(' · ');
-      queue.push({ role: 'user', content: `【${prefix}${memory.kind === 'pitfall' ? '踩坑' : memory.kind === 'decision' ? '决定' : '记忆'}${where ? ` · ${where}` : ''}】${memory.text}` });
+      const where = [projectName ? modelText('memory-openviking.301', { 0: projectName }) : null, memory.scope?.kind === 'role' ? modelText('memory-openviking.302', { 0: memory.scope.role }) : null].filter(Boolean).join(' · ');
+      queue.push({ role: 'user', content: `【${prefix}${memory.kind === 'pitfall' ? modelText('memory-openviking.303') : memory.kind === 'decision' ? modelText('memory-openviking.304') : modelText('memory-openviking.305')}${where ? ` · ${where}` : ''}】${memory.text}` });
       api.lastError = null;
       if (!timer) timer = schedule(() => { timer = null; void api.flush().catch(() => {}); }, FLUSH_MS);
       return true;
@@ -90,7 +91,7 @@ export function createOpenViking({ settings, queuePath, label = '', warn = () =>
     revoke(memories) {
       const texts = memories.map(m => m.text).filter(Boolean);
       queue.revoke(texts);
-      for (const text of texts) queue.push({ role: 'user', content: `【记忆撤销】以下旧决定已失效，不得继续作为有效结论：${text}` });
+      for (const text of texts) queue.push({ role: 'user', content: modelText('memory-openviking.306', { 0: text }) });
       if (!timer) timer = schedule(() => { timer = null; void api.flush().catch(() => {}); }, FLUSH_MS);
     },
     pending: () => queue.size(),

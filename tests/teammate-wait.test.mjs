@@ -10,7 +10,7 @@ test('队友调用 wait_agent（含前缀别名）被拒绝并提示结束本轮
   assert.equal(teammateWaitDenial({ name: 'wait_agent' }, { role: 'lead' }), undefined);
   assert.equal(teammateWaitDenial({ name: 'wait_agent' }, undefined), undefined);
   assert.equal(teammateWaitDenial({ name: 'list_agents' }, mate), undefined);
-  assert.match(TEAMMATE_WAIT_DENIAL, /结束本轮/);
+  assert.match(TEAMMATE_WAIT_DENIAL, /end this turn/);
 });
 
 test('只在能力协作预设内生效：默认预设的队友仍可调用原生 wait_agent', () => {
@@ -32,6 +32,6 @@ test('只在能力协作预设内生效：默认预设的队友仍可调用原�
 });
 
 test('团队策略写明：依赖任务前置完成后再派发；队友不等待', () => {
-  assert.match(policy, /前置完成后再派发/);
-  assert.match(policy, /队友不调用 wait_agent/);
+  assert.match(policy, /Dispatch dependent tasks only after prerequisites finish/);
+  assert.match(policy, /Teammates must not call wait_agent/);
 });

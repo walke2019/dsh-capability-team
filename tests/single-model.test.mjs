@@ -24,10 +24,10 @@ test('singleModel validation: shape, unknown keys, timestamp', () => {
   assert.equal(validateSingleModel(undefined), undefined);
   assert.equal(validateSingleModel(null), undefined);
   assert.deepEqual(validateSingleModel({ ...SM, provider: ' only ' }), SM);
-  assert.throws(() => validateSingleModel({ ...SM, extra: 1 }), /未知字段 extra/);
+  assert.throws(() => validateSingleModel({ ...SM, extra: 1 }), /unknown fields extra/);
   assert.throws(() => validateSingleModel({ ...SM, acceptedAt: 'yesterday' }), /ISO/);
   assert.throws(() => validateSingleModel({ provider: 'p', acceptedAt: SM.acceptedAt }), /model/);
-  assert.throws(() => validateSingleModel('p/m'), /必须为对象/);
+  assert.throws(() => validateSingleModel('p/m'), /must be an object/);
 });
 
 test('patch rule: undefined keeps, null clears, object replaces', () => {
@@ -59,16 +59,16 @@ test('routing: assigned roles keep their routes, unassigned ones use the single 
 });
 
 test('confirmation lines name the mode, its lack of backups and how to turn it off', () => {
-  assert.match(singleModelChanges(undefined, SM)[0], /单模型模式：开启.*only\/one-model.*无同档备选.*可随时关闭/);
-  assert.match(singleModelChanges(SM, undefined)[0], /关闭/);
+  assert.match(singleModelChanges(undefined, SM)[0], /Single-model mode: on.*only\/one-model.*no same-tier fallbacks.*disabled at any time/);
+  assert.match(singleModelChanges(SM, undefined)[0], /mode: off/);
   assert.deepEqual(singleModelChanges(SM, { ...SM, acceptedAt: '2026-11-04T00:00:00.000Z' }), []);
-  assert.ok(describeChanges(effectiveConfig({}), effectiveConfig({ singleModel: SM })).some(l => l.startsWith('单模型模式')));
+  assert.ok(describeChanges(effectiveConfig({}), effectiveConfig({ singleModel: SM })).some(l => l.startsWith('Single-model mode')));
 });
 
 test('source model comes from the DSH default selection; missing selection is an actionable error', () => {
   const now = new Date('2026-11-03T08:00:00Z');
   assert.deepEqual(singleModelFrom({ provider: 'p', model: 'm', reasoningEffort: 'high' }, now), { provider: 'p', model: 'm', acceptedAt: now.toISOString() });
-  assert.throws(() => singleModelFrom(undefined), /默认模型/);
+  assert.throws(() => singleModelFrom(undefined), /default model/);
 });
 
 test('unassigned request is refused with the single-model hint; a saved mode routes it instead', async () => {
@@ -77,10 +77,10 @@ test('unassigned request is refused with the single-model hint; a saved mode rou
     const f = fakeCtx(() => ({ role: 'teammate', name: 'backend' }), root);
     const team = createTeam(f.ctx, {}, { root });
     applyRoles(f.ctx, team, createFailover({ sleep: async () => true }));
-    await assert.rejects(f.request({}, { provider: 'lead', model: 'inherited' }), /未分配合格模型.*single_model=use-default.*单模型模式/);
+    await assert.rejects(f.request({}, { provider: 'lead', model: 'inherited' }), /no eligible model.*single-model mode.*single_model=use-default/);
     await saveProject(root, { singleModel: SM }, 0, { root, base: team.base });
     assert.deepEqual(await f.request({}, { provider: 'lead', model: 'inherited', reasoningEffort: 'max' }), { provider: 'only', model: 'one-model' });
     await saveProject(root, { singleModel: null }, 1, { root, base: team.base });
-    await assert.rejects(f.request({}, {}), /未分配合格模型/);
+    await assert.rejects(f.request({}, {}), /no eligible model/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

@@ -1,0 +1,778 @@
+[
+  {
+    "file": "integrations-config.js",
+    "line": 60,
+    "original": "不是合法地址",
+    "replacement": "m('integrations-config.234')",
+    "english": "Not a valid URL",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 62,
+    "original": "须为 https 地址（本机可用 http://127.0.0.1），不含账号和查询参数",
+    "replacement": "m('integrations-config.235')",
+    "english": "Must be an https URL (http://127.0.0.1 allowed locally), without credentials or query parameters",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 66,
+    "original": "须为非空列表，取值 {0}",
+    "replacement": "m('integrations-config.236', { 0: allowed.join(' / ') })",
+    "english": "Must be a nonempty list of values from {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 77,
+    "original": "不是合法地址",
+    "replacement": "m('integrations-config.237')",
+    "english": "Not a valid URL",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 78,
+    "original": "须为不含账号、查询参数的 https 地址",
+    "replacement": "m('integrations-config.238')",
+    "english": "Must be an https URL without credentials or query parameters",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 82,
+    "original": "须为环境变量名（大写字母、数字、下划线）",
+    "replacement": "m('integrations-config.239')",
+    "english": "Must be an environment variable name (uppercase letters, digits and underscores)",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 84,
+    "original": "须为以 / 开头的路径",
+    "replacement": "m('integrations-config.240')",
+    "english": "Must be a path starting with /",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 86,
+    "original": "须为 {名称: 值} 对象",
+    "replacement": "m('integrations-config.241')",
+    "english": "Must be a {name: value} object",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 89,
+    "original": "不能设置请求头 {0}（密钥通过 apiKeyEnv 注入）",
+    "replacement": "m('integrations-config.242', { 0: name })",
+    "english": "Cannot set header {0} (credentials are injected via apiKeyEnv)",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 90,
+    "original": "请求头 {0} 的值无效",
+    "replacement": "m('integrations-config.243', { 0: name })",
+    "english": "Invalid value for header {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 96,
+    "original": "须为渠道名列表",
+    "replacement": "m('integrations-config.244')",
+    "english": "Must be a list of provider names",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 99,
+    "original": "须为不含空白的字符串",
+    "replacement": "m('integrations-config.245')",
+    "english": "Must be a nonempty string without whitespace",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 100,
+    "original": "须为 1–8192 的整数",
+    "replacement": "m('integrations-config.246')",
+    "english": "Must be an integer from 1 to 8192",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 101,
+    "original": "须为 1000–300000 毫秒",
+    "replacement": "m('integrations-config.247')",
+    "english": "Must be 1000–300000 milliseconds",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 102,
+    "original": "须为 1–256 的整数",
+    "replacement": "m('integrations-config.248')",
+    "english": "Must be an integer from 1 to 256",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 103,
+    "original": "须为 1024–104857600 字节",
+    "replacement": "m('integrations-config.249')",
+    "english": "Must be 1024–104857600 bytes",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 104,
+    "original": "须为 {0}",
+    "replacement": "m('integrations-config.250', { 0: MEMORY_BACKENDS.join(' 或 ') })",
+    "english": "Must be one of {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 104,
+    "original": " 或 ",
+    "replacement": "m('integrations-config.251')",
+    "english": " or ",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 108,
+    "original": "须为 1–64 位字母、数字或 ._@-",
+    "replacement": "m('integrations-config.252')",
+    "english": "Must be 1–64 letters, digits or ._@-",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 109,
+    "original": "须为 0–20 的整数",
+    "replacement": "m('integrations-config.253')",
+    "english": "Must be an integer from 0 to 20",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 110,
+    "original": "须为 {0}",
+    "replacement": "m('integrations-config.254', { 0: SHARED_RECALL_SCOPES.join(' 或 ') })",
+    "english": "Must be one of {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 110,
+    "original": " 或 ",
+    "replacement": "m('integrations-config.255')",
+    "english": " or ",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 111,
+    "original": "不是支持的字段",
+    "replacement": "m('integrations-config.256')",
+    "english": "Unsupported field",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 121,
+    "original": "integrations 须为对象",
+    "replacement": "m('integrations-config.257')",
+    "english": "integrations must be an object",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 124,
+    "original": "integrations 不支持 {0}",
+    "replacement": "m('integrations-config.258', { 0: section })",
+    "english": "integrations does not support {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 126,
+    "original": "integrations.{0} 须为对象",
+    "replacement": "m('integrations-config.259', { 0: section })",
+    "english": "integrations.{0} must be an object",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 129,
+    "original": "integrations.{0}.{1} 不是支持的字段",
+    "replacement": "m('integrations-config.260', { 0: section, 1: key })",
+    "english": "integrations.{0}.{1} is not a supported field",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "integrations-config.js",
+    "line": 138,
+    "original": "集成配置文件损坏：{0}",
+    "replacement": "m('integrations-config.261', { 0: error.message })",
+    "english": "Integration configuration file is corrupt: {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "参数无效",
+    "replacement": "m('search-engines.373')",
+    "english": "Invalid parameters",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "客户端鉴权失败，检查密钥",
+    "replacement": "m('search-engines.374')",
+    "english": "Client authentication failed; check credentials",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "被拒绝，检查密钥或服务要求的请求头",
+    "replacement": "m('search-engines.375')",
+    "english": "Access denied; check credentials or service-required headers",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "服务没有这个路径",
+    "replacement": "m('search-engines.376')",
+    "english": "Service path not found",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "内容超过服务上限",
+    "replacement": "m('search-engines.377')",
+    "english": "Content exceeds service limit",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "参数无效",
+    "replacement": "m('search-engines.378')",
+    "english": "Invalid parameters",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "限流，请退避后重试",
+    "replacement": "m('search-engines.379')",
+    "english": "Rate limited; back off before retrying",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "上游失败",
+    "replacement": "m('search-engines.380')",
+    "english": "Upstream failure",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 8,
+    "original": "上游超时",
+    "replacement": "m('search-engines.381')",
+    "english": "Upstream timeout",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 20,
+    "original": "{0}返回空响应",
+    "replacement": "m('search-engines.382', { 0: label })",
+    "english": "{0} returned an empty response",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 26,
+    "original": "{0}响应超过1MB",
+    "replacement": "m('search-engines.383', { 0: label })",
+    "english": "{0} response exceeds 1MB",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 43,
+    "original": "请求超时",
+    "replacement": "m('search-engines.384')",
+    "english": "Request timed out",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 43,
+    "original": "网络错误",
+    "replacement": "m('search-engines.385')",
+    "english": "Network error",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 47,
+    "original": "响应包含凭据，已阻止回传",
+    "replacement": "m('search-engines.386')",
+    "english": "Response contains credentials; returning it is blocked",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 48,
+    "original": "{0}返回非JSON数据",
+    "replacement": "m('search-engines.387', { 0: label })",
+    "english": "{0} returned non-JSON data",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 63,
+    "original": "{0}返回 200 但没有结果列表",
+    "replacement": "m('search-engines.388', { 0: label })",
+    "english": "{0} returned 200 without a results list",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 71,
+    "original": "Tavily 缺少密钥 {0}",
+    "replacement": "m('search-engines.389', { 0: config.tavilyKeyEnv })",
+    "english": "Tavily credentials missing: {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 78,
+    "original": "Brave 缺少密钥 {0}",
+    "replacement": "m('search-engines.390', { 0: config.braveKeyEnv })",
+    "english": "Brave credentials missing: {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 89,
+    "original": "SearXNG 未配置地址 search.searxngUrl / SEARXNG_URL",
+    "replacement": "m('search-engines.391')",
+    "english": "SearXNG URL not configured: search.searxngUrl / SEARXNG_URL",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 99,
+    "original": "{0}返回 200 但没有网页正文",
+    "replacement": "m('search-engines.392', { 0: label })",
+    "english": "{0} returned 200 without page content",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "search-engines.js",
+    "line": 111,
+    "original": "Tavily 缺少密钥 {0}",
+    "replacement": "m('search-engines.393', { 0: config.tavilyKeyEnv })",
+    "english": "Tavily credentials missing: {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 12,
+    "original": "语音转写",
+    "replacement": "m('transcribe.559')",
+    "english": "Audio transcription",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 23,
+    "original": "不支持的音频格式：{0}（支持 {1}）",
+    "replacement": "m('transcribe.560', { 0: extOf(name) || '无扩展名', 1: Object.keys(AUDIO_TYPES).join(' ') })",
+    "english": "Unsupported audio format: {0} (supported: {1})",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 23,
+    "original": "无扩展名",
+    "replacement": "m('transcribe.561')",
+    "english": "No extension",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 30,
+    "original": "不是普通文件",
+    "replacement": "m('transcribe.562')",
+    "english": "Not a regular file",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 31,
+    "original": "文件 {0} MiB 超过上传上限 {1} MiB",
+    "replacement": "m('transcribe.563', { 0: (stat.size / 1048576).toFixed(1), 1: (maxBytes / 1048576).toFixed(1) })",
+    "english": "File is {0} MiB, exceeding upload limit {1} MiB",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 32,
+    "original": "文件为空",
+    "replacement": "m('transcribe.564')",
+    "english": "File is empty",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 35,
+    "original": "文件在授权后变大，超过上传上限",
+    "replacement": "m('transcribe.565')",
+    "english": "File grew after authorization and exceeds the upload limit",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 42,
+    "original": "语音转写缺少密钥：在 DSH 设置中保存凭据 {0}，或在 Host 环境设置同名变量",
+    "replacement": "m('transcribe.566', { 0: keyEnv })",
+    "english": "Audio transcription credentials missing: save credential {0} in DSH settings or set the same Host environment variable",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 52,
+    "original": "语音转写",
+    "replacement": "m('transcribe.567')",
+    "english": "Audio transcription",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 53,
+    "original": "语音转写",
+    "replacement": "m('transcribe.568')",
+    "english": "Audio transcription",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 54,
+    "original": "响应包含凭据，已阻止回传",
+    "replacement": "m('transcribe.569')",
+    "english": "Response contains credentials; returning it is blocked",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 56,
+    "original": "语音转写返回 200 但没有转写文本",
+    "replacement": "m('transcribe.570')",
+    "english": "Transcription returned 200 without transcript text",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 62,
+    "original": "未配置语音状态路径 audio.statusPath",
+    "replacement": "m('transcribe.571')",
+    "english": "Audio status path audio.statusPath is not configured",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 63,
+    "original": "语音状态查询缺少密钥 {0}",
+    "replacement": "m('transcribe.572', { 0: keyEnv })",
+    "english": "Audio status credentials missing: {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 67,
+    "original": "语音状态",
+    "replacement": "m('transcribe.573')",
+    "english": "Audio status",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 68,
+    "original": "语音状态",
+    "replacement": "m('transcribe.574')",
+    "english": "Audio status",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 69,
+    "original": "响应包含凭据，已阻止回传",
+    "replacement": "m('transcribe.575')",
+    "english": "Response contains credentials; returning it is blocked",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 70,
+    "original": "语音状态返回的不是 JSON",
+    "replacement": "m('transcribe.576')",
+    "english": "Audio status returned non-JSON data",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 71,
+    "original": "仅代表网关本地服务健康，不代表上游一定成功",
+    "replacement": "t('transcribe.577')",
+    "english": "Indicates local gateway health only; does not guarantee upstream success",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 75,
+    "original": "\n⚠ 该文件不在当前工作目录内。",
+    "replacement": "t('transcribe.578')",
+    "english": "\n⚠ This file is outside the current working directory.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 77,
+    "original": "允许上传音频？",
+    "replacement": "t('transcribe.579')",
+    "english": "Allow audio upload?",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 78,
+    "original": "把本地文件上传到语音转写网关？",
+    "replacement": "t('transcribe.580', {  })",
+    "english": "Upload the local file to the transcription gateway?",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 79,
+    "original": "{0}\n{1} MiB，上传后由网关和上游转写服务处理。{2}",
+    "replacement": "t('transcribe.581', { 0: path, 1: (size / 1048576).toFixed(2), 2: outside })",
+    "english": "{0}\n{1} MiB; the gateway and upstream transcription service will process it after upload. {2}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 80,
+    "original": "允许上传",
+    "replacement": "t('transcribe.582')",
+    "english": "Allow upload",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 80,
+    "original": "只上传这一个文件",
+    "replacement": "t('transcribe.583')",
+    "english": "Upload only this file",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 80,
+    "original": "拒绝",
+    "replacement": "t('transcribe.584')",
+    "english": "Refuse",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 80,
+    "original": "不读取也不上传",
+    "replacement": "t('transcribe.585')",
+    "english": "Do not read or upload",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 82,
+    "original": "允许上传",
+    "replacement": "t('transcribe.586')",
+    "english": "Allow upload",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 82,
+    "original": "用户未授权上传该文件",
+    "replacement": "m('transcribe.587')",
+    "english": "User did not authorize upload of this file",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 87,
+    "original": "语音转文字：上传一个本地音频文件到配置的转写网关。每个文件都需用户在确认框中授权；未授权不读取。",
+    "replacement": "m('transcribe.588')",
+    "english": "Transcribe speech: upload one local audio file to the configured gateway. Every file requires explicit user approval in a confirmation box; do not read without approval.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 88,
+    "original": "本地音频文件路径（相对路径按工作目录解析）",
+    "replacement": "m('transcribe.589')",
+    "english": "Local audio path (relative paths resolve from the working directory)",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 88,
+    "original": "可选：语言代码，如 zh、en",
+    "replacement": "m('transcribe.590')",
+    "english": "Optional language code, e.g. zh or en",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 88,
+    "original": "可选：术语提示，不得含凭据",
+    "replacement": "m('transcribe.591')",
+    "english": "Optional terminology hint; no credentials",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "transcribe.js",
+    "line": 99,
+    "original": "查询语音转写网关的本地健康状态（不代表上游一定成功）。",
+    "replacement": "m('transcribe.592')",
+    "english": "Query the transcription gateway's local health (does not guarantee upstream success).",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 21,
+    "original": "当前宿主未提供团队服务",
+    "replacement": "t('ui.593')",
+    "english": "This host does not provide team services",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 25,
+    "original": "团队成员读取失败：{0}",
+    "replacement": "t('ui.594', { 0: error.message ?? error })",
+    "english": "Cannot read team members: {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 55,
+    "original": "能力协作团队预设尚未注册，请在插件管理器检查本地扩展是否启用。",
+    "replacement": "t('ui.595')",
+    "english": "Capability Team preset is not registered; check whether the local extension is enabled in the plugin manager.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 56,
+    "original": "能力协作团队预设激活失败：{0}",
+    "replacement": "t('ui.596', { 0: definition.broken })",
+    "english": "Capability Team preset activation failed: {0}",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 58,
+    "original": "本会话未挂载能力协作团队预设；安装插件或重启不会自动迁移已经开始的会话。请新建会话，在模式选择中选择“能力协作团队”，再打开团队总览读取状态；原会话保留不变。",
+    "replacement": "t('ui.597')",
+    "english": "This session does not have the Capability Team preset; installation or restart does not migrate existing sessions. Create a session, choose Capability Team in the mode selector, then open Team Overview to read status; the original session remains unchanged.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 59,
+    "original": "预设名称存在，但本会话缺少能力团队工具：{0}。可能原因：插件在本会话创建之后才加载或中途重载，主控专属工具未随会话创建装入。处置：先刷新状态（插件会在下一步自动补装）；刷新后仍缺失，请新建会话并在模式选择中选择“能力协作团队”。",
+    "replacement": "t('ui.598', { 0: missingTools.join('、') })",
+    "english": "The preset exists but this session lacks Capability Team tools: {0}. The plugin may have loaded after session creation or reloaded mid-session, leaving Lead-only tools unattached. Refresh status first (the plugin automatically repairs them on the next step); if still missing, create a session with Capability Team selected.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 60,
+    "original": "后台工具存在，但团队配置读取失败；当前不可管理模型，请查看具体错误。",
+    "replacement": "t('ui.599')",
+    "english": "Backend tools exist but team configuration could not be read; models cannot be managed; inspect the error details.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 61,
+    "original": "后台工具存在，但本会话配置读取器尚未就绪；请刷新，若持续出现则检查预设激活。",
+    "replacement": "t('ui.600')",
+    "english": "Backend tools exist but this session's configuration reader is not ready; refresh, and check preset activation if the issue persists.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 62,
+    "original": "能力团队后台工具和配置读取已就绪；这不代表角色模型请求已经验证成功。",
+    "replacement": "t('ui.601')",
+    "english": "Capability Team backend tools and configuration reader are ready; this does not verify role model requests.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 86,
+    "original": "当前会话未启用能力协作团队，未保存",
+    "replacement": "m('ui.602')",
+    "english": "Capability Team is not enabled for this session; nothing saved",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 88,
+    "original": "无效的模型策略参数",
+    "replacement": "m('ui.603')",
+    "english": "Invalid model policy parameters",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 102,
+    "original": "保存全局模型禁用列表与前缀规则；对所有能力协作团队会话从下一次请求起生效。",
+    "replacement": "m('ui.604')",
+    "english": "Save global model deny list and prefix rules; effective for all Capability Team sessions from the next request.",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 103,
+    "original": "模型策略JSON",
+    "replacement": "t('ui.605')",
+    "english": "Model policy JSON",
+    "import": "import { m, t } from './i18n.js';"
+  },
+  {
+    "file": "ui.js",
+    "line": 108,
+    "original": "只读检查本会话的能力团队预设和后台工具是否真正挂载，不调用模型。",
+    "replacement": "m('ui.606')",
+    "english": "Read-only check that this session actually has the Capability Team preset and backend tools; does not call a model.",
+    "import": "import { m, t } from './i18n.js';"
+  }
+]

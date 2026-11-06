@@ -1,3 +1,4 @@
+import { t } from './i18n.js';
 import { safeId, safeTarget, safeTime, summarizeActivity } from './activity-summary.js';
 import { isolatedProjection } from './preset-guard.js';
 import { OWN_USAGE_KEY, initOwnUsage, applyOwnUsage, ownUsageView } from './usage.js';
@@ -57,7 +58,7 @@ export const artifactsDefinition = definition('capabilityTeamArtifacts', (h, i) 
     const additions = [];
     for (let index = 0; index < Math.min(d.files.length, 256); index++) {
       const file = d.files[index]; const relative = safeTarget(file?.path, s.cwd, 4096, s.root);
-      if (!relative || relative === '[敏感路径]') continue;
+      if (!relative || relative === t('observability-projection.318')) continue;
       additions.push({ id: `${s.sessionId}:${e.seq}:${index}`, sessionId: s.sessionId, presentSeq: e.seq, fileIndex: index, turn: coord(d.turn), at: safeTime(e.time), path: file.path, displayPath: relative.slice(0, 240), changeRef: null });
     }
     items = [...additions, ...items];

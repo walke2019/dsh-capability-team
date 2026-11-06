@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Model catalog lookups happen only when a configuration is saved, never per request.
 export async function modelCatalog(llm, tiers = {}) {
   const entries = []; const errors = [];
@@ -7,7 +8,7 @@ export async function modelCatalog(llm, tiers = {}) {
         entries.push({ provider: provider.id, providerName: provider.name, model: model.id, name: model.name,
           tiers: Object.entries(tiers).filter(([, ids]) => ids.includes(model.id)).map(([tier]) => tier) });
       }
-    } catch { errors.push({ provider: provider.id, error: '模型目录读取失败，禁止从该渠道新增分配' }); }
+    } catch { errors.push({ provider: provider.id, error: modelText('allocation.027') }); }
   }
   return { entries, errors };
 }
@@ -22,7 +23,7 @@ export function changedRoutes(before, after) {
 export function verifyRoutes(routes, catalog) {
   for (const r of routes) {
     if (!catalog.entries.some(e => e.provider === r.provider && e.model === r.model)) {
-      throw new Error(`能力 ${r.capability} 的模型 ${r.provider}/${r.model} 不在当前DSH模型目录中；请先在DSH配置该渠道或改选目录中的模型`);
+      throw new Error(modelText('allocation.028', { 0: r.capability, 1: r.provider, 2: r.model }));
     }
   }
 }

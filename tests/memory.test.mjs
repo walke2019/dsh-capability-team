@@ -28,7 +28,7 @@ test('写入：相同内容合并，同主题的新决定替换旧的', async ()
   await store.write({ scope: { kind: 'project', project: P }, kind: 'decision', key: 'embed', text: '嵌入改走 CPA 网关 /v1/embeddings' });
   const found = await store.search({ project: P, query: '嵌入', k: 10 });
   assert.deepEqual(found.map(r => r.memory.text), ['嵌入改走 CPA 网关 /v1/embeddings'], '旧决定被替换后不再出现');
-  await assert.rejects(store.write({ scope: role('fe'), kind: 'bogus', text: 'xxxxx' }), /记忆类型/);
+  await assert.rejects(store.write({ scope: role('fe'), kind: 'bogus', text: 'xxxxx' }), /Memory kind/);
 });
 
 test('可见范围：角色记忆只给本角色，其他项目看不到', async () => {
@@ -119,10 +119,10 @@ test('嵌入失败：空向量、状态页、限流都降级并说明原因', as
   assert.equal(await empty.embed(['x']), undefined);
   const statusPage = createEmbedder({ settings: s, fetcher: async () => new Response(JSON.stringify({ status: 'ok', available_routes: ['/v1/search'] })) });
   assert.equal(await statusPage.embed(['x']), undefined);
-  assert.match(statusPage.lastError, /非空向量/);
+  assert.match(statusPage.lastError, /nonempty vector/);
   const limited = createEmbedder({ settings: s, fetcher: async () => new Response('{}', { status: 429 }) });
   await limited.embed(['x']);
-  assert.match(limited.lastError, /429（限流/);
+  assert.match(limited.lastError, /429.*Rate limited/);
   assert.equal(cosine([1, 0], [1, 0]), 1);
 });
 
@@ -155,7 +155,7 @@ test('记忆枢纽：交接自动入库，接到任务时自动召回，队友�
   const until = async read => { const deadline = Date.now() + 5000; for (;;) { const value = await read(); if (value || Date.now() > deadline) return value; await new Promise(resolve => setTimeout(resolve, 10)); } };
   await until(() => /本地化分隔符/.test(fe.context.text()));
   const text = fe.context.text();
-  assert.match(text, /记忆枢纽/);
+  assert.match(text, /Memory hub/);
   assert.match(text, /本地化分隔符/);
   handlers['session/event']({ id: 'fe1' }, { type: 'tool/call', data: { name: 'send_message', callId: 'c1', arguments: JSON.stringify({ target: 'lead', message: '最终结果：'.padEnd(220, '好') }) } });
   handlers['session/event']({ id: 'fe1' }, { type: 'tool/result', data: { message: { toolCallId: 'c1', isError: false } } });
@@ -163,9 +163,9 @@ test('记忆枢纽：交接自动入库，接到任务时自动召回，队友�
   await until(async () => (await search()).results.length > 0);
   const found = await search();
   assert.equal(found.mode, 'text');
-  assert.match(found.note, /未配置嵌入/);
+  assert.match(found.note, /Embeddings are not configured/);
   assert.equal(found.results.length, 1);
-  await assert.rejects(tools.capability_memory_write.execute({ kind: 'note', text: '全局约定内容', scope: 'global' }, { agent: fe }), /只有主控/);
+  await assert.rejects(tools.capability_memory_write.execute({ kind: 'note', text: '全局约定内容', scope: 'global' }, { agent: fe }), /Only the Lead/);
   const saved = JSON.parse(await tools.capability_memory_write.execute({ kind: 'pitfall', text: '测试前要先 build:client' }, { agent: fe }));
   assert.equal(saved.scope, 'role');
   const file = await readFile(join(root, 'memory', (await import('node:crypto')).createHash('sha256').update(P).digest('hex').slice(0, 32) + '.jsonl'), 'utf8');

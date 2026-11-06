@@ -46,8 +46,8 @@ test('项目指定的顺序只能从免费模型中选，付费或已弃用的�
   const read = async () => JSON.stringify(catalog);
   assert.deepEqual(await resolveFreeModels([], { file: 'f', read }), ['opencode/b-free', 'opencode/a-free', 'opencode/pickle']);
   assert.deepEqual(await resolveFreeModels(['opencode/pickle'], { file: 'f', read }), ['opencode/pickle']);
-  await assert.rejects(resolveFreeModels(['opencode/paid'], { file: 'f', read }), /不是 OpenCode 目录中的免费模型/);
-  await assert.rejects(resolveFreeModels(['opencode/old-free'], { file: 'f', read }), /不是/);
+  await assert.rejects(resolveFreeModels(['opencode/paid'], { file: 'f', read }), /not a free model in the OpenCode catalog/);
+  await assert.rejects(resolveFreeModels(['opencode/old-free'], { file: 'f', read }), /not a free model/);
   await assert.rejects(resolveFreeModels([], { file: 'f', read: async () => { throw Object.assign(new Error('x'), { code: 'ENOENT' }); } }), /opencode models/);
-  await assert.rejects(resolveFreeModels([], { file: 'f', read: async () => '{}' }), /没有可用的免费模型/);
+  await assert.rejects(resolveFreeModels([], { file: 'f', read: async () => '{}' }), /No available free models/);
 });
