@@ -78,7 +78,7 @@ const ALLOWED = new Set(['CHANGELOG.md', 'brand.js', 'docs/migration-aiwuk.md', 
 // Files owned by other work packages that still carry old names; shrink this list as they land.
 const PENDING_OWNERS = new Set([
   'ui.js', 'client/10b-onboarding.js', 'tests/client-onboarding.test.mjs',
-  'packages/omni-search/index.js', 'packages/global-memory/index.js',
+  'packages/global-memory/index.js',
   'packages/autocomplete/client/00-core.js', 'tests/autocomplete/client.test.mjs',
 ]);
 const GENERATED = /^(client\.js|packages\/autocomplete\/client\.js|packages\/[^/]+\/shared\/)/;

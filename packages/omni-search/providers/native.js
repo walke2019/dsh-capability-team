@@ -1,8 +1,8 @@
 import { activeEngines, omni, searchSettings } from '../shared/search.js';
 import { transcribe, audioSettings } from '../shared/transcribe.js';
+import { BRAND } from '../shared/brand.js';
 
-// TODO: derive this name from the shared brand constants after the brand package lands.
-const SPEECH_NAME = 'AIWUK Cloud STT';
+const SPEECH_NAME = `${BRAND.en} Cloud STT`;
 const usable = (engine, settings) => {
   if (engine === 'searxng') return Boolean(settings.config.searxngUrl);
   if (engine === 'custom') return Boolean(settings.config.baseUrl && (settings.keys?.custom ?? settings.key));
