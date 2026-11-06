@@ -138,86 +138,39 @@ test('ErrorBoundary 优雅降级保护：子组件崩溃不导致整页白屏', 
   assert.ok(JSON.stringify(crashedTree).includes('Simulated Tab Crash'));
 });
 
-test('语言切换按键与 localStorage 交互', () => {
+test('overview has no private language toggle and never touches localStorage for locale', () => {
   const h = createHarness();
   const element = h.view({ sessionId: 's_lead' });
   const tree = h.render(element.type, element.props);
-
-  const toggleBtn = h.find(tree, n => n.props?.className?.includes('ctm-lang-toggle'));
-  assert.ok(toggleBtn, 'Language toggle button must be present in header');
-  // No `t` is injected by this harness call, so Overview falls back to its own real dictionary (item 3) instead
-  // of echoing the raw key; the default locale is English, so the toggle's own label reads the target "中文".
-  assert.ok(JSON.stringify(toggleBtn).includes('中文'));
-
-  toggleBtn.props.onClick();
-  // 默认从 en 切到 zh
-  assert.equal(h.sandbox._storage['dsh-capability-team-locale'], 'zh');
-  // 再点切回 en
-  toggleBtn.props.onClick();
-  assert.equal(h.sandbox._storage['dsh-capability-team-locale'], 'en');
+  assert.equal(h.find(tree, n => String(n.props?.className ?? '').includes('ctm-lang-toggle')), undefined, 'no private language toggle');
+  assert.deepEqual(h.sandbox._storage, {}, 'rendering must not write any locale preference');
+  const source = readFileSync(new URL('../client/10-overview.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /localStorage|dsh-capability-team-locale|toggleLocale/);
 });
 
-test('item 3（真实双语渲染）：不注入 t 时默认渲染英文，切换后渲染中文，并持久化到 localStorage', () => {
+test('overview language follows the host locale service (getLocale + subscribe)', () => {
   const h = createHarness();
-  // No `t` prop injected here — this exercises Overview's own dictionary-backed translator for real, the
-  // scenario Lead explicitly called out: the production registration site never injects `t` either.
-  const element = h.view({ sessionId: 's_lead' });
-  let tree = h.render(element.type, element.props);
-
-  // Default (no stored preference) must be English, not the host's locale and not Chinese.
-  const title1 = h.find(tree, n => n.props?.className === 'ctm-ov-title');
-  assert.ok(title1);
-  assert.deepEqual(title1.children, ['Team overview'], '默认必须渲染英文真实译文，不是原始 key 或中文');
-  const toggleBtn1 = h.find(tree, n => n.props?.className?.includes('ctm-lang-toggle'));
-  assert.deepEqual(toggleBtn1.children, ['中文'], '英文状态下，切换按钮文案应为目标语言"中文"');
-
-  // Toggle to Chinese.
-  toggleBtn1.props.onClick();
-  assert.equal(h.sandbox._storage['dsh-capability-team-locale'], 'zh', '切换后必须持久化到 localStorage');
-  tree = h.render(element.type, element.props);
-  const title2 = h.find(tree, n => n.props?.className === 'ctm-ov-title');
-  assert.deepEqual(title2.children, ['团队总览'], '切换后必须渲染真实中文译文');
-  const toggleBtn2 = h.find(tree, n => n.props?.className?.includes('ctm-lang-toggle'));
-  assert.deepEqual(toggleBtn2.children, ['EN'], '中文状态下，切换按钮文案应为目标语言"EN"');
-
-  // A value that interpolates {vars} must also come through the plugin's own dictionary correctly.
-  const refreshBtn = h.find(tree, n => n.type === 'button' && n.props?.className?.includes('ctm-ov-refresh'));
-  assert.deepEqual(refreshBtn.children, ['刷新'], '插值与非插值词条都应来自插件自带字典');
+  let active = 'en';
+  const listeners = new Set();
+  const locale = { getLocale: () => ({ active, locales: [], revision: 1 }), subscribe: fn => { listeners.add(fn); return () => listeners.delete(fn); } };
+  const element = h.view({ sessionId: 's_lead', locale });
+  const title = () => h.find(h.render(element.type, element.props), n => n.props?.className === 'ctm-ov-title').children;
+  assert.deepEqual(title(), ['Team overview']);
+  active = 'zh';
+  assert.deepEqual(title(), ['团队总览'], 'switching the host locale switches the overview');
+  active = 'zh-CN';
+  assert.deepEqual(title(), ['团队总览'], 'regional zh variants count as Chinese');
+  active = 'en';
+  assert.deepEqual(title(), ['Team overview']);
 });
 
-test('宿主传入 t 时，点按钮仍能切换语言并写入 localStorage', () => {
+test('without a locale prop the overview uses the injected host translator verbatim and defaults to English', () => {
   const h = createHarness();
-  // 模拟宿主 slot 传入的 t（宿主 slot 传 t 会覆盖 ownTranslator 导致切换失效）
-  const hostT = key => (key === 'overview.hint' ? '读取本会话真实状态，不启动模型、不修改配置。' : `host:${key}`);
-  const element = h.view({ sessionId: 's_lead', t: hostT });
-  let tree = h.render(element.type, element.props);
-
-  // 1. 未点击时：跟随宿主传入的 t
-  const title1 = h.find(tree, n => n.props?.className === 'ctm-ov-title');
-  assert.equal(title1.children[0], 'host:overview.title', '未显式切换前跟随宿主传入的 t');
-
-  const toggleBtn1 = h.find(tree, n => n.props?.className?.includes('ctm-lang-toggle'));
-  assert.ok(toggleBtn1, '语言切换按钮必须存在');
-
-  // 2. 宿主初始 probe 为中文，点击切换语言后翻转为英文并持久化
-  toggleBtn1.props.onClick();
-  assert.equal(h.sandbox._storage['dsh-capability-team-locale'], 'en', '点击后必须持久化到 localStorage');
-
-  tree = h.render(element.type, element.props);
-  const title2 = h.find(tree, n => n.props?.className === 'ctm-ov-title');
-  assert.deepEqual(title2.children, ['Team overview'], '点击切换后即使宿主传入了 t，也必须使用插件自有词典渲染英文');
-  const toggleBtn2 = h.find(tree, n => n.props?.className?.includes('ctm-lang-toggle'));
-  assert.deepEqual(toggleBtn2.children, ['中文'], '英文状态下切换按钮文案应为"中文"');
-
-  // 3. 再次点击切回中文并持久化
-  toggleBtn2.props.onClick();
-  assert.equal(h.sandbox._storage['dsh-capability-team-locale'], 'zh', '再次点击后必须持久化 zh 到 localStorage');
-
-  tree = h.render(element.type, element.props);
-  const title3 = h.find(tree, n => n.props?.className === 'ctm-ov-title');
-  assert.deepEqual(title3.children, ['团队总览'], '切回中文后必须使用插件自有词典渲染中文');
-  const toggleBtn3 = h.find(tree, n => n.props?.className?.includes('ctm-lang-toggle'));
-  assert.deepEqual(toggleBtn3.children, ['EN'], '中文状态下切换按钮文案应为"EN"');
+  const plain = h.view({ sessionId: 's_lead' });
+  assert.deepEqual(h.find(h.render(plain.type, plain.props), n => n.props?.className === 'ctm-ov-title').children, ['Team overview']);
+  const injected = h.view({ sessionId: 's_lead', t: key => `host:${key}` });
+  const injectedTree = h.render(injected.type, injected.props);
+  assert.equal(h.find(injectedTree, n => n.props?.className === 'ctm-ov-title').children[0], 'host:overview.title', 'an injected host t is used verbatim');
 });
 
 test('角色面板中 Theme 主题配置展示与一键复制 prompt', async () => {
