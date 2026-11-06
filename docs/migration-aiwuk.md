@@ -34,14 +34,17 @@ Requirements: DSH `>=0.2.2-rc.1 <0.3.0` and Node.js >= 22. On an older DSH the h
    take the new name from the new bundle.
 4. In bundle lists or profile files that mention the routing plugin, replace `dsh-capability-team/roles` with
    `@aiwuk/team/roles`.
-5. Disable the old bundles, then remove them:
-   ```bash
-   dsh plugin remove dsh-capability-team
-   dsh plugin remove dsh-capability-autocomplete
-   dsh plugin remove dsh-capability-memory
-   dsh plugin remove dsh-omni-search
-   ```
-   If a removal reports that the bundle is in use, disable the dependent entry first and retry.
+5. Remove the old bundles one pair at a time. The new bundle reuses the old Loader `id`, so while it is enabled
+   the old one is reported as `bundle-in-use` and cannot be removed (a restart does not help). For each pair:
+   disable the new bundle on the Plugins page, remove the old package, then enable the new bundle again. The
+   `dsh plugin` CLI only forwards to pnpm and has no enable/disable switch; use the Plugins page (or the
+   `plugin_manager` tool). Example for search:
+   1. Plugins page: disable "AIWUK Search".
+   2. `dsh plugin remove dsh-omni-search`
+   3. Plugins page: enable "AIWUK Search".
+
+   Repeat for `dsh-capability-team` → `@aiwuk/team`, `dsh-capability-autocomplete` → `@aiwuk/autocomplete` and
+   `dsh-capability-memory` → `@aiwuk/memory`. Instances managed by the AIWUK Mothership do this automatically.
 6. Restart DSH and open a new session in the "capability team" mode. Check the Plugins page: the titles are
    "AIWUK Team", "AIWUK Autocomplete", "AIWUK Memory" and "AIWUK Search" (Chinese: AI悟空 ...).
 
