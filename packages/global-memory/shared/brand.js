@@ -29,7 +29,7 @@ export const EXTENSIONS = Object.freeze({
   }),
 });
 
-// Old package name -> new package name. Old names stay published for rollback.
+// Old package name -> new package name. Rollback reinstalls the old package from its original source.
 export const RENAME_MAP = Object.freeze({
   'dsh-capability-team': '@aiwuk/team',
   'dsh-capability-autocomplete': '@aiwuk/autocomplete',
