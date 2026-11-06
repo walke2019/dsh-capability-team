@@ -117,6 +117,14 @@ Breaking changes: the former `cpa_*` tool names and `CPA_SEARCH_*` / `CPA_AUDIO_
 
 The custom gateway and audio endpoint must be credential-free https URLs. Never put credentials in headers or URLs in the JSON file. Missing keys explicitly fail; no paid-model fallback is attempted.
 
+## Native providers
+
+Use the DSH Plugins page to enable or disable the plugin; the legacy `enabled` activation setting is not volatile.
+
+When DSH exposes its optional web and experimental speech-to-text services, the plugin registers the `aiwuk-search` and `aiwuk-cloud-stt` providers. Select providers in DSH; this plugin does not change the default selection. Search uses the same engine order and credentials as the tools. The cloud speech provider sends recordings to the configured audio gateway and relies on the host's consent flow; the legacy `omni_transcribe` tool continues to require its own per-file approval.
+
+A native fetch provider is deferred: the extraction engines do not reliably expose the target response status, body kind and truncation. The existing `omni_fetch` tool remains available, as does DSH's own native web fetch provider.
+
 ## Audio consent and privacy
 
 Every transcription asks DSH's native question UI for approval of that exact resolved file path and size. File bytes are read only after approval; declining prevents read/upload. The already-open handle is size/type checked, preventing path substitution between validation and reading. Relative paths use the current working directory. Native tool sandbox/permission guards remain authoritative.

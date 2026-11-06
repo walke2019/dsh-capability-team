@@ -2,21 +2,31 @@ import { omni, searchSchemas } from './shared/search.js';
 import { applyTranscribe } from './shared/transcribe.js';
 import { refreshCredentials, resolveIntegrations, setCredentialResolver, setSettingsReader, SEARCH_ENGINES, FETCH_ENGINES } from './shared/integrations-config.js';
 import { schemastery, splitSettings } from './shared/settings-schema.js';
-export const inject = ['tools','workingDirectory','userQuestions'];
+import { readFileSync } from 'node:fs';
+import { registerNativeProviders } from './providers/native.js';
+export const inject = ['tools', 'workingDirectory', 'userQuestions'];
+const FIELD_TEXT = Object.fromEntries([['en-US', 'en'], ['zh-CN', 'zh']].map(([locale, name]) =>
+  [locale, JSON.parse(readFileSync(new URL(`./locale/schema.${name}.json`, import.meta.url), 'utf8'))]));
 // Settings-form fields (DSH plugin page) → integrations target. Unset fields keep integrations.json/env/credentials.
 export const SETTINGS_FIELDS = Object.freeze({ engines: ['search', 'engines'], fetchEngines: ['search', 'fetchEngines'], searxngUrl: ['search', 'searxngUrl'],
   baseUrl: ['search', 'baseUrl'], tavilyKeyEnv: ['search', 'tavilyKeyEnv'], braveKeyEnv: ['search', 'braveKeyEnv'], searxngKeyEnv: ['search', 'searxngKeyEnv'],
   jinaKeyEnv: ['search', 'jinaKeyEnv'], apiKeyEnv: ['search', 'apiKeyEnv'], audioBaseUrl: ['audio', 'baseUrl'], audioKeyEnv: ['audio', 'apiKeyEnv'] });
-const z = schemastery('dsh-omni-search');
+const z = schemastery('@aiwuk/search');
 // Key fields hold credential/environment variable NAMES (role credential-ref), never key values.
-export const createConfig = z => { const ref = () => z.string().role('credential-ref').volatile(); return z.object({
-  enabled: z.boolean().default(true),
-  engines: z.array(z.union(SEARCH_ENGINES.map(v => z.const(v)))).volatile(),
-  fetchEngines: z.array(z.union(FETCH_ENGINES.map(v => z.const(v)))).volatile(),
-  searxngUrl: z.string().volatile(), baseUrl: z.string().volatile(),
-  tavilyKeyEnv: ref(), braveKeyEnv: ref(), searxngKeyEnv: ref(), jinaKeyEnv: ref(), apiKeyEnv: ref(),
-  audioBaseUrl: z.string().volatile(), audioKeyEnv: ref(),
-}); };
+export const createConfig = z => {
+  const field = (key, schema) => schema.description(FIELD_TEXT['en-US'][key]).volatile();
+  const ref = key => field(key, z.string().role('credential-ref'));
+  const schema = z.object({
+    enabled: z.boolean().default(true).description(FIELD_TEXT['en-US'].enabled),
+    engines: field('engines', z.array(z.union(SEARCH_ENGINES.map(v => z.const(v))))),
+    fetchEngines: field('fetchEngines', z.array(z.union(FETCH_ENGINES.map(v => z.const(v))))),
+    searxngUrl: field('searxngUrl', z.string()), baseUrl: field('baseUrl', z.string()),
+    tavilyKeyEnv: ref('tavilyKeyEnv'), braveKeyEnv: ref('braveKeyEnv'), searxngKeyEnv: ref('searxngKeyEnv'),
+    jinaKeyEnv: ref('jinaKeyEnv'), apiKeyEnv: ref('apiKeyEnv'),
+    audioBaseUrl: field('audioBaseUrl', z.string()), audioKeyEnv: ref('audioKeyEnv'),
+  });
+  return typeof schema.i18n === 'function' ? schema.i18n(FIELD_TEXT) : schema;
+};
 export const Config = z ? createConfig(z) : undefined;
 const instances = new WeakSet();
 const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] };
@@ -56,6 +66,7 @@ export function apply(ctx, input = {}) {
   // A settings-form edit commits in place (volatile Config): re-read key names and re-register changed schemas.
   ctx.on?.('loader/volatile-update', () => { refreshed = refreshCredentials().then(sync).catch(error => { ctx.logger?.warn?.(`omni-search: settings refresh failed: ${error?.message ?? error}`); }); });
   applyTranscribe(ctx);
+  registerNativeProviders(ctx);
   // `ready()` settles once credential-provided settings have been applied to the tool schemas.
   return { ready: () => refreshed };
 }
