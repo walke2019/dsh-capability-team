@@ -1220,15 +1220,45 @@ window.__ModuleLoader__.load({
      * writable}}`; a failed batch leaves its refs out (the panel then shows them as unknown, never as "set").
      */
     async function describeSecrets(credentials, refs) {
-      const out = {};
-      if (typeof credentials?.describe !== 'function') return out;
+      return (await describeSecretsResult(credentials, refs)).described;
+    }
+    
+    /** One describe attempt must settle within this time; a hung call counts as a failure so the row never waits forever. */
+    const DESCRIBE_TIMEOUT_MS = 1200;
+    /** Pause before the single automatic retry of a failed describe. Worst case until "Could not check": 2 × timeout + this. */
+    const DESCRIBE_RETRY_DELAY_MS = 300;
+    
+    /** Reject after `ms` when `work` has not settled; the timer is always cleared. */
+    function withTimeout(work, ms) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('timeout')), ms);
+        Promise.resolve(work).then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+      });
+    }
+    
+    /**
+     * Like describeSecrets, but also says whether any batch FAILED (thrown error, refusal, timeout, malformed reply, missing API).
+     * A ref absent from a successful reply is reported as not configured: the host answered, it just holds nothing for it.
+     * Refs of a failed batch are left out (unknown), never guessed.
+     */
+    async function describeSecretsResult(credentials, refs, timeoutMs = DESCRIBE_TIMEOUT_MS) {
+      const described = {};
+      let failed = false;
+      if (!refs.length) return { described, failed };
+      if (typeof credentials?.describe !== 'function') return { described, failed: true };
       for (const batch of chunk(refs)) {
         try {
-          const view = unwrapReply(await credentials.describe(batch)) ?? {};
-          for (const ref of batch) if (view[ref] && typeof view[ref] === 'object') out[ref] = { configured: view[ref].configured === true, source: view[ref].source, writable: view[ref].writable !== false };
-        } catch { /* leave this batch unknown */ }
+          const view = unwrapReply(await withTimeout(Promise.resolve().then(() => credentials.describe(batch)), timeoutMs));
+          if (!view || typeof view !== 'object') throw new Error('malformed-reply');
+          for (const ref of batch) {
+            const item = view[ref];
+            described[ref] = item && typeof item === 'object'
+              ? { configured: item.configured === true, source: item.source, writable: item.writable !== false }
+              : { configured: false, writable: true };
+          }
+        } catch { failed = true; /* leave this batch unknown */ }
       }
-      return out;
+      return { described, failed };
     }
     
     /** Store a new value (write-only). Rejects an empty value, a locked ref and a missing API; resolves to true. */
@@ -1283,6 +1313,9 @@ window.__ModuleLoader__.load({
       }),
       search: Object.freeze({
         extension: 'search', bundle: '@aiwuk/search', namespace: 'omni-search',
+        // Selects this extension as DSH's web search provider: `searchProvider` on the host `web` entry (another namespace).
+        // Unsetting the user layer restores the host default (`deepseek-official` in the shipped base).
+        hostSelection: Object.freeze({ id: 'webSearch', entry: 'web', path: 'searchProvider', value: 'aiwuk-search' }),
         fields: Object.freeze([
           field('engines', 'enum', { path: 'engines', ref: 'OMNI_SEARCH_ENGINES', options: ['tavily', 'brave', 'searxng', 'custom'], multiple: true }),
           field('fetchEngines', 'enum', { path: 'fetchEngines', ref: 'OMNI_FETCH_ENGINES', options: ['jina', 'tavily', 'custom'], multiple: true }),
@@ -1296,7 +1329,7 @@ window.__ModuleLoader__.load({
       // The team bundle has no editable integration fields: its page summarizes the Memory and Search panels.
       team: Object.freeze({ extension: 'team', bundle: '@aiwuk/team', namespace: 'capability-team-ui', fields: Object.freeze([]) }),
     });
-    const DICTIONARIES = {"en":{"lock.locked":"Managed by {mothership}","lock.default":"Default from Mothership","lock.hint":"Change it in the Mothership","value.managed":"Managed","value.default":"Using Mothership default","secret.unset":"Not set","secret.stored":"Set (stored)","secret.env":"Set (environment)","secret.managed":"Managed by {mothership}","secret.unknown":"Checking...","secret.note.saved":"Saved. The value is not shown again.","secret.note.cleared":"Cleared.","secret.note.failed":"The change failed. Nothing was stored.","action.set":"Set","action.replace":"Replace","action.clear":"Clear","action.confirmClear":"Confirm clear","action.save":"Save","action.cancel":"Cancel","state.loading":"Loading...","state.unavailable":"Settings are unavailable: make sure the plugin is enabled.","state.saved":"Saved.","state.failed":"Save failed. Reload and retry.","summary.configured":"Configured {configured}/{total}","summary.managed":"Managed {managed}","err.number":"Enter a whole number in range.","err.url":"Enter a valid http(s) address.","err.enum":"Choose a supported value.","opt.default":"Default","opt.session":"Follow session","opt.fixed":"Fixed model","opt.local":"Local","opt.openviking":"OpenViking","opt.current":"Current project","opt.none":"Whole account","opt.tavily":"Tavily","opt.brave":"Brave","opt.searxng":"SearXNG","opt.jina":"Jina","opt.custom":"Custom gateway","field.maxSuggestions":"Max suggestions","field.typePauseMs":"Typing pause (ms)","field.maxOutputTokens":"Max output tokens","field.timeoutMs":"Timeout (ms)","field.maxMessages":"Context messages","field.maxChars":"Context characters","field.mobileBar":"Touch suggestion bar","field.autoRecall":"Auto recall","field.injectChars":"Injected characters","field.recallK":"Recall count","team.integrations":"Integrations","team.memory":"Memory","team.search":"Search","team.hint":"Memory and Search keep their own settings pages under Plugins.","team.unmanaged":"Nothing is managed by the Mothership.","team.managedCount":"{count} setting(s) managed by {mothership}."},"zh":{"lock.locked":"\u7531 {mothership}\u6258\u7ba1","lock.default":"\u6bcd\u8230\u9ed8\u8ba4\u503c","lock.hint":"\u8bf7\u5728\u6bcd\u8230\u4e2d\u4fee\u6539","value.managed":"\u5df2\u6258\u7ba1","value.default":"\u4f7f\u7528\u6bcd\u8230\u9ed8\u8ba4\u503c","secret.unset":"\u672a\u8bbe\u7f6e","secret.stored":"\u5df2\u8bbe\u7f6e\uff08\u5df2\u4fdd\u5b58\uff09","secret.env":"\u5df2\u8bbe\u7f6e\uff08\u73af\u5883\u53d8\u91cf\uff09","secret.managed":"\u7531 {mothership}\u6258\u7ba1","secret.unknown":"\u68c0\u67e5\u4e2d\u2026","secret.note.saved":"\u5df2\u4fdd\u5b58\uff0c\u503c\u4e0d\u4f1a\u518d\u6b21\u663e\u793a\u3002","secret.note.cleared":"\u5df2\u6e05\u9664\u3002","secret.note.failed":"\u64cd\u4f5c\u5931\u8d25\uff0c\u672a\u4fdd\u5b58\u4efb\u4f55\u5185\u5bb9\u3002","action.set":"\u8bbe\u7f6e","action.replace":"\u66ff\u6362","action.clear":"\u6e05\u9664","action.confirmClear":"\u786e\u8ba4\u6e05\u9664","action.save":"\u4fdd\u5b58","action.cancel":"\u53d6\u6d88","state.loading":"\u8bfb\u53d6\u4e2d\u2026","state.unavailable":"\u8bbe\u7f6e\u6682\u4e0d\u53ef\u7528\uff1a\u8bf7\u786e\u8ba4\u5df2\u542f\u7528\u8be5\u63d2\u4ef6\u3002","state.saved":"\u5df2\u4fdd\u5b58\u3002","state.failed":"\u4fdd\u5b58\u5931\u8d25\uff0c\u8bf7\u5237\u65b0\u540e\u91cd\u8bd5\u3002","summary.configured":"\u5df2\u914d\u7f6e {configured}/{total}","summary.managed":"\u6258\u7ba1 {managed}","err.number":"\u8bf7\u8f93\u5165\u8303\u56f4\u5185\u7684\u6574\u6570\u3002","err.url":"\u8bf7\u8f93\u5165\u6709\u6548\u7684 http(s) \u5730\u5740\u3002","err.enum":"\u8bf7\u9009\u62e9\u53d7\u652f\u6301\u7684\u503c\u3002","opt.default":"\u9ed8\u8ba4","opt.session":"\u8ddf\u968f\u4f1a\u8bdd","opt.fixed":"\u56fa\u5b9a\u6a21\u578b","opt.local":"\u672c\u5730","opt.openviking":"OpenViking","opt.current":"\u5f53\u524d\u9879\u76ee","opt.none":"\u6574\u4e2a\u8d26\u6237","opt.tavily":"Tavily","opt.brave":"Brave","opt.searxng":"SearXNG","opt.jina":"Jina","opt.custom":"\u81ea\u5b9a\u4e49\u7f51\u5173","field.maxSuggestions":"\u5019\u9009\u6570","field.typePauseMs":"\u505c\u987f\u65f6\u95f4\uff08\u6beb\u79d2\uff09","field.maxOutputTokens":"\u6700\u5927\u8f93\u51fa","field.timeoutMs":"\u8d85\u65f6\uff08\u6beb\u79d2\uff09","field.maxMessages":"\u4e0a\u4e0b\u6587\u6d88\u606f\u6570","field.maxChars":"\u4e0a\u4e0b\u6587\u5b57\u7b26\u6570","field.mobileBar":"\u89e6\u5c4f\u5efa\u8bae\u680f","field.autoRecall":"\u81ea\u52a8\u53ec\u56de","field.injectChars":"\u6ce8\u5165\u5b57\u6570","field.recallK":"\u53ec\u56de\u6761\u6570","team.integrations":"\u96c6\u6210","team.memory":"\u5168\u5c40\u8bb0\u5fc6","team.search":"\u5168\u80fd\u641c\u7d22","team.hint":"\u5168\u5c40\u8bb0\u5fc6\u4e0e\u5168\u80fd\u641c\u7d22\u7684\u8bbe\u7f6e\u9875\u4f4d\u4e8e\u201c\u63d2\u4ef6\u201d\u9875\u5bf9\u5e94\u6761\u76ee\u4e0b\u3002","team.unmanaged":"\u6ca1\u6709\u4efb\u4f55\u8bbe\u7f6e\u7531\u6bcd\u8230\u6258\u7ba1\u3002","team.managedCount":"{count} \u9879\u8bbe\u7f6e\u7531 {mothership}\u6258\u7ba1\u3002"}};
+    const DICTIONARIES = {"en":{"lock.locked":"Managed by {mothership}","lock.default":"Default from Mothership","lock.hint":"Change it in the Mothership","value.managed":"Managed","value.default":"Using Mothership default","secret.unset":"Not set","secret.stored":"Set (stored)","secret.env":"Set (environment)","secret.managed":"Managed by {mothership}","secret.unknown":"Checking...","secret.failed":"Could not check","secret.note.saved":"Saved. The value is not shown again.","secret.note.cleared":"Cleared.","secret.note.failed":"The change failed. Nothing was stored.","action.set":"Set","action.replace":"Replace","action.clear":"Clear","action.confirmClear":"Confirm clear","action.save":"Save","action.cancel":"Cancel","action.retry":"Retry","state.loading":"Loading...","state.unavailable":"Settings are unavailable: make sure the plugin is enabled.","state.saved":"Saved.","state.failed":"Save failed. Reload and retry.","summary.configured":"Configured {configured}/{total}","summary.managed":"Managed {managed}","err.number":"Enter a whole number in range.","err.url":"Enter a valid http(s) address.","err.enum":"Choose a supported value.","opt.default":"Default","opt.session":"Follow session","opt.fixed":"Fixed model","opt.local":"Local","opt.openviking":"OpenViking","opt.current":"Current project","opt.none":"Whole account","opt.tavily":"Tavily","opt.brave":"Brave","opt.searxng":"SearXNG","opt.jina":"Jina","opt.custom":"Custom gateway","field.maxSuggestions":"Max suggestions","field.typePauseMs":"Typing pause (ms)","field.maxOutputTokens":"Max output tokens","field.timeoutMs":"Timeout (ms)","field.maxMessages":"Context messages","field.maxChars":"Context characters","field.mobileBar":"Touch suggestion bar","field.autoRecall":"Auto recall","field.injectChars":"Injected characters","field.recallK":"Recall count","team.integrations":"Integrations","team.memory":"Memory","team.search":"Search","team.hint":"Memory and Search keep their own settings pages under Plugins.","team.unmanaged":"Nothing is managed by the Mothership.","team.managedCount":"{count} setting(s) managed by {mothership}.","host.webSearch.label":"Use AIWUK Search for DSH web search","host.webSearch.current":"Current provider: {provider}.","host.webSearch.auto":"automatic","host.webSearch.hint":"Turn it off to restore the DSH default.","host.webSearch.unavailable":"DSH web search settings are unavailable.","host.webSearch.failed":"Could not change the web search provider."},"zh":{"lock.locked":"\u7531 {mothership}\u6258\u7ba1","lock.default":"\u6bcd\u8230\u9ed8\u8ba4\u503c","lock.hint":"\u8bf7\u5728\u6bcd\u8230\u4e2d\u4fee\u6539","value.managed":"\u5df2\u6258\u7ba1","value.default":"\u4f7f\u7528\u6bcd\u8230\u9ed8\u8ba4\u503c","secret.unset":"\u672a\u8bbe\u7f6e","secret.stored":"\u5df2\u8bbe\u7f6e\uff08\u5df2\u4fdd\u5b58\uff09","secret.env":"\u5df2\u8bbe\u7f6e\uff08\u73af\u5883\u53d8\u91cf\uff09","secret.managed":"\u7531 {mothership}\u6258\u7ba1","secret.unknown":"\u68c0\u67e5\u4e2d\u2026","secret.failed":"\u65e0\u6cd5\u68c0\u67e5","secret.note.saved":"\u5df2\u4fdd\u5b58\uff0c\u503c\u4e0d\u4f1a\u518d\u6b21\u663e\u793a\u3002","secret.note.cleared":"\u5df2\u6e05\u9664\u3002","secret.note.failed":"\u64cd\u4f5c\u5931\u8d25\uff0c\u672a\u4fdd\u5b58\u4efb\u4f55\u5185\u5bb9\u3002","action.set":"\u8bbe\u7f6e","action.replace":"\u66ff\u6362","action.clear":"\u6e05\u9664","action.confirmClear":"\u786e\u8ba4\u6e05\u9664","action.save":"\u4fdd\u5b58","action.cancel":"\u53d6\u6d88","action.retry":"\u91cd\u8bd5","state.loading":"\u8bfb\u53d6\u4e2d\u2026","state.unavailable":"\u8bbe\u7f6e\u6682\u4e0d\u53ef\u7528\uff1a\u8bf7\u786e\u8ba4\u5df2\u542f\u7528\u8be5\u63d2\u4ef6\u3002","state.saved":"\u5df2\u4fdd\u5b58\u3002","state.failed":"\u4fdd\u5b58\u5931\u8d25\uff0c\u8bf7\u5237\u65b0\u540e\u91cd\u8bd5\u3002","summary.configured":"\u5df2\u914d\u7f6e {configured}/{total}","summary.managed":"\u6258\u7ba1 {managed}","err.number":"\u8bf7\u8f93\u5165\u8303\u56f4\u5185\u7684\u6574\u6570\u3002","err.url":"\u8bf7\u8f93\u5165\u6709\u6548\u7684 http(s) \u5730\u5740\u3002","err.enum":"\u8bf7\u9009\u62e9\u53d7\u652f\u6301\u7684\u503c\u3002","opt.default":"\u9ed8\u8ba4","opt.session":"\u8ddf\u968f\u4f1a\u8bdd","opt.fixed":"\u56fa\u5b9a\u6a21\u578b","opt.local":"\u672c\u5730","opt.openviking":"OpenViking","opt.current":"\u5f53\u524d\u9879\u76ee","opt.none":"\u6574\u4e2a\u8d26\u6237","opt.tavily":"Tavily","opt.brave":"Brave","opt.searxng":"SearXNG","opt.jina":"Jina","opt.custom":"\u81ea\u5b9a\u4e49\u7f51\u5173","field.maxSuggestions":"\u5019\u9009\u6570","field.typePauseMs":"\u505c\u987f\u65f6\u95f4\uff08\u6beb\u79d2\uff09","field.maxOutputTokens":"\u6700\u5927\u8f93\u51fa","field.timeoutMs":"\u8d85\u65f6\uff08\u6beb\u79d2\uff09","field.maxMessages":"\u4e0a\u4e0b\u6587\u6d88\u606f\u6570","field.maxChars":"\u4e0a\u4e0b\u6587\u5b57\u7b26\u6570","field.mobileBar":"\u89e6\u5c4f\u5efa\u8bae\u680f","field.autoRecall":"\u81ea\u52a8\u53ec\u56de","field.injectChars":"\u6ce8\u5165\u5b57\u6570","field.recallK":"\u53ec\u56de\u6761\u6570","team.integrations":"\u96c6\u6210","team.memory":"\u5168\u5c40\u8bb0\u5fc6","team.search":"\u5168\u80fd\u641c\u7d22","team.hint":"\u5168\u5c40\u8bb0\u5fc6\u4e0e\u5168\u80fd\u641c\u7d22\u7684\u8bbe\u7f6e\u9875\u4f4d\u4e8e\u201c\u63d2\u4ef6\u201d\u9875\u5bf9\u5e94\u6761\u76ee\u4e0b\u3002","team.unmanaged":"\u6ca1\u6709\u4efb\u4f55\u8bbe\u7f6e\u7531\u6bcd\u8230\u6258\u7ba1\u3002","team.managedCount":"{count} \u9879\u8bbe\u7f6e\u7531 {mothership}\u6258\u7ba1\u3002","host.webSearch.label":"\u8ba9 DSH \u7f51\u9875\u641c\u7d22\u4f7f\u7528 AI\u609f\u7a7a \u5168\u80fd\u641c\u7d22","host.webSearch.current":"\u5f53\u524d\u63d0\u4f9b\u65b9\uff1a{provider}\u3002","host.webSearch.auto":"\u81ea\u52a8\u9009\u62e9","host.webSearch.hint":"\u5173\u95ed\u540e\u6062\u590d DSH \u9ed8\u8ba4\u3002","host.webSearch.unavailable":"DSH \u7f51\u9875\u641c\u7d22\u8bbe\u7f6e\u4e0d\u53ef\u7528\u3002","host.webSearch.failed":"\u65e0\u6cd5\u66f4\u6539\u7f51\u9875\u641c\u7d22\u63d0\u4f9b\u65b9\u3002"}};
     const CATALOG = [{"ref":"OMNI_SEARCH_BASE_URL","extension":"search","label":{"en":"Search gateway URL","zh":"\u641c\u7d22\u7f51\u5173\u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true},{"ref":"SEARXNG_URL","extension":"search","label":{"en":"SearXNG URL","zh":"SearXNG \u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true},{"ref":"OMNI_SEARCH_ENGINES","extension":"search","label":{"en":"Search engines","zh":"\u641c\u7d22\u5f15\u64ce"},"kind":"enum","options":["tavily","brave","searxng","custom"],"multiple":true,"secret":false,"defaultLocked":true},{"ref":"OMNI_FETCH_ENGINES","extension":"search","label":{"en":"Fetch engines","zh":"\u6293\u53d6\u5f15\u64ce"},"kind":"enum","options":["jina","tavily","custom"],"multiple":true,"secret":false,"defaultLocked":true,"default":"jina"},{"ref":"OMNI_SEARCH_PROVIDERS_PATH","extension":"search","label":{"en":"Search gateway providers path","zh":"\u641c\u7d22\u7f51\u5173\u63d0\u4f9b\u65b9\u8def\u5f84"},"kind":"text","secret":false,"defaultLocked":true},{"ref":"OMNI_AUDIO_BASE_URL","extension":"search","label":{"en":"Speech-to-text URL","zh":"\u8bed\u97f3\u8f6c\u5199\u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true},{"ref":"OMNI_SEARCH_API_KEY","extension":"search","label":{"en":"Search gateway API key","zh":"\u641c\u7d22\u7f51\u5173\u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"TAVILY_API_KEY","extension":"search","label":{"en":"Tavily API key","zh":"Tavily \u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"BRAVE_API_KEY","extension":"search","label":{"en":"Brave API key","zh":"Brave \u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"SEARXNG_API_KEY","extension":"search","label":{"en":"SearXNG API key","zh":"SearXNG \u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"JINA_API_KEY","extension":"search","label":{"en":"Jina API key","zh":"Jina \u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"OMNI_AUDIO_API_KEY","extension":"search","label":{"en":"Speech-to-text API key","zh":"\u8bed\u97f3\u8f6c\u5199\u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"EMBEDDING_BASE_URL","extension":"memory","label":{"en":"Embedding URL","zh":"\u5411\u91cf\u670d\u52a1\u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true,"legacyRefs":["CPA_EMBED_BASE_URL"]},{"ref":"EMBEDDING_MODEL","extension":"memory","label":{"en":"Embedding model","zh":"\u5411\u91cf\u6a21\u578b"},"kind":"text","secret":false,"defaultLocked":true,"legacyRefs":["CPA_EMBED_MODEL"]},{"ref":"EMBEDDING_DIMENSIONS","extension":"memory","label":{"en":"Embedding dimensions","zh":"\u5411\u91cf\u7ef4\u5ea6"},"kind":"number","secret":false,"defaultLocked":true,"legacyRefs":["CPA_EMBED_DIMENSIONS"]},{"ref":"OPENVIKING_URL","extension":"memory","label":{"en":"Memory URL","zh":"\u8bb0\u5fc6\u670d\u52a1\u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true},{"ref":"MEMORY_BACKEND","extension":"memory","label":{"en":"Backend","zh":"\u5b58\u50a8\u540e\u7aef"},"kind":"enum","options":["local","openviking"],"secret":false,"defaultLocked":true,"default":"local"},{"ref":"MEMORY_SHARED_RECALL","extension":"memory","label":{"en":"Shared recall scope","zh":"\u5171\u4eab\u53ec\u56de\u8303\u56f4"},"kind":"enum","options":["current","none"],"secret":false,"defaultLocked":true,"default":"current"},{"ref":"EMBEDDING_API_KEY","extension":"memory","label":{"en":"Embedding API key","zh":"\u5411\u91cf\u670d\u52a1\u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true,"legacyRefs":["CPA_EMBED_API_KEY"]},{"ref":"OPENVIKING_API_KEY","extension":"memory","label":{"en":"Memory API key","zh":"\u8bb0\u5fc6\u670d\u52a1\u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"AUTOCOMPLETE_ROUTE_MODE","extension":"autocomplete","label":{"en":"Model routing","zh":"\u6a21\u578b\u8def\u7531"},"kind":"enum","options":["session","fixed"],"secret":false,"defaultLocked":true,"default":"session"},{"ref":"AUTOCOMPLETE_PROVIDER","extension":"autocomplete","label":{"en":"Provider","zh":"\u63d0\u4f9b\u65b9"},"kind":"text","secret":false,"defaultLocked":true},{"ref":"AUTOCOMPLETE_MODEL","extension":"autocomplete","label":{"en":"Model","zh":"\u6a21\u578b"},"kind":"text","secret":false,"defaultLocked":true}];
     /** en / zh dictionaries of one panel: shared texts, catalog labels (ref.<REF>) and the Mothership name filled in. */
     function panelDictionaries(panel) {
@@ -1387,18 +1420,68 @@ window.__ModuleLoader__.load({
         return [manifest, reload];
       }
     
-      /** Secret states from `credentials.describe`, refreshed on `credentials/reference-updated`. */
+      /**
+       * Secret states from `credentials.describe`, refreshed on `credentials/reference-updated`. Returns
+       * `[described, refresh, failed]`. Every row leaves "checking" in bounded time: a result from a superseded or
+       * unmounted run is dropped (ticket), the credentials service is read at call time (never captured stale), a failed
+       * run is retried once automatically, and after that `failed` is true so rows offer Retry instead of waiting forever.
+       */
       function useSecretStates(services, refs) {
         const [described, setDescribed] = React.useState({});
+        const [failed, setFailed] = React.useState(false);
         const key = refs.join(',');
-        const refresh = React.useRef(null);
-        refresh.current = async () => { if (services.credentials && refs.length) setDescribed(await describeSecrets(services.credentials, refs)); };
+        const ticket = React.useRef(0), alive = React.useRef(true), timer = React.useRef(null), retried = React.useRef(false), refsRef = React.useRef(refs);
+        refsRef.current = refs;
+        const run = React.useCallback(async () => {
+          const mine = ++ticket.current;
+          clearTimeout(timer.current);
+          const list = refsRef.current;
+          if (!list.length) return;
+          const result = await describeSecretsResult(services.credentials, list);
+          if (!alive.current || mine !== ticket.current) return; // stale: a newer run or an unmount took over
+          if (!result.failed) { retried.current = false; setDescribed(result.described); setFailed(false); return; }
+          setDescribed(prev => ({ ...prev, ...result.described }));
+          if (retried.current) { setFailed(true); return; }
+          retried.current = true;
+          timer.current = setTimeout(() => { if (alive.current && mine === ticket.current) void run(); }, DESCRIBE_RETRY_DELAY_MS);
+        }, [services]);
+        const reload = React.useCallback(() => { retried.current = false; setFailed(false); return run(); }, [run]);
         React.useEffect(() => {
-          void refresh.current();
-          const off = services.on?.('credentials/reference-updated', ref => { if (refs.includes(ref)) void refresh.current(); });
-          return typeof off === 'function' ? off : undefined;
-        }, [key, services.credentials]);
-        return [described, () => refresh.current()];
+          alive.current = true;
+          retried.current = false;
+          setFailed(false);
+          void run();
+          const off = services.on?.('credentials/reference-updated', ref => { if (refsRef.current.includes(ref)) void run(); });
+          return () => { alive.current = false; ticket.current++; clearTimeout(timer.current); if (typeof off === 'function') off(); };
+        }, [key, services.credentials, run]);
+        return [described, run, failed, reload];
+      }
+    
+      /**
+       * Switch that makes this extension the host's provider for a capability (DSH web search): it writes
+       * `spec.path` on the host entry `spec.entry` through `ctx.configForms.get(entry)`, and unsets it to restore the
+       * host default. The current selection is always shown.
+       */
+      function HostSelectionRow({ spec, services, t }) {
+        const store = services.forms?.get?.(spec.entry) ?? null;
+        const snapshot = useStoreSnapshot(store);
+        const [note, setNote] = React.useState(null);
+        const [pending, setPending] = React.useState(false);
+        const ready = snapshot.status === 'ready' && snapshot.writable !== false && typeof store?.mutate === 'function';
+        const current = snapshot.value?.[spec.path];
+        const on = current === spec.value;
+        const toggle = async next => {
+          setNote(null); setPending(true);
+          let ok = false;
+          try { ok = await store.mutate([next ? { op: 'set', path: [spec.path], value: spec.value } : { op: 'unset', path: [spec.path] }], snapshot.revision); } catch { ok = false; }
+          setPending(false); setNote(ok ? 'saved' : 'failed');
+        };
+        const shown = typeof current === 'string' && current ? current : t(`host.${spec.id}.auto`);
+        return h(FieldRow, { id: `host.${spec.id}`, label: t(`host.${spec.id}.label`), t,
+          hint: snapshot.status === 'unavailable' ? t(`host.${spec.id}.unavailable`) : `${fmt(t(`host.${spec.id}.current`), { provider: shown })} ${t(`host.${spec.id}.hint`)}`,
+          error: note === 'failed' ? t(`host.${spec.id}.failed`) : undefined },
+          note === 'saved' ? h('span', { role: 'status', style: ui.muted }, t('state.saved')) : null,
+          h('input', { type: 'checkbox', role: 'switch', name: `host.${spec.id}`, 'data-host-selection': on ? 'on' : 'off', checked: on, disabled: !ready || pending, onChange: event => { void toggle(event.target.checked); } }));
       }
     
       function LockBadge({ mode, t }) {
@@ -1413,7 +1496,7 @@ window.__ModuleLoader__.load({
       }
     
       /** State line plus Set / Replace / Clear. The typed value lives only in this component and is dropped after save. */
-      function SecretField({ field, label, info, mode, t, onSet, onClear }) {
+      function SecretField({ field, label, info, mode, failed, t, onSet, onClear, onRetry }) {
         const [typed, setTyped] = React.useState(null); // null = input hidden
         const [confirming, setConfirming] = React.useState(false);
         const [note, setNote] = React.useState(null);
@@ -1424,9 +1507,12 @@ window.__ModuleLoader__.load({
           try { await onSet(field.ref, value); setNote('saved'); } catch { setNote('failed'); }
         };
         const clear = async () => { setConfirming(false); try { await onClear(field.ref); setNote('cleared'); } catch { setNote('failed'); } };
-        const statusText = info === undefined && mode !== 'locked' ? t('secret.unknown') : t(`secret.${state.kind}`);
+        const unresolved = info === undefined && mode !== 'locked';
+        const phase = unresolved ? (failed ? 'failed' : 'unknown') : state.kind;
+        const statusText = unresolved ? t(failed ? 'secret.failed' : 'secret.unknown') : t(`secret.${state.kind}`);
         return h(FieldRow, { id: field.id, label, mode, t, hint: note ? t(`secret.note.${note}`) : undefined },
-          h('span', { 'data-secret-state': info === undefined && mode !== 'locked' ? 'unknown' : state.kind, style: ui.muted }, statusText),
+          h('span', { 'data-secret-state': phase, style: unresolved && failed ? ui.err : ui.muted }, statusText),
+          unresolved && failed ? h('button', { type: 'button', 'data-action': 'retry-secret', style: ui.button, onClick: onRetry }, t('action.retry')) : null,
           typed !== null ? h('input', { type: 'password', name: field.id, autoComplete: 'new-password', value: typed, style: ui.input, 'aria-label': label, onChange: event => setTyped(event.target.value) }) : null,
           typed !== null ? h('button', { type: 'button', 'data-action': 'save-secret', style: { ...ui.button, ...ui.primary }, disabled: !typed.trim(), onClick: save }, t('action.save')) : null,
           typed !== null ? h('button', { type: 'button', 'data-action': 'cancel-secret', style: ui.button, onClick: () => setTyped(null) }, t('action.cancel')) : null,
@@ -1458,7 +1544,7 @@ window.__ModuleLoader__.load({
         const snapshot = props.form ? props.form.state : live;
         const mutate = props.form ? props.form.mutate : store?.mutate?.bind(store);
         const [manifest, reloadManifest] = useManifest(panel.extension, services);
-        const [described, refresh] = useSecretStates(services, secretRefs(panel.fields));
+        const [described, refresh, describeFailed, retryDescribe] = useSecretStates(services, secretRefs(panel.fields));
         // Every write re-reads the lock first: a Mothership lock applied while this page is open must win.
         const freshMode = async ref => lockMode(await reloadManifest(), ref);
         const [drafts, setDrafts] = React.useState({});
@@ -1485,11 +1571,12 @@ window.__ModuleLoader__.load({
         };
         const labelOf = field => t(field.ref ? `ref.${field.ref}` : `field.${field.id}`);
         return h('div', { 'data-config-panel': panel.extension, style: ui.col },
+          panel.hostSelection && view !== 'summary' ? h(HostSelectionRow, { spec: panel.hostSelection, services, t }) : null,
           !ready ? h('p', { style: ui.muted, 'data-unavailable': snapshot?.status === 'unavailable' ? '' : undefined }, t(snapshot?.status === 'loading' ? 'state.loading' : 'state.unavailable')) : null,
           panel.fields.filter(field => isShown(field, current)).map(field => {
             const mode = lockMode(manifest, field.ref);
             if (field.kind === 'secret') {
-              return h(SecretField, { key: field.id, field, label: labelOf(field), info: described[field.ref], mode, t,
+              return h(SecretField, { key: field.id, field, label: labelOf(field), info: described[field.ref], mode, failed: describeFailed, t, onRetry: retryDescribe,
                 onSet: async (ref, value) => { await writeSecret(services.credentials, ref, value, await freshMode(ref)); await refresh(); },
                 onClear: async ref => { await clearSecret(services.credentials, ref, await freshMode(ref)); await refresh(); } });
             }
@@ -4287,7 +4374,8 @@ window.__ModuleLoader__.load({
             setRuntimeState({ data: null, lag: false, unavailable: true });
             return;
           }
-          if (lastEpoch.current && lastEpoch.current !== newData.epoch) {
+          // 'unbound' is the placeholder of a lead that has not started yet; its first real snapshot is not a restart.
+          if (lastEpoch.current && lastEpoch.current !== 'unbound' && lastEpoch.current !== newData.epoch) {
             // The epoch changed: the runtime restarted
             setRuntimeState({ data: newData, lag: isLag, unavailable: false, restarted: true });
           } else {
