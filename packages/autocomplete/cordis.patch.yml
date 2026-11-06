@@ -1,6 +1,6 @@
 - insert:
     - id: autocomplete
-      name: 'dsh-capability-autocomplete'
+      name: '@aiwuk/autocomplete'
       config:
         enabled: true
         routeMode: session
