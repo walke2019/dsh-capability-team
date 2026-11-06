@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleRuntime, applyObservabilityApi, RUNTIME_PATH } from '../observability-api.js';
+import { handleRuntime, applyObservabilityApi, emptySnapshot, UNBOUND_EPOCH, RUNTIME_PATH } from '../observability-api.js';
 import { bindRuntime, createRuntimeObservability } from '../runtime-observability.js';
 const req = (id = 'lead') => new Request(`http://host${RUNTIME_PATH}?sessionId=${id}`);
 function fixture() {
@@ -34,4 +34,45 @@ test('routes are registered exclusively through host owner-fenced connection sea
   // Model the actual host createSharedFetchHandler owner fence; plugin handler never sees remote peers.
   const fenced = (route, request, peer) => peer.principal.kind !== 'owner' ? new Response('forbidden', { status: 403 }) : route.fetch(request);
   assert.equal((await fenced(routes[0], req(), { principal: { kind: 'remote' } })).status, 403);
+});
+
+test('a lead whose runtime is not bound yet (draft session) gets 200 with an empty snapshot, not 503', async () => {
+  const agent = { id: 'draft', ctx: {} }; // never bound: no first message yet
+  const teams = { tryMembership: a => a === agent ? { role: 'lead' } : null, listMembers: () => [agent] };
+  const services = { agents: { get: id => id === 'draft' ? agent : null }, agentTeams: teams };
+  const ctx = { get: k => services[k], agentPresets: { composedPreset: () => 'capability-team' } };
+  const response = handleRuntime(ctx, req('draft')); assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const body = await response.json();
+  assert.deepEqual(body, emptySnapshot('draft')); assert.equal(body.schemaVersion, 1); assert.equal(body.epoch, UNBOUND_EPOCH); assert.deepEqual(body.members, []);
+  // Authorization fences still apply: a non-lead or other preset stays 404, unknown id 404.
+  teams.tryMembership = () => ({ role: 'teammate' }); assert.equal(handleRuntime(ctx, req('draft')).status, 404);
+  teams.tryMembership = () => ({ role: 'lead' }); assert.equal(handleRuntime(ctx, req('nobody')).status, 404);
+  // Missing host services remain a genuine 503.
+  assert.equal(handleRuntime({ get: k => k === 'agents' ? services.agents : undefined, agentPresets: ctx.agentPresets }, req('draft')).status, 503);
+});
+
+test('the stream of an unbound lead is idle, then switches to real snapshots once the runtime binds', async () => {
+  const agent = { id: 'draft', ctx: {} };
+  const teams = { tryMembership: a => a === agent ? { role: 'lead' } : null, listMembers: () => [agent] };
+  const services = { agents: { get: () => agent }, agentTeams: teams };
+  const ctx = { get: k => services[k], agentPresets: { composedPreset: () => 'capability-team' } };
+  const abort = new AbortController(); const response = handleRuntime(ctx, new Request(req('draft'), { signal: abort.signal }), true);
+  assert.equal(response.status, 200); assert.equal(response.headers.get('content-type'), 'text/event-stream');
+  const reader = response.body.getReader(); const decoder = new TextDecoder();
+  const first = JSON.parse(decoder.decode((await reader.read()).value).slice(6)); assert.equal(first.epoch, UNBOUND_EPOCH); assert.deepEqual(first.members, []);
+  const runtime = createRuntimeObservability(); bindRuntime(agent, runtime, teams); // the first message arrives
+  const next = JSON.parse(decoder.decode((await reader.read()).value).slice(6)); assert.equal(next.epoch, runtime.epoch); assert.equal(next.members.length, 1);
+  runtime.failure(agent, {});
+  const changed = JSON.parse(decoder.decode((await reader.read()).value).slice(6)); assert.equal(changed.members[0].counters.requestFailures, 1);
+  abort.abort(); assert.equal((await reader.read()).done, true);
+});
+
+test('cancelling an unbound stream stops its poll timer', async () => {
+  const agent = { id: 'draft', ctx: {} };
+  const teams = { tryMembership: () => ({ role: 'lead' }), listMembers: () => [agent] };
+  const services = { agents: { get: () => agent }, agentTeams: teams };
+  const ctx = { get: k => services[k], agentPresets: { composedPreset: () => 'capability-team' } };
+  const response = handleRuntime(ctx, req('draft'), true); const reader = response.body.getReader(); await reader.read();
+  await reader.cancel(); // would hang the test process on an unref-less leaked interval otherwise
 });

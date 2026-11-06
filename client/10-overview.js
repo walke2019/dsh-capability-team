@@ -109,7 +109,8 @@
             setRuntimeState({ data: null, lag: false, unavailable: true });
             return;
           }
-          if (lastEpoch.current && lastEpoch.current !== newData.epoch) {
+          // 'unbound' is the placeholder of a lead that has not started yet; its first real snapshot is not a restart.
+          if (lastEpoch.current && lastEpoch.current !== 'unbound' && lastEpoch.current !== newData.epoch) {
             // The epoch changed: the runtime restarted
             setRuntimeState({ data: newData, lag: isLag, unavailable: false, restarted: true });
           } else {
