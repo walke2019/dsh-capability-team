@@ -49,6 +49,7 @@
     "./client": "./client.js",
     "./roles": "./index.js",
     "./locale/*.json": "./locale/*.json",
+    "./i18n/*.json": "./i18n/*.json",
     "./icon": "./icon.svg"
   },
   "files": [
@@ -132,6 +133,7 @@
     "scripts/memory-cli.mjs",
     "cordis.patch.yml",
     "locale/*.json",
+    "i18n/*.json",
     "icon.svg"
   ],
   "dsh": {

@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { registerNativeProviders } from './providers/native.js';
 export const inject = ['tools', 'workingDirectory', 'userQuestions'];
 const FIELD_TEXT = Object.fromEntries([['en-US', 'en'], ['zh-CN', 'zh']].map(([locale, name]) =>
-  [locale, JSON.parse(readFileSync(new URL(`./locale/schema.${name}.json`, import.meta.url), 'utf8'))]));
+  [locale, JSON.parse(readFileSync(new URL(`./i18n/schema.${name}.json`, import.meta.url), 'utf8'))]));
 // Settings-form fields (DSH plugin page) → integrations target. Unset fields keep integrations.json/env/credentials.
 export const SETTINGS_FIELDS = Object.freeze({ engines: ['search', 'engines'], fetchEngines: ['search', 'fetchEngines'], searxngUrl: ['search', 'searxngUrl'],
   baseUrl: ['search', 'baseUrl'], tavilyKeyEnv: ['search', 'tavilyKeyEnv'], braveKeyEnv: ['search', 'braveKeyEnv'], searxngKeyEnv: ['search', 'searxngKeyEnv'],

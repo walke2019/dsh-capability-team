@@ -27,7 +27,7 @@ export const LIMITS = Object.freeze({
 
 /** Field descriptions per locale; the settings form shows the one matching the DSH language. */
 export const FIELD_TEXT = Object.freeze(Object.fromEntries([['en-US', 'en'], ['zh-CN', 'zh']].map(([locale, name]) =>
-  [locale, JSON.parse(readFileSync(new URL(`./locale/schema.${name}.json`, import.meta.url), 'utf8'))])));
+  [locale, JSON.parse(readFileSync(new URL(`./i18n/schema.${name}.json`, import.meta.url), 'utf8'))])));
 
 /** Every field is volatile, so DSH settings apply without remounting the plugin. */
 export function createConfig(z) {

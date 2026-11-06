@@ -8,7 +8,7 @@ const allowlist = JSON.parse(readFileSync(new URL('./i18n-allowlist.json', impor
 const cjk = /[\u3400-\u9fff\uf900-\ufaff]/u;
 function sources(dir = root) {
   return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
-    if (['locale', 'tests', 'node_modules', '.git', '.work'].includes(entry.name)) return [];
+    if (['locale', 'i18n', 'tests', 'node_modules', '.git', '.work'].includes(entry.name)) return [];
     const path = join(dir, entry.name), name = relative(root, path).split('\\').join('/');
     if (entry.isDirectory()) return /^packages\/[^/]+\/shared$/.test(name) ? [] : sources(path);
     if (!/\.(?:js|mjs)$/.test(name) || name === 'client.js' || /^packages\/[^/]+\/client\.js$/.test(name) || name === 'client/00-core-zh.js' || name === 'packages/autocomplete/client/00a-dict-zh.js' || name === 'brand.js') return [];

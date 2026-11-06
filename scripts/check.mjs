@@ -103,6 +103,8 @@ if (process.argv[2] === 'package') {
     }
   }
   console.log(`PACKAGE_CLOSURE_OK files=${shipped.size} imports=${imports}`);
-  for (const file of await readdir(join(root, 'locale'))) if (file.endsWith('.json')) JSON.parse(await readFile(join(root, 'locale', file), 'utf8'));
+  for (const dir of ['locale', 'i18n']) for (const file of await readdir(join(root, dir))) if (file.endsWith('.json')) JSON.parse(await readFile(join(root, dir, file), 'utf8'));
+  // The host reads every locale/*.json as a language dictionary (dsh-app-boot), so the name must be a language id.
+  for (const file of await readdir(join(root, 'locale'))) if (file.endsWith('.json') && !/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(file.slice(0, -5))) throw new Error(`locale/${file} must use a language id as its filename`);
   console.log(`BUILD_CHECK_OK syntax=${checked} exports=${Object.keys(pkg.exports).length}`);
 } else console.log(`LINT_OK syntax=${checked}`);

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { configureI18n, locale, m, normalizeLocale, roleText, t } from '../i18n.js';
-const load = name => JSON.parse(readFileSync(new URL(`../locale/${name}.json`, import.meta.url), 'utf8'));
+const load = name => JSON.parse(readFileSync(new URL(`../i18n/${name}.json`, import.meta.url), 'utf8'));
 test('server dictionaries have matching keys and placeholder sets', () => {
   for (const prefix of ['server', 'roles']) {
     const en = load(`${prefix}.en`), zh = load(`${prefix}.zh`);

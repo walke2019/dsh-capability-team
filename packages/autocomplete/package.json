@@ -21,8 +21,8 @@
     "@deepseek-ai/dsh-client-locale": { "optional": true },
     "@deepseek-ai/dsh-client-ui-conversation": { "optional": true }
   },
-  "exports": { ".": "./index.js", "./client": "./client.js", "./locale/*.json": "./locale/*.json", "./icon": "./icon.svg" },
-  "files": ["index.js", "predictor.js", "schema.js", "fleet-defaults.js", "managed-route.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg", "README.md", "LICENSE"],
+  "exports": { ".": "./index.js", "./client": "./client.js", "./locale/*.json": "./locale/*.json", "./i18n/*.json": "./i18n/*.json", "./icon": "./icon.svg" },
+  "files": ["index.js", "predictor.js", "schema.js", "fleet-defaults.js", "managed-route.js", "client.js", "cordis.patch.yml", "locale/*.json", "i18n/*.json", "icon.svg", "README.md", "LICENSE"],
   "scripts": { "build": "node scripts/build-client.mjs", "test": "node --test ../../tests/autocomplete/*.test.mjs" },
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },

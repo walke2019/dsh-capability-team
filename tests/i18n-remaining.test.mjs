@@ -8,7 +8,7 @@ import { FIELD_TEXT, DEFAULT_CONFIG } from '../packages/autocomplete/schema.js';
 import { teamActivity } from '../ui.js';
 import { applyTranscribe } from '../transcribe.js';
 
-const loadSchema = language => JSON.parse(readFileSync(new URL(`../packages/autocomplete/locale/schema.${language}.json`, import.meta.url), 'utf8'));
+const loadSchema = language => JSON.parse(readFileSync(new URL(`../packages/autocomplete/i18n/schema.${language}.json`, import.meta.url), 'utf8'));
 test('autocomplete schema resources preserve every field in both languages and ship in the package', () => {
   for (const [locale, language] of [['en-US', 'en'], ['zh-CN', 'zh']]) {
     assert.deepEqual(FIELD_TEXT[locale], loadSchema(language));

@@ -1,8 +1,8 @@
 // Server text uses the host's explicit locale preference, with an environment override.
-import en from './locale/server.en.json' with { type: 'json' };
-import zh from './locale/server.zh.json' with { type: 'json' };
-import rolesEn from './locale/roles.en.json' with { type: 'json' };
-import rolesZh from './locale/roles.zh.json' with { type: 'json' };
+import en from './i18n/server.en.json' with { type: 'json' };
+import zh from './i18n/server.zh.json' with { type: 'json' };
+import rolesEn from './i18n/roles.en.json' with { type: 'json' };
+import rolesZh from './i18n/roles.zh.json' with { type: 'json' };
 const dictionaries = { en, zh };
 const roles = { en: rolesEn, zh: rolesZh };
 let hostSettings;
