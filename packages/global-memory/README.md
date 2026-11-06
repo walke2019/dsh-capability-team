@@ -1,18 +1,18 @@
-# Capability Memory for DSH
+# AIWUK Memory for DSH
 
-[![npm](https://img.shields.io/npm/v/dsh-capability-memory.svg)](https://www.npmjs.com/package/dsh-capability-memory)
+[![npm](https://img.shields.io/npm/v/@aiwuk/memory.svg)](https://www.npmjs.com/package/@aiwuk/memory)
 
-Part of [Capability Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
+Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
 
 ```bash
-dsh plugin add dsh-capability-memory
+dsh plugin add @aiwuk/memory
 ```
 
-Requires DSH >= 0.2.1-rc.3 and Node.js >= 22.
+Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22.
 
-A profile-wide, Host-only bundle (`dsh-capability-memory`, patch id `global-memory`) providing `memory_search`, `memory_write`, and bounded automatic recall. It does not create an agent preset or automatic transcript ingestion. Memory is local by default; OpenAI-compatible embeddings and an OpenViking shared backend are optional. A settings form on DSH's Plugins page is coming in this release; until then, use the configuration described below.
+A profile-wide, Host-only bundle (`@aiwuk/memory`, patch id `global-memory`) providing `memory_search`, `memory_write`, and bounded automatic recall. It does not create an agent preset or automatic transcript ingestion. Memory is local by default; OpenAI-compatible embeddings and an OpenViking shared backend are optional. A settings form on DSH's Plugins page is coming in this release; until then, use the configuration described below.
 
-Since 0.3.0 the package is published as `dsh-capability-memory` (formerly `@local/dsh-global-memory`); the patch id `global-memory` is unchanged. Update profile and bundle-list references — see the [CHANGELOG](../../CHANGELOG.md).
+Since 1.0.0 the package is published as `@aiwuk/memory` (formerly `dsh-capability-memory`, and before that `@local/dsh-global-memory`); the patch id `global-memory`, the tools and the credential names are unchanged. See [docs/migration-aiwuk.md](../../docs/migration-aiwuk.md) and the [CHANGELOG](../../CHANGELOG.md).
 
 ## Build and enable from source
 

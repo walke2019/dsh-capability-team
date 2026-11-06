@@ -1,11 +1,11 @@
-# DSH 能力协作团队
+# DSH AI悟空 协作团队
 
 **你的 AI 团队，各展所长：贵的模型只干难活，一个模型挂了团队照常运转。**
 
-[![npm](https://img.shields.io/npm/v/dsh-capability-team.svg)](https://www.npmjs.com/package/dsh-capability-team)
+[![npm](https://img.shields.io/npm/v/@aiwuk/team.svg)](https://www.npmjs.com/package/@aiwuk/team)
 [![CI](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml/badge.svg)](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![DSH >= 0.2.1-rc.3](https://img.shields.io/badge/DSH-%3E%3D%200.2.1--rc.3-6f42c1.svg)
+![DSH >= 0.2.2-rc.1](https://img.shields.io/badge/DSH-%3E%3D%200.2.2--rc.1-6f42c1.svg)
 ![Node >= 22](https://img.shields.io/badge/Node-%3E%3D%2022-339933.svg)
 
 [English](README.md) | **简体中文**
@@ -22,16 +22,16 @@
 
 ## 快速开始
 
-前置条件：DSH >= 0.2.1-rc.3（已在 0.2.1-rc.5 验证）、Node.js >= 22，并在 DSH profile 中启用官方 `@deepseek-ai/dsh-experimental-agent-team-profile` bundle。
+前置条件：DSH >= 0.2.2-rc.1（且 < 0.3.0）、Node.js >= 22，并在 DSH profile 中启用官方 `@deepseek-ai/dsh-experimental-agent-team-profile` bundle。
 
 **1. 安装**
 
 ```bash
-dsh plugin add dsh-capability-team
+dsh plugin add @aiwuk/team
 # 可选的配套包
-dsh plugin add dsh-omni-search
-dsh plugin add dsh-capability-memory
-dsh plugin add dsh-capability-autocomplete
+dsh plugin add @aiwuk/search
+dsh plugin add @aiwuk/memory
+dsh plugin add @aiwuk/autocomplete
 ```
 
 **2. 在引导卡片中启用 Agent Teams**
@@ -116,15 +116,17 @@ flowchart LR
 
 | 包 | 提供的能力 |
 |---|---|
-| [`dsh-omni-search`](packages/omni-search/README.md) | 为所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`。厂商中立的引擎（Tavily、Brave、SearXNG、自定义网关）自动故障切换；抓取经 Jina Reader 免密钥可用。 |
-| [`dsh-capability-memory`](packages/global-memory/README.md) | 显式记忆工具与有界自动召回。默认纯本地；可选 OpenAI 兼容嵌入与 OpenViking 共享后端。 |
-| [`dsh-capability-autocomplete`](packages/autocomplete/README.md) | DSH Web 输入框自动补全：打字停顿时行内续写、回复后建议下一句，按 Tab 采纳、绝不自动发送。可跟随会话模型或固定一个低延迟模型。 |
+| [`@aiwuk/search`](packages/omni-search/README.md) | 为所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`。厂商中立的引擎（Tavily、Brave、SearXNG、自定义网关）自动故障切换；抓取经 Jina Reader 免密钥可用。 |
+| [`@aiwuk/memory`](packages/global-memory/README.md) | 显式记忆工具与有界自动召回。默认纯本地；可选 OpenAI 兼容嵌入与 OpenViking 共享后端。 |
+| [`@aiwuk/autocomplete`](packages/autocomplete/README.md) | DSH Web 输入框自动补全：打字停顿时行内续写、回复后建议下一句，按 Tab 采纳、绝不自动发送。可跟随会话模型或固定一个低延迟模型。 |
 
 它们都是独立的 profile bundle：在团队会话之外同样可用，团队插件的记忆枢纽读取同一份记忆与搜索配置。
 
-## 从 3.x 迁移
+## 迁移
 
-4.0.0 包含破坏性变更：包已改名（`@local/dsh-capability-team` → `dsh-capability-team`、`@local/dsh-omni-search` → `dsh-omni-search`、`@local/dsh-global-memory` → `dsh-capability-memory`），默认名册改为中性角色。请更新 profile、bundle 列表和 `cordis.patch.yml` 中的引用，详情见 [CHANGELOG.md](CHANGELOG.md)。更早的 `cpa-tools` → `omni-search` 改名见 [docs/configuration.zh-CN.md](docs/configuration.zh-CN.md)。
+**迁移到 AI悟空（5.0.0 / 1.0.0）。** 包已改发布到 `@aiwuk` 作用域；Loader id、工具名、凭据变量与数据目录均不变，原有配置会沿用。步骤与回滚见 [docs/migration-aiwuk.md](docs/migration-aiwuk.md)。
+
+**从 3.x 迁移。** 4.0.0 包含破坏性变更：包已改名，默认名册改为中性角色。请更新 profile、bundle 列表和 `cordis.patch.yml` 中的引用，详情见 [CHANGELOG.md](CHANGELOG.md)。更早的 `cpa-tools` → `omni-search` 改名见 [docs/configuration.zh-CN.md](docs/configuration.zh-CN.md)。
 
 ## 路线图
 

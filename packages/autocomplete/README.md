@@ -1,14 +1,14 @@
-# Autocomplete for DSH
+# AIWUK Autocomplete for DSH
 
-Part of [Capability Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
+Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
 
 ```bash
-dsh plugin add dsh-capability-autocomplete
+dsh plugin add @aiwuk/autocomplete
 ```
 
-Requires DSH >= 0.2.1-rc.3 and Node.js >= 22.
+Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22.
 
-Composer autocomplete for DSH Web (`dsh-capability-autocomplete`, patch id `autocomplete`). The plugin name, description, settings and on-screen text follow the DSH language (Chinese / English).
+Composer autocomplete for DSH Web (`@aiwuk/autocomplete`, patch id `autocomplete`). The plugin name, description, settings and on-screen text follow the DSH language (Chinese / English).
 
 - **Inline continuation**: pause while typing and a continuation is suggested.
 - **Next message**: after the assistant replies, an empty composer suggests what you might ask next.

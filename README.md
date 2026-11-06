@@ -1,11 +1,11 @@
-# Capability Team for DSH
+# AIWUK Team for DSH
 
 **Your AI team, each doing what it is best at: expensive models only take hard work, and one failing model never stops the team.**
 
-[![npm](https://img.shields.io/npm/v/dsh-capability-team.svg)](https://www.npmjs.com/package/dsh-capability-team)
+[![npm](https://img.shields.io/npm/v/@aiwuk/team.svg)](https://www.npmjs.com/package/@aiwuk/team)
 [![CI](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml/badge.svg)](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![DSH >= 0.2.1-rc.3](https://img.shields.io/badge/DSH-%3E%3D%200.2.1--rc.3-6f42c1.svg)
+![DSH >= 0.2.2-rc.1](https://img.shields.io/badge/DSH-%3E%3D%200.2.2--rc.1-6f42c1.svg)
 ![Node >= 22](https://img.shields.io/badge/Node-%3E%3D%2022-339933.svg)
 
 **English** | [简体中文](README.zh-CN.md)
@@ -22,16 +22,16 @@ A multi-agent team preset for DeepSeek Harness (DSH). It is a thin enhancement l
 
 ## Quick start
 
-Requirements: DSH >= 0.2.1-rc.3 (validated on 0.2.1-rc.5), Node.js >= 22, and the official `@deepseek-ai/dsh-experimental-agent-team-profile` bundle enabled in your DSH profile.
+Requirements: DSH >= 0.2.2-rc.1 (below 0.3.0), Node.js >= 22, and the official `@deepseek-ai/dsh-experimental-agent-team-profile` bundle enabled in your DSH profile.
 
 **1. Install**
 
 ```bash
-dsh plugin add dsh-capability-team
+dsh plugin add @aiwuk/team
 # optional companion packages
-dsh plugin add dsh-omni-search
-dsh plugin add dsh-capability-memory
-dsh plugin add dsh-capability-autocomplete
+dsh plugin add @aiwuk/search
+dsh plugin add @aiwuk/memory
+dsh plugin add @aiwuk/autocomplete
 ```
 
 **2. Enable Agent Teams from the onboarding card**
@@ -116,15 +116,17 @@ Names, duties, tiers and models can be changed per project. The former Three Kin
 
 | Package | What it adds |
 |---|---|
-| [`dsh-omni-search`](packages/omni-search/README.md) | `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe` for all sessions. Vendor-neutral engines (Tavily, Brave, SearXNG, custom gateway) with failover; fetch works keyless via Jina Reader. |
-| [`dsh-capability-memory`](packages/global-memory/README.md) | Explicit memory tools and bounded automatic recall. Local by default; optional OpenAI-compatible embeddings and an OpenViking shared backend. |
-| [`dsh-capability-autocomplete`](packages/autocomplete/README.md) | Composer autocomplete for DSH Web: inline continuation while typing and next-message suggestions, accepted with Tab and never sent automatically. Follows the session model or a fixed low-latency model. |
+| [`@aiwuk/search`](packages/omni-search/README.md) | `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe` for all sessions. Vendor-neutral engines (Tavily, Brave, SearXNG, custom gateway) with failover; fetch works keyless via Jina Reader. |
+| [`@aiwuk/memory`](packages/global-memory/README.md) | Explicit memory tools and bounded automatic recall. Local by default; optional OpenAI-compatible embeddings and an OpenViking shared backend. |
+| [`@aiwuk/autocomplete`](packages/autocomplete/README.md) | Composer autocomplete for DSH Web: inline continuation while typing and next-message suggestions, accepted with Tab and never sent automatically. Follows the session model or a fixed low-latency model. |
 
 All are independent profile bundles: they also work outside team sessions, and the team plugin's memory hub reads the same memory and search configuration.
 
-## Migration from 3.x
+## Migration
 
-4.0.0 contains breaking changes: packages are renamed (`@local/dsh-capability-team` → `dsh-capability-team`, `@local/dsh-omni-search` → `dsh-omni-search`, `@local/dsh-global-memory` → `dsh-capability-memory`) and the default roster is now neutral. Update profile, bundle-list and `cordis.patch.yml` references, then see [CHANGELOG.md](CHANGELOG.md) for details. The older `cpa-tools` → `omni-search` rename is covered in [docs/configuration.md](docs/configuration.md#migration-from-cpa-tools).
+**To AIWUK (5.0.0 / 1.0.0).** The packages are now published under the `@aiwuk` scope; Loader ids, tool names, credential variables and data directories are unchanged, so your configuration carries over. Steps and rollback: [docs/migration-aiwuk.md](docs/migration-aiwuk.md).
+
+**From 3.x.** 4.0.0 contains breaking changes: the packages were renamed and the default roster is now neutral. Update profile, bundle-list and `cordis.patch.yml` references, then see [CHANGELOG.md](CHANGELOG.md) for details. The older `cpa-tools` → `omni-search` rename is covered in [docs/configuration.md](docs/configuration.md#migration-from-cpa-tools).
 
 ## Roadmap
 
