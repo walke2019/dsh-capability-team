@@ -10,6 +10,6 @@ test('缺少主控工具时诊断写明原因与处置', async () => {
   assert.deepEqual(s.missingTools, ['capability_dispatch_plan', 'capability_free_task']);
   assert.match(s.explanation, /capability_dispatch_plan, capability_free_task/);
   assert.match(s.explanation, /loaded after session creation or reloaded mid-session/);
-  assert.match(s.explanation, /Refresh.*still missing.*create a session with Capability Team/);
+  assert.match(s.explanation, /Refresh.*still missing.*create a session with AIWUK Team/);
   assert.doesNotMatch(s.explanation, /check preset activation/);
 });

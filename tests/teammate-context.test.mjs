@@ -89,7 +89,7 @@ test('空白会话被复用并切到其他预设：主控工具撤下且调用�
   const tool = live.get('capability_dispatch_plan');
   assert.equal(await tool.execute({}, { agent: lead }), 'ok');
   lead.ctx.preset = 'other';
-  await assert.rejects(tool.execute({}, { agent: lead }), /restricted to the Capability Team/, '调用时重新校验预设');
+  await assert.rejects(tool.execute({}, { agent: lead }), /restricted to the AIWUK Team/, '调用时重新校验预设');
   handlers['agent-preset/selected']('s1', 'other');
   assert.equal(live.has('capability_dispatch_plan'), false, '切走后撤下');
   lead.ctx.preset = 'capability-team';

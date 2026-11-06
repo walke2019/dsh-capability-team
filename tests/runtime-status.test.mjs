@@ -11,7 +11,7 @@ const agent = { id: 'fixture-session', ctx: {} };
 test('其他预设不会被误报为能力路由已挂载', async () => {
   const s = await inspectTeamRuntime(context('standard', []), agent);
   assert.equal(s.ready, false); assert.equal(s.preset, 'standard');
-  assert.match(s.explanation, /does not have the Capability Team preset/);
+  assert.match(s.explanation, /does not have the AIWUK Team preset/);
 });
 test('名称相同但工具缺失必须显示未就绪', async () => {
   const s = await inspectTeamRuntime(context('capability-team', []), agent);

@@ -32,7 +32,7 @@ test('导入：策略按模板覆盖、保留已有路由、角色整体替换�
 test('拒绝格式、版本、未知字段、缺少 lead 与带模型的模板', () => {
   const current = effectiveConfig({});
   const good = toTemplate(current);
-  assert.throws(() => templatePatch({ ...good, format: 'x' }, current), /Not a Capability Team template/);
+  assert.throws(() => templatePatch({ ...good, format: 'x' }, current), /Not an AIWUK Team template/);
   assert.throws(() => templatePatch({ ...good, version: 2 }, current), /version 2 is unsupported/);
   assert.throws(() => templatePatch({ ...good, tiers: {} }, current), /unknown fields tiers/);
   assert.throws(() => templatePatch({ ...good, roles: { x: { displayName: 'X', capability: 'qa' } } }, current), /include the lead/);
