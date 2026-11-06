@@ -14,6 +14,7 @@ function boot(file) {
     useState(initial) { const i = cursor++; if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial; return [states[i], v => { states[i] = typeof v === 'function' ? v(states[i]) : v; }]; },
     useRef(initial) { const i = cursor++; return states[i] ??= { current: initial }; },
     useEffect(fn) { effects.push(fn); },
+    useCallback(fn, deps) { const i = cursor++; const prev = states[i]; if (prev && prev.deps.length === deps.length && prev.deps.every((d, n) => Object.is(d, deps[n]))) return prev.fn; states[i] = { fn, deps }; return fn; },
   };
   let plugin, moduleId;
   new Script(readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => { moduleId = spec.id; plugin = spec.factory(() => React); } } }, URL, fetch: (...args) => globalThis.__panelFetch(...args) });
@@ -145,4 +146,79 @@ test('no hardcoded colors or raw CJK in the generated clients; only --dsw-* toke
 test('generated panel outputs are current with shared-ui sources', async () => {
   assert.deepEqual(await build({ check: true }), [], 'run node shared-ui/build.mjs');
   assert.ok(TARGETS.length >= 3);
+});
+
+// A lock that appears while the page is open (the Connector applies it later) must win over the stale first fetch.
+const lockWire = refs => ({ revision: 9, entries: refs.map(ref => ({ ref, locked: true, secret: /_KEY$/.test(ref) })) });
+const settle = () => new Promise(r => setTimeout(r, 5));
+
+test('a lock applied after the first render drops the field from the mutate ops', async () => {
+  let wire = { revision: 1, entries: [] };
+  globalThis.__panelFetch = async () => ({ ok: true, status: 200, json: async () => wire });
+  try {
+    const form = readyForm({ searxngUrl: 'https://old.example.com' });
+    const m = mount({ form });
+    m.render('page'); await m.host.runEffects(); await settle();
+    let tree = m.render('page');
+    const input = () => walk(walk(tree).find(n => n.props?.['data-field'] === 'searxngUrl')).find(n => n.type === 'input');
+    assert.equal(input().props.disabled, false, 'unlocked at first render');
+    input().props.onChange({ target: { value: 'https://mine.example.com' } });
+    tree = m.render('page');
+    wire = lockWire(['SEARXNG_URL']); // the lock lands after the first render; the page has not re-fetched yet
+    await walk(tree).find(n => n.props?.['data-action'] === 'save').props.onClick();
+    assert.deepEqual(form.writes, [], 'the locked field is not written (save re-reads the manifest)');
+    // The next render shows the lock from the reload that save triggered.
+    tree = m.render('page');
+    assert.equal(input().props.disabled, true);
+  } finally { globalThis.__panelFetch = async () => ({ ok: false }); }
+});
+
+test('a lock applied after the first render blocks secret Set and Clear', async () => {
+  let wire = { revision: 1, entries: [] };
+  globalThis.__panelFetch = async () => ({ ok: true, status: 200, json: async () => wire });
+  try {
+    const calls = [];
+    const credentials = { describe: async () => ({ ok: true, value: { TAVILY_API_KEY: { configured: true, source: 'file', writable: true } } }),
+      set: async (...a) => { calls.push(['set', ...a]); return { ok: true }; }, unset: async (...a) => { calls.push(['unset', ...a]); return { ok: true }; } };
+    const m = mount({ form: readyForm(), credentials });
+    m.render('page'); await m.host.runEffects(); await settle();
+    let tree = m.render('page');
+    const row = () => walk(tree).find(n => n.props?.['data-field'] === 'TAVILY_API_KEY');
+    walk(row()).find(n => n.props?.['data-action'] === 'set-secret').props.onClick();
+    tree = m.render('page');
+    walk(row()).find(n => n.type === 'input').props.onChange({ target: { value: 'sk-late-lock' } });
+    tree = m.render('page');
+    wire = lockWire(['TAVILY_API_KEY']);
+    await walk(row()).find(n => n.props?.['data-action'] === 'save-secret').props.onClick();
+    assert.deepEqual(calls, [], 'Set is refused once the manifest says locked');
+    // Clear goes through the same re-check.
+    tree = m.render('page');
+    wire = { revision: 1, entries: [] };
+    await m.host.runEffects(); await settle();
+    tree = m.render('page');
+    walk(row()).find(n => n.props?.['data-action'] === 'clear-secret').props.onClick();
+    tree = m.render('page');
+    wire = lockWire(['TAVILY_API_KEY']);
+    await walk(row()).find(n => n.props?.['data-action'] === 'confirm-clear').props.onClick();
+    assert.deepEqual(calls, [], 'Clear is refused once the manifest says locked');
+  } finally { globalThis.__panelFetch = async () => ({ ok: false }); }
+});
+
+test('manifest reload keeps the known lock on a transient failure and does not refetch on re-render', async () => {
+  let fetches = 0, mode = 'ok';
+  globalThis.__panelFetch = async () => { fetches++; if (mode === 'down') throw new Error('offline'); return { ok: true, status: 200, json: async () => lockWire(['SEARXNG_URL']) }; };
+  try {
+    const form = readyForm({ searxngUrl: 'https://old.example.com' });
+    const m = mount({ form });
+    m.render('page'); await m.host.runEffects(); await settle();
+    const first = fetches;
+    for (let i = 0; i < 3; i++) m.render('page'); // re-rendering alone never triggers a fetch (stable callback identity)
+    assert.equal(fetches, first);
+    mode = 'down';
+    let tree = m.render('page');
+    walk(walk(tree).find(n => n.props?.['data-field'] === 'searxngUrl')).find(n => n.type === 'input').props.onChange({ target: { value: 'https://mine.example.com' } });
+    tree = m.render('page');
+    await walk(tree).find(n => n.props?.['data-action'] === 'save').props.onClick();
+    assert.deepEqual(form.writes, [], 'a failed refresh keeps the previously known lock');
+  } finally { globalThis.__panelFetch = async () => ({ ok: false }); }
 });
