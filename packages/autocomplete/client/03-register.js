@@ -24,7 +24,9 @@
         ctx.slots.inject('settings.general.item', () => ctx.slots.register({
           name: 'settings.general.item', id: 'capability-autocomplete', order: 55, label: () => t('title'), locale: NS,
         }, settings));
-        ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({ name: 'plugins.bundle.config', key: PACKAGE, locale: NS }, settings));
+        // The bundle's Plugins page gets the shared data-driven panel (managed-lock aware); the card above stays in Settings.
+        const panel = aiwukConfig.PANELS.autocomplete;
+        aiwukConfig.createPanelKit(React).registerConfigPanel(ctx, { panel, ns: 'aiwuk-autocomplete', dictionaries: aiwukConfig.panelDictionaries(panel) });
       },
     };
     // Test-only seam: harnesses may define window.__acTestHook; browsers never do.

@@ -41,7 +41,7 @@ test('activation card warns about profile-wide effect and only enables after the
     setBundleEnabled: async (name, enabled) => { calls.push(['set', name, enabled]); return answer; },
   };
   const h = load({ pluginManager });
-  const entry = h.slot('plugins.bundle.activation', 'dsh-capability-team');
+  const entry = h.slot('plugins.bundle.activation', '@aiwuk/team');
   assert.ok(entry);
   const card = expand(h.render(entry.component, { onDismiss() {} }));
   assert.match(textOf(card), /onb\.teamWarning/);
@@ -65,10 +65,18 @@ test('activation card warns about profile-wide effect and only enables after the
 
 test('without a plugin manager the click reports a failure code instead of acting', async () => {
   const h = load();
-  const entry = h.slot('plugins.bundle.activation', 'dsh-capability-team');
+  const entry = h.slot('plugins.bundle.activation', '@aiwuk/team');
   const btn = flat(expand(h.render(entry.component, {}))).find(n => n.props?.['data-action'] === 'enable-agent-teams');
   await btn.props.onClick();
   assert.match(textOf(expand(h.render(entry.component, {}))), /onb\.failed/);
+});
+
+test('the old key-name editor is gone; the team bundle only registers its integrations summary', () => {
+  const h = load({ configForms: { get: () => ({ getSnapshot: () => ({ status: 'ready', value: {} }), subscribe: () => () => {} }) } });
+  const keys = h.registered.filter(r => r.options.name === 'plugins.bundle.config').map(r => r.options.key);
+  assert.deepEqual(keys, ['@aiwuk/team'], 'Memory and Search ship their own panels in their own bundles');
+  const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /tavilyKeyEnv|BundleSettingsCard|cfg\.hint/);
 });
 
 function fakeForm(value, writable = true) {
@@ -76,25 +84,6 @@ function fakeForm(value, writable = true) {
   return { writes, getSnapshot: () => ({ status: 'ready', value, revision: 3, writable }), subscribe: () => () => {},
     mutate: async (ops, revision) => { writes.push({ ops, revision }); return true; }, set: async (field, v) => { writes.push({ set: field, v }); return true; } };
 }
-
-test('bundle settings cards: keyed by package name, empty clears the field, lists split on commas', async () => {
-  const forms = { 'omni-search': fakeForm({ engines: ['tavily'], searxngUrl: 'https://searx.example.com' }), 'global-memory': fakeForm({}), 'capability-team-ui': fakeForm({}) };
-  const h = load({ configForms: { get: ns => forms[ns] } });
-  assert.ok(h.slot('plugins.bundle.config', 'dsh-capability-memory'));
-  const entry = h.slot('plugins.bundle.config', 'dsh-omni-search');
-  const card = props => { const el = h.render(entry.component, props); return el.type(el.props); };
-  assert.equal(card({ view: 'summary' }), 'cfg.hint');
-  const tree = card({ view: 'page' });
-  const inputs = flat(tree).filter(n => n.type === 'input');
-  assert.equal(inputs.find(n => n.props.name === 'engines').props.value, 'tavily');
-  inputs.find(n => n.props.name === 'engines').props.onChange({ target: { value: 'brave, searxng' } });
-  inputs.find(n => n.props.name === 'searxngUrl').props.onChange({ target: { value: '' } });
-  inputs.find(n => n.props.name === 'tavilyKeyEnv').props.onChange({ target: { value: 'MY_TAVILY_KEY' } });
-  const save = flat(card({ view: 'page' })).find(n => n.type === 'button');
-  await save.props.onClick();
-  assert.deepEqual(JSON.parse(JSON.stringify(forms['omni-search'].writes)), [{ ops: [
-    { op: 'set', path: ['engines'], value: ['brave', 'searxng'] }, { op: 'unset', path: ['searxngUrl'] }, { op: 'set', path: ['tavilyKeyEnv'], value: 'MY_TAVILY_KEY' }], revision: 3 }]);
-});
 
 test('welcome step persists its acknowledgement and completes; acknowledged steps render nothing', async () => {
   const form = fakeForm({});

@@ -3,7 +3,7 @@
     // Relative to the page (<base href="./">), so it works on loopback, behind the hub tunnel and under any path prefix.
     const ENDPOINT = 'autocomplete/predict';
     const NS = 'capability-autocomplete';
-    const PACKAGE = 'dsh-capability-autocomplete';
+    const PACKAGE = '@aiwuk/autocomplete';
     const FORM = 'autocomplete';
     const DEFAULTS = { enabled: true, routeMode: 'session', provider: '', model: '', maxSuggestions: 3, typePauseMs: 700, mobileBar: true };
     const NO_GHOST = { mode: 'next', items: [], index: 0, stream: '', active: false };
