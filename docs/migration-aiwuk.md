@@ -19,45 +19,56 @@ Requirements: DSH `>=0.2.2-rc.1 <0.3.0` and Node.js >= 22. On an older DSH the h
 
 ## Steps for a personal install
 
-1. Stop active sessions (a running session keeps the old plugin until it is recreated).
-2. Install the new packages (only the ones you use):
+`dsh plugin` always needs the profile: `dsh plugin --profile <profile> add|remove <package>`. The browser UI
+profile is `web`; use the profile you actually run (`tui`, `headless`, ...). The examples below use `web`.
+
+1. Stop DSH (a running session keeps the old plugin until it is recreated).
+2. Install the new packages you use, from the same source you installed the old ones from (registry name, Hub
+   tarball URL or `link:<dir>`):
    ```bash
-   dsh plugin add @aiwuk/team
-   dsh plugin add @aiwuk/search
-   dsh plugin add @aiwuk/memory
-   dsh plugin add @aiwuk/autocomplete
+   dsh plugin --profile web add @aiwuk/team
+   dsh plugin --profile web add @aiwuk/search
+   dsh plugin --profile web add @aiwuk/memory
+   dsh plugin --profile web add @aiwuk/autocomplete
    ```
-3. Point the entries at the new names. If your profile patch (`cordis.patch.yml` in the profile directory) pins
-   `name:` for an entry, change only that value, for example `id: capability-team-ui` → `name: '@aiwuk/team'`,
-   `id: autocomplete` → `name: '@aiwuk/autocomplete'`, `id: global-memory` → `name: '@aiwuk/memory'`,
-   `id: omni-search` → `name: '@aiwuk/search'`. Do not change any `id` or `config`. Entries that you never pinned
-   take the new name from the new bundle.
+3. **Required in practice:** point the entries at the new names. Whenever you saved a setting, DSH wrote the
+   package name into that entry of the profile patch (`<DSH home>/profiles/<profile>/cordis.patch.yml`). Until
+   that `name:` is changed, the new bundle ignores your old settings and shows empty fields. Change only the
+   `name:` values, never an `id` or `config`:
+   `id: capability-team-ui` → `name: '@aiwuk/team'`, `id: autocomplete` → `name: '@aiwuk/autocomplete'`,
+   `id: global-memory` → `name: '@aiwuk/memory'`, `id: omni-search` → `name: '@aiwuk/search'`.
 4. In bundle lists or profile files that mention the routing plugin, replace `dsh-capability-team/roles` with
    `@aiwuk/team/roles`.
-5. Remove the old bundles one pair at a time. The new bundle reuses the old Loader `id`, so while it is enabled
-   the old one is reported as `bundle-in-use` and cannot be removed (a restart does not help). For each pair:
-   disable the new bundle on the Plugins page, remove the old package, then enable the new bundle again. The
-   `dsh plugin` CLI only forwards to pnpm and has no enable/disable switch; use the Plugins page (or the
-   `plugin_manager` tool). Example for search:
-   1. Plugins page: disable "AIWUK Search".
-   2. `dsh plugin remove dsh-omni-search`
-   3. Plugins page: enable "AIWUK Search".
+5. Remove the old packages:
+   ```bash
+   dsh plugin --profile web remove dsh-capability-team dsh-omni-search dsh-capability-memory dsh-capability-autocomplete
+   ```
+   The CLI removal does not check whether a bundle is in use. If you remove an old bundle from the Plugins page
+   instead (Uninstall) and it reports `bundle-in-use`, disable the matching AIWUK bundle, uninstall the old one,
+   then enable the AIWUK bundle again (no restart needed for the toggle).
+6. Start DSH and check the Plugins page: only "AIWUK Team", "AIWUK Autocomplete", "AIWUK Memory" and "AIWUK Search"
+   (Chinese: AI悟空 ...) are listed, and each settings page shows your previous values. Open a new session in the
+   "AIWUK Team" mode.
 
-   Repeat for `dsh-capability-team` → `@aiwuk/team`, `dsh-capability-autocomplete` → `@aiwuk/autocomplete` and
-   `dsh-capability-memory` → `@aiwuk/memory`. Instances managed by the AIWUK Mothership do this automatically.
-6. Restart DSH and open a new session in the "capability team" mode. Check the Plugins page: the titles are
-   "AIWUK Team", "AIWUK Autocomplete", "AIWUK Memory" and "AIWUK Search" (Chinese: AI悟空 ...).
+While both the old and the new package are installed, the Plugins page lists both without any warning and both
+claim the same Loader id. That is expected during the switch; finish steps 3 and 5 before you rely on the
+settings shown. Instances managed by the AIWUK Mothership are migrated by the Connector automatically.
 
 Secret values live in the credential store under the unchanged names, so nothing needs to be re-entered.
 
 ## Rollback
 
 Before step 5 nothing is destroyed: disable the new bundle, re-enable the old one and restore the previous `name:`
-values. After step 5, reinstall the old name (the old packages stay published) and reverse the `name:` edits:
+values. After step 5, reinstall the old package from the source you originally used, then reverse the `name:`
+edits and restart. The old names are NOT on the public npm registry, so `dsh plugin --profile web add
+dsh-capability-team` fails with a 404 there; use your Hub tarball URL or a `link:` to a checkout of the old version:
 
 ```bash
-dsh plugin add dsh-capability-team
+dsh plugin --profile web add <old tarball URL or link:/path/to/old/checkout>
 ```
+
+Verified on DSH 0.2.2-rc.1: after rollback by `link:` and reverting `name:`, the old plugins and their saved
+settings return.
 
 The credential store and data directories are untouched throughout.
 

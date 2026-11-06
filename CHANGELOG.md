@@ -34,7 +34,7 @@ All notable changes to this project are documented in this file. The format foll
   - `dsh-capability-autocomplete` 0.4.2 → `@aiwuk/autocomplete` 1.0.0 (patch id `autocomplete` unchanged)
   - `dsh-capability-memory` 0.3.0 → `@aiwuk/memory` 1.0.0 (patch id `global-memory` unchanged)
   - `dsh-omni-search` 0.3.0 → `@aiwuk/search` 1.0.0 (patch id `omni-search` unchanged)
-  Steps and rollback: [docs/migration-aiwuk.md](docs/migration-aiwuk.md). The old names stay published.
+  Steps and rollback: [docs/migration-aiwuk.md](docs/migration-aiwuk.md). The old names are not on the public npm registry; roll back from your original source (Hub tarball or link:).
 - Display names: AIWUK Team / AI悟空 协作团队, AIWUK Autocomplete / AI悟空 输入补全, AIWUK Memory / AI悟空 全局记忆,
   AIWUK Search / AI悟空 全能搜索 (plugin locale `meta.title` and `meta.description`).
 - The client module ids are now the package names (`@aiwuk/team`, `@aiwuk/autocomplete`), as the host keys client
