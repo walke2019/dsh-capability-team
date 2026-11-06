@@ -34,7 +34,7 @@ test('registers the composer overlay, settings row and bundle config card', () =
   });
   assert.deepEqual(registered.map(r => r.meta.name), ['conversation.input.overlay', 'conversation.input.dock', 'conversation.input.right',
     'settings.general.item', 'plugins.bundle.config']);
-  assert.equal(registered[4].meta.key, 'dsh-capability-autocomplete');
+  assert.equal(registered[4].meta.key, '@aiwuk/autocomplete');
   assert.deepEqual(Object.keys(dictionaries.zh).sort(), Object.keys(dictionaries.en).sort());
   assert.equal(registered[0].component({ sessionId: 's' }).props.form.name, 'autocomplete');
 });

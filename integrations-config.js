@@ -1,10 +1,16 @@
 // External integrations (search engines, embeddings, speech, memory) are per-user data, never code: base URLs,
 // paths, headers, models and engine order all come from configuration, and nothing assumes a particular vendor.
 // Keys are never stored: the config names the environment variable (or DSH credential) that holds each key.
-// Read-only layers: bundle settings form (when set) › credentials/environment › user integrations.json › defaults.
+// Layers (contract F.3): a LOCKED managed ref (published by the Mothership connector) wins over everything local;
+// otherwise bundle settings form › credentials › environment › user integrations.json › unlocked managed value ›
+// defaults. Every resolved field reports its source: managed-locked | settings | credential | env | file |
+// managed-default | default. Managed values are ordinary credentials; only the lock manifest is extra.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defaultRoot } from './theme.js';
+import { message } from './integrations-messages.js';
+import { pickLayer, sourceLabel } from './managed-resolve.js';
+import { readManagedManifest } from './shared/managed-config.js';
 /** Search engines in their default (auto) order, and the page-fetch engines. */
 export const SEARCH_ENGINES = Object.freeze(['tavily', 'brave', 'searxng', 'custom']);
 export const FETCH_ENGINES = Object.freeze(['jina', 'tavily', 'custom']);
@@ -57,13 +63,13 @@ const fail = (label, rule) => { throw new Error(`${label} ${rule}`); };
 const integerIn = (value, min, max, label, rule) => { const n = Number(value); return Number.isSafeInteger(n) && n >= min && n <= max ? n : fail(label, rule); };
 /** An https URL, or plain http only for a server on this machine; never with credentials, query or hash. */
 export function localOrHttpsUrl(value, label) {
-  let url; try { url = new URL(String(value)); } catch { fail(label, '不是合法地址'); }
+  let url; try { url = new URL(String(value)); } catch { fail(label, message('notUrl')); }
   const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
-  if (!(url.protocol === 'https:' || (url.protocol === 'http:' && loopback)) || url.username || url.password || url.search || url.hash) fail(label, '须为 https 地址（本机可用 http://127.0.0.1），不含账号和查询参数');
+  if (!(url.protocol === 'https:' || (url.protocol === 'http:' && loopback)) || url.username || url.password || url.search || url.hash) fail(label, message('localOrHttps'));
   return url.href.replace(/\/+$/, '');
 }
 const engineList = (value, allowed, label) => {
-  if (!Array.isArray(value) || !value.length || value.some(v => !allowed.includes(v))) fail(label, `须为非空列表，取值 ${allowed.join(' / ')}`);
+  if (!Array.isArray(value) || !value.length || value.some(v => !allowed.includes(v))) fail(label, message('engineList', { allowed: allowed.join(' / ') }));
   return [...new Set(value)];
 };
 function validateField(section, key, value) {
@@ -74,41 +80,41 @@ function validateField(section, key, value) {
     case 'fetchEngines': return engineList(value, FETCH_ENGINES, label);
     case 'searxngUrl': return localOrHttpsUrl(value, label);
     case 'baseUrl': {
-      let url; try { url = new URL(String(value)); } catch { fail(label, '不是合法地址'); }
-      if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) fail(label, '须为不含账号、查询参数的 https 地址');
+      let url; try { url = new URL(String(value)); } catch { fail(label, message('notUrl')); }
+      if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) fail(label, message('httpsOnly'));
       return url.href.replace(/\/+$/, '');
     }
     case 'tavilyKeyEnv': case 'braveKeyEnv': case 'searxngKeyEnv': case 'jinaKeyEnv':
-    case 'apiKeyEnv': return /^[A-Z_][A-Z0-9_]{0,63}$/.test(value) ? value : fail(label, '须为环境变量名（大写字母、数字、下划线）');
+    case 'apiKeyEnv': return /^[A-Z_][A-Z0-9_]{0,63}$/.test(value) ? value : fail(label, message('envName'));
     case 'searchPath': case 'fetchPath': case 'providersPath': case 'statusPath': case 'path':
-      return typeof value === 'string' && /^\/[A-Za-z0-9._~\/-]{0,200}$/.test(value) && !value.includes('..') ? value : fail(label, '须为以 / 开头的路径');
+      return typeof value === 'string' && /^\/[A-Za-z0-9._~\/-]{0,200}$/.test(value) && !value.includes('..') ? value : fail(label, message('path'));
     case 'headers': {
-      if (typeof value !== 'object' || Array.isArray(value)) fail(label, '须为 {名称: 值} 对象');
+      if (typeof value !== 'object' || Array.isArray(value)) fail(label, message('headersObject'));
       const out = {};
       for (const [name, v] of Object.entries(value)) {
-        if (!HEADER_NAME.test(name) || FORBIDDEN_HEADERS.includes(name.toLowerCase())) fail(label, `不能设置请求头 ${name}（密钥通过 apiKeyEnv 注入）`);
-        if (typeof v !== 'string' || v.length > 512 || /[\r\n]/.test(v)) fail(label, `请求头 ${name} 的值无效`);
+        if (!HEADER_NAME.test(name) || FORBIDDEN_HEADERS.includes(name.toLowerCase())) fail(label, message('headerForbidden', { name }));
+        if (typeof v !== 'string' || v.length > 512 || /[\r\n]/.test(v)) fail(label, message('headerValue', { name }));
         out[name] = v;
       }
       return out;
     }
     case 'providers': case 'fetchProviders':
-      if (!Array.isArray(value) || value.length > 50 || value.some(v => typeof v !== 'string' || !/^[\w.:-]{1,64}$/.test(v))) fail(label, '须为渠道名列表');
+      if (!Array.isArray(value) || value.length > 50 || value.some(v => typeof v !== 'string' || !/^[\w.:-]{1,64}$/.test(v))) fail(label, message('providerList'));
       return [...new Set(value)];
     case 'model': case 'provider': case 'queryTask': case 'passageTask':
-      return typeof value === 'string' && value.trim() && value.length <= 200 && !/\s/.test(value.trim()) ? value.trim() : fail(label, '须为不含空白的字符串');
-    case 'dimensions': return integerIn(value, 1, 8192, label, '须为 1–8192 的整数');
-    case 'timeoutMs': case 'fetchTimeoutMs': case 'engineTimeoutMs': return integerIn(value, 1000, 300000, label, '须为 1000–300000 毫秒');
-    case 'batch': return integerIn(value, 1, 256, label, '须为 1–256 的整数');
-    case 'maxBytes': return integerIn(value, 1024, 104857600, label, '须为 1024–104857600 字节');
-    case 'backend': return MEMORY_BACKENDS.includes(value) ? value : fail(label, `须为 ${MEMORY_BACKENDS.join(' 或 ')}`);
+      return typeof value === 'string' && value.trim() && value.length <= 200 && !/\s/.test(value.trim()) ? value.trim() : fail(label, message('noWhitespace'));
+    case 'dimensions': return integerIn(value, 1, 8192, label, message('intRange', { min: 1, max: 8192 }));
+    case 'timeoutMs': case 'fetchTimeoutMs': case 'engineTimeoutMs': return integerIn(value, 1000, 300000, label, message('msRange', { min: 1000, max: 300000 }));
+    case 'batch': return integerIn(value, 1, 256, label, message('intRange', { min: 1, max: 256 }));
+    case 'maxBytes': return integerIn(value, 1024, 104857600, label, message('byteRange', { min: 1024, max: 104857600 }));
+    case 'backend': return MEMORY_BACKENDS.includes(value) ? value : fail(label, message('oneOf', { values: MEMORY_BACKENDS.join(message('or')) }));
     // Plain http is accepted only for a server on this machine; anything remote must use https.
     case 'url': return localOrHttpsUrl(value, label);
     case 'account': case 'user':
-      return typeof value === 'string' && /^[\w.@-]{1,64}$/.test(value) ? value : fail(label, '须为 1–64 位字母、数字或 ._@-');
-    case 'recallLimit': return integerIn(value, 0, 20, label, '须为 0–20 的整数');
-    case 'sharedRecall': return SHARED_RECALL_SCOPES.includes(value) ? value : fail(label, `须为 ${SHARED_RECALL_SCOPES.join(' 或 ')}`);
-    default: return fail(label, '不是支持的字段');
+      return typeof value === 'string' && /^[\w.@-]{1,64}$/.test(value) ? value : fail(label, message('accountName'));
+    case 'recallLimit': return integerIn(value, 0, 20, label, message('intRange', { min: 0, max: 20 }));
+    case 'sharedRecall': return SHARED_RECALL_SCOPES.includes(value) ? value : fail(label, message('oneOf', { values: SHARED_RECALL_SCOPES.join(message('or')) }));
+    default: return fail(label, message('unsupportedField'));
   }
 }
 // Settings layer: the owning bundle's volatile DSH Config (settings-schema.js), read on every resolve.
@@ -118,15 +124,15 @@ function readSettings() { try { return settingsReader() ?? {}; } catch { return 
 /** Validate a partial config ({search?, embeddings?}); unknown sections or fields are rejected. */
 export function validateIntegrations(value) {
   if (value === undefined || value === null) return {};
-  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('integrations 须为对象');
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(message('integrationsObject'));
   const out = {};
   for (const [section, fields] of Object.entries(value)) {
-    if (!SECTIONS.includes(section)) throw new Error(`integrations 不支持 ${section}`);
+    if (!SECTIONS.includes(section)) throw new Error(message('integrationsSection', { section }));
     if (fields === null) continue;
-    if (typeof fields !== 'object' || Array.isArray(fields)) throw new Error(`integrations.${section} 须为对象`);
+    if (typeof fields !== 'object' || Array.isArray(fields)) throw new Error(message('integrationsSectionObject', { section }));
     out[section] = {};
     for (const [key, v] of Object.entries(fields)) {
-      if (!Object.hasOwn(INTEGRATION_DEFAULTS[section], key)) throw new Error(`integrations.${section}.${key} 不是支持的字段`);
+      if (!Object.hasOwn(INTEGRATION_DEFAULTS[section], key)) throw new Error(`integrations.${section}.${key} ${message('unsupportedField')}`);
       out[section][key] = validateField(section, key, v);
     }
   }
@@ -135,64 +141,75 @@ export function validateIntegrations(value) {
 export const integrationsPath = (root = defaultRoot()) => join(root, 'integrations.json');
 function readFileLayer(root) {
   try { const raw = JSON.parse(readFileSync(integrationsPath(root), 'utf8')); return { revision: raw.revision ?? 0, value: validateIntegrations(raw.integrations) }; }
-  catch (error) { if (error.code === 'ENOENT') return { revision: 0, value: {} }; throw new Error(`集成配置文件损坏：${error.message}`); }
+  catch (error) { if (error.code === 'ENOENT') return { revision: 0, value: {} }; throw new Error(message('fileCorrupt', { reason: error.message })); }
 }
 /**
  * Effective config with the source of every field, plus whether each section's key is present.
  * Key values never leave this function except through `keyOf`.
  */
-export function resolveIntegrations({ root = defaultRoot(), env = process.env } = {}) {
+export function resolveIntegrations({ root = defaultRoot(), env = process.env, managed, credentials, settings: injectedSettings } = {}) {
   const file = readFileLayer(root);
-  const effective = {}, sources = {}, keys = {};
-  // The credential store only backs the real process environment (tests pass their own env to isolate).
-  const useStore = env === process.env;
-  const settings = useStore ? readSettings() : {};
+  const effective = {}, sources = {}, keys = {}, locked = {};
+  // The credential store only backs the real process environment (tests pass their own env, or their own store).
+  const store = credentials ?? (env === process.env ? credentialCache : undefined);
+  const manifest = managed === undefined ? (store ? managedManifest : null) : managed;
+  const settings = injectedSettings ?? (store ? readSettings() : {});
+  const entryOf = name => manifest?.entries?.get(name);
   for (const section of SECTIONS) {
-    effective[section] = {}; sources[section] = {};
+    effective[section] = {}; sources[section] = {}; locked[section] = {};
     for (const key of Object.keys(INTEGRATION_DEFAULTS[section])) {
-      // Primary name first (credential, then environment); a legacy name only when every earlier one is unset.
-      let override;
-      for (const name of [ENV_OVERRIDES[section][key] ?? []].flat()) {
-        const stored = useStore ? credentialCache.get(name) : undefined;
-        if (stored) { override = { raw: stored, source: `credential:${name}` }; break; }
-        if (env[name]) { override = { raw: env[name], source: `env:${name}` }; break; }
-      }
-      let value = INTEGRATION_DEFAULTS[section][key], source = 'default';
-      if (file.value[section]?.[key] !== undefined) { value = file.value[section][key]; source = 'file'; }
-      if (override) {
-        try { value = validateField(section, key, overrideValue(key, override.raw)); source = override.source; } catch { /* an invalid override is ignored, not trusted */ }
-      }
-      // A field set in the bundle's DSH settings form wins; unset fields keep the layers below.
-      if (useStore && settings[section]?.[key] !== undefined) {
-        try { value = validateField(section, key, settings[section][key]); source = 'settings'; } catch { /* invalid form value ignored */ }
-      }
-      effective[section][key] = value; sources[section][key] = source;
+      const names = [ENV_OVERRIDES[section][key] ?? []].flat();
+      const layer = pickLayer({
+        names, entryOf,
+        settings: () => settings[section]?.[key],
+        credential: name => store?.get(name),
+        env: name => env[name],
+        file: file.value[section]?.[key],
+        // A file value was validated when it was read; every other layer is validated here, and an invalid one is skipped.
+        validate: (raw, kind) => (kind === 'file' ? raw : validateField(section, key, kind === 'settings' ? raw : overrideValue(key, raw))),
+        fallback: INTEGRATION_DEFAULTS[section][key],
+      });
+      effective[section][key] = layer.value; sources[section][key] = sourceLabel(layer); locked[section][key] = layer.locked;
     }
-    keys[section] = { env: effective[section].apiKeyEnv, present: !!lookup(sectionKeyNames(section, effective[section]), env, false) };
+    keys[section] = keyState(sectionKeyNames(section, effective[section]), env, store, manifest, effective[section].apiKeyEnv);
   }
-  keys.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => [engine, { env: effective.search[field], present: !!lookup([effective.search[field]], env, false) }]));
-  const resolved = { revision: file.revision, effective, sources, keys, fileLayer: file.value };
-  // The environment stays attached but non-enumerable, so a serialized view never carries it.
-  Object.defineProperty(resolved, 'env', { value: env });
+  keys.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => [engine, keyState([effective.search[field]], env, store, manifest, effective.search[field])]));
+  const resolved = { revision: file.revision, effective, sources, locked, keys, fileLayer: file.value };
+  // The environment, store and manifest stay attached but non-enumerable, so a serialized view never carries them.
+  for (const [name, value] of Object.entries({ env, store, managed: manifest })) Object.defineProperty(resolved, name, { value });
   return resolved;
+}
+/** Presence and source of a key (never its value): `{env: <name>, present, source, locked}`. */
+function keyState(names, env, store, manifest, label) {
+  const hit = findKey(names, env, store, manifest);
+  return { env: label, present: !!hit, source: hit?.source ?? 'default', locked: names.some(name => manifest?.entries?.get(name)?.locked === true) };
 }
 /** Key names for a section's apiKeyEnv: the configured one, plus its legacy fallback while it is the default. */
 function sectionKeyNames(section, config) {
   const name = config.apiKeyEnv, legacy = LEGACY_KEY_ENV[section]?.[name];
   return legacy && name === INTEGRATION_DEFAULTS[section].apiKeyEnv ? [name, legacy] : [name];
 }
-// Each name is tried in order, the DSH store before the environment for the same name.
-function lookup(names, env, useStore = env === process.env) {
-  for (const name of names) { const value = (useStore ? credentialCache.get(name) : undefined) || env[name]; if (value) return value; }
+// Each name is tried in order. A locked managed name reads only the store (the managed value); an unlocked managed
+// name lets a local environment value win over it; any other name reads the store before the environment.
+function findKey(names, env, store, manifest) {
+  for (const name of names) {
+    const entry = manifest?.entries?.get(name), stored = store?.get(name), local = env[name];
+    if (entry?.locked) { if (stored) return { value: stored, source: 'managed-locked' }; continue; }
+    if (entry) { if (local) return { value: local, source: 'env' }; if (stored) return { value: stored, source: 'managed-default' }; continue; }
+    if (stored) return { value: stored, source: 'credential' };
+    if (local) return { value: local, source: 'env' };
+  }
   return undefined;
 }
+const storeOf = (resolved, env) => (env === resolved.env ? resolved.store : env === process.env ? credentialCache : undefined);
+const lookup = (names, resolved, env) => findKey(names, env, storeOf(resolved, env), resolved.managed)?.value;
 /** The API key for a section, read from the credential/environment variable its config names. */
-export const keyOf = (section, resolved, env = resolved.env ?? process.env) => lookup(sectionKeyNames(section, resolved.effective[section]), env);
+export const keyOf = (section, resolved, env = resolved.env ?? process.env) => lookup(sectionKeyNames(section, resolved.effective[section]), resolved, env);
 /** The key of one search/fetch engine (tavily, brave, searxng, jina, custom); undefined when not set. */
 export const engineKeyOf = (engine, resolved, env = resolved.env ?? process.env) => {
   if (engine === 'custom') return keyOf('search', resolved, env);
   const field = SEARCH_KEY_FIELDS[engine];
-  return field ? lookup([resolved.effective.search[field]], env) : undefined;
+  return field ? lookup([resolved.effective.search[field]], resolved, env) : undefined;
 };
 /** Every key name the effective config can read (section keys, legacy fallbacks, search engine keys). */
 export function keyNames(resolved) {
@@ -206,14 +223,34 @@ export function keyNames(resolved) {
 let credentialResolver;
 const credentialCache = new Map();
 export function setCredentialResolver(fn) { credentialResolver = fn; credentialCache.clear(); }
+// Managed manifest (lock policy only, never values): fed by an async reader the host plugin supplies (see
+// shared/managed-config.js readManagedManifest) and re-read with the credentials.
+let managedManifest = null, managedReader = null;
+export function setManagedReader(fn) { managedReader = typeof fn === 'function' ? fn : null; if (!managedReader) managedManifest = null; }
+/** Set the manifest directly (tests, or a host that already holds it). */
+export function setManagedManifest(manifest) { managedManifest = manifest ?? null; }
+export const managedManifestOf = () => managedManifest;
+/**
+ * Bind a DSH credential service (`ctx.credentials`): key names resolve through `resolve`, and the managed manifest is
+ * read through `readRecord` (with the file fallback). Pass null to unbind. Replaces the two separate setters.
+ */
+export function useCredentials(service) {
+  if (!service) { setCredentialResolver(null); setManagedReader(null); return; }
+  setCredentialResolver(name => service.resolve(name));
+  setManagedReader(() => readManagedManifest({ credentials: service }));
+}
+export { resolveRef } from './managed-ref.js';
+// Re-exported so the standalone bundles (memory, search) reach the route through their shared/ closure.
+export { registerManagedConfigRoute } from './managed-config-route.js';
 /**
  * Re-read every key name the config uses and every override name (ENV_OVERRIDES, legacy included) from the
  * DSH credential store (no-op without the store). Values stay in memory and are never logged.
  */
 export async function refreshCredentials(resolved = resolveIntegrations()) {
+  if (managedReader) { try { managedManifest = (await managedReader()) ?? null; } catch { managedManifest = null; } }
   if (!credentialResolver) return;
   const resolver = credentialResolver;
-  for (const name of new Set([...keyNames(resolved), ...overrideNames()])) {
+  for (const name of new Set([...keyNames(resolved), ...overrideNames(), ...(managedManifest?.entries?.keys() ?? [])])) {
     try {
       const credential = await resolver(name);
       const value = typeof credential === 'string' ? credential : credential?.value;
@@ -224,14 +261,22 @@ export async function refreshCredentials(resolved = resolveIntegrations()) {
 /** Every configured key value (store and environment), only for redacting them out of stored text. */
 export function knownSecretValues(resolved = resolveIntegrations()) {
   const env = resolved.env ?? process.env;
-  return [...new Set(keyNames(resolved).map(name => lookup([name], env)).filter(Boolean))];
+  return [...new Set(keyNames(resolved).map(name => lookup([name], resolved, env)).filter(Boolean))];
 }
-/** Whether each section's (and search engine's) key is configured (DSH store or environment), never the value. */
+/**
+ * Whether each section's (and search engine's) key is configured (DSH store or environment), never the value.
+ * Each entry also carries `source` (managed-locked | credential | env | managed-default | default) and `locked`.
+ */
 export async function keyPresence(resolved) {
   await refreshCredentials(resolved);
+  const env = resolved.env ?? process.env, store = storeOf(resolved, env);
+  const state = (names, label) => {
+    const hit = findKey(names, env, store, resolved.managed);
+    return { env: label, present: !!hit, source: hit?.source ?? 'default', locked: names.some(name => resolved.managed?.entries?.get(name)?.locked === true) };
+  };
   const out = {};
-  for (const section of SECTIONS) out[section] = { ...resolved.keys[section], present: !!keyOf(section, resolved) };
-  out.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => [engine, { env: resolved.effective.search[field], present: !!engineKeyOf(engine, resolved) }]));
+  for (const section of SECTIONS) out[section] = state(sectionKeyNames(section, resolved.effective[section]), resolved.effective[section].apiKeyEnv);
+  out.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => [engine, state([resolved.effective.search[field]], resolved.effective.search[field])]));
   return out;
 }
 /** Safe view for the Overview: effective values, the layer each came from, and key presence (never key values). */

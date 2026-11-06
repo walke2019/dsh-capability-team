@@ -7,10 +7,11 @@ import { applyObservabilityApi } from './observability-api.js';
 import { applyTaskControlApi } from './task-control-api.js';
 import { applyDispatchConfirmApi } from './dispatch-confirm.js';
 import { applyOnboardingApi } from './onboarding.js';
+import { registerManagedConfigRoute } from './managed-config-route.js';
 import { schemastery } from './settings-schema.js';
 export const inject = ['commands', 'agentPresets', 'tools'];
 // Only the welcome card's acknowledgement is a live setting (the client renders its own card, so no auto page).
-const z = schemastery('dsh-capability-team');
+const z = schemastery('@aiwuk/team');
 export const Config = z ? z.object({ welcomeVersion: z.string().volatile() }) : undefined;
 /**
  * Live roster state from the host's Agent Teams service: status and owned tasks. No log reads, cheap to poll.
@@ -96,6 +97,7 @@ export function apply(ctx) {
   applyTaskControlApi(ctx);
   applyDispatchConfirmApi(ctx);
   applyOnboardingApi(ctx);
+  registerManagedConfigRoute(ctx, 'team');
   ctx.inject?.(['settings'], scoped => { scoped.effect(() => scoped.settings.configure({ auto: false }, ctx.fiber)); });
   ctx.effect(() => ctx.commands.register({
     name: 'capability-model-policy',
