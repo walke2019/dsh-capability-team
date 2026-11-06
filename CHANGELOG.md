@@ -48,6 +48,25 @@ All notable changes to this project are documented in this file. The format foll
   `omni-search` and `global-memory` `shared/` closures by their `build-shared.mjs`.
 - `tests/brand.test.mjs`: asserts the rename map, versions and engines, and that no old package name remains outside
   the allowed places.
+- Visual config pages on the DSH Plugins page (slot `plugins.bundle.config`) for Team, Memory, Search and
+  Autocomplete, generated from `shared-ui/`. API keys are set, replaced or cleared through the DSH credential store;
+  the page only shows whether a key is set and never reads the value back.
+- Mothership-managed configuration: extensions read the values-free manifest the AIWUK Connector stores at
+  credential record `mothership-connector/managed-config` (file fallback `<DSH home>/aiwuk/managed-config.json`). A
+  locked ref wins over local settings and is shown read-only ("Managed by AIWUK Mothership"); an unlocked ref is a
+  default below local sources. Each extension serves the manifest at `GET /api/aiwuk.managed-config.<ext>`.
+- `@aiwuk/search` registers a native DSH web search provider (`aiwuk-search`) and, when the experimental service is
+  present, a cloud speech-to-text provider (`aiwuk-cloud-stt`). The `omni_*` tools are kept. A native fetch provider
+  is deferred until the fetch path reports the real target status.
+- Server-side i18n (`i18n.js`, `locale/server.*.json`): model-facing tool text is English; user-facing text follows
+  `AIWUK_LOCALE`, then the host `locale.preference`, then English.
+
+### Changed (UI)
+
+- All client UI follows the DSH dark/light theme through `--dsw-*` host tokens; the stage's own palette,
+  `prefers-color-scheme` and the overview's private language toggle are removed. The pixel stage resolves token
+  colors for the canvas and redraws on `theme/change`.
+- Autocomplete fleet route: each locked field applies on its own; an incomplete fixed route falls back to `session`.
 
 ### Compatibility
 
