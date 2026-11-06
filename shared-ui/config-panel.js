@@ -3,7 +3,7 @@
 // shared-ui/build.mjs, which strips the `export`/`import` keywords so this file shares one factory scope with
 // config-logic.js. Secrets are shown as a STATE only: values are never fetched, rendered or logged, and the
 // write-only input is cleared after every save attempt. Styling uses --dsw-* tokens only.
-import { buildOps, clearSecret, describeSecrets, fieldText, isShown, lockMode, managedConfigUrl, manifestFromWire, secretRefs, secretState, summaryCounts, unwrapReply, validateValue, writeSecret } from './config-logic.js';
+import { DESCRIBE_RETRY_DELAY_MS, buildOps, clearSecret, describeSecretsResult, fieldText, isShown, lockMode, managedConfigUrl, manifestFromWire, secretRefs, secretState, summaryCounts, unwrapReply, validateValue, writeSecret } from './config-logic.js';
 
 export function createPanelKit(React) {
   const h = React.createElement;
@@ -74,18 +74,68 @@ export function createPanelKit(React) {
     return [manifest, reload];
   }
 
-  /** Secret states from `credentials.describe`, refreshed on `credentials/reference-updated`. */
+  /**
+   * Secret states from `credentials.describe`, refreshed on `credentials/reference-updated`. Returns
+   * `[described, refresh, failed]`. Every row leaves "checking" in bounded time: a result from a superseded or
+   * unmounted run is dropped (ticket), the credentials service is read at call time (never captured stale), a failed
+   * run is retried once automatically, and after that `failed` is true so rows offer Retry instead of waiting forever.
+   */
   function useSecretStates(services, refs) {
     const [described, setDescribed] = React.useState({});
+    const [failed, setFailed] = React.useState(false);
     const key = refs.join(',');
-    const refresh = React.useRef(null);
-    refresh.current = async () => { if (services.credentials && refs.length) setDescribed(await describeSecrets(services.credentials, refs)); };
+    const ticket = React.useRef(0), alive = React.useRef(true), timer = React.useRef(null), retried = React.useRef(false), refsRef = React.useRef(refs);
+    refsRef.current = refs;
+    const run = React.useCallback(async () => {
+      const mine = ++ticket.current;
+      clearTimeout(timer.current);
+      const list = refsRef.current;
+      if (!list.length) return;
+      const result = await describeSecretsResult(services.credentials, list);
+      if (!alive.current || mine !== ticket.current) return; // stale: a newer run or an unmount took over
+      if (!result.failed) { retried.current = false; setDescribed(result.described); setFailed(false); return; }
+      setDescribed(prev => ({ ...prev, ...result.described }));
+      if (retried.current) { setFailed(true); return; }
+      retried.current = true;
+      timer.current = setTimeout(() => { if (alive.current && mine === ticket.current) void run(); }, DESCRIBE_RETRY_DELAY_MS);
+    }, [services]);
+    const reload = React.useCallback(() => { retried.current = false; setFailed(false); return run(); }, [run]);
     React.useEffect(() => {
-      void refresh.current();
-      const off = services.on?.('credentials/reference-updated', ref => { if (refs.includes(ref)) void refresh.current(); });
-      return typeof off === 'function' ? off : undefined;
-    }, [key, services.credentials]);
-    return [described, () => refresh.current()];
+      alive.current = true;
+      retried.current = false;
+      setFailed(false);
+      void run();
+      const off = services.on?.('credentials/reference-updated', ref => { if (refsRef.current.includes(ref)) void run(); });
+      return () => { alive.current = false; ticket.current++; clearTimeout(timer.current); if (typeof off === 'function') off(); };
+    }, [key, services.credentials, run]);
+    return [described, run, failed, reload];
+  }
+
+  /**
+   * Switch that makes this extension the host's provider for a capability (DSH web search): it writes
+   * `spec.path` on the host entry `spec.entry` through `ctx.configForms.get(entry)`, and unsets it to restore the
+   * host default. The current selection is always shown.
+   */
+  function HostSelectionRow({ spec, services, t }) {
+    const store = services.forms?.get?.(spec.entry) ?? null;
+    const snapshot = useStoreSnapshot(store);
+    const [note, setNote] = React.useState(null);
+    const [pending, setPending] = React.useState(false);
+    const ready = snapshot.status === 'ready' && snapshot.writable !== false && typeof store?.mutate === 'function';
+    const current = snapshot.value?.[spec.path];
+    const on = current === spec.value;
+    const toggle = async next => {
+      setNote(null); setPending(true);
+      let ok = false;
+      try { ok = await store.mutate([next ? { op: 'set', path: [spec.path], value: spec.value } : { op: 'unset', path: [spec.path] }], snapshot.revision); } catch { ok = false; }
+      setPending(false); setNote(ok ? 'saved' : 'failed');
+    };
+    const shown = typeof current === 'string' && current ? current : t(`host.${spec.id}.auto`);
+    return h(FieldRow, { id: `host.${spec.id}`, label: t(`host.${spec.id}.label`), t,
+      hint: snapshot.status === 'unavailable' ? t(`host.${spec.id}.unavailable`) : `${fmt(t(`host.${spec.id}.current`), { provider: shown })} ${t(`host.${spec.id}.hint`)}`,
+      error: note === 'failed' ? t(`host.${spec.id}.failed`) : undefined },
+      note === 'saved' ? h('span', { role: 'status', style: ui.muted }, t('state.saved')) : null,
+      h('input', { type: 'checkbox', role: 'switch', name: `host.${spec.id}`, 'data-host-selection': on ? 'on' : 'off', checked: on, disabled: !ready || pending, onChange: event => { void toggle(event.target.checked); } }));
   }
 
   function LockBadge({ mode, t }) {
@@ -100,7 +150,7 @@ export function createPanelKit(React) {
   }
 
   /** State line plus Set / Replace / Clear. The typed value lives only in this component and is dropped after save. */
-  function SecretField({ field, label, info, mode, t, onSet, onClear }) {
+  function SecretField({ field, label, info, mode, failed, t, onSet, onClear, onRetry }) {
     const [typed, setTyped] = React.useState(null); // null = input hidden
     const [confirming, setConfirming] = React.useState(false);
     const [note, setNote] = React.useState(null);
@@ -111,9 +161,12 @@ export function createPanelKit(React) {
       try { await onSet(field.ref, value); setNote('saved'); } catch { setNote('failed'); }
     };
     const clear = async () => { setConfirming(false); try { await onClear(field.ref); setNote('cleared'); } catch { setNote('failed'); } };
-    const statusText = info === undefined && mode !== 'locked' ? t('secret.unknown') : t(`secret.${state.kind}`);
+    const unresolved = info === undefined && mode !== 'locked';
+    const phase = unresolved ? (failed ? 'failed' : 'unknown') : state.kind;
+    const statusText = unresolved ? t(failed ? 'secret.failed' : 'secret.unknown') : t(`secret.${state.kind}`);
     return h(FieldRow, { id: field.id, label, mode, t, hint: note ? t(`secret.note.${note}`) : undefined },
-      h('span', { 'data-secret-state': info === undefined && mode !== 'locked' ? 'unknown' : state.kind, style: ui.muted }, statusText),
+      h('span', { 'data-secret-state': phase, style: unresolved && failed ? ui.err : ui.muted }, statusText),
+      unresolved && failed ? h('button', { type: 'button', 'data-action': 'retry-secret', style: ui.button, onClick: onRetry }, t('action.retry')) : null,
       typed !== null ? h('input', { type: 'password', name: field.id, autoComplete: 'new-password', value: typed, style: ui.input, 'aria-label': label, onChange: event => setTyped(event.target.value) }) : null,
       typed !== null ? h('button', { type: 'button', 'data-action': 'save-secret', style: { ...ui.button, ...ui.primary }, disabled: !typed.trim(), onClick: save }, t('action.save')) : null,
       typed !== null ? h('button', { type: 'button', 'data-action': 'cancel-secret', style: ui.button, onClick: () => setTyped(null) }, t('action.cancel')) : null,
@@ -145,7 +198,7 @@ export function createPanelKit(React) {
     const snapshot = props.form ? props.form.state : live;
     const mutate = props.form ? props.form.mutate : store?.mutate?.bind(store);
     const [manifest, reloadManifest] = useManifest(panel.extension, services);
-    const [described, refresh] = useSecretStates(services, secretRefs(panel.fields));
+    const [described, refresh, describeFailed, retryDescribe] = useSecretStates(services, secretRefs(panel.fields));
     // Every write re-reads the lock first: a Mothership lock applied while this page is open must win.
     const freshMode = async ref => lockMode(await reloadManifest(), ref);
     const [drafts, setDrafts] = React.useState({});
@@ -172,11 +225,12 @@ export function createPanelKit(React) {
     };
     const labelOf = field => t(field.ref ? `ref.${field.ref}` : `field.${field.id}`);
     return h('div', { 'data-config-panel': panel.extension, style: ui.col },
+      panel.hostSelection && view !== 'summary' ? h(HostSelectionRow, { spec: panel.hostSelection, services, t }) : null,
       !ready ? h('p', { style: ui.muted, 'data-unavailable': snapshot?.status === 'unavailable' ? '' : undefined }, t(snapshot?.status === 'loading' ? 'state.loading' : 'state.unavailable')) : null,
       panel.fields.filter(field => isShown(field, current)).map(field => {
         const mode = lockMode(manifest, field.ref);
         if (field.kind === 'secret') {
-          return h(SecretField, { key: field.id, field, label: labelOf(field), info: described[field.ref], mode, t,
+          return h(SecretField, { key: field.id, field, label: labelOf(field), info: described[field.ref], mode, failed: describeFailed, t, onRetry: retryDescribe,
             onSet: async (ref, value) => { await writeSecret(services.credentials, ref, value, await freshMode(ref)); await refresh(); },
             onClear: async ref => { await clearSecret(services.credentials, ref, await freshMode(ref)); await refresh(); } });
         }

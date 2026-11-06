@@ -139,15 +139,45 @@ export const secretRefs = fields => fields.filter(field => field.kind === 'secre
  * writable}}`; a failed batch leaves its refs out (the panel then shows them as unknown, never as "set").
  */
 export async function describeSecrets(credentials, refs) {
-  const out = {};
-  if (typeof credentials?.describe !== 'function') return out;
+  return (await describeSecretsResult(credentials, refs)).described;
+}
+
+/** One describe attempt must settle within this time; a hung call counts as a failure so the row never waits forever. */
+export const DESCRIBE_TIMEOUT_MS = 1200;
+/** Pause before the single automatic retry of a failed describe. Worst case until "Could not check": 2 × timeout + this. */
+export const DESCRIBE_RETRY_DELAY_MS = 300;
+
+/** Reject after `ms` when `work` has not settled; the timer is always cleared. */
+export function withTimeout(work, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    Promise.resolve(work).then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+  });
+}
+
+/**
+ * Like describeSecrets, but also says whether any batch FAILED (thrown error, refusal, timeout, malformed reply, missing API).
+ * A ref absent from a successful reply is reported as not configured: the host answered, it just holds nothing for it.
+ * Refs of a failed batch are left out (unknown), never guessed.
+ */
+export async function describeSecretsResult(credentials, refs, timeoutMs = DESCRIBE_TIMEOUT_MS) {
+  const described = {};
+  let failed = false;
+  if (!refs.length) return { described, failed };
+  if (typeof credentials?.describe !== 'function') return { described, failed: true };
   for (const batch of chunk(refs)) {
     try {
-      const view = unwrapReply(await credentials.describe(batch)) ?? {};
-      for (const ref of batch) if (view[ref] && typeof view[ref] === 'object') out[ref] = { configured: view[ref].configured === true, source: view[ref].source, writable: view[ref].writable !== false };
-    } catch { /* leave this batch unknown */ }
+      const view = unwrapReply(await withTimeout(Promise.resolve().then(() => credentials.describe(batch)), timeoutMs));
+      if (!view || typeof view !== 'object') throw new Error('malformed-reply');
+      for (const ref of batch) {
+        const item = view[ref];
+        described[ref] = item && typeof item === 'object'
+          ? { configured: item.configured === true, source: item.source, writable: item.writable !== false }
+          : { configured: false, writable: true };
+      }
+    } catch { failed = true; /* leave this batch unknown */ }
   }
-  return out;
+  return { described, failed };
 }
 
 /** Store a new value (write-only). Rejects an empty value, a locked ref and a missing API; resolves to true. */

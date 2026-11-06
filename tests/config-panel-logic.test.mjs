@@ -1,7 +1,7 @@
 // Pure panel logic (no DOM): secret state derivation, lock behavior, write ops, credential calls.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DESCRIBE_BATCH, buildOps, chunk, clearSecret, describeSecrets, isShown, lockMode, manifestFromWire, secretRefs, secretState, summaryCounts, unwrapReply, validateValue, writeSecret } from '../shared-ui/config-logic.js';
+import { DESCRIBE_BATCH, buildOps, chunk, clearSecret, describeSecrets, describeSecretsResult, withTimeout, isShown, lockMode, manifestFromWire, secretRefs, secretState, summaryCounts, unwrapReply, validateValue, writeSecret } from '../shared-ui/config-logic.js';
 import { PANELS } from '../shared-ui/fields.js';
 
 const manifest = (...entries) => manifestFromWire({ revision: 1, entries: entries.map(([ref, locked]) => ({ ref, locked, secret: false })) });
@@ -121,4 +121,23 @@ test('panel secret refs are exactly the catalog secrets of that extension', asyn
   for (const key of ['search', 'memory']) {
     assert.deepEqual(secretRefs(PANELS[key].fields).sort(), catalogOf(key).filter(e => e.secret).map(e => e.ref).sort(), key);
   }
+});
+
+test('describeSecretsResult: a ref absent from a successful reply is not configured; failures are flagged, never guessed', async () => {
+  const ok = await describeSecretsResult({ describe: async () => ({ ok: true, value: { A_B: { configured: true, source: 'file' } } }) }, ['A_B', 'C_D']);
+  assert.deepEqual(ok, { described: { A_B: { configured: true, source: 'file', writable: true }, C_D: { configured: false, writable: true } }, failed: false });
+  for (const describe of [async () => { throw new Error('down'); }, async () => ({ ok: false, error: { code: 'x' } }), async () => ({ ok: true, value: null }), async () => ({ ok: true, value: 'nope' })]) {
+    assert.deepEqual(await describeSecretsResult({ describe }, ['A_B']), { described: {}, failed: true });
+  }
+  assert.deepEqual(await describeSecretsResult({}, ['A_B']), { described: {}, failed: true });
+  assert.deepEqual(await describeSecretsResult({}, []), { described: {}, failed: false });
+});
+
+test('describeSecretsResult: a describe that never settles fails after the timeout instead of waiting forever', async () => {
+  const started = Date.now();
+  const out = await describeSecretsResult({ describe: () => new Promise(() => {}) }, ['A_B'], 40);
+  assert.equal(out.failed, true);
+  assert.ok(Date.now() - started < 1000);
+  await assert.rejects(withTimeout(new Promise(() => {}), 10), /timeout/);
+  assert.equal(await withTimeout(Promise.resolve(7), 50), 7);
 });

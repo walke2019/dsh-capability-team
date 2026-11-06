@@ -9,6 +9,7 @@
   "secret.env": "Set (environment)",
   "secret.managed": "Managed by {mothership}",
   "secret.unknown": "Checking...",
+  "secret.failed": "Could not check",
   "secret.note.saved": "Saved. The value is not shown again.",
   "secret.note.cleared": "Cleared.",
   "secret.note.failed": "The change failed. Nothing was stored.",
@@ -18,6 +19,7 @@
   "action.confirmClear": "Confirm clear",
   "action.save": "Save",
   "action.cancel": "Cancel",
+  "action.retry": "Retry",
   "state.loading": "Loading...",
   "state.unavailable": "Settings are unavailable: make sure the plugin is enabled.",
   "state.saved": "Saved.",
@@ -54,5 +56,11 @@
   "team.search": "Search",
   "team.hint": "Memory and Search keep their own settings pages under Plugins.",
   "team.unmanaged": "Nothing is managed by the Mothership.",
-  "team.managedCount": "{count} setting(s) managed by {mothership}."
+  "team.managedCount": "{count} setting(s) managed by {mothership}.",
+  "host.webSearch.label": "Use AIWUK Search for DSH web search",
+  "host.webSearch.current": "Current provider: {provider}.",
+  "host.webSearch.auto": "automatic",
+  "host.webSearch.hint": "Turn it off to restore the DSH default.",
+  "host.webSearch.unavailable": "DSH web search settings are unavailable.",
+  "host.webSearch.failed": "Could not change the web search provider."
 }

@@ -9,6 +9,7 @@
   "secret.env": "已设置（环境变量）",
   "secret.managed": "由 {mothership}托管",
   "secret.unknown": "检查中…",
+  "secret.failed": "无法检查",
   "secret.note.saved": "已保存，值不会再次显示。",
   "secret.note.cleared": "已清除。",
   "secret.note.failed": "操作失败，未保存任何内容。",
@@ -18,6 +19,7 @@
   "action.confirmClear": "确认清除",
   "action.save": "保存",
   "action.cancel": "取消",
+  "action.retry": "重试",
   "state.loading": "读取中…",
   "state.unavailable": "设置暂不可用：请确认已启用该插件。",
   "state.saved": "已保存。",
@@ -54,5 +56,11 @@
   "team.search": "全能搜索",
   "team.hint": "全局记忆与全能搜索的设置页位于“插件”页对应条目下。",
   "team.unmanaged": "没有任何设置由母舰托管。",
-  "team.managedCount": "{count} 项设置由 {mothership}托管。"
+  "team.managedCount": "{count} 项设置由 {mothership}托管。",
+  "host.webSearch.label": "让 DSH 网页搜索使用 AI悟空 全能搜索",
+  "host.webSearch.current": "当前提供方：{provider}。",
+  "host.webSearch.auto": "自动选择",
+  "host.webSearch.hint": "关闭后恢复 DSH 默认。",
+  "host.webSearch.unavailable": "DSH 网页搜索设置不可用。",
+  "host.webSearch.failed": "无法更改网页搜索提供方。"
 }

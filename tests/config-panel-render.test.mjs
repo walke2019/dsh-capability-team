@@ -8,7 +8,7 @@ import { build, TARGETS } from '../shared-ui/build.mjs';
 
 globalThis.__panelFetch = async () => ({ ok: false });
 function boot(file) {
-  let cursor = 0, states = [], effects = [];
+  let cursor = 0, states = [], effects = [], cleanups = [];
   const React = {
     createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat() }),
     useState(initial) { const i = cursor++; if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial; return [states[i], v => { states[i] = typeof v === 'function' ? v(states[i]) : v; }]; },
@@ -17,8 +17,8 @@ function boot(file) {
     useCallback(fn, deps) { const i = cursor++; const prev = states[i]; if (prev && prev.deps.length === deps.length && prev.deps.every((d, n) => Object.is(d, deps[n]))) return prev.fn; states[i] = { fn, deps }; return fn; },
   };
   let plugin, moduleId;
-  new Script(readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => { moduleId = spec.id; plugin = spec.factory(() => React); } } }, URL, fetch: (...args) => globalThis.__panelFetch(...args) });
-  return { plugin, moduleId, React, rerender: () => { cursor = 0; }, runEffects: async () => { const run = effects; effects = []; for (const fn of run) await fn(); }, reset: () => { states = []; cursor = 0; effects = []; } };
+  new Script(readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')).runInNewContext({ setTimeout, clearTimeout, window: { __ModuleLoader__: { load: spec => { moduleId = spec.id; plugin = spec.factory(() => React); } } }, URL, fetch: (...args) => globalThis.__panelFetch(...args) });
+  return { plugin, moduleId, React, rerender: () => { cursor = 0; }, runEffects: async () => { const run = effects; effects = []; for (const fn of run) { const cleanup = await fn(); if (typeof cleanup === 'function') cleanups.push(cleanup); } }, unmount: () => { const run = cleanups; cleanups = []; for (const fn of run) fn(); }, reset: () => { states = []; cursor = 0; effects = []; } };
 }
 const walk = (node, out = []) => { if (Array.isArray(node)) node.forEach(n => walk(n, out)); else if (node && typeof node === 'object') { out.push(node); walk(node.children, out); } return out; };
 const expand = (node, depth = 6) => {
@@ -29,19 +29,19 @@ const expand = (node, depth = 6) => {
 };
 const textOf = node => walk(node).flatMap(n => (typeof n.children?.[0] === 'string' ? n.children : [])).join('|');
 
-function mount({ file = 'packages/omni-search/client.js', form, described = {}, manifest, credentials } = {}) {
+function mount({ file = 'packages/omni-search/client.js', form, described = {}, manifest, credentials, configForms = null } = {}) {
   const host = boot(file);
-  const registered = [], dictionaries = {};
+  const registered = [], dictionaries = {}, listeners = [];
   const t = key => key;
   host.plugin.apply({
     effect: fn => fn(), locale: { register: (ns, dicts) => { Object.assign(dictionaries, dicts); }, bind: () => t },
     slots: { inject: (_n, fn) => fn(), register: (options, component) => registered.push({ options, component }) },
-    remote: { credentials: credentials ?? { describe: async refs => ({ ok: true, value: Object.fromEntries(refs.filter(r => described[r]).map(r => [r, described[r]])) }), set: async () => ({ ok: true }), unset: async () => ({ ok: true }) }, $on: () => () => {} },
-    configForms: null,
+    remote: { credentials: credentials ?? { describe: async refs => ({ ok: true, value: Object.fromEntries(refs.filter(r => described[r]).map(r => [r, described[r]])) }), set: async () => ({ ok: true }), unset: async () => ({ ok: true }) }, $on: (event, fn) => { listeners.push([event, fn]); return () => {}; } },
+    configForms,
   });
   const entry = registered[0];
   const props = view => ({ view, form, t });
-  return { host, entry, dictionaries, render: view => { host.rerender(); return expand(entry.component(props(view))); } };
+  return { host, entry, dictionaries, emit: (event, ...args) => listeners.filter(([name]) => name === event).forEach(([, fn]) => fn(...args)), render: view => { host.rerender(); return expand(entry.component(props(view))); } };
 }
 const readyForm = (value = {}, writable = true) => { const writes = []; return { writes, state: { status: 'ready', value, revision: 5, writable }, mutate: async (ops, rev) => { writes.push({ ops, rev }); return true; } }; };
 
@@ -257,4 +257,147 @@ test('an unlocked managed field shows the "using default" placeholder and never 
     assert.equal(m.dictionaries.en['value.default'], 'Using Mothership default');
     assert.equal(m.dictionaries.zh['value.default'], '使用母舰默认值');
   } finally { globalThis.__panelFetch = async () => ({ ok: false }); }
+});
+
+// ---- secret describe robustness: no endless "Checking..." (ticket, absent refs, failure state, auto retry) ----
+const secretStates = m => walk(m.render('page')).filter(n => n.props?.['data-secret-state']).map(n => n.props['data-secret-state']);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const searchRefs = ['OMNI_SEARCH_API_KEY', 'TAVILY_API_KEY', 'BRAVE_API_KEY', 'SEARXNG_API_KEY', 'JINA_API_KEY', 'OMNI_AUDIO_API_KEY'];
+
+test('a ref missing from a successful describe reply reads as "unset", never "unknown"', async () => {
+  const credentials = { describe: async () => ({ ok: true, value: { TAVILY_API_KEY: { configured: true, source: 'file', writable: true } } }), set: async () => ({ ok: true }), unset: async () => ({ ok: true }) };
+  const m = mount({ form: readyForm(), credentials });
+  m.render('page'); await m.host.runEffects(); await settle();
+  const states = secretStates(m);
+  assert.equal(states.length, 6);
+  assert.deepEqual(states.filter(s => s === 'stored').length, 1);
+  assert.equal(states.filter(s => s === 'unset').length, 5);
+  assert.ok(!states.includes('unknown'));
+});
+
+test('a bare (unwrapped) describe reply and an empty one both settle', async () => {
+  for (const reply of [Object.fromEntries(searchRefs.map(r => [r, { configured: false, writable: true }])), {}]) {
+    const m = mount({ form: readyForm(), credentials: { describe: async () => reply, set: async () => ({ ok: true }), unset: async () => ({ ok: true }) } });
+    m.render('page'); await m.host.runEffects(); await settle();
+    assert.deepEqual([...new Set(secretStates(m))], ['unset']);
+  }
+});
+
+test('a thrown describe is retried once automatically and then settles', async () => {
+  let calls = 0;
+  const credentials = { describe: async refs => { if (++calls === 1) throw new Error('transport down'); return { ok: true, value: Object.fromEntries(refs.map(r => [r, { configured: false, writable: true }])) }; }, set: async () => ({ ok: true }), unset: async () => ({ ok: true }) };
+  const m = mount({ form: readyForm(), credentials });
+  m.render('page'); await m.host.runEffects(); await settle();
+  assert.ok(secretStates(m).every(s => s === 'unknown'), 'still checking while the retry is pending (not failed yet)');
+  await sleep(450);
+  assert.equal(calls, 2);
+  assert.deepEqual([...new Set(secretStates(m))], ['unset']);
+});
+
+test('a persistent failure shows "Could not check" with Retry (no endless Checking), and Retry recovers', async () => {
+  let calls = 0, healthy = false;
+  const credentials = { describe: async refs => { calls++; if (!healthy) return { ok: false, error: { code: 'gateway/unavailable' } }; return { ok: true, value: Object.fromEntries(refs.map(r => [r, { configured: false, writable: true }])) }; }, set: async () => ({ ok: true }), unset: async () => ({ ok: true }) };
+  const m = mount({ form: readyForm(), credentials });
+  m.render('page'); await m.host.runEffects(); await sleep(450);
+  assert.equal(calls, 2, 'one attempt plus exactly one automatic retry');
+  assert.deepEqual([...new Set(secretStates(m))], ['failed']);
+  let tree = m.render('page');
+  const textOf1 = walk(tree).find(n => n.props?.['data-secret-state'] === 'failed').children.join('');
+  assert.equal(textOf1, 'secret.failed');
+  const retry = walk(tree).filter(n => n.props?.['data-action'] === 'retry-secret');
+  assert.equal(retry.length, 6);
+  assert.equal(walk(tree).find(n => n.props?.['data-action'] === 'retry-secret').children.join(''), 'action.retry');
+  await sleep(450); assert.equal(calls, 2, 'no further automatic retries');
+  healthy = true;
+  await retry[0].props.onClick(); await settle();
+  assert.deepEqual([...new Set(secretStates(m))], ['unset']);
+});
+
+test('a missing credentials service fails fast into "Could not check"', async () => {
+  const m = mount({ form: readyForm() });
+  m.render('page'); // services.credentials exists here; emulate the host losing it
+  const credentialsGone = mount({ form: readyForm(), credentials: { set: async () => ({ ok: true }) } }); // no describe API
+  credentialsGone.render('page'); await credentialsGone.host.runEffects(); await sleep(450);
+  assert.deepEqual([...new Set(secretStates(credentialsGone))], ['failed']);
+});
+
+test('a stale describe result never overwrites a newer one (ticket counter)', async () => {
+  const resolvers = [];
+  const credentials = { describe: refs => { const configured = resolvers.length === 0; return new Promise(resolve => resolvers.push(() => resolve({ ok: true, value: Object.fromEntries(refs.map(r => [r, { configured, source: 'file', writable: true }])) }))); }, set: async () => ({ ok: true }), unset: async () => ({ ok: true }) };
+  const m = mount({ form: readyForm(), credentials });
+  m.render('page'); await m.host.runEffects(); // run 1 in flight
+  m.emit('credentials/reference-updated', 'TAVILY_API_KEY'); // run 2 starts
+  await settle();
+  assert.equal(resolvers.length, 2);
+  // Re-describe settles first (not configured) ...
+  const [first, second] = resolvers;
+  second(); await settle();
+  assert.deepEqual([...new Set(secretStates(m))], ['unset']);
+  // ... then the older describe lands late with an outdated "configured" view and is ignored.
+  first(); await settle();
+  assert.deepEqual([...new Set(secretStates(m))], ['unset'], 'late stale result is dropped');
+});
+
+test('a describe that lands after unmount is ignored and its retry timer is cancelled', async () => {
+  let release, calls = 0;
+  const credentials = { describe: refs => { calls++; return new Promise(resolve => { release = () => resolve({ ok: true, value: Object.fromEntries(refs.map(r => [r, { configured: true, source: 'file', writable: true }])) }); }); }, set: async () => ({ ok: true }), unset: async () => ({ ok: true }) };
+  const m = mount({ form: readyForm(), credentials });
+  m.render('page'); await m.host.runEffects();
+  m.host.unmount();
+  release(); await settle();
+  assert.ok(secretStates(m).every(s => s === 'unknown'), 'nothing was written after unmount');
+  const failing = mount({ form: readyForm(), credentials: { describe: async () => { throw new Error('x'); }, set: async () => ({ ok: true }), unset: async () => ({ ok: true }) } });
+  failing.render('page'); await failing.host.runEffects(); failing.host.unmount(); await sleep(450);
+  assert.ok(secretStates(failing).every(s => s === 'unknown'), 'the cancelled retry did not run');
+});
+
+// ---- web search provider selection on the host `web` entry (another namespace) ----
+function webForm(value = { searchProvider: 'deepseek-official' }, extra = {}) {
+  const calls = [], listeners = new Set();
+  const form = { calls, snapshot: { status: 'ready', value, revision: 7, writable: true, ...extra },
+    getSnapshot() { return form.snapshot; }, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    async mutate(ops, rev) { calls.push({ ops, rev }); return true; } };
+  return { form, forms: { get: id => { calls.push({ get: id }); return form; } } };
+}
+const hostRow = m => walk(m.render('page')).find(n => n.props?.['data-field'] === 'host.webSearch');
+const hostSwitch = m => walk(hostRow(m)).find(n => n.type === 'input');
+
+test('search panel offers a switch that selects aiwuk-search on the host web entry, and unsets it to restore the default', async () => {
+  const { form, forms } = webForm();
+  const m = mount({ form: readyForm(), configForms: forms });
+  assert.ok(form && forms);
+  assert.equal(hostSwitch(m).props.checked, false);
+  assert.equal(hostSwitch(m).props['data-host-selection'], 'off');
+  assert.equal(m.dictionaries.en['host.webSearch.label'], 'Use AIWUK Search for DSH web search');
+  assert.equal(m.dictionaries.zh['host.webSearch.label'], '让 DSH 网页搜索使用 AI悟空 全能搜索');
+  hostSwitch(m).props.onChange({ target: { checked: true } }); await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(form.calls.filter(c => c.ops))), [{ ops: [{ op: 'set', path: ['searchProvider'], value: 'aiwuk-search' }], rev: 7 }]);
+  assert.ok(form.calls.some(c => c.get === 'web'), 'the form of the host `web` entry is used');
+  form.snapshot = { ...form.snapshot, value: { searchProvider: 'aiwuk-search' }, revision: 8 };
+  assert.equal(hostSwitch(m).props.checked, true);
+  hostSwitch(m).props.onChange({ target: { checked: false } }); await settle();
+  assert.deepEqual(JSON.parse(JSON.stringify(form.calls.filter(c => c.ops).at(-1))), { ops: [{ op: 'unset', path: ['searchProvider'] }], rev: 8 });
+});
+
+test('the current host selection is shown, including the automatic case and an unavailable web namespace', () => {
+  const current = key => walk(hostRow(key)).filter(n => typeof n.children?.[0] === 'string').map(n => n.children[0]).join('|');
+  const named = mount({ form: readyForm(), configForms: webForm({ searchProvider: 'deepseek-official' }).forms });
+  assert.match(current(named), /host\.webSearch\.current/);
+  const unavailable = webForm(undefined, { status: 'unavailable', value: undefined, writable: false });
+  const m = mount({ form: readyForm(), configForms: unavailable.forms });
+  assert.equal(hostSwitch(m).props.disabled, true);
+  assert.match(current(m), /host\.webSearch\.unavailable/);
+  const noForms = mount({ form: readyForm(), configForms: null });
+  assert.equal(hostSwitch(noForms).props.disabled, true, 'no configForms service: read-only, no crash');
+});
+
+test('a refused or failing host write shows an error and does not claim success; other panels have no such row', async () => {
+  const { form, forms } = webForm();
+  form.mutate = async () => { throw new Error('offline'); };
+  const m = mount({ form: readyForm(), configForms: forms });
+  hostSwitch(m).props.onChange({ target: { checked: true } }); await settle();
+  assert.ok(walk(hostRow(m)).some(n => n.props?.role === 'alert'));
+  assert.ok(!walk(hostRow(m)).some(n => n.props?.role === 'status'));
+  const memory = mount({ file: 'packages/global-memory/client.js', form: readyForm(), configForms: webForm().forms });
+  assert.equal(hostRow(memory), undefined);
 });

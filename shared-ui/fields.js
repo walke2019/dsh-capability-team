@@ -34,6 +34,9 @@ export const PANELS = Object.freeze({
   }),
   search: Object.freeze({
     extension: 'search', bundle: '@aiwuk/search', namespace: 'omni-search',
+    // Selects this extension as DSH's web search provider: `searchProvider` on the host `web` entry (another namespace).
+    // Unsetting the user layer restores the host default (`deepseek-official` in the shipped base).
+    hostSelection: Object.freeze({ id: 'webSearch', entry: 'web', path: 'searchProvider', value: 'aiwuk-search' }),
     fields: Object.freeze([
       field('engines', 'enum', { path: 'engines', ref: 'OMNI_SEARCH_ENGINES', options: ['tavily', 'brave', 'searxng', 'custom'], multiple: true }),
       field('fetchEngines', 'enum', { path: 'fetchEngines', ref: 'OMNI_FETCH_ENGINES', options: ['jina', 'tavily', 'custom'], multiple: true }),
