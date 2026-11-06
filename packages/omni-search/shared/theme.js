@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Per-project team configuration store: overrides on top of the preset base.
 import { mkdir, readFile, writeFile, rename, unlink, open, stat } from 'node:fs/promises';
 import { readFileSync, statSync, existsSync } from 'node:fs';
@@ -30,7 +31,7 @@ export function projectRoot(cwd, root = defaultRoot()) {
 const cache = new Map();
 function parse(raw, path) {
   try { return migrateProject(JSON.parse(raw)); }
-  catch (error) { throw new Error(`项目团队配置损坏（${path}）：${error.message}；请修复或删除该文件后重新配置`); }
+  catch (error) { throw new Error(modelText('theme.549', { 0: path, 1: error.message })); }
 }
 const EMPTY = Object.freeze({ revision: 0, tiers: {}, capabilities: {}, roles: {} });
 function remember(path, info, raw) {
@@ -82,7 +83,7 @@ export async function acquireLock(lockPath) {
       const knownOwner = Number.isSafeInteger(owner.pid) && owner.pid > 0;
       // A confirmation dialog can stay open for minutes. Age never invalidates a live owner's lock.
       const stale = knownOwner ? !alive(owner.pid) : Date.now() - since > STALE_LOCK_MS;
-      if (attempt || !stale) throw new Error('团队配置正在被其他会话保存，请稍后重新读取后重试');
+      if (attempt || !stale) throw new Error(modelText('theme.550'));
       await unlink(lockPath).catch(e => { if (e.code !== 'ENOENT') throw e; });
     }
   }
@@ -98,7 +99,7 @@ export async function saveProject(project, patch, expectedRevision, { base = see
   const tmp = path + '.' + randomUUID() + '.tmp';
   try {
     const previous = await loadProject(project, base, root);
-    if (!Number.isSafeInteger(expectedRevision) || previous.revision !== expectedRevision) throw new Error(`团队配置版本冲突（当前 ${previous.revision}），请重新读取并重新确认`);
+    if (!Number.isSafeInteger(expectedRevision) || previous.revision !== expectedRevision) throw new Error(modelText('theme.551', { 0: previous.revision }));
     const nextOverrides = pinRoster(applyPatch(previous.overrides, patch), previous.overrides, base.roles);
     const effective = effectiveConfig(nextOverrides, base, { trustedFrom: previous.overrides });
     if (check) await check(previous.effective, effective);

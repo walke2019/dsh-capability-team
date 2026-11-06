@@ -4,9 +4,7 @@ window.__ModuleLoader__.load({
   id: '@aiwuk/memory',
   factory(require) {
     const aiwukConfig = (() => {
-    const BRAND_TEXT = Object.freeze({
-      mothership: Object.freeze({ en: 'AIWUK Mothership', zh: 'AI\u609f\u7a7a \u6bcd\u8230' }),
-    });
+    const BRAND_TEXT = {"mothership":{"en":"AIWUK Mothership","zh":"AI\u609f\u7a7a \u6bcd\u8230"}};
     // Pure logic of the config panel (no DOM, no React, no host imports) so it is testable and reused verbatim in the
     // browser bundle. Nothing here ever receives a secret value: secrets are described (configured / source) only.
     

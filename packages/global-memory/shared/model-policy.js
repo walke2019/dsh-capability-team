@@ -1,15 +1,16 @@
+import { m as modelText } from './i18n.js';
 // The (profile-wide) model policy is applied to a resolved role before the failover state chooses a route.
 // Entries are exact provider/model routes, or prefix rules ending in "*" that match either the full
 // route or the bare model id (so "@cf/*" covers every provider). No lower-tier substitution.
 export const routeKey = route => `${route.provider}/${route.model}`;
 export const isPrefixRule = entry => entry.endsWith('*');
 export function validateDisabledRoutes(value) {
-  if (!Array.isArray(value) || value.length > 2000) throw new Error('禁用模型须为不超过2000项的模型标识列表');
+  if (!Array.isArray(value) || value.length > 2000) throw new Error(modelText('model-policy.311'));
   for (const v of value) {
-    if (typeof v !== 'string' || !v.trim() || v.length > 512 || /[\r\n\0\s]/.test(v)) throw new Error('禁用模型须使用完整的渠道/模型标识或前缀规则');
+    if (typeof v !== 'string' || !v.trim() || v.length > 512 || /[\r\n\0\s]/.test(v)) throw new Error(modelText('model-policy.312'));
     if (isPrefixRule(v)) {
-      if (v.length < 3 || v.slice(0, -1).includes('*')) throw new Error(`前缀规则 ${v} 无效：须为至少2个字符的前缀加结尾 *，且中间不能含 *`);
-    } else if (!v.includes('/') || v.includes('*')) throw new Error('禁用模型须使用完整的渠道/模型标识或前缀规则');
+      if (v.length < 3 || v.slice(0, -1).includes('*')) throw new Error(modelText('model-policy.313', { 0: v }));
+    } else if (!v.includes('/') || v.includes('*')) throw new Error(modelText('model-policy.314'));
   }
   return [...new Set(value)].sort();
 }
@@ -28,7 +29,7 @@ export function applyModelPolicy(role, disabledRoutes = []) {
   if (role.unassigned || !role.provider || !role.model) return role;
   const candidates = [{ provider: role.provider, model: role.model }, ...(role.fallbacks ?? [])];
   const allowed = candidates.filter(r => !disabled(routeKey(r)));
-  if (!allowed.length) throw new Error(`角色 ${role.displayName ?? role.id} 的主模型及同档备选均已被全局模型策略禁用；请恢复合格模型或重新配置，不会降档。`);
+  if (!allowed.length) throw new Error(modelText('model-policy.315', { 0: role.displayName ?? role.id }));
   const [primary, ...fallbacks] = allowed;
   // A disabled long-context route is dropped; requests then stay on the allowed primary and backups.
   const { longContext, ...rest } = role;

@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Pluggable shared long-term memory backends for the memory hub (team plugin) and the global-memory package.
 // The local store (memory-store.js) is always the source of truth; a backend only mirrors memories to a
 // shared service and merges that service's recall into local results. `integrations.memory.backend` picks one.
@@ -65,7 +66,7 @@ export function createMemoryBackend(options = {}) {
       try { instances.set(name, MEMORY_BACKEND_REGISTRY[name]({ ...options, queuePath })); }
       catch (error) {
         // A corrupt queue file or bad backend settings must not fail every memory search/write; fall back to local.
-        pickError = `${name} 后端初始化失败，已改用本地：${error?.message ?? error}`;
+        pickError = modelText('memory-backends.266', { 0: name, 1: error?.message ?? error });
         if (name === 'local') throw error;
         if (!instances.has('local')) instances.set('local', MEMORY_BACKEND_REGISTRY.local({ ...options, queuePath: typeof options.queuePath === 'function' ? options.queuePath('local') : options.queuePath }));
         return instances.get('local');
