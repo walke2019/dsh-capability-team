@@ -24,7 +24,9 @@ import { createRotation } from './session-rotation.js';
 import { createMemoryHub } from './memory-hub.js';
 import { knownSecretValues, refreshCredentials, setCredentialResolver } from './integrations-config.js';
 export const inject = ['agents', 'agentTeams', 'systemPrompt', 'tools', 'workingDirectory', 'skills', 'llm', 'userQuestions'];
+import { configureI18n } from './i18n.js';
 export function apply(host, config = {}) {
+  configureI18n(host);
   // Lead-only and teammate-only plugin tools are installed per agent, so teammates do not carry the lead's tool schemas.
   const { ctx } = scopeTools(host);
   const team = createTeam(ctx, config); // Validates preset bindings up front.

@@ -79,7 +79,7 @@ test('所需档位缺失时可升档；没有合格模型时保持未分配，�
   const up = autoMatch([{ provider: 'p', model: 'claude-opus-5.5' }], { qa: { tier: 'upper' } });
   assert.equal(up.report[0].status, 'upgraded'); assert.equal(up.routes.qa.tier, 'high');
   const below = autoMatch([{ provider: 'p', model: 'gpt-6.1-terra' }], { orchestrator: { tier: 'high' } });
-  assert.equal(below.report[0].status, 'unassigned'); assert.match(below.report[0].reason, /不降档/);
+  assert.equal(below.report[0].status, 'unassigned'); assert.match(below.report[0].reason, /no downgrade/);
   assert.equal(below.routes.orchestrator, undefined);
   const none = autoMatch([{ provider: 'p', model: 'house-model-x' }], { qa: { tier: 'upper' } });
   assert.equal(none.report[0].status, 'unassigned'); assert.equal(none.routes.qa, undefined);
@@ -103,7 +103,7 @@ test('模式变体视为同一模型；旧代模型排在备选末尾', () => {
 test('无可识别模型时能力保持未分配，配置仍然有效', () => {
   const e = effectiveConfig({}, seed);
   assert.equal(e.capabilities.qa.provider, undefined);
-  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'a', model: 'b' }] } } }, seed), /未指定主模型/);
+  assert.throws(() => effectiveConfig({ capabilities: { qa: { fallbacks: [{ provider: 'a', model: 'b' }] } } }, seed), /no primary model/);
 });
 test('项目显式配置优先于自动匹配', () => {
   const e = effectiveConfig({ capabilities: { qa: { provider: 'anthropic', model: 'claude-sonnet-5-5', fallbacks: [] } } }, base);

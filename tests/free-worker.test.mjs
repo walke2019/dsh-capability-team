@@ -59,7 +59,7 @@ test('写入级别回报工具调用与改动文件', async () => {
   const events = '{"type":"tool_use","part":{"tool":"write","state":{"status":"completed","input":{"filePath":"a.txt"}}}}\n' + ok('done');
   const r = await runFreeWorker('写', { ...base, tools: 'write', launch: (e, a, o) => { assert.deepEqual(JSON.parse(o.env.OPENCODE_PERMISSION), PERMISSIONS.write); return child(events); } });
   assert.deepEqual(r.toolCalls, [{ tool: 'write', status: 'completed', file: 'a.txt' }]);
-  await assert.rejects(runFreeWorker('x', { ...base, tools: 'shell' }), /工具级别/);
+  await assert.rejects(runFreeWorker('x', { ...base, tools: 'shell' }), /tool level/);
 });
 
 test('额度用尽：立即终止并换下一个免费模型；全部不可用时报告，不改用付费模型', async () => {
@@ -68,8 +68,8 @@ test('额度用尽：立即终止并换下一个免费模型；全部不可用�
   const r = await runFreeWorker('x', { ...base, launch: (e, args) => { const m = args[args.indexOf('--model') + 1]; tried.push(m); return m === MODELS[0] ? child('', { stderr: limit }) : child(ok('好')); } });
   assert.deepEqual(tried, MODELS);
   assert.equal(r.model, MODELS[1]);
-  assert.match(r.skipped[0], /new-free 不可用：.*Free usage limit/);
-  await assert.rejects(runFreeWorker('x', { ...base, launch: () => child('', { stderr: limit }) }), /所有免费模型都不可用，不改用付费模型/);
+  assert.match(r.skipped[0], /new-free unavailable:.*Free usage limit/);
+  await assert.rejects(runFreeWorker('x', { ...base, launch: () => child('', { stderr: limit }) }), /All free models are unavailable; no paid fallback/);
 });
 
 test('标题生成等非主代理的报错不触发换模型', async () => {
@@ -80,13 +80,13 @@ test('标题生成等非主代理的报错不触发换模型', async () => {
 
 test('其他失败照实报告，不换模型', async () => {
   let n = 0;
-  await assert.rejects(runFreeWorker('x', { ...base, launch: () => { n++; return child(ok('r'), { code: 1 }); } }), /退出码/);
+  await assert.rejects(runFreeWorker('x', { ...base, launch: () => { n++; return child(ok('r'), { code: 1 }); } }), /exit code/);
   assert.equal(n, 1);
   await assert.rejects(runFreeWorker('x', { ...base, launch: () => child('{"type":"error","error":"失败"}\n') }), /失败/);
-  await assert.rejects(runFreeWorker('x', { ...base, launch: () => child('') }), /文本结果/);
+  await assert.rejects(runFreeWorker('x', { ...base, launch: () => child('') }), /text result/);
 });
 
 test('拒绝 shell 包装器；模型清单由目录解析，不在清单内的模型不允许', async () => {
-  await assert.rejects(runFreeWorker('x', { ...base, executable: 'opencode.cmd' }), /原生/);
-  await assert.rejects(runFreeWorker('x', { ...base, models: ['paid/x'], resolveModels: async () => { throw new Error('不是 OpenCode 目录中的免费模型'); } }), /免费模型/);
+  await assert.rejects(runFreeWorker('x', { ...base, executable: 'opencode.cmd' }), /native/);
+  await assert.rejects(runFreeWorker('x', { ...base, models: ['paid/x'], resolveModels: async () => { throw new Error('not a free model in the OpenCode catalog'); } }), /free model/);
 });

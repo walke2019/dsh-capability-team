@@ -22,12 +22,12 @@ test('工具级别与模型顺序透传给执行器，默认无工具；改动�
   const r = await executeFreeTask({ teams, agent: {}, prompt: 't', worker, tools: 'write', models: ['m'] });
   assert.deepEqual(seen, [['none', undefined], ['write', ['m']]]);
   assert.deepEqual(r.changedFiles, ['a.md']);
-  assert.match(teams.getTask().description, /改动文件：a\.md/);
+  assert.match(teams.getTask().description, /Changed files: a\.md/);
 });
 test('无效输入在创建持久任务前拒绝', async () => {
   const teams = fakeTeams(); let created = false;
   teams.createTask = async () => { created = true; throw new Error('不应调用'); };
-  await assert.rejects(executeFreeTask({ teams, agent: {}, prompt: '' }), /任务/);
+  await assert.rejects(executeFreeTask({ teams, agent: {}, prompt: '' }), /[Tt]ask/);
   assert.equal(created, false);
 });
 test('分析期间别人修改任务则不覆盖也不完成', async () => {
@@ -36,7 +36,7 @@ test('分析期间别人修改任务则不覆盖也不完成', async () => {
     const current = teams.getTask();
     await teams.updateTask({}, { expectedRevision: current.revision, action: 'edit', description: '用户改动' });
     return { model: 'free', text: '分析结果' };
-  } }), /其他成员修改/);
+  } }), /modified by another member/);
   assert.equal(teams.getTask().description, '用户改动');
   assert.equal(teams.getTask().status, 'in_progress');
   assert.deepEqual(teams.actions, ['claim','edit']);

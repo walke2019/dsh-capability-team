@@ -35,7 +35,7 @@ test('profile bundle registers valid tools independent of team/preset and cleans
   apply(c.ctx);
   assert.deepEqual([...c.defs.keys()], ['omni_search','omni_fetch','omni_search_providers','omni_transcribe','omni_transcribe_status']);
   for (const def of c.defs.values()) assert.doesNotThrow(() => assertToolSchema(def.parameters));
-  await assert.rejects(c.defs.get('omni_search').execute({ query: 'probe' }, { agent: {}, signal: undefined }), /网关地址/);
+  await assert.rejects(c.defs.get('omni_search').execute({ query: 'probe' }, { agent: {}, signal: undefined }), /gateway URL/);
   c.dispose();
   const off = await fixture(t); apply(off.ctx, { enabled: false }); assert.equal(off.defs.size, 0); off.dispose();
   assert.throws(() => apply({}, { integrations: {} }), /Invalid/);
@@ -105,6 +105,6 @@ test('read-only config/API, team non-registration, roles missing-tool warning an
   await buildShared(true);
   const config = await import('../../packages/omni-search/shared/integrations-config.js');
   for (const key of ['saveIntegrations','handleIntegrations','applyIntegrationsApi','setPluginIntegrations']) assert.equal(config[key], undefined);
-  const roles = await readFile(new URL('../../roles.js', import.meta.url), 'utf8'); assert.match(roles, /工具未安装、未启用、当前会话不可用/);
+  const { policy } = await import('../../roles.js'); assert.match(policy, /unavailable, disabled, uninstalled or missing-credential tools/);
   const team = await readFile(new URL('../../integrations.js', import.meta.url), 'utf8'); assert.doesNotMatch(team, /omni_search|applyTranscribe/);
 });

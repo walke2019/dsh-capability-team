@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Own-session usage. Durable assistant/attempt settles a failed request, so the next
 // settlement is a distinct attempt even when plugin retry emits no llm/retry-started.
 // Token usage per team member:
@@ -10,7 +11,7 @@ const numeric = value => Number.isFinite(value) && value >= 0 ? Math.min(value, 
 const bucketsFrom = usage => ({ uncachedInputTokens: numeric(usage.inputTokens), outputTokens: numeric(usage.outputTokens),
   cacheReadTokens: numeric(usage.cacheReadTokens), cacheWriteTokens: numeric(usage.cacheWriteTokens) });
 const shift = (into, buckets, sign) => { for (const key of BUCKETS) into[key] = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, into[key] + sign * buckets[key])); };
-/** 预算计数 token = uncached input + cache write + output；不含缓存读取，不等于账单金额。 */
+/** Budget-counted tokens = uncached input + cache write + output; excludes cache reads and is not a bill amount. */
 export const billable = usage => (usage?.uncachedInputTokens ?? 0) + (usage?.cacheWriteTokens ?? 0) + (usage?.outputTokens ?? 0);
 export function sampleOf(event) {
   if (event.type === 'assistant/message' && event.data?.usage && typeof event.data.usage === 'object' && !Array.isArray(event.data.usage)) return event.data.usage;
@@ -87,5 +88,5 @@ export function budgetDenial(role, usage) {
   if (!role.maxTokens || !usage) return undefined;
   const used = billable(usage);
   if (used < role.maxTokens) return undefined;
-  return `角色 ${role.displayName ?? role.id}（${role.capability}）本会话已用 ${used} 预算计数 token（不含缓存读取，不等于账单金额），达到预算上限 ${role.maxTokens}，已阻止请求。请向用户说明进度，由用户决定是否提高该能力的 maxTokens；不会改用其他模型继续。`;
+  return modelText('usage.607', { 0: role.displayName ?? role.id, 1: role.capability, 2: used, 3: role.maxTokens });
 }

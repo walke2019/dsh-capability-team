@@ -7,6 +7,9 @@ import { Script } from 'node:vm';
 function loadFragment() {
   const source = readFileSync(new URL('../client/07a-role-theme.js', import.meta.url), 'utf8');
   const sandbox = { zh: {}, en: {} };
+  const core = readFileSync(new URL('../client/00-core-zh.js', import.meta.url), 'utf8');
+  const dictionary = core.slice(core.indexOf('const zh = ')).replace('const zh = ', 'this.zh = ');
+  new Script(dictionary).runInNewContext(sandbox);
   new Script(`${source}\nthis.api = { characterQuoteKey, localizeRoles };`).runInNewContext(sandbox);
   return { ...sandbox.api, zh: sandbox.zh, en: sandbox.en };
 }

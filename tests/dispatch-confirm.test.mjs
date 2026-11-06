@@ -29,9 +29,9 @@ test('validateAnswer：回退最多 3 个、不能重复、必须在同档候选
   const ok = validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m3', fallbacks: ['provider-a/m1', 'provider-a/m2', 'provider-a/m4'] }] });
   assert.equal(ok.routes[0].changed, true);
   assert.deepEqual(ok.routes[0].primary, { provider: 'provider-a', model: 'm3' });
-  assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m3', fallbacks: ['provider-a/m1', 'provider-a/m2', 'provider-a/m4', 'provider-a/m5'] }] }), /最多 3 个/);
-  assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m3', fallbacks: ['provider-a/m3'] }] }), /重复/);
-  assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'other/x' }] }), /不在目录可用模型中/);
+  assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m3', fallbacks: ['provider-a/m1', 'provider-a/m2', 'provider-a/m4', 'provider-a/m5'] }] }), /at most 3 fallback/);
+  assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m3', fallbacks: ['provider-a/m3'] }] }), /[Dd]uplicate/);
+  assert.throws(() => validateAnswer(offered, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'other/x' }] }), /not available in the catalog/);
   assert.equal(validateAnswer(offered, { decision: 'confirm', routes: [] }).routes[0].changed, false, '不改就是原样确认');
   assert.deepEqual(validateAnswer(offered, { decision: 'cancel' }), { decision: 'cancel' });
 });
@@ -45,8 +45,8 @@ test('full catalog candidates rank same-tier first and preserve configured recom
   assert.deepEqual(full[0].candidates.at(-1), { ...extra, sameTier: false });
   const routes = [{ role: 'diao-chan', primary: extra, fallbacks: ['provider-a/m2'] }];
   assert.equal(validateAnswer(full, { decision: 'confirm', routes }).routes[0].primary.model, 'outside');
-  assert.throws(() => validateAnswer(full, { decision: 'confirm', scope: 'project', routes }), /跨档选择仅本次生效/);
-  assert.throws(() => validateAnswer(full, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m5' }] }), /不在目录/);
+  assert.throws(() => validateAnswer(full, { decision: 'confirm', scope: 'project', routes }), /Cross-tier selections apply only to this task/);
+  assert.throws(() => validateAnswer(full, { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/m5' }] }), /not available in the catalog/);
 });
 
 const lead = id => ({ id, ctx: {} });
@@ -79,7 +79,7 @@ test('always 每次都问；never 从不问；取消会抛错且不留下计划'
   const p = confirm.confirm(exec('L2', 'c9'), plan, effective, { disabledRoutes: [] }, 'always');
   await flush();
   answerPending('L2', 'c9', { decision: 'cancel' });
-  await assert.rejects(p, /用户取消了这次分派/);
+  await assert.rejects(p, /user cancelled this dispatch/);
   assert.equal(pendingView('L2', 'c9').status, 'none');
 });
 
@@ -101,7 +101,7 @@ test('cross-tier task answers succeed while project, disabled and missing answer
   const p = confirm.confirm(exec(id), plan, effective, { disabledRoutes: ['provider-a/m5'] }, 'always');
   await flush();
   const answer = { decision: 'confirm', routes: [{ role: 'diao-chan', primary: 'provider-a/outside', fallbacks: [] }] };
-  assert.throws(() => answerPending(id, 'call-1', { ...answer, scope: 'project' }), e => e.status === 422 && /跨档/.test(e.message));
+  assert.throws(() => answerPending(id, 'call-1', { ...answer, scope: 'project' }), e => e.status === 422 && /Cross-tier/.test(e.message));
   for (const primary of ['provider-a/m5', 'missing/model'])
     assert.throws(() => answerPending(id, 'call-1', { ...answer, routes: [{ role: 'diao-chan', primary }] }), e => e.status === 422);
   answerPending(id, 'call-1', answer);
@@ -150,10 +150,10 @@ test('catalogVersion changes for newly searchable models and tier membership', a
 test('没有卡片时退回原生提问框，可逐行调整', async () => {
   forgetLead('L4');
   let asked;
-  const userQuestions = { ask: async q => { asked = q; return { answers: [{ id: 'dispatch', selected: ['仅本次调整'], custom: 'diao-chan: provider-a/m5, provider-a/m1' }] }; } };
+  const userQuestions = { ask: async q => { asked = q; return { answers: [{ id: 'dispatch', selected: ['Adjust this task only'], custom: 'diao-chan: provider-a/m5, provider-a/m1' }] }; } };
   const confirm = createDispatchConfirm({ llm, userQuestions }, team, { graceMs: 10 });
   const result = await confirm.confirm(exec('L4'), plan, effective, { disabledRoutes: [] }, 'always');
-  assert.match(asked.questions[0].detail, /貂蝉（frontend）：主 provider-a\/m1；回退 provider-a\/m2/);
+  assert.match(asked.questions[0].detail, /貂蝉 \(frontend\): primary provider-a\/m1; fallbacks provider-a\/m2/);
   assert.equal(result.routes[0].primary.model, 'm5');
   assert.deepEqual(result.routes[0].fallbacks.map(f => f.model), ['m1']);
 });
@@ -191,7 +191,7 @@ test('无人确认时按总超时报错，不再永久挂起', async () => {
   const confirm = createDispatchConfirm({ llm }, team, { graceMs: 10, heartbeatMs: 10, timeoutMs: 60 });
   const s = trackedSignal();
   const p = confirm.confirm({ agent: lead('L7'), callId: 't1', signal: s.signal }, plan, effective, { disabledRoutes: [] }, 'always');
-  await assert.rejects(p, /分派确认超时（\d+(\.\d)? 分钟无人确认），未创建或通知任何队友。请询问用户是否重新分派。/);
+  await assert.rejects(p, /Dispatch confirmation timed out \(no confirmation for \d+(\.\d)? minutes\); No teammate was created or notified\.Ask the user whether to dispatch again\./);
   assert.equal(s.listeners.size, 0);
   assert.equal(pendingView('L7', 't1').status, 'none');
 });
@@ -230,7 +230,7 @@ test('卡片从未出现而转到原生问答框后，卡片只提示去问答�
 test('原生问答框回答后中止残留；卡片从未出现时在 graceMs 后回退', async () => {
   forgetLead('L9');
   let signal;
-  const userQuestions = { ask: async q => { signal = q.signal; return { answers: [{ id: 'dispatch', selected: ['确认分派'] }] }; } };
+  const userQuestions = { ask: async q => { signal = q.signal; return { answers: [{ id: 'dispatch', selected: ['Confirm dispatch'] }] }; } };
   const confirm = createDispatchConfirm({ llm, userQuestions }, team, { graceMs: 20, heartbeatMs: 1000, timeoutMs: 5000 });
   const result = await confirm.confirm({ agent: lead('L9'), callId: 'n1' }, plan, effective, { disabledRoutes: [] }, 'always');
   assert.equal(result.asked, true);
@@ -248,7 +248,7 @@ test('中止后清理监听、定时器与等待项，原生问答框随之中�
   await sleep(60);
   assert.ok(signal && !signal.aborted, '原生问答框已发起');
   s.abort();
-  await assert.rejects(p, /分派确认已中止/);
+  await assert.rejects(p, /Dispatch confirmation aborted/);
   assert.equal(s.listeners.size, 0);
   assert.equal(signal.aborted, true);
   assert.equal(pendingView('L10', 'a1').status, 'none');
@@ -285,6 +285,6 @@ test('不带 callId 时返回该主控最新一条待确认请求（供输入框
   assert.equal(view.status, 'pending');
   assert.equal(view.callId, 'd1');
   answerPending('L10', view.callId, { decision: 'cancel' });
-  await assert.rejects(p, /用户取消了这次分派/);
+  await assert.rejects(p, /user cancelled this dispatch/);
   assert.equal(pendingView('L10', '').status, 'none');
 });

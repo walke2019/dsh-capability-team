@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // File-size rules for every team member: small source files, no whole-file reads of large files, no
 // overwriting existing files, and short final reports. Enforced as a tools.guard (and by `npm run lint`),
 // so a model cannot talk its way past them. Measuring a target reads that one file synchronously.
@@ -14,12 +15,12 @@ export const lineCount = text => (text === '' ? 0 : text.split('\n').length - (t
 export function validateFileLimits(value) {
   if (value === undefined || value === null) return { ...FILE_LIMITS };
   if (value === false) return false;
-  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('fileLimits 须为对象或 false');
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(modelText('file-limits.211'));
   const extra = Object.keys(value).filter(k => !LIMIT_KEYS.includes(k));
-  if (extra.length) throw new Error(`fileLimits 不支持字段 ${extra.join(', ')}`);
+  if (extra.length) throw new Error(modelText('file-limits.212', { 0: extra.join(', ') }));
   const out = { ...FILE_LIMITS, ...value };
-  for (const k of LIMIT_KEYS) if (!Number.isSafeInteger(out[k]) || out[k] < 50 || out[k] > 20000) throw new Error(`fileLimits.${k} 须为 50–20000 的整数`);
-  if (out.sourceWarn > out.sourceMax) throw new Error('fileLimits.sourceWarn 不能大于 sourceMax');
+  for (const k of LIMIT_KEYS) if (!Number.isSafeInteger(out[k]) || out[k] < 50 || out[k] > 20000) throw new Error(modelText('file-limits.213', { 0: k }));
+  if (out.sourceWarn > out.sourceMax) throw new Error(modelText('file-limits.214'));
   return out;
 }
 /** 'test' | 'source' | undefined (not limited) for a project-relative path. */
@@ -67,7 +68,7 @@ export function checkFileLimits(exec, limits, { project, cwd, role = 'teammate',
   exec = { ...exec, name: restrictiveToolName(exec.name, name => Object.hasOwn(TARGET, name) || name === 'send_message') };
   if (exec.name === 'send_message' && role !== 'lead') {
     const text = exec.arguments?.message;
-    if (typeof text === 'string' && text.length > limits.reportMax) return `汇报正文 ${text.length} 字，超过上限 ${limits.reportMax}。请分条发送，先发结论，每条不超过 ${limits.reportMax} 字。`;
+    if (typeof text === 'string' && text.length > limits.reportMax) return modelText('file-limits.215', { 0: text.length, 1: limits.reportMax, 2: limits.reportMax });
     return undefined;
   }
   if (!TARGET[exec.name] || (exec.name === 'str_replace_editor' && exec.arguments?.command === 'view')) return undefined;
@@ -79,27 +80,27 @@ export function checkFileLimits(exec, limits, { project, cwd, role = 'teammate',
     if (current === undefined || !kind || GENERATED.test(current)) return undefined;
     const lines = lineCount(current);
     const limit = Number(exec.arguments?.limit);
-    if (lines > limits.readMax && !(limit > 0 && limit <= limits.readMax)) return `${target.rel} 有 ${lines} 行，超过整读上限 ${limits.readMax}。先用 grep 定位，再用 read 的 offset/limit 每次读不超过 ${limits.readMax} 行。`;
+    if (lines > limits.readMax && !(limit > 0 && limit <= limits.readMax)) return modelText('file-limits.216', { 0: target.rel, 1: lines, 2: limits.readMax, 3: limits.readMax });
     return undefined;
   }
   if (current !== undefined && (exec.name === 'write' || (exec.name === 'str_replace_editor' && exec.arguments?.command === 'create'))) {
-    return `${target.rel} 已存在：已有文件只能用 edit 局部修改，不能整体覆盖。需要大改时按职责拆成新文件。`;
+    return modelText('file-limits.217', { 0: target.rel });
   }
   if (!kind) return undefined;
-  if (current !== undefined && GENERATED.test(current)) return `${target.rel} 是生成文件，不能直接修改；改它的源文件后重新生成。`;
+  if (current !== undefined && GENERATED.test(current)) return modelText('file-limits.218', { 0: target.rel });
   const next = predictText(exec, current);
   if (next === undefined) return undefined;
   const before = current === undefined ? 0 : lineCount(current);
   const after = lineCount(next);
   const max = maxFor(kind, limits);
   if (after <= max || after <= before) return undefined;
-  if (before > max) return `${target.rel} 已有 ${before} 行，超过上限 ${max}：超标文件只能减不能增（本次改后 ${after} 行）。把新增内容放进新文件，或先把它拆小。`;
-  return `${target.rel} 改后 ${after} 行，超过${kind === 'test' ? '测试文件' : '源文件'}上限 ${max}。按职责拆成新文件，每个文件不超过 ${max} 行。`;
+  if (before > max) return modelText('file-limits.219', { 0: target.rel, 1: before, 2: max, 3: after });
+  return modelText('file-limits.220', { 0: target.rel, 1: after, 2: kind === 'test' ? modelText('file-limits.221') : modelText('file-limits.222'), 3: max, 4: max });
 }
 /** Model-facing rules text, kept in one place for the team policy and the dispatch result. */
 export function fileLimitRules(limits) {
   if (!limits) return '';
-  return `文件铁律：源文件 ${limits.sourceWarn} 行起应考虑拆分，硬上限 ${limits.sourceMax} 行，测试文件硬上限 ${limits.testMax} 行；已超标的文件只能减不能增；超过 ${limits.readMax} 行的文件不整读，先 grep 再按 offset/limit 小段读；已有文件只用 edit 局部改，不整体覆盖；汇报每条不超过 ${limits.reportMax} 字，先发结论。`;
+  return modelText('file-limits.223', { 0: limits.sourceWarn, 1: limits.sourceMax, 2: limits.testMax, 3: limits.readMax, 4: limits.reportMax });
 }
 /** Every limited file in `files` (project-relative) that breaks the size rules: for lint. */
 export function sizeViolations(files, limits, read = path => readFileSync(path, 'utf8'), root = '.') {

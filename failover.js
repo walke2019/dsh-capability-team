@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Same-route retries, then ordered same-tier failover, with a per-route cooldown that doubles while a route keeps
 // failing (a dead provider is not retried every minute) and resets once it has stayed quiet for a while.
 // DSH's own provider retry policy (dsh-llm-retry) runs first; this layer only acts once it declines.
@@ -46,7 +47,7 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
         state.retries += 1;
         const backoff = Math.min(policy.initialDelayMs * 2 ** (state.retries - 1), policy.maxDelayMs);
         const hinted = failure.providerRetryAfterMs > 0 && failure.providerRetryAfterMs <= policy.maxDelayMs ? failure.providerRetryAfterMs : backoff;
-        log(`同一模型 ${key(current)} 第${state.retries}/${policy.retries}次追加重试（${failure.code}），等待 ${hinted}ms`);
+        log(modelText('failover.208', { 0: key(current), 1: state.retries, 2: policy.retries, 3: failure.code, 4: hinted }));
         const retry = await sleep(hinted, signal);
         if (retry) observe({ kind: 'retry', agent });
         return retry;
@@ -64,8 +65,8 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
       observe({ kind: 'cooldown', agent, route: current, until, code: failure.code, status, strikes });
       const tried = new Set(state.tried.map(item => item.route));
       const next = list.findIndex(r => !tried.has(key(r)) && registered(r.provider) && healthy(r));
-      if (next < 0) { log(`同档备选已用尽：${JSON.stringify(state.tried)}`); return false; }
-      log(`${key(current)} 不可用（${failure.code}${failure.status ? '/' + failure.status : ''}），切换到同档备选 ${key(list[next])}`);
+      if (next < 0) { log(modelText('failover.209', { 0: JSON.stringify(state.tried) })); return false; }
+      log(modelText('failover.210', { 0: key(current), 1: failure.code, 2: failure.status ? '/' + failure.status : '', 3: key(list[next]) }));
       observe({ kind: 'switch', agent, from: current, to: list[next], code: failure.code, status: failure.status });
       state.index = next; state.retries = 0;
       return true;

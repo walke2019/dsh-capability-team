@@ -36,7 +36,7 @@ test('a config saved before 4.0 with hero ids still loads, validates and routes'
     const { effective, revision } = await loadProject(project, seed, root);
     assert.equal(revision, 4);
     assert.deepEqual(Object.keys(effective.roles).sort(), HEROES.filter(id => id !== 'chen-lin').sort());
-    assert.deepEqual([effective.roles.lead.displayName, effective.roles['lv-bu'].displayName, effective.roles['zhou-yu'].description], ['孙权', '后端', '回归']);
+    assert.deepEqual([effective.roles.lead.displayName, effective.roles['lv-bu'].displayName, effective.roles['zhou-yu'].description], ['Sun Quan', '后端', '回归']);
     assert.equal(resolveRole({ role: 'teammate', name: 'lv-bu-r2' }, effective).capability, 'backend');
     // The next save pins the hero roster explicitly, so it no longer depends on detection.
     const saved = await saveProject(project, { roles: { 'zhao-yun': { displayName: '侦察' } } }, 4, { root });
@@ -72,7 +72,7 @@ test('members spawned under hero ids keep routing on the neutral roster', () => 
   for (const [hero, id] of [['zhuge-liang', 'architect'], ['lv-bu', 'backend'], ['diao-chan', 'frontend'], ['zhao-yun', 'researcher'], ['chen-lin', 'writer'], ['zhou-yu', 'qa'], ['diao-chan-r3', 'frontend']]) {
     assert.equal(resolveRole({ role: 'teammate', name: hero }, e).id, id, hero);
   }
-  assert.throws(() => resolveRole({ role: 'teammate', name: 'guan-yu' }, e), /未在当前项目/);
+  assert.throws(() => resolveRole({ role: 'teammate', name: 'guan-yu' }, e), /not registered/);
 });
 
 test('applying the three-kingdoms theme yields the hero roster and default restores the neutral one', async () => {
@@ -89,7 +89,7 @@ test('applying the three-kingdoms theme yields the hero roster and default resto
     ({ effective } = await loadProject(project, seed, root));
     assert.deepEqual(Object.keys(effective.roles).sort(), Object.keys(DEFAULT_ROLES).sort());
     assert.equal(effective.roles.lead.description, '只做验收'); // shared role keeps its per-role description
-    assert.throws(() => themePatch('nope', effective), /未知的内置角色主题/);
+    assert.throws(() => themePatch('nope', effective), /Unknown built-in role theme/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -100,13 +100,13 @@ test('capability_team_import { theme } applies the skin through the confirmed sa
     const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), skills: { register: () => () => {} },
       tools: { register: v => { tools[v.name] = v; return () => {}; } }, agentTeams: { membership, tryMembership: membership }, agents: { list: () => [] },
       workingDirectory: { ensure: async () => root }, llm: fakeLlm(CATALOG), on: () => {},
-      userQuestions: { ask: async req => { asked.push(req); return { answers: [{ id: 'confirm', selected: ['保存'] }] }; } } };
+      userQuestions: { ask: async req => { asked.push(req); return { answers: [{ id: 'confirm', selected: ['Save'] }] }; } } };
     const team = createTeam(ctx, {}, { root }); apply(ctx, team);
     const exec = { agent: { ctx: { systemPrompt: { context: () => () => {} } } } };
     assert.deepEqual(tools.capability_team_import.parameters.properties.theme.enum, ['default', 'three-kingdoms']);
-    await assert.rejects(tools.capability_team_import.execute({ expected_revision: 0 }, exec), /只能提供一个/);
+    await assert.rejects(tools.capability_team_import.execute({ expected_revision: 0 }, exec), /exactly one/);
     const saved = JSON.parse(await tools.capability_team_import.execute({ expected_revision: 0, theme: 'three-kingdoms' }, exec));
     assert.deepEqual(saved.roles.map(r => r.id).sort(), [...HEROES].sort());
-    assert.match(asked[0].questions[0].detail, /诸葛亮/);
+    assert.match(asked[0].questions[0].detail, /Zhuge Liang/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

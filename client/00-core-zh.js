@@ -3,6 +3,10 @@
     const NS = 'capability-team';
 
     const zh = {
+      'role.name.lead': '主控', 'role.name.architect': '技术总监', 'role.name.backend': '后端', 'role.name.frontend': '前端',
+      'role.name.researcher': '研究员', 'role.name.writer': '文档', 'role.name.qa': '测试',
+      'live.quote.lead': '目标已明确，分工就绪。', 'live.quote.architect': '先定方案与接口，再动手。', 'live.quote.backend': '接口与数据，随时待命。',
+      'live.quote.frontend': '页面与交互，交给我。', 'live.quote.researcher': '先查证，再下结论。', 'live.quote.writer': '文档随时可以落笔。', 'live.quote.qa': '没有证据，不算完成。',
       'nav.models': '模型', 'nav.roles': '角色', 'nav.usage': '用量', 'nav.logs': '日志',
       'navfull.models': '模型管理', 'navfull.roles': '角色与配置', 'navfull.usage': '用量', 'navfull.logs': '请求日志', 'navfull.artifacts': '成果货架', 'navfull.report': '战报',
       'usage.hint': '预算计数 token（不含缓存读取）= 未缓存输入 + 缓存写入 + 输出，缓存读取单列且仍可能收费，不等于账单金额。总量与每步耗时由宿主实时推送；按模型拆分的 token 来自上次刷新。', 'usage.total': '团队合计 {n}', 'usage.billable': '预算计数 {n}', 'usage.cacheRead': '缓存读取 {n}', 'usage.budget': '预算 {used} / {max}', 'usage.over': '已达预算，请求被阻止', 'usage.none': '暂无用量记录', 'usage.io': '输入 {i} · 输出 {o}', 'usage.step': '{n} 步 · 平均 {s}s/步', 'usage.ttft': '首 token {s}s', 'usage.decode': '{n} token/s', 'usage.stepHint': 'DSH 会话统计：每步模型墙钟时间、首 token 延迟与解码速度', 'overview.live': '实时',

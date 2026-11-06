@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Session rotation: a teammate session that has been compacted several times, is close to its context window,
 // or keeps re-reading the same file is handed over to a fresh successor instead of piling up. The member
 // writes a structured handoff (capability_handoff); the plugin adds facts it collects itself (git diff stat,
@@ -22,25 +23,25 @@ const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text',
 export function validateRotation(value) {
   if (value === undefined || value === null) return { ...ROTATION };
   if (value === false) return false;
-  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('rotation 须为对象或 false');
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(modelText('session-rotation.433'));
   const extra = Object.keys(value).filter(k => !KEYS.includes(k));
-  if (extra.length) throw new Error(`rotation 不支持字段 ${extra.join(', ')}`);
+  if (extra.length) throw new Error(modelText('session-rotation.434', { 0: extra.join(', ') }));
   const out = { ...ROTATION, ...value };
-  for (const k of ['softRatio', 'hardRatio']) if (typeof out[k] !== 'number' || out[k] <= 0 || out[k] > 1) throw new Error(`rotation.${k} 须为 0–1 之间的小数`);
-  for (const k of KEYS.filter(k => !k.endsWith('Ratio'))) if (!Number.isSafeInteger(out[k]) || out[k] < 1 || out[k] > 1000) throw new Error(`rotation.${k} 须为 1–1000 的整数`);
-  if (out.softCompactions > out.hardCompactions || out.softRatio > out.hardRatio) throw new Error('rotation 的软阈值不能高于硬阈值');
+  for (const k of ['softRatio', 'hardRatio']) if (typeof out[k] !== 'number' || out[k] <= 0 || out[k] > 1) throw new Error(modelText('session-rotation.435', { 0: k }));
+  for (const k of KEYS.filter(k => !k.endsWith('Ratio'))) if (!Number.isSafeInteger(out[k]) || out[k] < 1 || out[k] > 1000) throw new Error(modelText('session-rotation.436', { 0: k }));
+  if (out.softCompactions > out.hardCompactions || out.softRatio > out.hardRatio) throw new Error(modelText('session-rotation.437'));
   return out;
 }
 /** 'ok' | 'soft' | 'hard' with the reasons, from one session's counters and its context ratio. */
 export function rotationLevel(m, ratio, limits) {
   if (!limits || !m) return { level: 'ok', reasons: [] };
   const hard = [], soft = [];
-  if (m.compactions >= limits.hardCompactions) hard.push(`已压缩 ${m.compactions} 次`);
-  else if (m.compactions >= limits.softCompactions) soft.push(`已压缩 ${m.compactions} 次`);
-  if (ratio !== undefined && ratio >= limits.hardRatio) hard.push(`上下文占用 ${Math.round(ratio * 100)}%`);
-  else if (ratio !== undefined && ratio >= limits.softRatio) soft.push(`上下文占用 ${Math.round(ratio * 100)}%`);
-  if (m.turns >= limits.hardTurns) hard.push(`已跑 ${m.turns} 轮`);
-  if (m.maxRepeat >= limits.softRepeatReads) soft.push(`同一文件读了 ${m.maxRepeat} 次`);
+  if (m.compactions >= limits.hardCompactions) hard.push(modelText('session-rotation.438', { 0: m.compactions }));
+  else if (m.compactions >= limits.softCompactions) soft.push(modelText('session-rotation.439', { 0: m.compactions }));
+  if (ratio !== undefined && ratio >= limits.hardRatio) hard.push(modelText('session-rotation.440', { 0: Math.round(ratio * 100) }));
+  else if (ratio !== undefined && ratio >= limits.softRatio) soft.push(modelText('session-rotation.441', { 0: Math.round(ratio * 100) }));
+  if (m.turns >= limits.hardTurns) hard.push(modelText('session-rotation.442', { 0: m.turns }));
+  if (m.maxRepeat >= limits.softRepeatReads) soft.push(modelText('session-rotation.443', { 0: m.maxRepeat }));
   // Rotating a session that has produced nothing only makes the successor read everything again, so a
   // stalled session stays at the reminder level until it edits a file or the host compacts it.
   const progressed = (m.edits ?? 0) > 0 || m.compactions > 0;
@@ -100,11 +101,11 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
       if (restrictiveToolName(exec.name, TRACKED_TOOLS) === 'send_message') {
         const target = exec.arguments?.target;
         const next = retired.get(`${lead.id}:${target}`);
-        if (next) return `队友 ${target} 已交接给 ${next}，请改发给 ${next}。`;
+        if (next) return modelText('session-rotation.444', { 0: target, 1: next, 2: next });
         const member = ctx.agentTeams.listMembers(lead).find(m => m.name === target && m.role !== 'lead');
         const agent = member && ctx.agents.get(member.id);
         const status = agent && api.status(agent);
-        if (status?.level === 'hard') return `队友 ${target} 的会话已到轮换线（${status.reasons.join('、')}），不要再派新活。先调用 capability_rotate_member 轮换到新会话。`;
+        if (status?.level === 'hard') return modelText('session-rotation.445', { 0: target, 1: status.reasons.join('、') });
       }
       return undefined;
     },
@@ -114,7 +115,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
     predecessorOf: (leadId, name) => planned.get(`${leadId}:${name}`)?.from,
     async writeHandoff(agent, args) {
       const membership = ctx.agentTeams.tryMembership(agent);
-      if (membership?.role !== 'teammate') throw new Error('只有队友写交接；主控用 capability_rotate_member 发起轮换');
+      if (membership?.role !== 'teammate') throw new Error(modelText('session-rotation.446'));
       const lead = membership.root;
       const project = team.pinned(agent) ?? ctx.workingDirectory?.get?.(agent.session);
       const m = metrics.get(agent.id) ?? emptyMetrics();
@@ -124,7 +125,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
       const handoff = { schemaVersion: 1, at: now(), lead: lead.id, member: membership.name, role: baseName(membership.name), session: agent.id,
         written: { goal: text(args.goal), done: text(args.done), remaining: text(args.remaining), pitfalls: text(args.pitfalls), open: text(args.open), verify: text(args.verify) },
         facts: { diffStat: project ? await diffStat(project) : null, openTasks: tasks, lastTest: m.lastTest, compactions: m.compactions, turns: m.turns } };
-      if (!handoff.written.remaining && !handoff.written.done) throw new Error('交接至少要写明已完成（done）和剩余（remaining）');
+      if (!handoff.written.remaining && !handoff.written.done) throw new Error(modelText('session-rotation.447'));
       handoffs.set(`${lead.id}:${membership.name}`, handoff);
       await mkdir(dir(lead.id), { recursive: true });
       await writeFile(join(dir(lead.id), `${membership.name}.json`), JSON.stringify(handoff, null, 2) + '\n');
@@ -141,34 +142,34 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
       const name = String(args.role ?? '');
       const members = ctx.agentTeams.listMembers(lead).filter(m => m.role !== 'lead');
       const current = members.find(m => m.name === name) ?? members.filter(m => baseName(m.name) === baseName(name)).sort((a, b) => generation(b.name) - generation(a.name))[0];
-      if (!current) throw new Error(`找不到队友 ${name}`);
+      if (!current) throw new Error(modelText('session-rotation.448', { 0: name }));
       const limits = limitsOf(lead) || ROTATION;
       const used = ctx.agentTeams.listMembers(lead).length;
       if (used >= limits.maxMembers) {
-        return { rotated: false, reason: `团队名额已用完（${used}/${limits.maxMembers}），无法创建接替者。`,
-          next: `不轮换，改用省上下文模式继续：告诉 ${current.name} 只用 grep 定位后按 offset/limit 小段读、测试最后统一跑一次、汇报分条发。需要长期解决时请用户调大 DSH 的 maxMembers。` };
+        return { rotated: false, reason: modelText('session-rotation.449', { 0: used, 1: limits.maxMembers }),
+          next: modelText('session-rotation.450', { 0: current.name }) };
       }
       const handoff = await api.readHandoff(lead.id, current.name);
       if (!handoff && !args.without_handoff) {
-        return { rotated: false, reason: `${current.name} 还没有写交接。`,
-          next: `先 send_message 给 ${current.name}：“做完手上这一步就停，调用 capability_handoff 写交接（已完成/剩余/坑/未决/验证方法），然后只回复‘已交接’。” 收到后再调用 capability_rotate_member。成员无响应时可传 without_handoff=true，插件只用自己采集的事实交接。` };
+        return { rotated: false, reason: modelText('session-rotation.451', { 0: current.name }),
+          next: modelText('session-rotation.452', { 0: current.name }) };
       }
       const successor = successorName(current.name);
       const facts = handoff?.facts ?? { diffStat: await diffStat(team.pinned(lead) ?? '.'), openTasks: [], lastTest: metrics.get(current.id)?.lastTest ?? null };
       const w = handoff?.written ?? {};
-      const prompt = [`你接替 ${current.name}（角色 ${baseName(current.name)}），使用全新上下文。先运行 git diff --stat 与项目测试核对现状，确认下面的交接与实际一致后再继续；不一致以实际代码为准，并在汇报里说明。`,
-        args.task ? `原始任务：\n${String(args.task).slice(0, 4000)}` : null,
-        w.goal ? `目标：${w.goal}` : null, w.done ? `已完成：\n${w.done}` : null, w.remaining ? `剩余：\n${w.remaining}` : null,
-        w.pitfalls ? `踩过的坑：\n${w.pitfalls}` : null, w.open ? `未决问题：\n${w.open}` : null, w.verify ? `验证方法：\n${w.verify}` : null,
-        facts.diffStat ? `插件采集的 git diff --stat：\n${facts.diffStat}` : null,
-        facts.openTasks?.length ? `看板上未完成的任务：${facts.openTasks.map(t => `${t.id} ${t.subject}`).join('；')}` : null,
-        facts.lastTest ? `上一棒最后一次测试：${facts.lastTest.command}（${facts.lastTest.isError ? '失败' : '完成'}）\n${facts.lastTest.summary}` : null,
-        '完成后只用一次 send_message 向 lead 汇报最终结果。'].filter(Boolean).join('\n\n');
+      const prompt = [modelText('session-rotation.453', { 0: current.name, 1: baseName(current.name) }),
+        args.task ? modelText('session-rotation.454', { 0: String(args.task).slice(0, 4000) }) : null,
+        w.goal ? modelText('session-rotation.455', { 0: w.goal }) : null, w.done ? modelText('session-rotation.456', { 0: w.done }) : null, w.remaining ? modelText('session-rotation.457', { 0: w.remaining }) : null,
+        w.pitfalls ? modelText('session-rotation.458', { 0: w.pitfalls }) : null, w.open ? modelText('session-rotation.459', { 0: w.open }) : null, w.verify ? modelText('session-rotation.460', { 0: w.verify }) : null,
+        facts.diffStat ? modelText('session-rotation.461', { 0: facts.diffStat }) : null,
+        facts.openTasks?.length ? modelText('session-rotation.462', { 0: facts.openTasks.map(t => `${t.id} ${t.subject}`).join('；') }) : null,
+        facts.lastTest ? modelText('session-rotation.463', { 0: facts.lastTest.command, 1: facts.lastTest.isError ? modelText('session-rotation.464') : modelText('session-rotation.465'), 2: facts.lastTest.summary }) : null,
+        modelText('session-rotation.466')].filter(Boolean).join('\n\n');
       planned.set(`${lead.id}:${successor}`, { from: current.name, prompt });
       retired.set(`${lead.id}:${current.name}`, successor);
       return { rotated: true, from: current.name, to: successor, handoff: handoff ? 'member' : 'facts-only',
-        next: [`1. interrupt_agent target=${current.name}`, `2. spawn_teammate name=${successor} context=fresh，description 用原角色职责，prompt 用下面的 prompt 原文`,
-          facts.openTasks?.length ? `3. 看板任务 ${facts.openTasks.map(t => t.id).join('、')} 会在 ${successor} 开工时由插件自动改派给它` : null].filter(Boolean).join('\n'), prompt };
+        next: [`1. interrupt_agent target=${current.name}`, modelText('session-rotation.467', { 0: successor }),
+          facts.openTasks?.length ? modelText('session-rotation.468', { 0: facts.openTasks.map(t => t.id).join('、'), 1: successor }) : null].filter(Boolean).join('\n'), prompt };
     },
     register() {
       try { ctx.on('session/event', (session, event) => { if (session?.id && ownsCapabilityTeam(ctx, ctx.agents.get(session.id)) && ctx.agentTeams.tryMembership?.(ctx.agents.get(session.id))?.role === 'teammate') foldEvent(counters(session.id), event); }); } catch { /* host without session observers */ }
@@ -181,21 +182,21 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
           const s = api.status(agent);
           if (s.level === 'ok') return '';
           return s.level === 'hard'
-            ? `【会话轮换】本会话${s.reasons.join('、')}，已到轮换线。立即停止开始新的工作：做完正在进行的这一步，调用 capability_handoff 写交接，然后只回复 lead“已交接”。`
-            : `【上下文提醒】本会话${s.reasons.join('、')}。继续完成当前任务，不需要交接：只读需要的行段（先 grep 定位再按 offset/limit 读），读过的内容不要重读，尽快开始修改${s.stalled ? '；目前还没有任何改动，先把调研结论落到代码上' : ''}。`;
+            ? modelText('session-rotation.469', { 0: s.reasons.join('、') })
+            : modelText('session-rotation.470', { 0: s.reasons.join('、'), 1: s.stalled ? modelText('session-rotation.471') : '' });
         } });
       });
       ctx.effect(() => ctx.tools.guard(exec => api.guard(exec)));
       ctx.effect(() => ctx.tools.register({ name: 'capability_handoff', output,
-        description: '队友在会话需要轮换时调用：把目标、已完成、剩余、踩过的坑、未决问题和验证方法写成交接。插件会自动附上 git diff --stat、你名下未完成的看板任务和最后一次测试结果。写完后只回复 lead“已交接”。',
+        description: modelText('session-rotation.472'),
         parameters: params({ goal: { type: 'string' }, done: { type: 'string' }, remaining: { type: 'string' }, pitfalls: { type: 'string' }, open: { type: 'string' }, verify: { type: 'string' } }, ['done', 'remaining']),
         async execute(args, exec) { const h = await api.writeHandoff(exec.agent, args); return JSON.stringify({ saved: true, member: h.member, facts: { diffStat: !!h.facts.diffStat, openTasks: h.facts.openTasks.length, lastTest: h.facts.lastTest?.command ?? null } }); },
       }));
       ctx.effect(() => ctx.tools.register({ name: 'capability_rotate_member', output,
-        description: '主控把一个上下文过长的队友轮换到全新会话：读取它的交接，生成接替者名字（<角色>-r<N>）和接替者的首条消息，并返回要依次调用的 interrupt_agent / spawn_teammate / 看板操作。',
-        parameters: params({ role: { type: 'string', description: '要轮换的队友名' }, task: { type: 'string', description: '原始任务原文（可选，建议附上）' }, without_handoff: { type: 'boolean', description: '成员无响应时为 true，只用插件采集的事实交接' } }, ['role']),
+        description: modelText('session-rotation.473'),
+        parameters: params({ role: { type: 'string', description: modelText('session-rotation.474') }, task: { type: 'string', description: modelText('session-rotation.475') }, without_handoff: { type: 'boolean', description: modelText('session-rotation.476') } }, ['role']),
         async execute(args, exec) {
-          if (ctx.agentTeams.tryMembership(exec.agent)?.role !== 'lead') throw new Error('只有主控可以轮换队友');
+          if (ctx.agentTeams.tryMembership(exec.agent)?.role !== 'lead') throw new Error(modelText('session-rotation.477'));
           return JSON.stringify(await api.rotate(exec.agent, args));
         },
       }));

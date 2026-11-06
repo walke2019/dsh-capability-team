@@ -27,10 +27,10 @@ const withTemp = async fn => {
 test('显式路由：拒绝非聊天与免费变体，放行未识别厂商与旧版本；写进 tiers 仍可启用', () => {
   const base = baseFor('gpt-6.1-sol', 'claude-sonnet-5');
   const route = model => ({ capabilities: { backend: { provider: 'p', model, fallbacks: [] } } });
-  assert.throws(() => effectiveConfig(route('whisper-1'), base), /非聊天/);
-  assert.throws(() => effectiveConfig(route('text-embedding-3-large'), base), /非聊天/);
-  assert.throws(() => effectiveConfig(route('claude-sonnet-5:free'), base), /免费或试用/);
-  assert.throws(() => effectiveConfig({ capabilities: { backend: { fallbacks: [{ provider: 'p', model: 'whisper-1' }] } } }, base), /非聊天/);
+  assert.throws(() => effectiveConfig(route('whisper-1'), base), /non-chat/);
+  assert.throws(() => effectiveConfig(route('text-embedding-3-large'), base), /non-chat/);
+  assert.throws(() => effectiveConfig(route('claude-sonnet-5:free'), base), /free or trial/);
+  assert.throws(() => effectiveConfig({ capabilities: { backend: { fallbacks: [{ provider: 'p', model: 'whisper-1' }] } } }, base), /non-chat/);
   for (const model of ['house-model-x', 'gpt-4.1']) {
     assert.ok(effectiveConfig(route(model), base).tiers.upper.includes(model), `${model} 由用户选择时可用`);
   }
@@ -48,7 +48,7 @@ test('目录变化后：已保存的路由仍可加载并被报告，主控不�
   // A newer major in the catalog regrades the saved model one tier lower.
   const after = baseFor('gpt-6.1-sol', 'claude-sonnet-5', 'gpt-7-sol', 'gemini-3-flash');
   assert.ok(after.tiers.medium.includes('gpt-6.1-sol') && !after.tiers.upper.includes('gpt-6.1-sol'), '前提：模型确实被降档');
-  assert.throws(() => effectiveConfig(saved, after), /已归入 medium 档/, '不带信任来源时仍是严格校验');
+  assert.throws(() => effectiveConfig(saved, after), /already in tier medium/, '不带信任来源时仍是严格校验');
 
   for (const { effective } of [await loadProject(project, after, root), loadProjectSync(project, after, root)]) {
     assert.equal(effective.capabilities.backend.model, 'gpt-6.1-sol', '用户确认过的路由不被静默替换');
@@ -59,8 +59,8 @@ test('目录变化后：已保存的路由仍可加载并被报告，主控不�
   // Other edits still save, and a route that is new or changed is still checked strictly.
   const renamed = await saveProject(project, { roles: { 'backend': { displayName: '后端' } } }, 1, { base: after, root });
   assert.equal(renamed.revision, 2);
-  await assert.rejects(saveProject(project, { capabilities: { frontend: { provider: 'p', model: 'gpt-6.1-sol', tier: 'upper', fallbacks: [] } } }, 2, { base: after, root }), /已归入 medium 档/);
-  await assert.rejects(saveProject(project, { capabilities: { backend: { provider: 'p', model: 'gemini-3-flash', fallbacks: [] } } }, 2, { base: after, root }), /已归入 \w+ 档/);
+  await assert.rejects(saveProject(project, { capabilities: { frontend: { provider: 'p', model: 'gpt-6.1-sol', tier: 'upper', fallbacks: [] } } }, 2, { base: after, root }), /already in tier medium/);
+  await assert.rejects(saveProject(project, { capabilities: { backend: { provider: 'p', model: 'gemini-3-flash', fallbacks: [] } } }, 2, { base: after, root }), /already in tier \w+/);
 }));
 
 test('升档后补了低档模型：确认卡存下的路由同样不会让配置失效', () => withTemp(async dir => {
@@ -92,7 +92,7 @@ test('Windows 工作目录：活动目标与成果路径可解析，越界与敏
   assert.equal(safeTarget('c:/work/x/src/a.js', win), 'src/a.js', '盘符与路径大小写不敏感');
   assert.equal(safeTarget('src/a.js', '\\\\host\\share\\x'), 'src/a.js');
   for (const p of ['..\\escape', '../escape', 'D:\\other\\a.js', 'C:\\work\\other\\a.js', '\\\\host\\share\\a.js', 'https://evil/a', 'a?secret=x']) assert.equal(safeTarget(p, win), null, p);
-  for (const p of ['.env', 'config\\.env.local', '.SSH\\id_rsa', 'secrets.json', 'cert.pem']) assert.equal(safeTarget(p, win), '[敏感路径]', p);
+  for (const p of ['.env', 'config\\.env.local', '.SSH\\id_rsa', 'secrets.json', 'cert.pem']) assert.equal(safeTarget(p, win), '[Sensitive path]', p);
   assert.equal(safeTarget('a.js', win, 240, '/project'), null, '工作目录与根目录风格必须一致');
   assert.equal(safeTarget('src\\..\\..\\etc', '/project'), null, 'POSIX 下反斜杠仍被拒绝');
   assert.equal(safeTarget('src/a.js', '/project'), 'src/a.js');
@@ -143,7 +143,7 @@ test('OpenViking：上送内容只带项目目录名，不带本机绝对路径'
   ov.enqueue({ kind: 'note', scope: { kind: 'project' }, text: '无项目' }, {});
   await ov.flush();
   const sent = bodies.map(b => b.content).filter(Boolean);
-  assert.deepEqual(sent, ['【记忆 · 项目 demo】内容', '【记忆 · 项目 demo】内容', '【记忆 · 项目 demo】内容', '【记忆】无项目']);
+  assert.deepEqual(sent, ['【Memory · Project demo】内容', '【Memory · Project demo】内容', '【Memory · Project demo】内容', '【Memory】无项目']);
 });
 
 test('免费模型子进程：只继承运行所需环境变量，密钥不外泄', async () => {

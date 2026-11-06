@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Shared runtime: pins each Team member to one project and resolves its effective role.
 import { confirmedRoute, withConfirmedRoute } from './dispatch-confirm.js';
 import { baseName } from './session-rotation.js';
@@ -29,7 +30,7 @@ export function createDetector(llm, preset, { now = Date.now, retryMs = DETECT_R
     const match = autoMatch(entries, preset.capabilities);
     let base = preset;
     try { base = withAutoRoutes(preset, match); }
-    catch (error) { errors.push({ provider: '*', error: `自动匹配结果未通过校验：${error.message}` }); }
+    catch (error) { errors.push({ provider: '*', error: modelText('team.494', { 0: error.message }) }); }
     current = { base, entries, report: match.report, pools: match.pools, unknown: match.unknown, errors, detectedAt: new Date().toISOString() };
     return current;
   };
@@ -80,7 +81,7 @@ export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = 
       return readGlobalPolicy(root);
     },
     async savePolicy(agent, disabledRoutes, expectedRevision) {
-      if (ctx.agentTeams.membership(agent).role !== 'lead') throw new Error('仅主会话可修改模型分配策略');
+      if (ctx.agentTeams.membership(agent).role !== 'lead') throw new Error(modelText('team.495'));
       return saveGlobalPolicy(disabledRoutes, expectedRevision, root);
     },
     async resolve(agent) {

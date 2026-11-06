@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Learned model preferences: every confirmed dispatch records, per capability, which primary and fallbacks the
 // user chose. Later confirmation cards preselect a habit (a primary chosen at least twice and in most recent
 // choices) unless that route keeps failing, and suggest saving it as the project default once it is settled.
@@ -88,12 +89,12 @@ const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text',
 /** Lead tool to show or clear what was learned for the current project. */
 export function applyModelPrefsTool(ctx, team, prefs) {
   ctx.effect(() => ctx.tools.register({ name: 'capability_model_prefs', output,
-    description: '查看或清空本项目学到的模型偏好（派活确认时你常选的主模型与回退）。用户问“为什么默认选了这个模型”或要求忘掉偏好时使用；clear 仅主控可用。',
+    description: modelText('model-prefs.316'),
     parameters: { type: 'object', properties: { action: { type: 'string', enum: ['read', 'clear'] } }, required: ['action'], additionalProperties: false },
     async execute(args, exec) {
       const project = await team.pin(exec.agent);
       if (args.action === 'clear') {
-        if (ctx.agentTeams.tryMembership(exec.agent)?.role !== 'lead') throw new Error('只有主控可以清空模型偏好');
+        if (ctx.agentTeams.tryMembership(exec.agent)?.role !== 'lead') throw new Error(modelText('model-prefs.317'));
         await prefs.clear(project);
         return JSON.stringify({ cleared: true, project });
       }

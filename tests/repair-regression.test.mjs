@@ -48,7 +48,7 @@ test('修复：允许16000字符输入但拒绝空白和超限输入', async () 
   let calls = 0;
   const launch = () => { calls++; return child(c => { c.stdout.emit('data', event('accepted')); c.finish(0); }); };
   for (const tools of ['none', 'read', 'write']) assert.equal((await runFreeWorker('a'.repeat(16000), { ...options, tools, launch })).text, 'accepted');
-  for (const prompt of ['', '   ', 'a'.repeat(16001)]) await assert.rejects(runFreeWorker(prompt, { ...options, launch }), /任务/);
+  for (const prompt of ['', '   ', 'a'.repeat(16001)]) await assert.rejects(runFreeWorker(prompt, { ...options, launch }), /[Tt]ask/);
   assert.equal(calls, 3);
 });
 test('修复：同一步备用失败后仍可使用刚结束冷却的主模型，且不循环重试', async () => {
@@ -73,7 +73,7 @@ test('修复：会话策略同时影响同步提示词和异步请求，恢复�
     const after = await team.resolve(mate);
     assert.notEqual(`${after.provider}/${after.model}`, `${before.provider}/${before.model}`);
     const context = teamContext(team, mate, membership(mate));
-    const self = JSON.parse(context.split('\n')[1].replace('你的角色：', ''));
+    const self = JSON.parse(context.split('\n')[1].replace('Your role: ', ''));
     assert.equal(self.provider, after.provider); assert.equal(self.model, after.model);
     assert.equal(team.loadSync(root, mate).policy.revision, 1);
     await team.savePolicy(lead, [], 1);
@@ -85,13 +85,13 @@ test('修复：主控配置损坏时不放行执行工具', () => {
   const agent = {};
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, agentTeams: { tryMembership: () => ({ role: 'lead' }) } };
   const team = { pinned: () => 'fixture', loadSync: () => { throw new Error('broken fixture'); } };
-  assert.match(createWorkflow(ctx, team).guard({ agent, name: 'pwsh' }), /配置读取失败/);
+  assert.match(createWorkflow(ctx, team).guard({ agent, name: 'pwsh' }), /Cannot read team configuration/);
 });
 test('修复：等待真人确认的活动锁超过30秒也不能抢占', async () => {
   const root = await mkdtemp(join(tmpdir(), 'repair-live-lock-'));
   try {
     await writeFile(themePath(root, root) + '.lock', JSON.stringify({ pid: process.pid, at: Date.now() - STALE_LOCK_MS - 1000 }));
-    await assert.rejects(saveProject(root, { name: 'override' }, 0, { root }), /正在被/);
+    await assert.rejects(saveProject(root, { name: 'override' }, 0, { root }), /Another session is saving/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('修复：崩溃遗留的旧版空策略锁可恢复，活动进程锁不回收', async () => {
@@ -101,7 +101,7 @@ test('修复：崩溃遗留的旧版空策略锁可恢复，活动进程锁不�
     await writeFile(lock, ''); const old = new Date(Date.now() - STALE_LOCK_MS - 1000); await utimes(lock, old, old);
     assert.equal((await saveSessionPolicy('fixture', [], 0, root)).revision, 1);
     await writeFile(lock, JSON.stringify({ pid: process.pid, at: +old }));
-    await assert.rejects(saveSessionPolicy('fixture', [], 1, root), /正在被/);
+    await assert.rejects(saveSessionPolicy('fixture', [], 1, root), /Another session is saving/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('修复：预设未注册或激活失败时不能报告已就绪', async () => {

@@ -16,7 +16,7 @@ test('禁用主模型只提升已确认同档备选，并过滤禁用备用', ()
   assert.equal(result.tier, 'upper'); assert.equal(role.provider, 'a');
 });
 test('全部禁用时阻止请求，不沿用或降档', () => {
-  assert.throws(() => applyModelPolicy(role, ['a/main', 'b/backup', 'c/backup']), /均已被全局模型策略禁用/);
+  assert.throws(() => applyModelPolicy(role, ['a/main', 'b/backup', 'c/backup']), /disabled by global model policy/);
 });
 test('禁用使用完整渠道标识，不误禁其他渠道', () => {
   const result = applyModelPolicy(role, ['b/backup']);
@@ -25,7 +25,7 @@ test('禁用使用完整渠道标识，不误禁其他渠道', () => {
 test('恢复允许列表保留主模型；禁用列表不被修改', () => {
   assert.equal(applyModelPolicy(role, []).provider, 'a');
   assert.deepEqual(validateDisabledRoutes(['b/x', 'b/x', 'a/y']), ['a/y', 'b/x']);
-  assert.throws(() => validateDisabledRoutes(['model-only']), /完整/);
+  assert.throws(() => validateDisabledRoutes(['model-only']), /full/);
 });
 test('目录中未分配候选及未知模型仍可查看和禁用', () => {
   const { rows } = modelPolicyRows({}, [role], ['p/unused'], [
@@ -58,7 +58,7 @@ test('前缀规则：校验、同时匹配完整标识与模型ID、跳过被排
   const resolved = applyModelPolicy(role, ['a/*']);
   assert.equal(`${resolved.provider}/${resolved.model}`, 'b/backup');
   assert.deepEqual(resolved.policyExcluded, ['a/main']);
-  assert.throws(() => applyModelPolicy(role, ['backup*', 'main*']), /均已被全局模型策略禁用/);
+  assert.throws(() => applyModelPolicy(role, ['backup*', 'main*']), /disabled by global model policy/);
   const rows = modelPolicyRows({}, [role], ['c/*'], ['c/other']);
   assert.equal(rows.rows.find(r => r.key === 'c/other').disabled, true);
   assert.deepEqual(rows.disabledRoutes, ['c/*']);
@@ -79,6 +79,6 @@ test('角色视图按前缀规则替换显式路由，全部排除时标记阻�
   assert.deepEqual(shown.fallbacks, [{ provider: 'c', model: 'backup' }]);
   const [blocked, empty] = policyRoleView([role, { id: 'empty' }], ['a/*', 'backup*']);
   assert.equal(blocked.provider, undefined); assert.deepEqual(blocked.fallbacks, []);
-  assert.match(blocked.blocked, /均已被全局模型策略禁用/);
+  assert.match(blocked.blocked, /disabled by global model policy/);
   assert.equal(empty.blocked, undefined);
 });

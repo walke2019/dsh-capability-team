@@ -32,9 +32,9 @@ test('导入：策略按模板覆盖、保留已有路由、角色整体替换�
 test('拒绝格式、版本、未知字段、缺少 lead 与带模型的模板', () => {
   const current = effectiveConfig({});
   const good = toTemplate(current);
-  assert.throws(() => templatePatch({ ...good, format: 'x' }, current), /不是能力协作团队模板/);
-  assert.throws(() => templatePatch({ ...good, version: 2 }, current), /版本 2 不受支持/);
-  assert.throws(() => templatePatch({ ...good, tiers: {} }, current), /未知字段 tiers/);
-  assert.throws(() => templatePatch({ ...good, roles: { x: { displayName: 'X', capability: 'qa' } } }, current), /须包含 lead/);
-  assert.throws(() => templatePatch({ ...good, capabilities: { qa: { ...good.capabilities.qa, model: 'm' } } }, current), /不可导入的字段 model/);
+  assert.throws(() => templatePatch({ ...good, format: 'x' }, current), /Not a Capability Team template/);
+  assert.throws(() => templatePatch({ ...good, version: 2 }, current), /version 2 is unsupported/);
+  assert.throws(() => templatePatch({ ...good, tiers: {} }, current), /unknown fields tiers/);
+  assert.throws(() => templatePatch({ ...good, roles: { x: { displayName: 'X', capability: 'qa' } } }, current), /include the lead/);
+  assert.throws(() => templatePatch({ ...good, capabilities: { qa: { ...good.capabilities.qa, model: 'm' } } }, current), /non-importable fields model/);
 });

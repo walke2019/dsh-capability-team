@@ -1,8 +1,8 @@
-    // ---------- 03b-collapsible-list.js: 共享可折叠列表组件 ----------
+    // ---------- 03b-collapsible-list.js: Shared collapsible list component ----------
     /**
      * CollapsibleList:
-     * 默认展示前 limit (默认 5) 条；超过时底部提供“更多（剩余 N 条）”/“收起”切换按钮。
-     * 当 items <= limit 时不显示切换按钮。
+     * Show the first limit items (default 5), then offer localized expand/collapse controls.
+     * Hide the toggle when items <= limit.
      */
     function CollapsibleList({ items = [], limit = 5, renderItem, as = 'div', className, t, expandText, collapseText }) {
       const [expanded, setExpanded] = React.useState(false);
@@ -14,11 +14,11 @@
 
       const moreLabel = expandText
         ? (typeof expandText === 'function' ? expandText(remaining) : expandText)
-        : (typeof t === 'function' && t('list.more') ? fmt(t('list.more'), { n: remaining }) : `更多（剩余 ${remaining} 条）`);
+        : (typeof t === 'function' && t('list.more') ? fmt(t('list.more'), { n: remaining }) : fmt(en['list.more'], { n: remaining }));
 
       const collapseLabel = collapseText
         ? collapseText
-        : (typeof t === 'function' && t('list.collapse') ? t('list.collapse') : '收起');
+        : (typeof t === 'function' && t('list.collapse') ? t('list.collapse') : en['list.collapse']);
 
       const renderedChildren = visibleItems.map((item, index) => renderItem(item, index));
       if (total > limit) {

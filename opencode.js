@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Locating OpenCode and its free models on any platform. Nothing here names a user, a machine or a
 // fixed model list: the executable comes from an env override or PATH, the models from OpenCode's own
 // catalog cache, filtered to zero-cost, non-deprecated entries.
@@ -29,7 +30,7 @@ export function openCodeCandidates({ env = process.env, platform = process.platf
 export async function findOpenCode({ env = process.env, platform = process.platform, home = homedir(), exists = defaultExists(platform) } = {}) {
   if (env[ENV_EXE]) return env[ENV_EXE];
   for (const file of openCodeCandidates({ env, platform, home })) if (await exists(file)) return file;
-  throw new Error(`未找到 OpenCode 可执行文件：请安装 OpenCode 并确保 opencode 在 PATH 中，或设置环境变量 ${ENV_EXE} 指向原生可执行文件`);
+  throw new Error(modelText('opencode.319', { 0: ENV_EXE }));
 }
 function defaultExists(platform) {
   return file => access(file, platform === 'win32' ? constants.F_OK : constants.X_OK).then(() => true, () => false);
@@ -60,14 +61,14 @@ export function freeModelsFromCatalog(catalog) {
 export async function resolveFreeModels(configured = [], { file = catalogFile(), read = readFile } = {}) {
   let catalog;
   try { catalog = JSON.parse(await read(file, 'utf8')); } catch (error) {
-    throw new Error(`无法读取 OpenCode 模型目录 ${file}（${error.code ?? error.message}）：先运行一次 opencode models 生成目录，或设置 ${ENV_CATALOG}`);
+    throw new Error(modelText('opencode.320', { 0: file, 1: error.code ?? error.message, 2: ENV_CATALOG }));
   }
   const free = freeModelsFromCatalog(catalog);
   if (!configured.length) {
-    if (!free.length) throw new Error('OpenCode 模型目录中没有可用的免费模型');
+    if (!free.length) throw new Error(modelText('opencode.321'));
     return free;
   }
   const rejected = configured.filter(m => !free.includes(m));
-  if (rejected.length) throw new Error(`${rejected.join('、')} 不是 OpenCode 目录中的免费模型（不存在、已弃用或成本不为 0），不允许使用；当前免费模型：${free.join('、') || '无'}`);
+  if (rejected.length) throw new Error(modelText('opencode.322', { 0: rejected.join('、'), 1: free.join('、') || modelText('opencode.323') }));
   return configured;
 }

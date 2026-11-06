@@ -26,14 +26,14 @@ test('密钥先取 DSH 凭据库，再取环境变量；状态只报有无', asy
 });
 
 test('HTTP 200 也要校验真实结果；错误按状态码给出处理提示，不回显正文', async () => {
-  assert.throws(() => checkResult('search', { status: 'ok' }), /没有 results/);
-  assert.throws(() => checkResult('fetch', { url: 'x', content: '  ' }), /没有网页正文/);
+  assert.throws(() => checkResult('search', { status: 'ok' }), /without a results list/);
+  assert.throws(() => checkResult('fetch', { url: 'x', content: '  ' }), /without page content/);
   assert.deepEqual(checkResult('search', { results: [] }).results, []);
   const call = (status, body) => gateway('search', { query: 'q' }, { settings: { config, key: 'K' }, fetcher: async () => reply(status, body) });
   await assert.rejects(call(429, { error: 'secret upstream detail' }), e => /429（限流，请退避后重试）/.test(e.message) && !e.message.includes('secret'));
   await assert.rejects(call(401, {}), /客户端鉴权/);
   await assert.rejects(call(502, {}), /上游失败/);
-  await assert.rejects(call(200, { provider: 'x' }), /没有 results/);
+  await assert.rejects(call(200, { provider: 'x' }), /without a results list/);
   assert.equal((await call(200, { provider: 'serper', results: [{ url: 'https://a' }] })).results.length, 1);
 });
 

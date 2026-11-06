@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Memory hub: what the team learned (handoffs, accepted results, pitfalls, decisions) is kept per project,
 // recalled into each member's runtime context when it receives work, and searchable on demand. Ingestion is
 // automatic for handoffs and teammates' final reports; members can also write a memory explicitly.
@@ -13,7 +14,7 @@ import { ownsCapabilityTeam } from './preset-guard.js';
 const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] };
 const SCOPES = ['project', 'role', 'session', 'global'];
 const messageText = message => (Array.isArray(message?.content) ? message.content.map(c => c?.text ?? '').join('\n') : String(message?.text ?? message?.content ?? '')).trim();
-export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root), embedder = createEmbedder(), backend = createMemoryBackend({ label: '能力团队' }), secrets = () => [] } = {}) {
+export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root), embedder = createEmbedder(), backend = createMemoryBackend({ label: modelText('memory-hub.280') }), secrets = () => [] } = {}) {
   const recall = new Map(); // agent id → { query, block }
   const reports = new Map(); // `${session}:${callId}` → text of a pending teammate report
   const identity = agent => {
@@ -31,9 +32,9 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
   }
   const hub = {
     async write(who, { kind, text, scope = 'role', tags, key }) {
-      if (!who?.project) throw new Error('当前会话不属于能力团队项目，不能写记忆');
-      if (!SCOPES.includes(scope)) throw new Error(`scope 须为 ${SCOPES.join(' / ')}`);
-      if (scope === 'global' && !who.lead) throw new Error('只有主控可以写全局记忆');
+      if (!who?.project) throw new Error(modelText('memory-hub.281'));
+      if (!SCOPES.includes(scope)) throw new Error(modelText('memory-hub.282', { 0: SCOPES.join(' / ') }));
+      if (scope === 'global' && !who.lead) throw new Error(modelText('memory-hub.283'));
       // Secrets never enter memory: it is recalled into other members' prompts and may leave this machine.
       const clean = redactSecrets(String(text ?? ''), await Promise.resolve(secrets()).catch(() => []));
       const embedded = await embedOne(clean, 'passage');
@@ -73,8 +74,8 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       const who = { project: team.pinned(ctx.agents.get(h.session)) ?? undefined, role: h.role, session: h.session, lead: false, leadId: h.lead, name: h.member };
       if (!who.project) return;
       const w = h.written ?? {};
-      if (w.done || w.remaining) await hub.write(who, { kind: 'handoff', scope: 'role', key: `handoff:${h.role}`, text: `交接（${h.member}）：已完成：${w.done || '—'}；剩余：${w.remaining || '—'}${w.verify ? `；验证：${w.verify}` : ''}` });
-      if (w.pitfalls) await hub.write(who, { kind: 'pitfall', scope: 'project', text: `${h.role} 踩过的坑：${w.pitfalls}` });
+      if (w.done || w.remaining) await hub.write(who, { kind: 'handoff', scope: 'role', key: `handoff:${h.role}`, text: modelText('memory-hub.284', { 0: h.member, 1: w.done || '—', 2: w.remaining || '—', 3: w.verify ? modelText('memory-hub.285', { 0: w.verify }) : '' }) });
+      if (w.pitfalls) await hub.write(who, { kind: 'pitfall', scope: 'project', text: modelText('memory-hub.286', { 0: h.role, 1: w.pitfalls }) });
     },
     /** Memory block for a member's runtime context; refreshed when its task text changes. */
     async refreshRecall(agent, query) {
@@ -90,7 +91,7 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
     },
     recallText(agent) {
       const r = recall.get(agent.id);
-      return r?.block ? `【记忆枢纽】与当前任务相关的已有结论（来自交接、验收结果与踩坑记录，仅供参考，以实际代码为准；需要更多时调用 capability_memory_search）：\n${r.block}` : '';
+      return r?.block ? modelText('memory-hub.287', { 0: r.block }) : '';
     },
     register() {
       ctx.on('agent/created', ({ agent }) => {
@@ -120,22 +121,22 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
         });
       } catch { /* host without session observers: explicit writes still work */ }
       ctx.effect(() => ctx.tools.register({ name: 'capability_memory_search', output,
-        description: '在记忆枢纽中检索本项目已有的结论：交接、验收结果、踩坑、决定与笔记。全文与向量混合检索（嵌入不可用时只用全文）。动手前先查，避免重复读文件或重踩已知的坑。',
-        parameters: params({ query: { type: 'string', description: '要找什么，用自然语言或关键词' }, k: { type: 'integer', description: '返回条数，1–20，默认 6' },
-          kinds: { type: 'array', items: { type: 'string', enum: MEMORY_KINDS }, description: '只看这些类型（可选）' } }, ['query']),
+        description: modelText('memory-hub.288'),
+        parameters: params({ query: { type: 'string', description: modelText('memory-hub.289') }, k: { type: 'integer', description: modelText('memory-hub.290') },
+          kinds: { type: 'array', items: { type: 'string', enum: MEMORY_KINDS }, description: modelText('memory-hub.291') } }, ['query']),
         async execute(args, exec) {
           const who = identity(exec.agent);
-          if (!who) throw new Error('只有能力团队成员可以检索记忆');
+          if (!who) throw new Error(modelText('memory-hub.292'));
           const { results, mode, embedError, shared } = await hub.search(who, args);
-          return JSON.stringify({ mode, ...(embedError ? { note: `向量检索暂不可用：${embedError}` } : {}),
-            ...(shared ? { shared: shared.error ? `共享长期记忆（${shared.backend}）暂不可用：${shared.error}` : `含 ${shared.count} 条共享长期记忆（${shared.backend}）` } : {}),
+          return JSON.stringify({ mode, ...(embedError ? { note: modelText('memory-hub.293', { 0: embedError }) } : {}),
+            ...(shared ? { shared: shared.error ? modelText('memory-hub.294', { 0: shared.backend, 1: shared.error }) : modelText('memory-hub.295', { 0: shared.count, 1: shared.backend }) } : {}),
             results: results.map(r => ({ id: r.memory.id, kind: r.memory.kind, scope: r.memory.scope.kind, text: r.memory.text, via: r.via, updatedAt: r.memory.updatedAt })) });
         },
       }));
       ctx.effect(() => ctx.tools.register({ name: 'capability_memory_write', output,
-        description: '把一条值得以后复用的结论写进记忆枢纽：pitfall（踩过的坑）、decision（定下的决定，带 key 时新的会替换旧的）、note（笔记）。内容要具体、可验证、一两句话；不要写进度，不要写密钥。scope：role（默认，本角色）/ project（全队）/ session / global（仅主控）。相同内容会自动合并。',
+        description: modelText('memory-hub.296'),
         parameters: params({ kind: { type: 'string', enum: ['pitfall', 'decision', 'note'] }, text: { type: 'string' }, scope: { type: 'string', enum: SCOPES },
-          key: { type: 'string', description: '决定的主题键（可选），同一主题的新决定会替换旧的' }, tags: { type: 'array', items: { type: 'string' } } }, ['kind', 'text']),
+          key: { type: 'string', description: modelText('memory-hub.297') }, tags: { type: 'array', items: { type: 'string' } } }, ['kind', 'text']),
         async execute(args, exec) {
           const { memory, merged, syncError } = await hub.write(identity(exec.agent), args);
           return JSON.stringify({ saved: true, merged, ...(syncError ? { syncWarning: syncError } : {}), id: memory.id, kind: memory.kind, scope: memory.scope.kind, embedded: !!memory.vector });

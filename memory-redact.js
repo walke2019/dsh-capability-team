@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Secret filter applied to every memory before it is stored locally or sent to an external memory service.
 // Memories are recalled into other members' prompts later, so a leaked token would spread; values are
 // replaced with a marker instead of rejecting the whole memory, which usually still carries the useful lesson.
@@ -17,7 +18,7 @@ const PATTERNS = [
   // Any name ending in one of these, so OPENVIKING_API_KEY=… and GH_TOKEN=… match as well as key=…
   /\b((?:[\w-]*(?:key|token|secret|password|passwd|pwd)|auth)["']?\s*[:=]\s*["']?)[^\s"',;]{8,}/gi,
 ];
-export const REDACTED = '[已隐去凭据]';
+export const REDACTED = modelText('memory-redact.307');
 /** Text with likely secrets replaced; `extra` are exact values (e.g. keys from the credential store). */
 export function redactSecrets(text, extra = []) {
   let out = String(text ?? '');

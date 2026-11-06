@@ -52,6 +52,7 @@
     "./icon": "./icon.svg"
   },
   "files": [
+    "i18n.js",
     "roles.js",
     "lead-route.js",
     "config.js",

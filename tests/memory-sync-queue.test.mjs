@@ -37,7 +37,7 @@ test('OpenViking retries recovered batch and marks old decisions withdrawn', asy
   } };
   const first = createOpenViking(opts); first.enqueue({ kind: 'note', text: 'queued', scope: {} }, {});
   const next = createOpenViking(opts); assert.equal(next.pending(), 1); next.revoke([{ text: 'old decision' }]);
-  const out = await next.flush(); assert.equal(out.sent, 2); assert.ok(messages.some(m => m.content.includes('记忆撤销')));
+  const out = await next.flush(); assert.equal(out.sent, 2); assert.ok(messages.some(m => m.content.includes('Memory retraction')));
   assert.deepEqual((await next.recall('decision')).map(r => r.memory.text), ['new decision']);
   assert.equal(createOpenViking(opts).pending(), 0);
 });

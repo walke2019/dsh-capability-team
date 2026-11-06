@@ -21,7 +21,7 @@
         if (m.id) roleMap.set(m.id, m.role ?? m.name ?? m.id);
       }
 
-      // 聚合所有成员的 capabilityTeamArtifacts 投影
+      // Aggregate every member capabilityTeamArtifacts projection
       let versionUnsupported = false;
       const allArtifacts = [];
       const changesMap = new Map();
@@ -54,7 +54,7 @@
         return h('p', { className: 'ctm-sub ctm-warn' }, t('version.unsupported'));
       }
 
-      // 按 (at, sessionId, presentSeq, fileIndex) 降序排序，至多 100 项
+      // Sort by (at, sessionId, presentSeq, fileIndex) descending; retain at most 100 items
       allArtifacts.sort((a, b) => {
         const atDiff = (b.at ?? 0) - (a.at ?? 0);
         if (atDiff !== 0) return atDiff;
@@ -69,7 +69,7 @@
       const roles = Array.from(new Set(shelfItems.map(item => item.roleId))).filter(Boolean);
       const filteredItems = filterRole === 'all' ? shelfItems : shelfItems.filter(item => item.roleId === filterRole);
 
-      // 本会话变更
+      // Changes in this session
       const changesList = Array.from(changesMap.values()).sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 
       const handleOpenPresent = async item => {
@@ -282,7 +282,7 @@
       const windowStart = earliestFirstTurn ?? windowEnd;
       const windowSpan = elapsed(Math.max(0, windowEnd - windowStart));
 
-      // 运行时容灾指标汇总
+      // Runtime failover metrics summary
       const runtimeAvailable = runtimeState && !runtimeState.unavailable && runtimeState.data;
       const runtimeMembers = runtimeAvailable && Array.isArray(runtimeState.data.members) ? runtimeState.data.members : [];
       let rRequestFailures = 0;
@@ -301,7 +301,7 @@
         }
       }
 
-      // 汇总展示
+      // Aggregate presentation
       return h('div', { className: 'ctm-rpt-shelf' },
         h('span', { className: 'ctm-label' }, t('report.title'),
           singleModel ? h('span', { className: 'ctm-badge', 'data-tone': 'warn', 'data-single-model': '', title: `${singleModel.provider}/${singleModel.model}` }, t('roles.singleModel')) : null),
