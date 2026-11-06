@@ -234,11 +234,15 @@ export const managedManifestOf = () => managedManifest;
  * Bind a DSH credential service (`ctx.credentials`): key names resolve through `resolve`, and the managed manifest is
  * read through `readRecord` (with the file fallback). Pass null to unbind. Replaces the two separate setters.
  */
+let boundService = null;
 export function useCredentials(service) {
+  boundService = service || null;
   if (!service) { setCredentialResolver(null); setManagedReader(null); return; }
   setCredentialResolver(name => service.resolve(name));
   setManagedReader(() => readManagedManifest({ credentials: service }));
 }
+/** Unbind `service` only while it is still the bound one, so a late dispose never clears a later re-apply's binding. */
+export function releaseCredentials(service) { if (boundService === service) useCredentials(null); }
 export { resolveRef } from './managed-ref.js';
 // Re-exported so the standalone bundles (memory, search) reach the route through their shared/ closure.
 export { registerManagedConfigRoute } from './managed-config-route.js';

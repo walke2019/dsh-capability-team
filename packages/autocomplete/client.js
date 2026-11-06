@@ -761,22 +761,45 @@ window.__ModuleLoader__.load({
         return store?.getSnapshot?.() ?? { status: 'unavailable', value: undefined, revision: undefined, writable: false };
       }
     
-      /** The values-free managed manifest, fetched once from the plugin route; null while unknown or unmanaged. */
+      /**
+       * Fetch the values-free managed manifest. Resolves to `{manifest}` (null = the route is missing, an unmanaged
+       * install) or to `undefined` when the answer is unknown (network error, 5xx): the caller then keeps what it knew,
+       * so a transient failure never drops a lock.
+       */
+      async function fetchManifest(extension, services) {
+        try {
+          const fetcher = services.fetch ?? (typeof fetch === 'function' ? fetch : null);
+          const res = fetcher ? await fetcher(managedConfigUrl(extension), { headers: { accept: 'application/json' } }) : null;
+          if (res?.ok) return { manifest: manifestFromWire(await res.json()) };
+          return res?.status === 404 ? { manifest: null } : undefined;
+        } catch { return undefined; }
+      }
+    
+      /**
+       * The managed manifest, refreshed when a credential changes (the Connector writes managed values there) and when the
+       * window regains focus. `reload()` returns the freshest known manifest so every write can re-check the lock first.
+       * `services` is created once per registration (a stable object), so the callback identity does not change.
+       */
       function useManifest(extension, services) {
         const [manifest, setManifest] = React.useState(null);
+        const known = React.useRef(null), latest = React.useRef(0);
+        const reload = React.useCallback(async () => {
+          const ticket = ++latest.current;
+          const answer = await fetchManifest(extension, services);
+          if (answer && ticket === latest.current) { known.current = answer.manifest; setManifest(answer.manifest); }
+          return answer ? answer.manifest : known.current;
+        }, [extension, services]);
         React.useEffect(() => {
-          let live = true;
-          const load = async () => {
-            try {
-              const fetcher = services.fetch ?? (typeof fetch === 'function' ? fetch : null);
-              const res = fetcher ? await fetcher(managedConfigUrl(extension), { headers: { accept: 'application/json' } }) : null;
-              if (live && res?.ok) setManifest(manifestFromWire(await res.json()));
-            } catch { /* no manifest route: nothing is managed */ }
+          void reload();
+          const off = services.on?.('credentials/reference-updated', () => { void reload(); });
+          const onFocus = () => { void reload(); };
+          if (typeof window !== 'undefined') window.addEventListener?.('focus', onFocus);
+          return () => {
+            if (typeof off === 'function') off();
+            if (typeof window !== 'undefined') window.removeEventListener?.('focus', onFocus);
           };
-          void load();
-          return () => { live = false; };
-        }, [extension]);
-        return manifest;
+        }, [reload, services.on]);
+        return [manifest, reload];
       }
     
       /** Secret states from `credentials.describe`, refreshed on `credentials/reference-updated`. */
@@ -849,8 +872,10 @@ window.__ModuleLoader__.load({
         const live = useStoreSnapshot(store);
         const snapshot = props.form ? props.form.state : live;
         const mutate = props.form ? props.form.mutate : store?.mutate?.bind(store);
-        const manifest = useManifest(panel.extension, services);
+        const [manifest, reloadManifest] = useManifest(panel.extension, services);
         const [described, refresh] = useSecretStates(services, secretRefs(panel.fields));
+        // Every write re-reads the lock first: a Mothership lock applied while this page is open must win.
+        const freshMode = async ref => lockMode(await reloadManifest(), ref);
         const [drafts, setDrafts] = React.useState({});
         const [result, setResult] = React.useState(null);
         const values = snapshot?.value ?? {};
@@ -865,7 +890,11 @@ window.__ModuleLoader__.load({
         const { ops, invalid } = buildOps(panel.fields, values, drafts, manifest);
         const save = async () => {
           let ok = false;
-          try { ok = await mutate(ops, snapshot.revision); } catch { ok = false; }
+          try {
+            // Rebuild the ops against the fresh manifest so a newly locked field is dropped, not written.
+            const fresh = buildOps(panel.fields, values, drafts, await reloadManifest());
+            ok = fresh.ops.length > 0 && Object.keys(fresh.invalid).length === 0 && await mutate(fresh.ops, snapshot.revision);
+          } catch { ok = false; }
           setResult(ok ? 'saved' : 'failed');
           if (ok) setDrafts({});
         };
@@ -876,8 +905,8 @@ window.__ModuleLoader__.load({
             const mode = lockMode(manifest, field.ref);
             if (field.kind === 'secret') {
               return h(SecretField, { key: field.id, field, label: labelOf(field), info: described[field.ref], mode, t,
-                onSet: async (ref, value) => { await writeSecret(services.credentials, ref, value, mode); await refresh(); },
-                onClear: async ref => { await clearSecret(services.credentials, ref, mode); await refresh(); } });
+                onSet: async (ref, value) => { await writeSecret(services.credentials, ref, value, await freshMode(ref)); await refresh(); },
+                onClear: async ref => { await clearSecret(services.credentials, ref, await freshMode(ref)); await refresh(); } });
             }
             const shown = Object.hasOwn(drafts, field.id) ? drafts[field.id] : field.kind === 'switch' ? values[field.path] : mode === 'locked' ? '' : field.multiple ? values[field.path] : fieldText(field, values[field.path]);
             return h(FieldRow, { key: field.id, id: field.id, label: labelOf(field), mode, t, error: invalid[field.id] ? t(`err.${invalid[field.id]}`) : undefined },
@@ -890,7 +919,7 @@ window.__ModuleLoader__.load({
     
       /** Team bundle entry: how many settings the Mothership manages, with a pointer to the Memory and Search pages. */
       function IntegrationsSummary({ view, services, t }) {
-        const manifest = useManifest('team', services);
+        const [manifest] = useManifest('team', services);
         const count = manifest ? manifest.entries.size : 0;
         const line = count ? fmt(t('team.managedCount'), { count }) : t('team.unmanaged');
         if (view === 'summary') return `${t('team.integrations')}: ${line}`;
