@@ -1,7 +1,7 @@
 - insert:
     # Web cards for the capability_* tools (client.js); the Host half is empty.
     - id: capability-team-ui
-      name: 'dsh-capability-team'
+      name: '@aiwuk/team'
     - id: preset-capability-team
       name: '@deepseek-ai/dsh-agent-preset'
       config:
@@ -16,7 +16,7 @@
               prefix: |
                 你在能力协作团队中工作。你的角色以原生团队身份与项目团队配置为准，子角色不得自称主控。
           - id: capability-team-routing
-            name: 'dsh-capability-team/roles'
+            name: '@aiwuk/team/roles'
             config:
               bindings:
                 # Neutral default roster; the Three Kingdoms skin is applied per project via capability_team_import { theme: three-kingdoms }.

@@ -1,20 +1,20 @@
 {
-  "name": "dsh-capability-autocomplete",
-  "version": "0.4.2",
+  "name": "@aiwuk/autocomplete",
+  "version": "1.0.0",
   "type": "module",
-  "description": "Composer autocomplete for DeepSeek Harness (DSH): inline continuation and next-message suggestions accepted with Tab, never sent automatically",
+  "description": "AIWUK Autocomplete, composer autocomplete for DeepSeek Harness (DSH) with inline continuation and next-message suggestions accepted with Tab, never sent automatically",
   "license": "MIT",
   "author": "walke2019",
   "homepage": "https://github.com/walke2019/dsh-capability-team/tree/main/packages/autocomplete#readme",
   "repository": { "type": "git", "url": "git+https://github.com/walke2019/dsh-capability-team.git", "directory": "packages/autocomplete" },
   "bugs": { "url": "https://github.com/walke2019/dsh-capability-team/issues" },
-  "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "cordis", "autocomplete", "composer", "prediction", "llm"],
-  "engines": { "node": ">=22" },
+  "keywords": ["aiwuk", "dsh", "dsh-plugin", "deepseek-harness", "cordis", "autocomplete", "composer", "prediction", "llm"],
+  "engines": { "node": ">=22", "dsh": ">=0.2.2-rc.1 <0.3.0" },
   "dependencies": { "@deepseek-ai/schemastery": "~3.18.5" },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.1",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.3",
-    "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.1-rc.3"
+    "@deepseek-ai/dsh-client-locale": ">=0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.2-rc.1"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": { "optional": true },

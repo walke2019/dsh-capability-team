@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Capability Team Preset",
-    "description": "A lead plus specialist teammates. Role names, duties, tiers and model routes are configured per project through conversation; routing follows capabilities on the native Team and task board."
+    "title": "AIWUK Team",
+    "description": "Capability-routed multi-agent team for DeepSeek Harness: per-role model routing, same-tier failover and conversational team configuration."
   }
 }

@@ -1,16 +1,16 @@
-# Omni Search for DSH
+# AIWUK Search for DSH
 
-[![npm](https://img.shields.io/npm/v/dsh-omni-search.svg)](https://www.npmjs.com/package/dsh-omni-search)
+[![npm](https://img.shields.io/npm/v/@aiwuk/search.svg)](https://www.npmjs.com/package/@aiwuk/search)
 
-Part of [Capability Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
+Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
 
 ```bash
-dsh plugin add dsh-omni-search
+dsh plugin add @aiwuk/search
 ```
 
-Requires DSH >= 0.2.1-rc.3 and Node.js >= 22. A settings form on DSH's Plugins page is coming in this release; until then, configure it through the integrations file, environment variables or the DSH credential store as described below.
+Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22. A settings form on DSH's Plugins page is coming in this release; until then, configure it through the integrations file, environment variables or the DSH credential store as described below.
 
-A vendor-neutral, profile-wide Host-only bundle (`dsh-omni-search`, patch id `omni-search`) exposing multi-engine web search and page fetch, plus user-approved audio transcription, to ordinary sessions, other presets, subagents, and teams:
+A vendor-neutral, profile-wide Host-only bundle (`@aiwuk/search`, patch id `omni-search`) exposing multi-engine web search and page fetch, plus user-approved audio transcription, to ordinary sessions, other presets, subagents, and teams:
 
 | Tool | Purpose |
 |---|---|
@@ -113,7 +113,7 @@ Every key name is a DSH credential reference first (keys saved in DSH Settings a
 
 Each override variable in the table above (not only the keys) may also be stored as a DSH credential with the same name, for example when a fleet manager pushes settings to every client. A credential wins over the same-named environment variable; an invalid value is ignored, and values are never logged. Override names: `OMNI_SEARCH_BASE_URL`, `OMNI_SEARCH_ENGINES`, `OMNI_FETCH_ENGINES`, `OMNI_SEARCH_PROVIDERS_PATH`, `SEARXNG_URL`, `OMNI_AUDIO_BASE_URL` (plus the memory names listed in the [Capability Memory README](../global-memory/README.md)). The source of such a value is shown as `credential:<NAME>`.
 
-Breaking changes: the former `cpa_*` tool names and `CPA_SEARCH_*` / `CPA_AUDIO_*` variables are no longer recognized, and since 0.3.0 the package is published as `dsh-omni-search` (formerly `@local/dsh-omni-search`; patch id `omni-search` unchanged). See the [CHANGELOG](../../CHANGELOG.md).
+Breaking changes: the former `cpa_*` tool names and `CPA_SEARCH_*` / `CPA_AUDIO_*` variables are no longer recognized, and since 1.0.0 the package is published as `@aiwuk/search` (formerly `dsh-omni-search`, and before that `@local/dsh-omni-search`; patch id `omni-search` and the `omni_*` tools unchanged; see [docs/migration-aiwuk.md](../../docs/migration-aiwuk.md)). See the [CHANGELOG](../../CHANGELOG.md).
 
 The custom gateway and audio endpoint must be credential-free https URLs. Never put credentials in headers or URLs in the JSON file. Missing keys explicitly fail; no paid-model fallback is attempted.
 

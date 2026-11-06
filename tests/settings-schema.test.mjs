@@ -21,7 +21,7 @@ const live = value => ({ get: () => value });
 
 test('stale schemastery without .volatile() fails with an actionable load error', () => {
   const stale = { string: () => ({ default: () => ({}) }) };
-  assert.throws(() => assertVolatile(stale, 'dsh-omni-search'), /no \.volatile\(\).*node_modules\/dsh-omni-search\/node_modules\/@deepseek-ai\/schemastery.*restart DSH/);
+  assert.throws(() => assertVolatile(stale, '@aiwuk/search'), /no \.volatile\(\).*node_modules\/@aiwuk\/search\/node_modules\/@deepseek-ai\/schemastery.*restart DSH/);
 });
 
 test('settings layer: only set fields are read; empty strings and lists count as unset', () => {

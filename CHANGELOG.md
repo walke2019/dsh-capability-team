@@ -24,6 +24,38 @@ All notable changes to this project are documented in this file. The format foll
 - `dsh-capability-autocomplete` 0.3.1: the settings form (model routing, provider/model, candidates) was missing on instances where DSH is installed by pnpm, because the optional `@deepseek-ai/schemastery` peer could not be resolved from the profile and the plugin exported no `Config`. schemastery is now a direct dependency pinned to the version DSH ships.
 - Autocomplete works across terminals: the client calls the endpoint relative to the page, and the endpoint accepts the forwarded host of the Mothership hub tunnel or a reverse proxy as same-origin, so phones and remote browsers are no longer refused as cross-origin.
 
+## [5.0.0] — AIWUK rebrand
+
+### Changed
+
+- **BREAKING (package names):** the packages move to the `@aiwuk` scope. Loader ids, tool names, credential and
+  environment variable names and data directories are unchanged, so existing configuration carries over.
+  - `dsh-capability-team` 4.0.1 → `@aiwuk/team` 5.0.0 (the routing plugin is now `@aiwuk/team/roles`; patch id `capability-team-ui` unchanged)
+  - `dsh-capability-autocomplete` 0.4.2 → `@aiwuk/autocomplete` 1.0.0 (patch id `autocomplete` unchanged)
+  - `dsh-capability-memory` 0.3.0 → `@aiwuk/memory` 1.0.0 (patch id `global-memory` unchanged)
+  - `dsh-omni-search` 0.3.0 → `@aiwuk/search` 1.0.0 (patch id `omni-search` unchanged)
+  Steps and rollback: [docs/migration-aiwuk.md](docs/migration-aiwuk.md). The old names stay published.
+- Display names: AIWUK Team / AI悟空 协作团队, AIWUK Autocomplete / AI悟空 输入补全, AIWUK Memory / AI悟空 全局记忆,
+  AIWUK Search / AI悟空 全能搜索 (plugin locale `meta.title` and `meta.description`).
+- The client module ids are now the package names (`@aiwuk/team`, `@aiwuk/autocomplete`), as the host keys client
+  module rows by package name.
+- All four packages declare `engines.dsh` `>=0.2.2-rc.1 <0.3.0`; the `@deepseek-ai/dsh-*` peer ranges are raised to
+  `>=0.2.2-rc.1`. The host evaluates `engines.dsh` alone, with prerelease versions included in the range check.
+
+### Added
+
+- `brand.js`: `BRAND`, `EXTENSIONS` and `RENAME_MAP` as the single source for brand names, copied into the
+  `omni-search` and `global-memory` `shared/` closures by their `build-shared.mjs`.
+- `tests/brand.test.mjs`: asserts the rename map, versions and engines, and that no old package name remains outside
+  the allowed places.
+
+### Compatibility
+
+- Verified by running the host's `evaluatePluginCompatibility` (`dsh-app-boot`, installed DSH 0.2.2-rc.1) on all four
+  manifests: compatible with 0.2.2-rc.1 and 0.2.2, incompatible with 0.2.1-rc.5 and 0.3.0. A full session on a clean
+  0.2.2-rc.1 instance was not run: unverified.
+- The first-run importer for personal installs is future work; use the documented commands for now.
+
 ## [4.0.1] - 2026-11-05
 
 ### Added

@@ -12,7 +12,7 @@ function load() {
     useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}],
     useRef: initial => ({ current: initial }), useCallback: fn => fn, useEffect() {}, useLayoutEffect() {}, Fragment: 'Fragment',
   };
-  const window = { __ModuleLoader__: { load: spec => { assert.equal(spec.id, 'dsh-capability-autocomplete'); plugin = spec.factory(() => React); } },
+  const window = { __ModuleLoader__: { load: spec => { assert.equal(spec.id, '@aiwuk/autocomplete'); plugin = spec.factory(() => React); } },
     __acTestHook: value => { hooks = value; } };
   new Script(source).runInNewContext({ window });
   return { plugin, hooks };

@@ -185,7 +185,7 @@
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'capability-team: dictionaries');
         ctx.effect(() => {
           const tag = document.createElement('style');
-          tag.dataset.plugin = 'dsh-capability-team';
+          tag.dataset.plugin = '@aiwuk/team';
           tag.textContent = CSS + STAGE_CSS;
           document.head.appendChild(tag);
           return () => tag.remove();

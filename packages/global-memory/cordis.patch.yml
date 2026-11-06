@@ -1,5 +1,5 @@
 - insert:
     - id: global-memory
-      name: 'dsh-capability-memory'
+      name: '@aiwuk/memory'
       config:
         enabled: true
