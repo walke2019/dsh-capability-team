@@ -126,8 +126,6 @@
       'theme.promptManual': '复制失败，请手动全选复制输入框内容',
       'theme.templateInstruction': '或在主控会话导出/导入团队模板（通过 capability_team_export / capability_team_import）：',
       'theme.templateDesc': '导出模板可备份当前角色与能力，导入模板可批量重设角色名册与职责。',
-      'lang.toggle': 'EN',
-      'lang.title': 'Switch to English',
       'output': '原始输出',
       'live.openBtn': '打开会话',
       'live.contextPressure': '上下文',

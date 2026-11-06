@@ -188,8 +188,10 @@
           tag.dataset.plugin = '@aiwuk/team';
           tag.textContent = CSS + STAGE_CSS;
           document.head.appendChild(tag);
-          return () => tag.remove();
-        }, 'capability-team: styles');
+          // Stage canvas colors re-resolve on the host theme/change event (the body-attribute observer is the fallback).
+          const offTheme = stageTheme.bind(ctx);
+          return () => { offTheme(); tag.remove(); };
+        }, 'capability-team: styles + stage theme');
         const bound = ctx.locale.bind(NS);
         const execute = async (sessionId, line) => {
           const reply = await ctx.remote.commands.execute(sessionId, line, []);
@@ -221,11 +223,9 @@
               onboardingGate(props), h('p', { className: 'ctm-sub' }, bound('overview.notMounted')));
           }
           return h(Overview, { ...props, onboarding: props.onboarding ?? onboardingGate,
-          // Item 3: Overview owns its own bilingual dictionary lookup keyed by its own locale toggle, not the
-          // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
-          // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.
-          // `hostT` is only a fallback for any key missing from the plugin's own zh/en dictionaries.
-          hostT: bound, load: props.load ?? load, save: props.save ?? save, live: effectiveLive, cache: props.cache ?? snapshotCache,
+          // Overview follows the host locale service (`locale`) and re-renders on a language switch. `t` is only
+          // passed through when a caller (a test harness) injects one; `hostT` is the fallback for missing keys.
+          locale: props.locale ?? ctx.locale, hostT: bound, load: props.load ?? load, save: props.save ?? save, live: effectiveLive, cache: props.cache ?? snapshotCache,
           // Same navigation as DSH's own Team panel: open normal session for Lead or continuable subagent address for teammate.
           openMember: typeof ctx.uiWorkspace?.openSession === 'function'
             ? (parentSessionId, childSessionId) => {

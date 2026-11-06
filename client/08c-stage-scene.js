@@ -18,7 +18,21 @@
         this.visibleAt = 0; // on-screen check is a cheap rect read once a second (IntersectionObserver is unreliable inside some embedded panes)
         this.onVisibility = () => { this.last = 0; if (!document.hidden) this.draw(); };
         document.addEventListener('visibilitychange', this.onVisibility);
+        this.colors = null; this.unwatchTheme = stageWatchTheme(() => this.retheme());
         this.last = 0; this.schedule();
+      }
+      /** Canvas colours are resolved to concrete rgb through a probe element (see 08c-stage-colors.js) and cached until the theme changes. */
+      stageColors() {
+        if (this.colors) return this.colors;
+        this.probe ??= this.el('i');
+        this.probe.setAttribute('aria-hidden', 'true'); Object.assign(this.probe.style, { position: 'absolute', width: '0', height: '0', visibility: 'hidden', pointerEvents: 'none' });
+        if (!this.probe.isConnected) this.stage.append(this.probe);
+        return (this.colors = stageResolveColors(this.probe, getComputedStyle));
+      }
+      /** `theme/change` fires before the host flips the body attribute, so re-resolve once more after it settles. */
+      retheme() {
+        const redraw = () => { this.colors = null; this.dirty = true; this.draw(); };
+        redraw(); clearTimeout(this.themeTimer); this.themeTimer = setTimeout(redraw, 80);
       }
       /** rAF when the host delivers frames; a timer fallback keeps motion going (at low fps) in panes that stall rAF while visible. */
       schedule() {
@@ -28,7 +42,8 @@
       }
       el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
       destroy() {
-        cancelAnimationFrame(this.raf); clearTimeout(this.timer); this.ro?.disconnect(); document.removeEventListener('visibilitychange', this.onVisibility);
+        cancelAnimationFrame(this.raf); clearTimeout(this.timer); clearTimeout(this.themeTimer); this.ro?.disconnect(); document.removeEventListener('visibilitychange', this.onVisibility);
+        this.unwatchTheme?.(); this.probe?.remove();
         this.canvas.removeEventListener?.('click', this.onCanvasClick);
         for (const id of [...this.sprites.keys()]) this.remove(id);
       }
@@ -205,11 +220,11 @@
       }
       draw() {
         const { ctx, w, h, S } = this; if (!w) return;
-        const css = getComputedStyle(this.stage), v = (k, d) => css.getPropertyValue(k).trim() || d;
-        stageDrawRoom(ctx, this.px, w, h, S, { floorA: v('--ctm-stage-floor-a', '#1c1d26'), floorB: v('--ctm-stage-floor-b', '#202130'), grout: v('--ctm-stage-grout', 'rgba(0,0,0,.22)'), wall: v('--ctm-stage-wall', '#2a2b3a') });
-        const desk = v('--ctm-stage-desk', '#3b2f26'), deskTop = v('--ctm-stage-desk-top', '#5a4535'), ents = [];
+        const c = this.stageColors();
+        stageDrawRoom(ctx, this.px, w, h, S, { floorA: c.floorA, floorB: c.floorB, grout: c.grout, wall: c.wall });
+        const desk = c.desk, deskTop = c.deskTop, ents = [];
         for (const [id, s] of this.sprites) {
-          if (id === this.selected) ents.push({ y: -1, f: () => { const x = s.home.x - 14 * S, y = s.home.y - 19 * S; this.px(x, y, 28 * S, S, '#ffd766'); this.px(x, s.home.y + 9 * S, 28 * S, S, '#ffd766'); } });
+          if (id === this.selected) ents.push({ y: -1, f: () => { const x = s.home.x - 14 * S, y = s.home.y - 19 * S; this.px(x, y, 28 * S, S, c.select); this.px(x, s.home.y + 9 * S, 28 * S, S, c.select); } });
           ents.push({ y: s.home.y + 3 * S, f: () => stageDrawDesk(this.px, s, S, desk, deskTop) });
           if (s.data.status !== 'inactive') ents.push({ y: s.y + (s.phase === 'walking' ? 6 * S : 0), f: () => stageDrawPerson(this.px, s, S) });
         }

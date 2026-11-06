@@ -91,11 +91,11 @@
       }, [visible, draft, ghost.items.length, ghost.active, ghost.mode, inputActions]);
       const anchor = h('span', { key: 'anchor', ref: anchorRef, style: { display: 'none' }, 'aria-hidden': 'true' });
       if (!visible || !box) return anchor;
-      const tag = { fontSize: '10px', borderRadius: '3px', padding: '0 4px', border: '1px solid var(--dsw-alias-border-l2, #555)', opacity: 0.75 };
+      const tag = { fontSize: '10px', borderRadius: 'var(--dsw-radius-xs, 3px)', padding: '0 4px', border: '1px solid var(--dsw-alias-border-l2, #555)', opacity: 0.75 };
       return h(React.Fragment, null, anchor,
         h('div', { key: 'ghost', 'data-composer-prediction': ghost.mode, style: { position: 'absolute', top: `${box.top}px`, left: `${box.left}px`,
           maxWidth: box.maxWidth ? `${box.maxWidth}px` : undefined, height: `${box.height}px`, display: 'flex', alignItems: 'center', gap: '6px',
-          color: 'var(--dsw-alias-label-caption, #888)', pointerEvents: 'none', userSelect: 'none', whiteSpace: 'nowrap', overflow: 'hidden', zIndex: 10 } },
+          color: 'var(--dsw-alias-label-tertiary, #888)', pointerEvents: 'none', userSelect: 'none', whiteSpace: 'nowrap', overflow: 'hidden', zIndex: 10 } },
           h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.85 } }, current),
           ghost.items.length > 1 ? h('span', { style: tag }, `${ghost.index + 1}/${ghost.items.length}`) : null,
           ghost.active ? null : h('kbd', { style: tag }, 'Tab')));

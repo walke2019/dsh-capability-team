@@ -81,8 +81,8 @@
       return h('button', { type: 'button', 'data-action': 'suggest', 'aria-label': label('suggest'), title: label('suggest'),
         onMouseDown: event => event.preventDefault(), onClick: () => touchStore(sessionId).ask(),
         // Sized like the native tool-row icons (measured at 320px: a wider button wrapped the row onto two lines).
-        style: { width: '28px', height: '28px', padding: 0, flex: '0 0 auto', border: 'none', borderRadius: '14px', background: 'transparent',
-          color: 'var(--dsw-alias-label-secondary, inherit)', fontSize: '15px', lineHeight: 1 } }, '✦');
+        style: { width: '28px', height: '28px', padding: 0, flex: '0 0 auto', border: 'none', borderRadius: 'var(--dsw-radius-md, 14px)', background: 'transparent',
+          color: 'var(--dsw-alias-label-secondary, inherit)', fontSize: 'var(--dsw-font-base-16-font-size, 15px)', lineHeight: 1 } }, '✦');
     }
     /**
      * Touch suggestion strip (phones, tablets): a phone has no Tab key, so suggestions are tappable chips. It renders in
@@ -128,9 +128,9 @@
       const close = () => { dismissedRef.current = { draft }; abortRef.current?.abort(); setGhost(NO_GHOST); };
       // 36px+ targets, horizontal scroll for long chips, and no focus steal so the soft keyboard stays open.
       const keep = event => event.preventDefault();
-      const chip = { flex: '0 0 auto', maxWidth: '80vw', minHeight: '36px', padding: '6px 12px', borderRadius: '18px', overflow: 'hidden',
+      const chip = { flex: '0 0 auto', maxWidth: '80vw', minHeight: '36px', padding: '6px 12px', borderRadius: 'var(--dsw-radius-lg, 18px)', overflow: 'hidden',
         textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px solid var(--dsw-alias-border-l2, #555)',
-        background: 'var(--dsw-alias-bg-layer-2, transparent)', color: 'var(--dsw-alias-label-primary, inherit)', fontSize: '14px' };
+        background: 'var(--dsw-alias-bg-layer-2, transparent)', color: 'var(--dsw-alias-label-primary, inherit)', fontSize: 'var(--dsw-font-s-14-font-size, 14px)' };
       // In flow (no absolute positioning): one row, scrolls sideways, never wraps into a second line.
       return h('div', { ref: stripRef, role: 'toolbar', 'aria-label': label('barLabel'), 'data-autocomplete-bar': ghost.mode,
         // flexShrink 0: the composer stack is a fixed-height flex column and would otherwise squeeze the chips flat.
@@ -139,7 +139,7 @@
           scrollbarWidth: 'none', padding: '2px 0 6px', boxSizing: 'border-box', marginLeft: `${align.left}px`, marginRight: `${align.right}px` } },
         askHere ? h('button', { type: 'button', key: 'ask', 'data-action': 'suggest', 'aria-label': label('suggest'), onMouseDown: keep, onClick: ask,
           disabled: ghost.active, style: { ...chip, minWidth: '36px', padding: '6px 10px' } }, ghost.active ? '…' : '✦') : null,
-        ghost.active && !items.length ? h('span', { key: 'busy', style: { fontSize: '13px', opacity: 0.7 } }, label('thinking')) : null,
+        ghost.active && !items.length ? h('span', { key: 'busy', style: { fontSize: 'var(--dsw-font-xs-13-font-size, 13px)', opacity: 0.7 } }, label('thinking')) : null,
         ...items.map((item, index) => h('button', { type: 'button', key: `s${index}`, 'data-action': 'accept', disabled: ghost.active,
           'aria-label': fill(label('accept'), { text: item }), onMouseDown: keep, onClick: () => accept(item), style: chip }, item)),
         items.length ? h('button', { type: 'button', key: 'close', 'data-action': 'dismiss', 'aria-label': label('dismiss'), onMouseDown: keep, onClick: close,

@@ -118,8 +118,6 @@
       'theme.promptManual': 'Copy failed, please select and copy the text manually',
       'theme.templateInstruction': 'Or export/import team templates in the Lead session (via capability_team_export / capability_team_import):',
       'theme.templateDesc': 'Export templates to backup roles & capabilities; import templates to batch replace roster & jobs.',
-      'lang.toggle': 'Chinese',
-      'lang.title': 'Switch to Chinese',
       'output': 'Raw output',
       'live.openBtn': 'Open session',
       'live.contextPressure': 'Context',

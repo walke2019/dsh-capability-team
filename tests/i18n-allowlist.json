@@ -1,12 +1,4 @@
 {
-  "client/10-overview.js": {
-    "reason": "W2 owns this file; W1b is forbidden to edit it. Exact pre-existing lines only; remove this entry after the owner extracts them. New or modified CJK fails the scan.",
-    "lines": [
-      "            // Epoch 发生变化：运行时已重启",
-      "        // 优先尝试 SSE",
-      "      // 降级模式下：真实 running 状态 + modelSelection 实际路由变化时 GET 一次"
-    ]
-  },
   "client/10b-onboarding.js": {
     "reason": "W2 owns this file; W1b is forbidden to edit it. Exact pre-existing lines only; remove this entry after the owner extracts them. New or modified CJK fails the scan.",
     "lines": [

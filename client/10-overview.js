@@ -1,29 +1,16 @@
-    function Overview({ sessionId, t: injectedT, hostT, load, save, live, cache, openMember, onboarding }) {
+    function Overview({ sessionId, t: injectedT, hostT, locale: localeSource, load, save, live, cache, openMember, onboarding }) {
       const [state, setState] = React.useState({ pending: false });
       const [tab, setTab] = React.useState('models');
       const [showOverview, setShowOverview] = React.useState(false);
       const ticket = React.useRef(0);
       const [, redraw] = React.useState(0);
       const [children, setChildren] = React.useState(null);
-      const readStoredLocale = () => {
-        try {
-          const val = window.localStorage?.getItem('dsh-capability-team-locale');
-          if (val === 'zh' || val === 'en') return val;
-        } catch {}
-        return null;
-      };
-      const [locale, setLocale] = React.useState(readStoredLocale());
+      // Language follows the host: ctx.locale (passed as `locale`) is the source of truth and its subscribe() re-renders on a switch.
+      React.useEffect(() => localeSource?.subscribe?.(() => redraw(n => n + 1)), [localeSource]);
+      const activeLocale = localeSource?.getLocale?.()?.active;
+      // Without the locale service (a bare harness) the language is inferred from the host translator's own text.
       const hostProbe = (typeof injectedT === 'function' ? injectedT('overview.hint') : '') || (typeof hostT === 'function' ? hostT('overview.hint') : '');
-      const hostIsZh = /[\u4e00-\u9fa5]/.test(hostProbe);
-      const isZh = (locale ?? (hostIsZh ? 'zh' : 'en')) === 'zh';
-      const toggleLocale = () => {
-        setLocale(prev => {
-          const current = prev ?? (hostIsZh ? 'zh' : 'en');
-          const next = current === 'zh' ? 'en' : 'zh';
-          try { window.localStorage?.setItem('dsh-capability-team-locale', next); } catch { /* storage unavailable */ }
-          return next;
-        });
-      };
+      const isZh = activeLocale ? /^zh/i.test(String(activeLocale)) : /[\u4e00-\u9fa5]/.test(hostProbe);
       const dict = isZh ? zh : en;
       const ownTranslator = (key, vals) => {
         const template = dict[key] ?? en[key];
@@ -31,7 +18,7 @@
         if (typeof hostT === 'function') return hostT(key, vals);
         return key;
       };
-      const t = locale ? ownTranslator : (injectedT ?? ownTranslator);
+      const t = injectedT ?? ownTranslator;
       // Root cause of the subagent canvas/roster mismatch (see item 5): a teammate session's own id is not the
       // team's root. Every roster/projection/runtime/open-session call below must use the resolved Lead session
       // id (parentSessionId when this is a subagent, else its own id), never the raw `sessionId` alone.
@@ -123,7 +110,7 @@
             return;
           }
           if (lastEpoch.current && lastEpoch.current !== newData.epoch) {
-            // Epoch 发生变化：运行时已重启
+            // The epoch changed: the runtime restarted
             setRuntimeState({ data: newData, lag: isLag, unavailable: false, restarted: true });
           } else {
             setRuntimeState({ data: newData, lag: isLag, unavailable: false });
@@ -152,7 +139,7 @@
           }
         };
 
-        // 优先尝试 SSE
+        // Prefer SSE
         if (typeof EventSource === 'function') {
           try {
             es = new EventSource(apiUrl('api/capability-team.runtime/stream', { sessionId: effectiveSessionId }));
@@ -182,7 +169,7 @@
         };
       }, [effectiveSessionId]);
 
-      // 降级模式下：真实 running 状态 + modelSelection 实际路由变化时 GET 一次
+      // In degraded mode: GET once when the real running state or the actual modelSelection route changes
       const memberSig = (liveTeam?.members ?? []).map(m => {
         const isRunning = live?.running ? live.running(m.id) : false;
         const next = live?.projections?.(m.id)?.modelSelection?.next;
@@ -284,13 +271,7 @@
               title: t('overview.logNote'),
             }, t(current.pending ? 'overview.loading' : 'overview.refresh')),
             isTeammateSession ? h('button', { type: 'button', className: 'ctm-btn ctm-ov-roleview-toggle', onClick: () => setShowOverview(v => !v) },
-              t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview')) : null,
-            h('button', {
-              type: 'button',
-              className: 'ctm-btn ctm-lang-toggle',
-              title: t('lang.title'),
-              onClick: toggleLocale,
-            }, t('lang.toggle'))),
+              t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview')) : null),
           h('p', { className: 'ctm-sub ctm-ov-subrow', title: subRowText }, subRowText)),
         h('div', { className: 'ctm-ov-scroll' },
           subagentNoticeNode,
