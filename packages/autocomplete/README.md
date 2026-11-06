@@ -61,7 +61,7 @@ They are only a default under your own settings: as soon as you pick a route mod
 
 ## Settings
 
-Change them from **Settings → General** or the plugin's card on the Plugins page. Every field is volatile, so changes apply without a restart.
+Change them from **Settings → General** or the plugin's page under **Plugins**. Every field is volatile, so changes apply without a restart. When an AIWUK Mothership manages a setting (for example the fleet route), its row shows a badge: "Managed by AIWUK Mothership" (locked, read-only here) or "Default from Mothership" (editable; your value wins). The page has no secret fields; secrets are write-only on the Memory and Search pages.
 
 | Field | Default | Range |
 |---|---|---|

@@ -94,6 +94,12 @@ flowchart LR
 
 集成（搜索、转写、嵌入、共享记忆）从 `~/.dsh/capability-team-themes/` 下的 `integrations.json`（Windows 为 `%USERPROFILE%/.dsh/capability-team-themes/`，可用 `CAPABILITY_TEAM_HOME` 覆盖目录）、Host 环境变量或 DSH 凭据库读取。配置中绝不写密钥本身，只写环境变量名，例如 `OMNI_SEARCH_API_KEY`。
 
+配套包的可视化设置页位于 DSH 的“插件”页（打开对应插件条目；团队页提供入口说明）：
+
+- **密钥只写不读**：密钥只显示状态（未设置 / 已设置 / 由母舰托管），可设置、替换或清除，但永远不会回显。密钥保存在 DSH 凭据库中。
+- **母舰锁定徽标**：由 AI悟空 母舰托管的设置会显示“由 AI悟空 母舰托管”（锁定）或“母舰默认值”（可编辑）。
+- **网页搜索提供方开关**（AI悟空 全能搜索页）：“让 DSH 网页搜索使用 AI悟空 全能搜索”会为 DSH 原生 `web_search` 选定 `aiwuk-search`；关闭后恢复 DSH 默认。
+
 完整参考：[docs/configuration.zh-CN.md](docs/configuration.zh-CN.md) —— 档位与自动匹配、权限、预算、计划先行、派活工作流、容灾与长上下文、轮换、记忆以及全部环境变量。
 
 ## 名册与主题

@@ -94,6 +94,12 @@ Most settings are changed by asking the lead (the change is validated and shown 
 
 Integrations (search, transcription, embeddings, shared memory) are read from `integrations.json` in `~/.dsh/capability-team-themes/` (`%USERPROFILE%/.dsh/capability-team-themes/` on Windows; override the directory with `CAPABILITY_TEAM_HOME`), host environment variables, or the DSH credential store. Never put literal keys in configuration — only environment variable names such as `OMNI_SEARCH_API_KEY`.
 
+Visual settings pages for the companion packages are on DSH's **Plugins** page (open the plugin's entry; the Team page links to them):
+
+- **Secrets are write-only**: keys show a state only (Not set / Set / Managed) and can be Set, Replaced or Cleared, never read back. They live in DSH's credential store.
+- **Mothership lock badges**: settings managed by an AIWUK Mothership show "Managed by AIWUK Mothership" (locked) or "Default from Mothership" (editable).
+- **Web-search provider toggle** (AIWUK Search page): "Use AIWUK Search for DSH web search" selects `aiwuk-search` for DSH's native `web_search`; turning it off restores DSH's default.
+
 Full reference: [docs/configuration.md](docs/configuration.md) — tiers and auto-matching, permissions, budgets, plan-first, dispatch workflow, failover and long context, rotation, memory, and all environment variables.
 
 ## Roster and themes

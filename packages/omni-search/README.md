@@ -8,7 +8,7 @@ Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) (
 dsh plugin add @aiwuk/search
 ```
 
-Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22. A settings form on DSH's Plugins page is coming in this release; until then, configure it through the integrations file, environment variables or the DSH credential store as described below.
+Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22. Configure it on the plugin's page under DSH's **Plugins** (see [Settings page](#settings-page)), or through the integrations file, environment variables or the DSH credential store as described below.
 
 A vendor-neutral, profile-wide Host-only bundle (`@aiwuk/search`, patch id `omni-search`) exposing multi-engine web search and page fetch, plus user-approved audio transcription, to ordinary sessions, other presets, subagents, and teams:
 
@@ -19,7 +19,7 @@ A vendor-neutral, profile-wide Host-only bundle (`@aiwuk/search`, patch id `omni
 | `omni_search_providers` | List the channels of a custom gateway (only when the `custom` engine is active and `search.providersPath` is set) |
 | `omni_transcribe` / `omni_transcribe_status` | Speech to text through an OpenAI-compatible transcription endpoint |
 
-The names deliberately differ from DSH's built-in `web_search` / `web_fetch`. No UI, client entry, model call, or configuration HTTP endpoint is installed.
+The names deliberately differ from DSH's built-in `web_search` / `web_fetch`. The plugin makes no model call. Its only UI is the settings page below; the only HTTP route it adds is the values-free, owner-only managed-config manifest `GET /api/aiwuk.managed-config.search`.
 
 ## Zero configuration
 
@@ -68,7 +68,15 @@ The `dsh plugin add` command above is the normal path. To run from a checkout in
 
 The capability-team plugin does not register these tools. Its existing capability `search` switch still denies these external-service tools when false. A team without this bundle must report the unavailable tools rather than pretend to search. Non-team sessions are not subject to that team policy.
 
-## Read-only configuration
+## Settings page
+
+Open the plugin on DSH's **Plugins** page. It edits the live (volatile) settings and shows the integration settings:
+
+- **Secrets are write-only.** The six keys (`OMNI_SEARCH_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY`, `SEARXNG_API_KEY`, `JINA_API_KEY`, `OMNI_AUDIO_API_KEY`) show a state only (Not set / Set (stored) / Set (environment) / Managed by AIWUK Mothership). Set, Replace or Clear a stored value; it is never read back or shown, and the input is cleared after each save. Values go to DSH's credential store (`~/.dsh/.credentials.yaml`, plain YAML, mode 0600). If the state cannot be read the row shows "Could not check" with a Retry button.
+- **Mothership lock badges.** A setting managed by an AIWUK Mothership carries a badge: "Managed by AIWUK Mothership" (locked, read-only; change it in the Mothership) or "Default from Mothership" (editable; your value wins). The lock is a policy signal, not a security boundary on the machine.
+- **Web-search provider toggle.** "Use AIWUK Search for DSH web search" sets `searchProvider: aiwuk-search` on DSH's `web` entry (`cordis.patch.yml`), so DSH's native `web_search` uses this plugin. Turning it off removes that setting and restores DSH's default. The row shows the current provider. Without a selection DSH picks a provider only when exactly one is usable, otherwise it reports `WEB_PROVIDER_AMBIGUOUS`; the environment variable `DSH_WEB_SEARCH_PROVIDER` is the equivalent setting.
+
+## Configuration files and environment
 
 Configuration reads `integrations.json` under `CAPABILITY_TEAM_HOME`, otherwise `~/.dsh/capability-team-themes/` (`%USERPROFILE%/.dsh/capability-team-themes/` on Windows). The document retains its established envelope:
 
@@ -107,7 +115,7 @@ Only search/audio are used by this bundle. Embedding and memory configuration be
 | `OMNI_SEARCH_PROVIDERS_PATH` | Custom gateway providers path (overrides `search.providersPath`) |
 | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` | Transcription endpoint address and key |
 
-Every key name is a DSH credential reference first (keys saved in DSH Settings are looked up through the credential store), with the same-named Host environment variable as fallback. Keys are never written to config or tool arguments. No plugin configuration layer or HTTP writer exists. Configuration is read on each request; tool schemas (the `provider` argument and the providers tool) are built at activation and rebuilt once the credential store has been read, so reload/restart after changing the engine or provider lists in the file or environment.
+Every key name is a DSH credential reference first (keys saved in DSH Settings are looked up through the credential store), with the same-named Host environment variable as fallback. Keys are never written to config or tool arguments. Secrets are written only through the settings page (DSH's credential store); the integrations file is never written by the plugin. Configuration is read on each request; tool schemas (the `provider` argument and the providers tool) are built at activation and rebuilt once the credential store has been read, so reload/restart after changing the engine or provider lists in the file or environment.
 
 ### Settings from the DSH credential store
 
@@ -121,7 +129,7 @@ The custom gateway and audio endpoint must be credential-free https URLs. Never 
 
 Use the DSH Plugins page to enable or disable the plugin; the legacy `enabled` activation setting is not volatile.
 
-When DSH exposes its optional web and experimental speech-to-text services, the plugin registers the `aiwuk-search` and `aiwuk-cloud-stt` providers. Select providers in DSH; this plugin does not change the default selection. Search uses the same engine order and credentials as the tools. The cloud speech provider sends recordings to the configured audio gateway and relies on the host's consent flow; the legacy `omni_transcribe` tool continues to require its own per-file approval.
+When DSH exposes its optional web and experimental speech-to-text services, the plugin registers the `aiwuk-search` and `aiwuk-cloud-stt` providers. Select the provider with the toggle on this plugin's settings page (or in DSH's own settings); the plugin never changes the selection by itself. Search uses the same engine order and credentials as the tools. The cloud speech provider sends recordings to the configured audio gateway and relies on the host's consent flow; the legacy `omni_transcribe` tool continues to require its own per-file approval.
 
 A native fetch provider is deferred: the extraction engines do not reliably expose the target response status, body kind and truncation. The existing `omni_fetch` tool remains available, as does DSH's own native web fetch provider.
 

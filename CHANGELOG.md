@@ -8,6 +8,9 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- AIWUK Search settings page: "Use AIWUK Search for DSH web search" sets `searchProvider: aiwuk-search` on the host `web` entry through `configForms` (unset restores DSH's default) and shows the current provider.
+- Config pages: a secret row whose state cannot be read now shows "Could not check" with a Retry button instead of waiting forever; one automatic retry runs first.
+
 - New companion package `dsh-capability-autocomplete` 0.2.0 (`packages/autocomplete`): composer ghost-text suggestions for DSH Web, inline continuation while typing and next-message suggestions after a reply. Tab accepts, Alt+Up/Down cycles, Esc dismisses; nothing is sent automatically. Routes through the session model or a fixed provider/model.
 - The owner-only `POST /autocomplete/predict` endpoint refuses cross-site requests, sends only user/assistant text as quoted context, caps concurrent predictions at four and never writes the transcript.
 - Settings are read from the host ConfigForm (Settings → General and the plugin card) instead of browser storage, so the server and the client share one source of truth.
@@ -17,6 +20,14 @@ All notable changes to this project are documented in this file. The format foll
 - `dsh-capability-autocomplete` 0.4.0: optional fleet defaults. A manager can push `AUTOCOMPLETE_PROVIDER`, `AUTOCOMPLETE_MODEL` (and optionally `AUTOCOMPLETE_ROUTE_MODE`) through the DSH credential store; they apply only while the user's own route is untouched, and the user's choice always wins as a whole.
 
 ### Fixed
+
+- Config pages: secret rows could stay on "Checking..." although `credentials/describe` answered. Describe results are now ticketed (a stale or post-unmount result is ignored), a ref absent from a successful reply reads as not configured, a hung or failed call times out into the failure state, and the effect re-runs when the credentials service changes.
+- Team overview on a draft session (before the first message): `/api/capability-team.runtime` and `/stream` answered 503. They now return 200 with an empty snapshot (epoch `unbound`) and an idle stream that switches to real snapshots once the runtime binds.
+- READMEs no longer say a settings form is "coming"; they describe write-only secrets, Mothership lock badges and the web-search provider toggle.
+
+### Known host limitations
+
+- DSH 0.2.2-rc.1 agent presets take only plain strings for `name` and `description` (`AgentPreset.Config` is `z.string()`, `PresetDefinition.name?: string`, and the preset picker renders them verbatim; only built-in presets get localized copy), so the AIWUK Team preset description stays English in the Chinese UI.
 
 - `dsh-capability-autocomplete` 0.4.2: the touch suggestion strip spanned the whole composer column and started left of the input box. Its left and right edges now match the input box exactly, re-measured on resize.
 - `dsh-capability-autocomplete` 0.4.1: on phones the suggestion strip was absolutely positioned over the area above the composer and covered the workspace and mode controls. It now sits in the composer dock (laid out in flow, no height while empty) and the ✦ moves into the composer tool row, or into the strip on screens narrower than 360 px where the tool row has no room. Suggestions also stand down in multi-agent sessions while a dispatch confirmation is docked or a teammate view is read-only.
