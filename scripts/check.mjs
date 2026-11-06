@@ -16,6 +16,12 @@ async function walk(dir) {
   }
   return result;
 }
+// Config panel fragments and the memory/search client bundles are generated from shared-ui/.
+{
+  const panels = spawnSync(process.execPath, [join(root, 'shared-ui/build.mjs'), '--check'], { encoding: 'utf8', windowsHide: true });
+  if (panels.status !== 0) throw new Error(panels.stderr || panels.stdout || 'Config panel build is stale');
+  console.log('CONFIG_PANEL_BUILD_OK');
+}
 // The standalone Host bundle has a separate publication closure.
 for (const bundle of ['global-memory', 'omni-search']) {
 const globalRoot = join(root, 'packages', bundle);

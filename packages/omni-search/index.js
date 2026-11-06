@@ -1,6 +1,6 @@
 import { omni, searchSchemas } from './shared/search.js';
 import { applyTranscribe } from './shared/transcribe.js';
-import { refreshCredentials, resolveIntegrations, setCredentialResolver, setSettingsReader, SEARCH_ENGINES, FETCH_ENGINES } from './shared/integrations-config.js';
+import { refreshCredentials, resolveIntegrations, setSettingsReader, useCredentials, registerManagedConfigRoute, SEARCH_ENGINES, FETCH_ENGINES } from './shared/integrations-config.js';
 import { schemastery, splitSettings } from './shared/settings-schema.js';
 import { readFileSync } from 'node:fs';
 import { registerNativeProviders } from './providers/native.js';
@@ -37,9 +37,10 @@ export function apply(ctx, input = {}) {
   const owner = ctx.root ?? ctx;
   if (instances.has(owner)) throw new Error('omni-search already installed in this profile');
   instances.add(owner);
-  ctx.effect(() => () => { instances.delete(owner); setCredentialResolver(null); setSettingsReader(null); });
+  ctx.effect(() => () => { instances.delete(owner); useCredentials(null); setSettingsReader(null); });
   setSettingsReader(read);
   if (config.enabled === false) return;
+  registerManagedConfigRoute(ctx, 'search');
   // Schemas (the provider param and the providers tool) follow the engine configuration. Tools are registered
   // at once from file/environment; once the credential store is readable, settings pushed there (e.g. by a
   // fleet manager) may change the schema, and only then are the search tools re-registered.
@@ -58,8 +59,9 @@ export function apply(ctx, input = {}) {
   sync();
   let refreshed = Promise.resolve();
   ctx.inject?.(['credentials'], scoped => {
-    setCredentialResolver(async name => { const credential = await scoped.credentials.resolve(name); return typeof credential === 'string' ? credential : credential?.value; });
-    scoped.effect(() => () => setCredentialResolver(null));
+    // Credentials and the Mothership-managed manifest are read through the same service.
+    useCredentials(scoped.credentials);
+    scoped.effect(() => () => useCredentials(null));
     // Listeners must never reject: an unhandled rejection stops the DSH host.
     refreshed = refreshCredentials().then(sync).catch(error => { ctx.logger?.warn?.(`omni-search: tool schema refresh failed: ${error?.message ?? error}`); });
   });

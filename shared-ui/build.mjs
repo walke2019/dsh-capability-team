@@ -24,8 +24,10 @@ export const TARGETS = Object.freeze([
 
 /** The generated, collision-free module body. */
 export async function panelModule() {
-  const [logic, fields, panel, catalog, brand, en, zh] = await Promise.all(['config-logic.js', 'fields.js', 'config-panel.js', 'catalog.json', 'brand-text.js', 'locale/en.json', 'locale/zh.json'].map(name => readFile(ui(name), 'utf8')));
-  const brandText = plain(brand).replace(/^\/\/.*\n/gm, '');
+  const [logic, fields, panel, catalog, en, zh] = await Promise.all(['config-logic.js', 'fields.js', 'config-panel.js', 'catalog.json', 'locale/en.json', 'locale/zh.json'].map(name => readFile(ui(name), 'utf8')));
+  // brand-text.js imports brand.js; a client bundle has no imports, so inline the resolved value.
+  const { BRAND_TEXT } = await import(new URL('./brand-text.js', import.meta.url));
+  const brandText = `const BRAND_TEXT = ${escapeNonAscii(JSON.stringify(BRAND_TEXT))};`;
   const dictionaries = `const DICTIONARIES = ${escapeNonAscii(JSON.stringify({ en: JSON.parse(en), zh: JSON.parse(zh) }))};
 const CATALOG = ${escapeNonAscii(JSON.stringify(JSON.parse(catalog)))};
 /** en / zh dictionaries of one panel: shared texts, catalog labels (ref.<REF>) and the Mothership name filled in. */

@@ -1,6 +1,8 @@
 // Single source of truth for the AIWUK brand and the extension package names.
 // Pure data, no imports: build-shared.mjs copies this file into packages/*/shared/.
 export const BRAND = Object.freeze({ id: 'aiwuk', en: 'AIWUK', zh: 'AI悟空', domain: 'aiwuk.com', scope: '@aiwuk' });
+// Same value as MOTHERSHIP in the mothership protocol package (packages/protocol/src/brand.ts).
+export const MOTHERSHIP = Object.freeze({ en: 'AIWUK Mothership', zh: 'AI悟空 母舰' });
 
 const ext = (pkg, en, zh, description) => Object.freeze({ pkg, en, zh, description: Object.freeze(description) });
 
