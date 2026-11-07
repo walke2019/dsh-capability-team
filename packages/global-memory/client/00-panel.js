@@ -521,7 +521,13 @@
         };
         const labelOf = field => t(field.ref ? `ref.${field.ref}` : `field.${field.id}`);
         const status = managedStatus(panel.fields, manifest);
-        const visible = panel.fields.filter(field => isShown(field, current));
+        // A locked Mothership value also decides which dependent rows show (e.g. provider/model under a fixed route).
+        const effective = { ...current };
+        for (const field of panel.fields) {
+          const fromHub = managedValueOf(manifest, field.ref);
+          if (field.path && fromHub !== undefined && lockMode(manifest, field.ref) === 'locked' && !Object.hasOwn(drafts, field.id)) effective[field.path] = fromHub;
+        }
+        const visible = panel.fields.filter(field => isShown(field, effective));
         // Once the Mothership configures this extension, integration fields it does not send are optional extras.
         const isOptional = field => status.mode !== 'none' && field.ref && lockMode(manifest, field.ref) === 'none';
         const main = visible.filter(field => !isOptional(field)), optional = visible.filter(isOptional);

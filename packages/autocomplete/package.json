@@ -1,6 +1,6 @@
 {
   "name": "@aiwuk/autocomplete",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "AIWUK Autocomplete, composer autocomplete for DeepSeek Harness (DSH) with inline continuation and next-message suggestions accepted with Tab, never sent automatically",
   "license": "MIT",

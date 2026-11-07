@@ -1,6 +1,6 @@
 {
   "name": "@aiwuk/memory",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "AIWUK Memory: profile-wide explicit memory tools and bounded automatic recall for DeepSeek Harness (DSH) sessions",
   "license": "MIT",

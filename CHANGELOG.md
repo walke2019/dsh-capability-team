@@ -25,6 +25,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- Config pages (Team 5.0.3, Search 1.0.3, Memory 1.0.3, Autocomplete 1.0.2): a locked Mothership value now also drives dependent rows, so a Mothership-fixed autocomplete route shows its managed provider and model.
 - Locked canonical managed credentials now override legacy/custom key aliases for their exact integration section and search engine. Missing locked credentials do not fall back to local aliases; standalone and unlocked configurations retain their existing behavior. Presence metadata reports the effective canonical ref, and both canonical credentials and ignored aliases remain covered by redaction. This shared resolver fix ships in Team 5.0.1, Search 1.0.1 and Memory 1.0.1.
 - Config pages: secret rows could stay on "Checking..." although `credentials/describe` answered. Describe results are now ticketed (a stale or post-unmount result is ignored), a ref absent from a successful reply reads as not configured, a hung or failed call times out into the failure state, and the effect re-runs when the credentials service changes.
 - Team overview on a draft session (before the first message): `/api/capability-team.runtime` and `/stream` answered 503. They now return 200 with an empty snapshot (epoch `unbound`) and an idle stream that switches to real snapshots once the runtime binds.

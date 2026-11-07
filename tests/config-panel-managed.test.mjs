@@ -108,3 +108,33 @@ test('panel without a Mothership shows no banner and no optional group', async (
   assert.equal(walk(tree).some(n => n.props?.['data-managed-banner']), false);
   assert.equal(walk(tree).some(n => n.type === 'details'), false);
 });
+
+test('autocomplete: a locked fixed route from the Mothership shows the managed provider and model rows', async () => {
+  let cursor = 0; const states = []; const effects = [];
+  const React = {
+    createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat() }),
+    useState(initial) { const i = cursor++; if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial; return [states[i], v => { states[i] = typeof v === 'function' ? v(states[i]) : v; }]; },
+    useRef(initial) { const i = cursor++; return states[i] ??= { current: initial }; },
+    useEffect(fn) { effects.push(fn); },
+    useCallback(fn, deps) { const i = cursor++; const prev = states[i]; if (prev && prev.deps.length === deps.length && prev.deps.every((d, n) => Object.is(d, deps[n]))) return prev.fn; states[i] = { fn, deps }; return fn; },
+  };
+  const wire = { revision: 1, entries: [
+    { ref: 'AUTOCOMPLETE_ROUTE_MODE', locked: true, secret: false, value: 'fixed' },
+    { ref: 'AUTOCOMPLETE_PROVIDER', locked: true, secret: false, value: 'gateway' },
+    { ref: 'AUTOCOMPLETE_MODEL', locked: true, secret: false, value: 'fast-model' },
+  ] };
+  const { createPanelKit } = await import('../shared-ui/config-panel.js');
+  const { PANELS: panels } = await import('../shared-ui/fields.js');
+  const kit = createPanelKit(React);
+  const services = { credentials: null, on: null, forms: null, fetch: async () => ({ ok: true, json: async () => wire }) };
+  const form = { state: { status: 'ready', value: { routeMode: 'session' }, revision: 1, writable: true }, mutate: async () => true };
+  const expand = node => (Array.isArray(node) ? node.map(expand) : !node || typeof node !== 'object' ? node
+    : typeof node.type === 'function' ? expand(node.type({ ...node.props, children: node.children })) : { ...node, children: (node.children ?? []).map(expand) });
+  const render = () => { cursor = 0; return expand(kit.renderConfigPanel({ services, panel: panels.autocomplete, view: 'page', form, t: key => key })); };
+  render(); for (const fn of effects.splice(0)) await fn(); await new Promise(r => setTimeout(r, 5));
+  const tree = render();
+  const value = id => walk(walk(tree).find(n => n.props?.['data-field'] === id)).find(n => n.type === 'input')?.props.value;
+  assert.equal(value('provider'), 'gateway');
+  assert.equal(value('model'), 'fast-model');
+  assert.equal(walk(tree).find(n => n.props?.['data-managed-banner']).props['data-managed-banner'], 'full');
+});
