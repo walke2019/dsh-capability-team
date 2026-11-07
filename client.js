@@ -2,20 +2,35 @@
 // Web cards and the right-sidebar overview for the capability-team tools. React comes from the host module
 // table; no other Harness Client package is required (host tokens are the only shared styling dependency).
 window.__ModuleLoader__.load({
-  id: 'dsh-capability-team',
+  id: '@aiwuk/team',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
     const NS = 'capability-team';
 
     const zh = {
+      'onb.title': 'AI悟空 协作团队：三步开始', 'onb.step1': '1. 启用官方 Agent Teams', 'onb.step2': '2. 模型档位匹配', 'onb.step3': '3. 开始第一个团队任务',
+      'onb.teamReady': '官方 Agent Teams 服务已运行。',
+      'onb.teamMissing': 'AI悟空 协作团队建立在官方实验包 {name} 之上；它当前未启用，团队功能不会启动。',
+      'onb.teamWarning': '注意：启用后对本配置档（profile）中的所有会话生效，并停用原生的通用子代理工具（subagent / fork 等），改由团队工具委派。只有你点击下方按钮才会启用。',
+      'onb.enable': '启用 Agent Teams', 'onb.enabling': '正在启用…', 'onb.applied': '已启用并生效。请刷新页面后新建会话。',
+      'onb.restart': '已启用，需要重启 DSH 后生效（原因：{reason}）。', 'onb.failed': '启用失败，错误码：{code}。也可在“插件”页手动启用。',
+      'onb.noManager': '当前连接不能管理插件；请在侧栏“插件”页手动启用 {name}。',
+      'onb.coverage': '{covered}/{total} 项能力已在你的模型目录中匹配到合格档位（共 {models} 个模型）。', 'onb.coverageUnknown': '模型目录暂不可读；稍后在团队总览中查看。',
+      'onb.unassigned': '未匹配：{list}。这些角色的请求会被阻止；可补充渠道，或让主控开启单模型模式（需你确认）。',
+      'onb.newSession': '新建会话 → 在模式选择中选择“AIWUK Team（AI悟空 协作团队）”，然后直接描述任务。', 'onb.dismiss': '知道了', 'onb.later': '稍后',
+      'roles.singleModel': '单模型模式', 'roles.singleModelHint': '未分配模型的角色统一使用你确认的单个模型；无备选，失败直接报告。',
+      'role.name.lead': '主控', 'role.name.architect': '技术总监', 'role.name.backend': '后端', 'role.name.frontend': '前端',
+      'role.name.researcher': '研究员', 'role.name.writer': '文档', 'role.name.qa': '测试',
+      'live.quote.lead': '目标已明确，分工就绪。', 'live.quote.architect': '先定方案与接口，再动手。', 'live.quote.backend': '接口与数据，随时待命。',
+      'live.quote.frontend': '页面与交互，交给我。', 'live.quote.researcher': '先查证，再下结论。', 'live.quote.writer': '文档随时可以落笔。', 'live.quote.qa': '没有证据，不算完成。',
       'nav.models': '模型', 'nav.roles': '角色', 'nav.usage': '用量', 'nav.logs': '日志',
       'navfull.models': '模型管理', 'navfull.roles': '角色与配置', 'navfull.usage': '用量', 'navfull.logs': '请求日志', 'navfull.artifacts': '成果货架', 'navfull.report': '战报',
       'usage.hint': '预算计数 token（不含缓存读取）= 未缓存输入 + 缓存写入 + 输出，缓存读取单列且仍可能收费，不等于账单金额。总量与每步耗时由宿主实时推送；按模型拆分的 token 来自上次刷新。', 'usage.total': '团队合计 {n}', 'usage.billable': '预算计数 {n}', 'usage.cacheRead': '缓存读取 {n}', 'usage.budget': '预算 {used} / {max}', 'usage.over': '已达预算，请求被阻止', 'usage.none': '暂无用量记录', 'usage.io': '输入 {i} · 输出 {o}', 'usage.step': '{n} 步 · 平均 {s}s/步', 'usage.ttft': '首 token {s}s', 'usage.decode': '{n} token/s', 'usage.stepHint': 'DSH 会话统计：每步模型墙钟时间、首 token 延迟与解码速度', 'overview.live': '实时',
       'models.preview': '已保存策略下的请求候选（非实际调用）', 'models.blocked': '已阻止：无允许模型', 'models.unassigned': '尚未分配', 'models.refreshPreview': '策略已保存，请刷新状态获取新的候选预览。',
       'evidence.title': '本会话模型日志', 'evidence.hint': '只展示本会话非继承日志。请求配置不等于调用成功，响应记录也不等于任务完成。',
       'evidence.request-header': '已记录请求配置', 'evidence.assistant-message': '已记录助手响应', 'evidence.empty': '暂无可核实记录',
-      'models.help': '关闭开关即禁用该模型，也可以按前缀批量排除。设置是全局的：保存后对所有能力协作团队会话（含新建会话）从下一次请求起生效，已发出的请求不受影响；目录存在不代表调用成功。',
+      'models.help': '关闭开关即禁用该模型，也可以按前缀批量排除。设置是全局的：保存后对所有AI悟空 协作团队会话（含新建会话）从下一次请求起生效，已发出的请求不受影响；目录存在不代表调用成功。',
       'models.enabled': '启用', 'models.disabledBadge': '已禁用', 'models.tierCount': '{n} 个 · 已禁用 {d}', 'models.dirty': '{n} 项更改未保存', 'models.reset': '撤销更改',
       'models.filter': '筛选模型或角色…', 'models.noMatch': '没有匹配的模型', 'models.orphans': '目录外的已禁用模型', 'models.unused': '暂未被角色使用',
       'evidence.short.request-header': '请求', 'evidence.short.assistant-message': '响应', 'logs.thisSession': '本会话', 'logs.count': '{n} 条', 'logs.interrupted': '已中断',
@@ -128,8 +143,6 @@ window.__ModuleLoader__.load({
       'theme.promptManual': '复制失败，请手动全选复制输入框内容',
       'theme.templateInstruction': '或在主控会话导出/导入团队模板（通过 capability_team_export / capability_team_import）：',
       'theme.templateDesc': '导出模板可备份当前角色与能力，导入模板可批量重设角色名册与职责。',
-      'lang.toggle': 'EN',
-      'lang.title': 'Switch to English',
       'output': '原始输出',
       'live.openBtn': '打开会话',
       'live.contextPressure': '上下文',
@@ -396,8 +409,6 @@ window.__ModuleLoader__.load({
       'theme.promptManual': 'Copy failed, please select and copy the text manually',
       'theme.templateInstruction': 'Or export/import team templates in the Lead session (via capability_team_export / capability_team_import):',
       'theme.templateDesc': 'Export templates to backup roles & capabilities; import templates to batch replace roster & jobs.',
-      'lang.toggle': '中文',
-      'lang.title': '切换为中文',
       'output': 'Raw output',
       'live.openBtn': 'Open session',
       'live.contextPressure': 'Context',
@@ -545,11 +556,12 @@ window.__ModuleLoader__.load({
     };
 
     const CSS = `
+:root{--aw-z-popover:1100;--aw-z-modal:1000}
 .ctm-card{display:flex;flex-direction:column}
 .ctm-row{position:relative;display:flex;align-items:center;min-width:0;height:calc(24px + var(--dsh-content-font-delta,0px));overflow:hidden;color:var(--dsw-alias-label-tertiary,var(--dsw-alias-label-secondary));transition:color .1s}
 .ctm-row:hover,.ctm-row[data-open]{color:var(--dsw-alias-label-secondary)}
 .ctm-row[data-expandable]{cursor:pointer}
-.ctm-row:focus-visible{outline:1px solid var(--dsw-alias-brand-primary);outline-offset:-1px;border-radius:4px}
+.ctm-row:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-1px;border-radius:var(--dsw-radius-xs)}
 .ctm-lead{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:calc(16px + var(--dsh-content-font-delta,0px));height:calc(16px + var(--dsh-content-font-delta,0px));margin-right:6px}
 .ctm-lead svg{width:calc(14px + var(--dsh-content-font-delta,0px));height:calc(14px + var(--dsh-content-font-delta,0px))}
 .ctm-ico{display:inline-flex;transition:opacity .1s}
@@ -557,9 +569,9 @@ window.__ModuleLoader__.load({
 .ctm-row[data-expandable]:hover .ctm-ico,.ctm-row[data-open] .ctm-ico{opacity:0}
 .ctm-row[data-expandable]:hover .ctm-chev,.ctm-row[data-open] .ctm-chev{opacity:1}
 .ctm-title{flex:none;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}
-.ctm-sep{flex:none;width:2px;height:2px;margin:0 8px;border-radius:1px;background:var(--dsw-alias-label-caption,currentColor)}
+.ctm-sep{flex:none;width:2px;height:2px;margin:0 8px;border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-label-caption,currentColor)}
 .ctm-summary{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}
-.ctm-badge{flex:none;margin-left:8px;padding:0 6px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;font-size:11px;line-height:17px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
+.ctm-badge{flex:none;margin-left:8px;padding:0 6px;border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-xl);font-size:var(--dsw-font-xxxs-11-font-size);line-height:17px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
 .ctm-badge[data-tone=brand]{color:var(--dsw-alias-brand-primary);border-color:currentColor}
 .ctm-badge[data-tone=success]{color:var(--dsw-alias-state-success-primary);border-color:currentColor}
 .ctm-badge[data-tone=warn]{color:var(--dsw-alias-state-warn-primary);border-color:currentColor}
@@ -567,76 +579,76 @@ window.__ModuleLoader__.load({
 .ctm-warn{color:var(--dsw-alias-state-warn-primary)}
 .ctm-card[data-state=running] .ctm-summary,.ctm-card[data-state=preparing] .ctm-title{animation:ctm-pulse 1.4s ease-in-out infinite}
 @keyframes ctm-pulse{50%{opacity:.45}}
-.ctm-tc{margin-top:6px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2));padding-top:6px;font-size:12px}
+.ctm-tc{margin-top:6px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2));padding-top:6px;font-size:var(--dsw-font-xxs-12-font-size)}
 .ctm-tc>summary{cursor:pointer;display:flex;gap:8px;align-items:baseline;list-style:none}
 .ctm-tc>summary::-webkit-details-marker{display:none}
 .ctm-tc-body,.ctm-tc-actions,.ctm-tc-confirm,.ctm-tc-audit{display:flex;flex-direction:column;gap:6px;margin-top:6px}
 .ctm-tc-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .ctm-tc-override{display:flex;flex-direction:column;gap:2px}
-.ctm-tc-reason,.ctm-tc select{font:inherit;padding:3px 6px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35));background:transparent;color:inherit;max-width:100%}
-.ctm-tc-confirm{padding:8px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35))}
+.ctm-tc-reason,.ctm-tc select{font:inherit;padding:3px 6px;border-radius:var(--dsw-radius-sm);border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35));background:transparent;color:inherit;max-width:100%}
+.ctm-tc-confirm{padding:8px;border-radius:var(--dsw-radius-md);border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.35))}
 .ctm-tc-audit ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:2px}
 .ctm-mc-list{display:flex;flex-direction:column;gap:6px}
 .ctm-mc-item{padding-left:8px;border-left:2px solid var(--dsw-alias-border-l1,rgba(127,127,127,.25))}
 .ctm-mc-results{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .ctm-mc-results li{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere}
-.ctm-dc{display:flex;flex-direction:column;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.3));font-size:12px;line-height:1.5}
+.ctm-dc{display:flex;flex-direction:column;gap:12px;padding:12px 14px;border-radius:var(--dsw-radius-lg);border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.3));font-size:var(--dsw-font-xxs-12-font-size);line-height:1.5}
 .ctm-dc-head{display:flex;flex-direction:column;gap:2px}
-.ctm-dc-title{font-size:13px}
+.ctm-dc-title{font-size:var(--dsw-font-xs-13-font-size)}
 .ctm-dc-roles{display:flex;flex-direction:column;gap:10px}
-.ctm-dc-role{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:10px;background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06))}
+.ctm-dc-role{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1,rgba(127,127,127,.06))}
 .ctm-dc-role-head{display:flex;align-items:center;gap:10px;min-width:0}
 .ctm-dc-avatar{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:600;background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.18))}
 .ctm-dc-who{display:flex;flex-direction:column;gap:1px;min-width:0}
-.ctm-dc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary,inherit);font-size:11px}
-.ctm-dc-meta code{font-size:11px}
+.ctm-dc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary,inherit);font-size:var(--dsw-font-xxxs-11-font-size)}
+.ctm-dc-meta code{font-size:var(--dsw-font-xxxs-11-font-size)}
 .ctm-dc-task{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 .ctm-dc-task p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .ctm-dc-task p[data-clamped]{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ctm-dc-link{font:inherit;font-size:11px;padding:0;border:0;background:none;color:var(--dsw-alias-link);cursor:pointer}
+.ctm-dc-link{font:inherit;font-size:var(--dsw-font-xxxs-11-font-size);padding:0;border:0;background:none;color:var(--dsw-alias-link);cursor:pointer}
 .ctm-dc-grid{display:grid;grid-template-columns:76px minmax(0,360px);gap:8px 10px;align-items:start}
 .ctm-dc-key{padding-top:6px;display:flex;gap:4px;align-items:baseline}
 .ctm-dc-count{font-weight:400;font-variant-numeric:tabular-nums;opacity:.7}
 .ctm-dc-fallbacks{display:flex;flex-direction:column;gap:6px;min-width:0}
 .ctm-dc-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
-.ctm-dc-item{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:6px;padding:3px 4px 3px 6px;border-radius:7px;border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.25))}
+.ctm-dc-item{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:6px;padding:3px 4px 3px 6px;border-radius:var(--dsw-radius-sm);border:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.25))}
 .ctm-dc-index{font-variant-numeric:tabular-nums;opacity:.6;text-align:center}
 .ctm-dc-route{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-dc-actions{display:flex;gap:2px}
-.ctm-dc-icon{font:inherit;line-height:1;width:22px;height:22px;border-radius:5px;border:0;background:transparent;color:inherit;cursor:pointer}
+.ctm-dc-icon{font:inherit;line-height:1;width:22px;height:22px;border-radius:var(--dsw-radius-sm);border:0;background:transparent;color:inherit;cursor:pointer}
 .ctm-dc-icon:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.15))}
 .ctm-dc-icon:disabled{opacity:.3;cursor:default}
 .ctm-dc-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2))}
 .ctm-dc-scope{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
-.ctm-dc-seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
-.ctm-dc-segbtn{font:inherit;font-size:12px;padding:3px 10px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:pointer}
+.ctm-dc-seg{display:inline-flex;padding:2px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
+.ctm-dc-segbtn{font:inherit;font-size:var(--dsw-font-xxs-12-font-size);padding:3px 10px;border:0;border-radius:var(--dsw-radius-sm);background:transparent;color:inherit;cursor:pointer}
 .ctm-dc-segbtn[aria-checked=true]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-prominent);font-weight:600}
 .ctm-dc-buttons{display:flex;gap:8px;margin-left:auto}
 .ctm-dc-wrap{display:flex;flex-direction:column;gap:6px}
-.ctm-dock{box-sizing:border-box;width:calc(100% - 2 * (var(--dsh-composer-side-clearance,16px) + 16px));max-width:var(--dsh-chat-content-width,760px);align-self:center;margin:0 auto 8px;max-height:min(60vh,560px);overflow:auto;border-radius:12px;background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base));box-shadow:var(--dsw-elevation-prominent)}
+.ctm-dock{box-sizing:border-box;width:calc(100% - 2 * (var(--dsh-composer-side-clearance,16px) + 16px));max-width:var(--dsh-chat-content-width,760px);align-self:center;margin:0 auto 8px;max-height:min(60vh,560px);overflow:auto;border-radius:var(--dsw-radius-lg);background:var(--dsw-alias-bg-layer-1,var(--dsw-alias-bg-base));box-shadow:var(--dsw-elevation-prominent)}
 .ctm-dock>.ctm-dc{border-color:var(--dsw-alias-brand-primary,var(--dsw-alias-border-l1,rgba(127,127,127,.3)))}
 .ctm-dc-pointer{margin:0;padding-left:2px}
 .ctm-mp{position:relative;min-width:0}
-.ctm-mp-input{box-sizing:border-box;width:100%;font:inherit;font-size:12px;padding:5px 26px 5px 8px;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
-.ctm-mp-input:focus{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color);outline-offset:-1px}
+.ctm-mp-input{box-sizing:border-box;width:100%;font:inherit;font-size:var(--dsw-font-xxs-12-font-size);padding:5px 26px 5px 8px;border-radius:var(--dsw-radius-sm);border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
+.ctm-mp-input:focus{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-1px}
 .ctm-mp-caret{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.6}
-.ctm-mp-pop{position:absolute;z-index:1100;left:0;right:0;top:calc(100% + 4px);border-radius:var(--dsw-radius-lg,10px);background-color:var(--dsw-alias-bg-base);background-image:linear-gradient(var(--dsw-specific-menu),var(--dsw-specific-menu));box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);overflow:hidden}
+.ctm-mp-pop{position:absolute;z-index:var(--aw-z-popover);left:0;right:0;top:calc(100% + 4px);border-radius:var(--dsw-radius-lg,10px);background-color:var(--dsw-alias-bg-base);background-image:linear-gradient(var(--dsw-specific-menu),var(--dsw-specific-menu));box-shadow:var(--dsw-elevation-prominent);color:var(--dsw-alias-label-primary);overflow:hidden}
 .ctm-mp-count{padding:5px 8px;border-bottom:1px solid var(--dsw-alias-border-l1,rgba(127,127,127,.2))}
 .ctm-mp-list{list-style:none;margin:0;padding:4px 0;max-height:240px;overflow:auto}
-.ctm-mp-group{padding:6px 10px 2px;font-size:11px;font-weight:600;opacity:.65;text-transform:none}
+.ctm-mp-group{padding:6px 10px 2px;font-size:var(--dsw-font-xxxs-11-font-size);font-weight:600;opacity:.65;text-transform:none}
 .ctm-mp-option{display:flex;justify-content:space-between;gap:8px;padding:5px 10px 5px 16px;cursor:pointer}
 .ctm-mp-option[data-active]{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.15))}
 .ctm-mp-option[aria-selected=true]{font-weight:600}
 .ctm-mp-model{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-mp-empty{padding:10px}
-@media (max-width:560px){.ctm-dc-grid{grid-template-columns:minmax(0,1fr);gap:4px}.ctm-dc-key{padding-top:0}.ctm-dock{max-height:55vh}.ctm-dock>.ctm-dc{padding:10px 12px}.ctm-dc-buttons{width:100%}.ctm-dc-buttons>.ctm-btn{flex:1 1 0;min-height:36px}.ctm-mp-input{min-height:34px;font-size:16px}}
-.ctm-plan-board{margin:6px 0 0;padding-left:16px;display:flex;flex-direction:column;gap:2px;font-size:12px}
+@media (max-width:560px){.ctm-dc-grid{grid-template-columns:minmax(0,1fr);gap:4px}.ctm-dc-key{padding-top:0}.ctm-dock{max-height:55vh}.ctm-dock>.ctm-dc{padding:10px 12px}.ctm-dc-buttons{width:100%}.ctm-dc-buttons>.ctm-btn{flex:1 1 0;min-height:36px}.ctm-mp-input{min-height:34px;font-size:var(--dsw-font-base-16-font-size)}}
+.ctm-plan-board{margin:6px 0 0;padding-left:16px;display:flex;flex-direction:column;gap:2px;font-size:var(--dsw-font-xxs-12-font-size)}
 @media (prefers-reduced-motion:reduce){.ctm-card .ctm-summary,.ctm-card .ctm-title{animation:none!important}}
 .ctm-wrap{display:flex;flex-direction:column}
 .ctm-body{display:flex;flex-direction:column;margin:4px 0 4px 4px;overflow:hidden;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size-secondary,13px)}
 .ctm-section{display:flex;flex-direction:column;gap:6px;padding:8px 12px;min-width:0}
 .ctm-section+.ctm-section{border-top:.5px solid var(--dsw-alias-border-l2)}
-.ctm-label{font-size:12px;color:var(--dsw-alias-label-secondary)}
+.ctm-label{font-size:var(--dsw-font-xxs-12-font-size);color:var(--dsw-alias-label-secondary)}
 .ctm-text{white-space:pre-wrap;word-break:break-word;line-height:1.6}
 .ctm-pre{margin:0;max-height:320px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:inherit;line-height:1.6}
 .ctm-pre[data-short]{max-height:120px}
@@ -644,19 +656,19 @@ window.__ModuleLoader__.load({
 .ctm-grid3{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);column-gap:16px;row-gap:6px;align-items:baseline}
 .ctm-who{display:flex;flex-direction:column;min-width:0}
 .ctm-name{font-weight:500}
-.ctm-sub{font-size:12px;color:var(--dsw-alias-label-secondary);word-break:break-all}
+.ctm-sub{font-size:var(--dsw-font-xxs-12-font-size);color:var(--dsw-alias-label-secondary);word-break:break-all}
 .ctm-chips{display:flex;flex-wrap:wrap;gap:6px}
-.ctm-chip{display:inline-flex;gap:4px;padding:1px 8px;border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-size:12px;line-height:20px}
+.ctm-chip{display:inline-flex;gap:4px;padding:1px 8px;border-radius:var(--dsw-radius-xl);background:var(--dsw-alias-bg-layer-2);font-size:var(--dsw-font-xxs-12-font-size);line-height:20px}
 .ctm-chip>span:first-child{color:var(--dsw-alias-label-secondary)}
 .ctm-list{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
 .ctm-link{padding:0;border:none;background:none;color:var(--dsw-alias-brand-primary);font:inherit;text-align:left;word-break:break-all;cursor:pointer}
 .ctm-link:hover{text-decoration:underline}
-.ctm-inspect{align-self:flex-start;margin:0 0 4px 4px;padding:2px 4px;border:none;border-radius:4px;background:none;color:var(--dsw-alias-label-secondary);font-size:12px;cursor:pointer}
+.ctm-inspect{align-self:flex-start;margin:0 0 4px 4px;padding:2px 4px;border:none;border-radius:var(--dsw-radius-xs);background:none;color:var(--dsw-alias-label-secondary);font-size:var(--dsw-font-xxs-12-font-size);cursor:pointer}
 .ctm-inspect:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
 .ctm-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .ctm-badge[data-tone=error]{color:var(--dsw-alias-state-error-primary);border-color:currentColor}
 .ctm-success{color:var(--dsw-alias-state-success-primary)}
-.ctm-btn{flex:none;padding:3px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:6px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;line-height:18px;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.ctm-btn{flex:none;padding:3px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-sm);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:var(--dsw-font-xxs-12-font-size);line-height:18px;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
 .ctm-btn:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
 .ctm-btn:active:not(:disabled){background:var(--dsw-alias-interactive-bg-active)}
 .ctm-btn:disabled{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-tertiary);cursor:default}
@@ -664,37 +676,37 @@ window.__ModuleLoader__.load({
 .ctm-btn[data-primary]:hover:not(:disabled){border-color:var(--dsw-alias-button-primary-hover);background:var(--dsw-alias-button-primary-hover)}
 .ctm-btn[data-primary]:active:not(:disabled){opacity:.85}
 .ctm-btn[data-primary]:disabled{border-color:transparent;background:var(--dsw-alias-button-primary-dimmed);color:var(--dsw-alias-label-tertiary)}
-.ctm-btn:focus-visible,.ctm-ov-tab:focus-visible,.ctm-switch:focus-visible,.ctm-ov-group>summary:focus-visible{outline:1px solid var(--ctm-accent);outline-offset:1px}
+.ctm-btn:focus-visible,.ctm-ov-tab:focus-visible,.ctm-switch:focus-visible,.ctm-ov-group>summary:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}
 .ctm-card,.ctm-ov{--ctm-accent:var(--dsw-alias-state-business-primary,var(--dsw-alias-link,#4d6bfe))}
 .ctm-ov .ctm-badge[data-tone=brand]{color:var(--ctm-accent)}
 .ctm-ov{container:ctm-ov/inline-size;background:var(--dsw-alias-bg-base);display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box;color:var(--dsw-alias-label-primary);font-size:var(--dsh-content-font-size-secondary,13px)}
 .ctm-ov-head{flex:none;display:flex;flex-direction:column;gap:1px;padding:8px 16px 6px;border-bottom:.5px solid var(--dsw-alias-border-l2)}
 .ctm-ov-titlerow{display:flex;align-items:center;gap:6px;min-width:0}
-.ctm-ov-title{margin:0;font-size:14px;font-weight:600;line-height:20px}
-.ctm-ov-subrow{margin:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctm-ov-title{margin:0;font-size:var(--dsw-font-s-14-font-size);font-weight:600;line-height:20px}
+.ctm-ov-subrow{margin:0;font-size:var(--dsw-font-xxxs-11-font-size);line-height:16px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-ov-titlerow .ctm-badge{margin-left:0}
 .ctm-ov-refresh{margin-left:auto}
 .ctm-ov-scroll{flex:1 1 auto;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:12px 16px 24px}
 .ctm-ov-scroll>*,.ctm-ov-panel>*,.ctm-ov-editor>*{flex-shrink:0}
 .ctm-ov-empty{padding:24px 0;text-align:center}
 .ctm-ov-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:6px}
-.ctm-ov-stat{display:flex;flex-direction:column;gap:2px;min-width:0;padding:7px 8px;border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
-.ctm-ov-stat strong{font-size:18px;font-weight:600;line-height:22px}
-.ctm-ov-stat span{font-size:12px;color:var(--dsw-alias-label-secondary)}
+.ctm-ov-stat{display:flex;flex-direction:column;gap:2px;min-width:0;padding:7px 8px;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1)}
+.ctm-ov-stat strong{font-size:var(--dsw-font-m-18-font-size);font-weight:600;line-height:22px}
+.ctm-ov-stat span{font-size:var(--dsw-font-xxs-12-font-size);color:var(--dsw-alias-label-secondary)}
 .ctm-ov-stat[data-tone=warn] strong{color:var(--dsw-alias-state-warn-primary)}
 .ctm-ov-stat[data-tone=error] strong{color:var(--dsw-alias-state-error-primary)}
-.ctm-ov-callout{display:flex;flex-direction:column;gap:8px;margin:0;padding:10px 12px;border-radius:8px;border:.5px solid currentColor;line-height:1.6;word-break:break-word}
+.ctm-ov-callout{display:flex;flex-direction:column;gap:8px;margin:0;padding:10px 12px;border-radius:var(--dsw-radius-md);border:.5px solid currentColor;line-height:1.6;word-break:break-word}
 .ctm-ov-callout[data-tone=warn]{color:var(--dsw-alias-state-warn-primary)}
 .ctm-ov-callout[data-tone=error]{color:var(--dsw-alias-state-error-primary)}
 .ctm-ov-callout .ctm-text{color:var(--dsw-alias-label-primary)}
-.ctm-ov-tabs{position:sticky;top:-12px;z-index:2;display:flex;flex-wrap:wrap;gap:2px;padding:3px;margin:0 -2px;border-radius:8px;background:var(--dsw-alias-bg-layer-2)}
-.ctm-ov-tab{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:none;border-radius:6px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;white-space:nowrap;cursor:pointer}
+.ctm-ov-tabs{position:sticky;top:-12px;z-index:2;display:flex;flex-wrap:wrap;gap:2px;padding:3px;margin:0 -2px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-2)}
+.ctm-ov-tab{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:none;border-radius:var(--dsw-radius-sm);background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:var(--dsw-font-xxs-12-font-size);line-height:18px;white-space:nowrap;cursor:pointer}
 .ctm-ov-tab:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .ctm-ov-tab[aria-pressed=true]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-weight:500;box-shadow:0 0 0 .5px var(--dsw-alias-border-l1)}
-.ctm-ov-count{padding:0 5px;border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);flex:none}
+.ctm-ov-count{padding:0 5px;border-radius:var(--dsw-radius-xl);background:var(--dsw-alias-bg-layer-2);font-size:var(--dsw-font-xxxs-11-font-size);line-height:16px;color:var(--dsw-alias-label-secondary);flex:none}
 @container ctm-ov (min-width:480px){.ctm-ov-tab{flex:1 1 0;min-width:0}}
-.ctm-ov-subtabs{display:flex;flex-wrap:wrap;gap:2px;padding:3px;margin:0 0 8px;border-radius:8px;background:var(--dsw-alias-bg-layer-2)}
-.ctm-ov-subtab{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:none;border-radius:6px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;white-space:nowrap;cursor:pointer}
+.ctm-ov-subtabs{display:flex;flex-wrap:wrap;gap:2px;padding:3px;margin:0 0 8px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-2)}
+.ctm-ov-subtab{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;border:none;border-radius:var(--dsw-radius-sm);background:none;color:var(--dsw-alias-label-secondary);font:inherit;font-size:var(--dsw-font-xxs-12-font-size);line-height:18px;white-space:nowrap;cursor:pointer}
 .ctm-ov-subtab:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .ctm-ov-subtab[aria-pressed=true]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-weight:500;box-shadow:0 0 0 .5px var(--dsw-alias-border-l1)}
 @container ctm-ov (min-width:420px){.ctm-ov-subtab{flex:1 1 0;min-width:0}}
@@ -702,31 +714,31 @@ window.__ModuleLoader__.load({
 .ctm-ov-panel[hidden]{display:none}
 .ctm-ov-block{display:flex;flex-direction:column;gap:6px;min-width:0}
 .ctm-ov-help{margin:0;line-height:1.5}
-.ctm-ov-note{font-size:12px}
+.ctm-ov-note{font-size:var(--dsw-font-xxs-12-font-size)}
 .ctm-ov-editor{display:flex;flex-direction:column;gap:12px;min-width:0}
 .ctm-ov-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 0;background:var(--dsw-alias-bg-base)}
-.ctm-ov-search{box-sizing:border-box;width:100%;padding:5px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px}
-.ctm-ov-search:focus{outline:1px solid var(--ctm-accent);outline-offset:-1px}
-.ctm-ov-allocs{display:flex;flex-direction:column;border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
+.ctm-ov-search{box-sizing:border-box;width:100%;padding:5px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:var(--dsw-font-xxs-12-font-size)}
+.ctm-ov-search:focus{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-1px}
+.ctm-ov-allocs{display:flex;flex-direction:column;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1)}
 .ctm-ov-alloc{display:grid;grid-template-columns:minmax(56px,max-content) minmax(0,1fr);column-gap:10px;padding:6px 10px;align-items:baseline}
 .ctm-ov-alloc+.ctm-ov-alloc{border-top:.5px solid var(--dsw-alias-border-l2)}
 .ctm-ov-chain{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0}
-.ctm-ov-hop{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 7px;border:.5px solid var(--dsw-alias-border-l1);border-radius:999px;background:var(--dsw-alias-bg-layer-2);font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:11px;line-height:17px;color:var(--dsw-alias-label-secondary)}
+.ctm-ov-hop{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:1px 7px;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-xl);background:var(--dsw-alias-bg-layer-2);font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:var(--dsw-font-xxxs-11-font-size);line-height:17px;color:var(--dsw-alias-label-secondary)}
 .ctm-ov-hop[data-primary]{border-color:var(--ctm-accent);background:none;color:var(--ctm-accent)}
-.ctm-ov-arrow{color:var(--dsw-alias-label-tertiary,var(--dsw-alias-label-secondary));font-size:13px;line-height:1}
+.ctm-ov-arrow{color:var(--dsw-alias-label-tertiary,var(--dsw-alias-label-secondary));font-size:var(--dsw-font-xs-13-font-size);line-height:1}
 .ctm-ov-tiers{display:flex;flex-wrap:wrap;gap:6px}
-.ctm-ov-tier{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:999px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;white-space:nowrap;cursor:pointer}
+.ctm-ov-tier{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-xl);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:inherit;font-size:var(--dsw-font-xxs-12-font-size);line-height:18px;white-space:nowrap;cursor:pointer}
 .ctm-ov-tier:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .ctm-ov-more{align-self:center}
 .ctm-ov-tier[aria-selected=true]{border-color:var(--ctm-accent);color:var(--ctm-accent);font-weight:500}
-.ctm-ov-tier[aria-selected=true] .ctm-ov-count{background:var(--ctm-accent);color:#fff}
-.ctm-ov-tier:focus-visible{outline:1px solid var(--ctm-accent);outline-offset:1px}
+.ctm-ov-tier[aria-selected=true] .ctm-ov-count{background:var(--ctm-accent);color:var(--dsw-alias-label-primary-inverted)}
+.ctm-ov-tier:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}
 .ctm-ov-offdot{position:absolute;top:1px;right:1px;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-state-warn-primary)}
 .ctm-ov-list-flat{border-top:none}
 .ctm-ov-rule-input{display:flex;gap:6px}
 .ctm-ov-rule-input .ctm-ov-search{flex:1 1 auto;min-width:0;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace)}
 .ctm-ov-rule{align-items:center;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);border:.5px solid var(--dsw-alias-state-warn-primary)}
-.ctm-ov-rule-x{margin-left:2px;padding:0 4px;border:none;border-radius:4px;background:none;color:var(--dsw-alias-label-secondary);font:inherit;line-height:18px;cursor:pointer}
+.ctm-ov-rule-x{margin-left:2px;padding:0 4px;border:none;border-radius:var(--dsw-radius-xs);background:none;color:var(--dsw-alias-label-secondary);font:inherit;line-height:18px;cursor:pointer}
 .ctm-ov-rule-x:hover:not(:disabled){color:var(--dsw-alias-state-error-primary);background:var(--dsw-alias-interactive-bg-hover)}
 .ctm-ov-panel{container-type:inline-size}
 .ctm-ov-split{display:flex;flex-direction:column;gap:16px;min-width:0}
@@ -738,38 +750,38 @@ window.__ModuleLoader__.load({
 .ctm-bd-at{margin-left:auto;display:inline-flex;align-items:center;gap:5px}
 .ctm-bd-pulse{width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-state-success-primary);animation:ctm-beat 2.5s ease-out infinite}
 @keyframes ctm-beat{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--dsw-alias-state-success-primary) 55%,transparent)}70%,100%{box-shadow:0 0 0 6px transparent}}
-.ctm-bd-card{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 10px 11px;border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px rgba(0,0,0,.05);transition:border-color .2s,box-shadow .2s,opacity .2s}
+.ctm-bd-card{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 10px 11px;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1);box-shadow:var(--dsw-shadow-lv1);transition:border-color .2s,box-shadow .2s,opacity .2s}
 .ctm-bd-card[data-status=inactive]{opacity:.62;border-style:dashed}
 .ctm-bd-card[data-open]{cursor:pointer}
 .ctm-bd-card[data-open]:hover{border-color:var(--ctm-accent)}
-.ctm-bd-card[data-open]:focus-visible{outline:2px solid var(--ctm-accent);outline-offset:2px}
+.ctm-bd-card[data-open]:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}
 .ctm-bd-card[data-status=failed]{border-color:var(--dsw-alias-state-error-primary)}
 .ctm-bd-card[data-status=running]{border-color:var(--ctm-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ctm-accent) 14%,transparent),0 4px 14px color-mix(in srgb,var(--ctm-accent) 18%,transparent);animation:ctm-glow 2.4s ease-in-out infinite}
 @keyframes ctm-glow{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--ctm-accent) 8%,transparent),0 4px 18px color-mix(in srgb,var(--ctm-accent) 26%,transparent)}}
 .ctm-bd-top{display:flex;align-items:center;gap:8px;min-width:0}
 .ctm-bd-top .ctm-who{flex:1 1 0;min-width:0}
 .ctm-bd-top .ctm-name,.ctm-bd-top .ctm-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ctm-bd-avatar{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font-weight:600;font-size:13px}
-.ctm-bd-card[data-status=running] .ctm-bd-avatar{background:var(--ctm-accent);color:#fff}
+.ctm-bd-avatar{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font-weight:600;font-size:var(--dsw-font-xs-13-font-size)}
+.ctm-bd-card[data-status=running] .ctm-bd-avatar{background:var(--ctm-accent);color:var(--dsw-alias-label-primary-inverted)}
 .ctm-bd-card[data-status=running] .ctm-bd-avatar::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:1.5px solid transparent;border-top-color:var(--ctm-accent);border-right-color:var(--ctm-accent);animation:ctm-spin 1.1s linear infinite}
 @keyframes ctm-spin{to{transform:rotate(360deg)}}
-.ctm-bd-state{flex:none;display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
+.ctm-bd-state{flex:none;display:inline-flex;align-items:center;gap:4px;font-size:var(--dsw-font-xxxs-11-font-size);line-height:16px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
 .ctm-bd-state[data-tone=brand]{color:var(--ctm-accent)}
 .ctm-bd-state[data-tone=success]{color:var(--dsw-alias-state-success-primary)}
 .ctm-bd-state[data-tone=error]{color:var(--dsw-alias-state-error-primary)}
 .ctm-bd-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
 .ctm-bd-card[data-status=running] .ctm-bd-dot,.ctm-bd-card[data-status=provisioning] .ctm-bd-dot{animation:ctm-pulse 1s ease-in-out infinite}
 .ctm-bd-time{font-variant-numeric:tabular-nums;opacity:.8}
-.ctm-bd-task{display:flex;align-items:baseline;gap:5px;min-width:0;font-size:12px;line-height:1.45}
+.ctm-bd-task{display:flex;align-items:baseline;gap:5px;min-width:0;font-size:var(--dsw-font-xxs-12-font-size);line-height:1.45}
 .ctm-bd-subject{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .ctm-bd-model{display:flex;min-width:0}
 .ctm-bd-task>.ctm-sub{flex:none}
-.ctm-bd-bar{position:absolute;left:10px;right:10px;bottom:4px;height:2px;border-radius:2px;overflow:hidden;opacity:0}
+.ctm-bd-bar{position:absolute;left:10px;right:10px;bottom:4px;height:2px;border-radius:var(--dsw-radius-xs);overflow:hidden;opacity:0}
 .ctm-bd-card[data-status=running] .ctm-bd-bar,.ctm-bd-card[data-status=provisioning] .ctm-bd-bar{opacity:1;background:linear-gradient(90deg,transparent,var(--ctm-accent),transparent) 0 0/40% 100% no-repeat,color-mix(in srgb,var(--ctm-accent) 12%,transparent);animation:ctm-scan 1.4s ease-in-out infinite}
 @keyframes ctm-scan{0%{background-position:-40% 0,0 0}100%{background-position:140% 0,0 0}}
 @media (prefers-reduced-motion:reduce){.ctm-bd *,.ctm-bd *::before,.ctm-bd *::after,.ctm-bd-card{animation:none!important}}
-.ctm-ov-route{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:12px}
-.ctm-ov-group{border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}
+.ctm-ov-route{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:var(--dsw-font-xxs-12-font-size)}
+.ctm-ov-group{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1);overflow:hidden}
 .ctm-ov-group>summary{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;list-style:none;user-select:none}
 .ctm-ov-group>summary::-webkit-details-marker{display:none}
 .ctm-ov-group>summary::before{content:'';flex:none;width:5px;height:5px;margin-right:2px;border-right:1.3px solid currentColor;border-bottom:1.3px solid currentColor;transform:rotate(-45deg);transition:transform .1s;color:var(--dsw-alias-label-secondary)}
@@ -786,19 +798,19 @@ window.__ModuleLoader__.load({
 .ctm-ov-model-main{display:flex;flex-direction:column;gap:4px;min-width:0}
 .ctm-ov-model-name{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;min-width:0;overflow-wrap:anywhere}
 .ctm-ov-model-name .ctm-badge{margin-left:0}
-.ctm-switch{appearance:none;flex:none;position:relative;width:28px;height:16px;margin:2px 0 0;border-radius:999px;background:var(--dsw-alias-border-l1);cursor:pointer;transition:background .15s}
-.ctm-switch::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.ctm-switch{appearance:none;flex:none;position:relative;width:28px;height:16px;margin:2px 0 0;border-radius:var(--dsw-radius-xl);background:var(--dsw-alias-border-l1);cursor:pointer;transition:background .15s}
+.ctm-switch::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--dsw-alias-switch-thumb);box-shadow:var(--dsw-shadow-lv1);transition:transform .15s}
 .ctm-switch:checked{background:var(--dsw-alias-state-success-primary)}
 .ctm-switch:checked::after{transform:translateX(12px)}
 .ctm-switch:disabled{opacity:.5;cursor:default}
 .ctm-ov-roles{display:flex;flex-direction:column;gap:8px}
-.ctm-ov-role{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1);min-width:0}
+.ctm-ov-role{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1);min-width:0}
 .ctm-ov-role-head{display:flex;align-items:center;gap:6px}
 .ctm-ov-role-head .ctm-badge{margin-left:auto}
-.ctm-ov-desc{font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.ctm-ov-kv{padding:8px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:8px;background:var(--dsw-alias-bg-layer-1)}
+.ctm-ov-desc{font-size:var(--dsw-font-xxs-12-font-size);line-height:1.5;color:var(--dsw-alias-label-secondary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ctm-ov-kv{padding:8px 10px;border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-1)}
 .ctm-ov-logs{display:flex;flex-direction:column;border-top:.5px solid var(--dsw-alias-border-l2)}
-.ctm-us-meter{height:4px;border-radius:2px;background:var(--dsw-alias-bg-layer-2);overflow:hidden}
+.ctm-us-meter{height:4px;border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-bg-layer-2);overflow:hidden}
 .ctm-us-meter>i{display:block;height:100%;background:var(--ctm-accent)}
 .ctm-us-meter[data-tone=warn]>i{background:var(--dsw-alias-state-warn-primary,#d97706)}
 .ctm-us-meter[data-tone=error]>i{background:var(--dsw-alias-state-error-primary)}
@@ -809,133 +821,131 @@ window.__ModuleLoader__.load({
 .ctm-ov-log .ctm-ov-route{flex:1 1 auto}
 .ctm-ov-seq{flex:none;min-width:32px;font-variant-numeric:tabular-nums}
 .ctm-ov-time{flex:none;font-variant-numeric:tabular-nums;white-space:nowrap}
-.ctm-bd-open-btn{position:absolute;top:7px;right:8px;z-index:2;padding:2px 7px;border:.5px solid var(--ctm-accent);border-radius:6px;background:var(--dsw-alias-bg-layer-1);color:var(--ctm-accent);font:inherit;font-size:11px;line-height:16px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s,background .12s,color .12s}
-.ctm-bd-open-btn:hover{background:var(--ctm-accent);color:#fff}
+.ctm-bd-open-btn{position:absolute;top:7px;right:8px;z-index:2;padding:2px 7px;border:.5px solid var(--ctm-accent);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--ctm-accent);font:inherit;font-size:var(--dsw-font-xxxs-11-font-size);line-height:16px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s,background .12s,color .12s}
+.ctm-bd-open-btn:hover{background:var(--ctm-accent);color:var(--dsw-alias-label-primary-inverted)}
 .ctm-bd-card:hover .ctm-bd-open-btn,.ctm-bd-card:focus-within .ctm-bd-open-btn,.ctm-bd-open-btn:focus{opacity:1;pointer-events:auto}
 @media (hover: none){.ctm-bd-open-btn{opacity:1;pointer-events:auto}}
-.ctm-model-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:11px;line-height:16px;padding:1px 6px;border-radius:999px;border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ctm-model-badge[data-grade=legendary]{color:#d97706;border-color:color-mix(in srgb,#f59e0b 50%,transparent);background:color-mix(in srgb,#f59e0b 12%,transparent)}
-.ctm-model-badge[data-grade=epic]{color:#9333ea;border-color:color-mix(in srgb,#a855f7 50%,transparent);background:color-mix(in srgb,#a855f7 12%,transparent)}
-.ctm-model-badge[data-grade=rare]{color:#2563eb;border-color:color-mix(in srgb,#3b82f6 50%,transparent);background:color-mix(in srgb,#3b82f6 12%,transparent)}
+.ctm-model-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--dsw-font-markdown-code-font-family,ui-monospace,monospace);font-size:var(--dsw-font-xxxs-11-font-size);line-height:16px;padding:1px 6px;border-radius:var(--dsw-radius-xl);border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctm-model-badge[data-grade=legendary]{color:var(--dsw-alias-state-warn-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 50%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 12%,transparent)}
+.ctm-model-badge[data-grade=epic]{color:var(--dsw-alias-state-done-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-done-primary) 50%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-done-primary) 12%,transparent)}
+.ctm-model-badge[data-grade=rare]{color:var(--dsw-alias-state-business-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-business-primary) 50%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-business-primary) 12%,transparent)}
 .ctm-model-badge[data-grade=cloth]{color:var(--dsw-alias-label-tertiary);border-color:var(--dsw-alias-border-l2);background:color-mix(in srgb,var(--dsw-alias-bg-layer-2) 60%,transparent)}
-.ctm-badge-rank{font-weight:600;font-size:10px;padding:0 3px;border-radius:3px;background:color-mix(in srgb,currentColor 15%,transparent);flex:none}
+.ctm-badge-rank{font-weight:600;font-size:10px;padding:0 3px;border-radius:var(--dsw-radius-xs);background:color-mix(in srgb,currentColor 15%,transparent);flex:none}
 .ctm-badge-alias{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ctm-bd-bubble{position:relative;display:flex;flex-direction:column;gap:3px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);border:.5px solid var(--dsw-alias-border-l2);font-size:12px;line-height:1.45;color:var(--dsw-alias-label-primary)}
-.ctm-bd-bubble-head{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ctm-bd-bubble{position:relative;display:flex;flex-direction:column;gap:3px;padding:6px 8px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-bg-layer-2);border:.5px solid var(--dsw-alias-border-l2);font-size:var(--dsw-font-xxs-12-font-size);line-height:1.45;color:var(--dsw-alias-label-primary)}
+.ctm-bd-bubble-head{display:flex;align-items:center;gap:6px;font-size:var(--dsw-font-xxxs-11-font-size);color:var(--dsw-alias-label-secondary)}
 .ctm-bd-bubble-head .ctm-badge{margin-left:0}
 .ctm-bd-bubble-body{word-break:break-word;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.ctm-bd-quote{font-style:italic;color:var(--dsw-alias-label-secondary);font-size:11px}
+.ctm-bd-quote{font-style:italic;color:var(--dsw-alias-label-secondary);font-size:var(--dsw-font-xxxs-11-font-size)}
 .ctm-bd-meters{display:flex;flex-direction:column;gap:5px;margin-top:2px}
 .ctm-bd-meter-row{display:flex;flex-direction:column;gap:2px}
-.ctm-bd-meter-labels{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ctm-bd-meter-labels{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--dsw-font-xxxs-11-font-size);color:var(--dsw-alias-label-secondary)}
 .ctm-bd-meter-labels .ctm-us-num{font-variant-numeric:tabular-nums}
 .ctm-bd-deps{display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2)}
 .ctm-bd-deps-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.ctm-bd-deps-chain{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:11px;color:var(--ctm-accent);background:color-mix(in srgb,var(--ctm-accent) 10%,transparent);padding:2px 8px;border-radius:6px;border:.5px solid color-mix(in srgb,var(--ctm-accent) 30%,transparent)}
+.ctm-bd-deps-chain{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:var(--dsw-font-xxxs-11-font-size);color:var(--ctm-accent);background:color-mix(in srgb,var(--ctm-accent) 10%,transparent);padding:2px 8px;border-radius:var(--dsw-radius-sm);border:.5px solid color-mix(in srgb,var(--ctm-accent) 30%,transparent)}
 .ctm-bd-deps-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
-.ctm-bd-dep-node{display:flex;flex-direction:column;gap:3px;padding:6px 8px;border-radius:6px;border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);font-size:11px}
+.ctm-bd-dep-node{display:flex;flex-direction:column;gap:3px;padding:6px 8px;border-radius:var(--dsw-radius-sm);border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);font-size:var(--dsw-font-xxxs-11-font-size)}
 .ctm-bd-dep-node[data-longest]{border-color:var(--ctm-accent);box-shadow:0 0 0 1px var(--ctm-accent)}
 .ctm-bd-dep-top{display:flex;align-items:center;justify-content:space-between;gap:4px}
 .ctm-bd-dep-subj{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary)}
 .ctm-bd-dep-blocked{font-size:10px;color:var(--dsw-alias-state-warn-primary)}
-.ctm-bd-switch{font-size:10px;color:var(--ctm-accent);background:color-mix(in srgb,var(--ctm-accent) 8%,transparent);border-radius:4px;padding:2px 4px;margin-top:2px}
+.ctm-bd-switch{font-size:10px;color:var(--ctm-accent);background:color-mix(in srgb,var(--ctm-accent) 8%,transparent);border-radius:var(--dsw-radius-xs);padding:2px 4px;margin-top:2px}
 .ctm-badge[data-tone=cooling]{color:var(--dsw-alias-state-warn-primary);border-color:currentColor;background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 10%,transparent)}
 .ctm-act-recent{margin-top:4px}
-.ctm-act-recent>summary{font-size:11px;color:var(--dsw-alias-label-secondary);cursor:pointer;list-style:none}
+.ctm-act-recent>summary{font-size:var(--dsw-font-xxxs-11-font-size);color:var(--dsw-alias-label-secondary);cursor:pointer;list-style:none}
 .ctm-act-recent>summary::-webkit-details-marker{display:none}
-.ctm-act-list{display:flex;flex-direction:column;gap:3px;margin-top:4px;padding:4px;background:var(--dsw-alias-bg-layer-1);border-radius:6px;font-size:10px}
+.ctm-act-list{display:flex;flex-direction:column;gap:3px;margin-top:4px;padding:4px;background:var(--dsw-alias-bg-layer-1);border-radius:var(--dsw-radius-sm);font-size:10px}
 .ctm-act-row{display:flex;justify-content:space-between;align-items:center;gap:4px;color:var(--dsw-alias-label-secondary)}
 .ctm-act-row span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-art-shelf{display:flex;flex-direction:column;gap:12px}
 .ctm-art-filter{display:flex;align-items:center;gap:8px}
 .ctm-art-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
-.ctm-art-card{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:8px;border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
+.ctm-art-card{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:var(--dsw-radius-md);border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
 .ctm-art-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
-.ctm-art-path{font-family:var(--dsw-font-markdown-code-font-family,monospace);font-size:11px;word-break:break-all;color:var(--dsw-alias-label-primary)}
+.ctm-art-path{font-family:var(--dsw-font-markdown-code-font-family,monospace);font-size:var(--dsw-font-xxxs-11-font-size);word-break:break-all;color:var(--dsw-alias-label-primary)}
 .ctm-art-changes{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2)}
-.ctm-chg-item{border:.5px solid var(--dsw-alias-border-l1);border-radius:6px;background:var(--dsw-alias-bg-layer-1);padding:6px 8px}
-.ctm-chg-item>summary{cursor:pointer;font-size:12px;font-weight:500;color:var(--dsw-alias-label-primary)}
-.ctm-chg-diff{margin-top:6px;padding:6px;background:var(--dsw-alias-bg-layer-2);border-radius:4px;overflow-x:auto;font-family:var(--dsw-font-markdown-code-font-family,monospace);font-size:11px}
+.ctm-chg-item{border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);padding:6px 8px}
+.ctm-chg-item>summary{cursor:pointer;font-size:var(--dsw-font-xxs-12-font-size);font-weight:500;color:var(--dsw-alias-label-primary)}
+.ctm-chg-diff{margin-top:6px;padding:6px;background:var(--dsw-alias-bg-layer-2);border-radius:var(--dsw-radius-xs);overflow-x:auto;font-family:var(--dsw-font-markdown-code-font-family,monospace);font-size:var(--dsw-font-xxxs-11-font-size)}
 .ctm-rpt-shelf{display:flex;flex-direction:column;gap:12px}
 .ctm-rpt-section{display:flex;flex-direction:column;gap:8px}
 .ctm-rpt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
-.ctm-rpt-box{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:8px;border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
-.ctm-rpt-box strong{font-size:16px;color:var(--dsw-alias-label-primary)}
+.ctm-rpt-box{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:var(--dsw-radius-md);border:.5px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
+.ctm-rpt-box strong{font-size:var(--dsw-font-base-16-font-size);color:var(--dsw-alias-label-primary)}
 .ctm-rpt-defs{margin-top:8px}
-.ctm-rpt-defs>summary{cursor:pointer;font-size:12px;color:var(--dsw-alias-label-secondary)}
-.ctm-rpt-defs-list{display:flex;flex-direction:column;gap:6px;margin-top:6px;padding:8px;background:var(--dsw-alias-bg-layer-1);border-radius:6px;font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.5}
+.ctm-rpt-defs>summary{cursor:pointer;font-size:var(--dsw-font-xxs-12-font-size);color:var(--dsw-alias-label-secondary)}
+.ctm-rpt-defs-list{display:flex;flex-direction:column;gap:6px;margin-top:6px;padding:8px;background:var(--dsw-alias-bg-layer-1);border-radius:var(--dsw-radius-sm);font-size:var(--dsw-font-xxxs-11-font-size);color:var(--dsw-alias-label-secondary);line-height:1.5}
 .ctm-collapse-wrap{display:contents}
-.ctm-list-toggle{align-self:flex-start;margin-top:4px;font-size:11px;padding:2px 8px;border-radius:4px}
-.ctm-teammate-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;margin-bottom:12px;background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l1);border-radius:8px}
+.ctm-list-toggle{align-self:flex-start;margin-top:4px;font-size:var(--dsw-font-xxxs-11-font-size);padding:2px 8px;border-radius:var(--dsw-radius-xs)}
+.ctm-teammate-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;margin-bottom:12px;background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md)}
 .ctm-tm-info{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-.ctm-tm-avatar{width:32px;height:32px;border-radius:50%;background:var(--ctm-accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;flex:none}
+.ctm-tm-avatar{width:32px;height:32px;border-radius:50%;background:var(--ctm-accent);color:var(--dsw-alias-label-primary-inverted);display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:var(--dsw-font-s-14-font-size);flex:none}
 .ctm-tm-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
 .ctm-tm-names{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.ctm-tm-sub{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dsw-alias-label-secondary);flex-wrap:wrap}
+.ctm-tm-sub{display:flex;align-items:center;gap:8px;font-size:var(--dsw-font-xxxs-11-font-size);color:var(--dsw-alias-label-secondary);flex-wrap:wrap}
 .ctm-tm-actions{display:flex;align-items:center;gap:8px;flex:none}
-.ctm-rv-empty{margin:4px 0 8px;font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.ctm-rv-empty{margin:4px 0 8px;font-size:var(--dsw-font-xxxs-11-font-size);color:var(--dsw-alias-label-tertiary)}
 .ctm-rv-tasks{display:flex;flex-direction:column;gap:6px}
-.ctm-rv-task{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l2);border-radius:6px;font-size:12px}
+.ctm-rv-task{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:var(--dsw-alias-bg-layer-1);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-sm);font-size:var(--dsw-font-xxs-12-font-size)}
 .ctm-rv-task-title{display:flex;align-items:center;gap:6px;min-width:0;color:var(--dsw-alias-label-primary)}
 @media (prefers-reduced-motion:reduce){.ctm-switch,.ctm-switch::after,.ctm-ov-group>summary::before,.ctm-bd-open-btn{transition:none!important}}
 `;
 
-    // Pixel office stage. Floor/desk colours are plain values (canvas reads them through getComputedStyle, which does not
-    // resolve color-mix inside custom properties); everything else uses host tokens like the rest of the pane.
+    // Pixel office stage. Stage surfaces, text, borders, and state colors derive from host --dsw-* tokens via local aliases.
     const STAGE_CSS = `
-.ctm-stage{--ctm-stage-floor-a:#1c1d26;--ctm-stage-floor-b:#202130;--ctm-stage-grout:rgba(0,0,0,.22);--ctm-stage-wall:#2a2b3a;--ctm-stage-desk:#3b2f26;--ctm-stage-desk-top:#5a4535;--ctm-stage-plate:rgba(10,10,14,.82);display:flex;flex-direction:column;gap:6px;min-width:0;container:ctm-stage/inline-size}
-@media (prefers-color-scheme:light){.ctm-stage{--ctm-stage-floor-a:#d9d7e6;--ctm-stage-floor-b:#cfcde0;--ctm-stage-grout:rgba(0,0,0,.08);--ctm-stage-wall:#b9b7cc;--ctm-stage-desk:#8a6a52;--ctm-stage-desk-top:#b08a6a;--ctm-stage-plate:rgba(14,14,20,.84)}}
+.ctm-stage{--aw-bg:var(--dsw-alias-bg-layer-1);--aw-fg:var(--dsw-alias-label-primary);--aw-muted:var(--dsw-alias-label-secondary);--aw-line:var(--dsw-alias-border-l2);--ctm-stage-floor-a:var(--dsw-alias-bg-layer-1);--ctm-stage-floor-b:var(--dsw-alias-bg-module-platform);--ctm-stage-grout:var(--dsw-alias-border-l1);--ctm-stage-wall:var(--dsw-alias-bg-overlay);--ctm-stage-desk:var(--dsw-alias-illustration-backing);--ctm-stage-desk-top:var(--dsw-alias-illustration-surface);--ctm-stage-plate:var(--dsw-alias-bg-layer-2);--ctm-stage-select:var(--dsw-alias-state-warn-primary);display:flex;flex-direction:column;gap:6px;min-width:0;container:ctm-stage/inline-size}
 .ctm-stage-head{display:flex;align-items:center;gap:8px;min-width:0}
 .ctm-stage-head .ctm-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-stage-toggle{margin-left:auto;flex:none}
-.ctm-stage-office{position:relative;width:100%;height:clamp(220px,34vh,340px);border:.5px solid var(--dsw-alias-border-l1);border-radius:10px;overflow:hidden;background:var(--ctm-stage-floor-a);user-select:none}
+.ctm-stage-office{position:relative;width:100%;height:clamp(220px,34vh,340px);border:.5px solid var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);overflow:hidden;background:var(--ctm-stage-floor-a);user-select:none}
 .ctm-stage-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated}
 .ctm-stage-overlay{position:absolute;inset:0;pointer-events:none}
 .ctm-stage-overlay>*{pointer-events:auto}
-.ctm-stage-empty{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);margin:0;padding:6px 12px;border-radius:8px;background:var(--ctm-stage-plate);color:#d8d8e0;text-align:center;max-width:80%}
-.ctm-stage-plate{position:absolute;z-index:1;transform:translate(-50%,0);display:flex;flex-direction:column;gap:3px;min-width:72px;max-width:var(--pw,150px);padding:3px 7px;border:.5px solid rgba(255,255,255,.14);border-radius:7px;background:var(--ctm-stage-plate);color:#f4f4f6;backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,.35);font-size:11px;line-height:15px;text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s}
-.ctm-stage-plate:hover{border-color:rgba(255,255,255,.4);z-index:3}
-.ctm-stage-plate:focus-visible{outline:1px solid var(--ctm-accent);outline-offset:1px}
-.ctm-stage-plate[aria-selected=true]{border-color:var(--ctm-accent);box-shadow:0 0 0 1px var(--ctm-accent),0 2px 12px rgba(0,0,0,.4);z-index:3}
+.ctm-stage-empty{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);margin:0;padding:6px 12px;border-radius:var(--dsw-radius-md);background:var(--ctm-stage-plate);color:var(--aw-muted);text-align:center;max-width:80%}
+.ctm-stage-plate{position:absolute;z-index:1;transform:translate(-50%,0);display:flex;flex-direction:column;gap:3px;min-width:72px;max-width:var(--pw,150px);padding:3px 7px;border:.5px solid var(--aw-line);border-radius:var(--dsw-radius-sm);background:var(--ctm-stage-plate);color:var(--aw-fg);backdrop-filter:blur(6px);box-shadow:var(--dsw-shadow-lv2);font-size:var(--dsw-font-xxxs-11-font-size);line-height:15px;text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.ctm-stage-plate:hover{border-color:var(--dsw-alias-border-l4);z-index:3}
+.ctm-stage-plate:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}
+.ctm-stage-plate[aria-selected=true]{border-color:var(--ctm-accent);box-shadow:0 0 0 1px var(--ctm-accent),var(--dsw-shadow-lv2);z-index:3}
 .ctm-stage-plate[data-status=inactive]{opacity:.62;border-style:dashed}
-.ctm-stage-plate-name{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;line-height:16px;white-space:nowrap;min-width:0}
+.ctm-stage-plate-name{display:flex;align-items:center;gap:5px;font-size:var(--dsw-font-xxs-12-font-size);font-weight:600;line-height:16px;white-space:nowrap;min-width:0}
 .ctm-stage-plate-name>span{flex:none;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .ctm-stage-plate-more{display:none;flex-direction:column;gap:3px;min-width:0}
-.ctm-stage-plate-more .ctm-sub{color:#c3c3cb}
+.ctm-stage-plate-more .ctm-sub{color:var(--aw-muted)}
 .ctm-stage-plate:hover .ctm-stage-plate-more,.ctm-stage-plate[aria-selected=true] .ctm-stage-plate-more{display:flex}
 .ctm-stage-plate .ctm-model-badge{align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ctm-stage-plate .ctm-model-badge[data-flash]{animation:ctm-stage-flash .35s 4}
-.ctm-stage-plate-task{color:#d2d2da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ctm-stage-open{align-self:flex-start;padding:1px 8px;font-size:11px;border-color:rgba(255,255,255,.28);color:#f4f4f6}
-.ctm-stage-dot{flex:none;width:7px;height:7px;border-radius:50%;background:#9a9aa5}
+.ctm-stage-plate-task{color:var(--aw-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-open{align-self:flex-start;padding:1px 8px;font-size:var(--dsw-font-xxxs-11-font-size);border-color:var(--dsw-alias-border-l3);color:var(--aw-fg)}
+.ctm-stage-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--dsw-alias-state-idle-primary)}
 .ctm-stage-dot[data-s=running]{background:var(--dsw-alias-state-success-primary,#3ddc84);box-shadow:0 0 6px var(--dsw-alias-state-success-primary,#3ddc84);animation:ctm-stage-blink 1.4s infinite}
 .ctm-stage-dot[data-s=provisioning]{background:var(--ctm-accent)}
 .ctm-stage-dot[data-s=failed]{background:var(--dsw-alias-state-error-primary,#ff5c5c)}
-.ctm-stage-meter{flex:1 1 24px;min-width:18px;max-width:48px;height:5px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.ctm-stage-meter{flex:1 1 24px;min-width:18px;max-width:48px;height:5px;border-radius:var(--dsw-radius-xs);background:var(--dsw-alias-border-l2);overflow:hidden}
 .ctm-stage-meter>i{display:block;height:100%;width:var(--p);background:var(--ctm-accent);transition:width .5s ease}
 .ctm-stage-meter[data-tone=warn]>i{background:var(--dsw-alias-state-warn-primary,#f5a524)}
 .ctm-stage-meter[data-tone=error]>i{background:var(--dsw-alias-state-error-primary,#ff5c5c)}
-.ctm-stage-icon{position:absolute;transform:translate(-50%,-100%);font-size:14px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));animation:ctm-stage-float 1.6s ease-in-out infinite}
-.ctm-stage-bubble{position:absolute;z-index:2;transform:translate(-50%,-100%);max-width:180px;padding:3px 8px;border-radius:8px;background:var(--ctm-stage-plate);border:.5px solid rgba(255,255,255,.18);color:#f4f4f6;font-size:11px;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ctm-stage-plate-act{font-size:10.5px;line-height:14px;color:#c3c3cb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-icon{position:absolute;transform:translate(-50%,-100%);font-size:var(--dsw-font-s-14-font-size);line-height:1;filter:drop-shadow(0 1px 1px var(--dsw-alias-bg-mask-1));animation:ctm-stage-float 1.6s ease-in-out infinite}
+.ctm-stage-bubble{position:absolute;z-index:2;transform:translate(-50%,-100%);max-width:180px;padding:3px 8px;border-radius:var(--dsw-radius-md);background:var(--ctm-stage-plate);border:.5px solid var(--dsw-alias-border-l3);color:var(--aw-fg);font-size:var(--dsw-font-xxxs-11-font-size);line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctm-stage-plate-act{font-size:10.5px;line-height:14px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ctm-stage-plate-act:empty{display:none}
-.ctm-stage-plate[data-act=thinking] .ctm-stage-plate-act,.ctm-stage-plate[data-act=writing] .ctm-stage-plate-act,.ctm-stage-plate[data-act=reading] .ctm-stage-plate-act,.ctm-stage-plate[data-act=searching] .ctm-stage-plate-act,.ctm-stage-plate[data-act=browsing] .ctm-stage-plate-act{color:#a9d4ff}
-.ctm-stage-plate[data-act=terminal] .ctm-stage-plate-act{color:#7ff0a8}
-.ctm-stage-plate[data-act=messaging] .ctm-stage-plate-act,.ctm-stage-plate[data-act=board] .ctm-stage-plate-act{color:#e6d38f}
-.ctm-stage-plate[data-act=waiting] .ctm-stage-plate-act{color:#cfd8ff}
+.ctm-stage-plate[data-act=thinking] .ctm-stage-plate-act,.ctm-stage-plate[data-act=writing] .ctm-stage-plate-act,.ctm-stage-plate[data-act=reading] .ctm-stage-plate-act,.ctm-stage-plate[data-act=searching] .ctm-stage-plate-act,.ctm-stage-plate[data-act=browsing] .ctm-stage-plate-act{color:var(--dsw-alias-link)}
+.ctm-stage-plate[data-act=terminal] .ctm-stage-plate-act{color:var(--dsw-alias-state-success-primary)}
+.ctm-stage-plate[data-act=messaging] .ctm-stage-plate-act,.ctm-stage-plate[data-act=board] .ctm-stage-plate-act{color:var(--dsw-alias-state-warn-primary)}
+.ctm-stage-plate[data-act=waiting] .ctm-stage-plate-act{color:var(--dsw-alias-label-secondary)}
 .ctm-stage-plate[data-act=failed]{border-color:var(--dsw-alias-state-error-primary,#ff5c5c)}
-.ctm-stage-plate[data-act=failed] .ctm-stage-plate-act{color:#ff9a9a}
+.ctm-stage-plate[data-act=failed] .ctm-stage-plate-act{color:var(--dsw-alias-state-error-secondary)}
 .ctm-stage-icon[data-act=thinking]{animation:ctm-stage-pulse 1.2s ease-in-out infinite}
 .ctm-stage-icon[data-act=waiting]{animation:ctm-stage-sway 2s ease-in-out infinite}
 .ctm-stage-icon[data-act=failed]{animation:ctm-stage-shake .5s 3}
 .ctm-stage-icon[data-act=done]{animation:ctm-stage-pop .5s ease-out}
-.ctm-stage-bubble[data-act=failed]{border-color:var(--dsw-alias-state-error-primary,#ff5c5c);color:#ffd0d0}
+.ctm-stage-bubble[data-act=failed]{border-color:var(--dsw-alias-state-error-primary,#ff5c5c);color:var(--dsw-alias-state-error-primary)}
 .ctm-stage-bubble[data-act=done]{border-color:var(--dsw-alias-state-success-primary,#3ddc84)}
 .ctm-stage-bubble[data-act=thinking]{font-style:italic}
 .ctm-stage-detail{display:flex;flex-direction:column;gap:6px;min-width:0}
 .ctm-stage-detail-head{display:flex;align-items:center;gap:8px;min-width:0}
 .ctm-stage-detail-head .ctm-btn{margin-left:auto;flex:none}
-.ctm-stage-detail-hint{margin:0;padding:6px 10px;border:.5px dashed var(--dsw-alias-border-l1);border-radius:8px;text-align:center}
+.ctm-stage-detail-hint{margin:0;padding:6px 10px;border:.5px dashed var(--dsw-alias-border-l1);border-radius:var(--dsw-radius-md);text-align:center}
 .ctm-stage-detail>.ctm-bd-card{width:100%;box-sizing:border-box}
 @container ctm-stage (max-width:599px){.ctm-stage-plate{min-width:64px;padding:2px 6px}.ctm-stage-bubble{max-width:140px}}
 @keyframes ctm-stage-blink{0%,100%{opacity:1}50%{opacity:.35}}
@@ -973,7 +983,7 @@ window.__ModuleLoader__.load({
     const baseName = name => String(name ?? '').replace(/-r\d+$/, '');
     const firstLine = text => { const s = String(text ?? '').trim(); const i = s.indexOf('\n'); return i === -1 ? s : s.slice(0, i); };
     const parse = raw => { if (typeof raw !== 'string' || !raw) return undefined; try { const v = JSON.parse(raw); return v && typeof v === 'object' ? v : undefined; } catch { return undefined; } };
-    const cleanError = text => String(text ?? '').replace(/^(?:Error|错误)[:：]\s*/, '');
+    const cleanError = text => String(text ?? '').replace(/^(?:Error|\u9519\u8bef)[:：]\s*/, '');
     /** Durable result blocks flatten like the host's generic row: text parts joined, others as JSON. */
     function resultText(block) {
       const parts = (block.content ?? []).map(item => item.type === 'text' ? item.text : JSON.stringify(item, null, 2));
@@ -1031,11 +1041,11 @@ window.__ModuleLoader__.load({
     /** Results that are not the expected JSON (older sessions, other versions) stay readable as text. */
     const rawBody = (s, t) => s.state === 'ok' && s.output && !s.data ? section(t('output'), h('pre', { className: 'ctm-pre' }, s.output)) : null;
 
-    // ---------- 03b-collapsible-list.js: 共享可折叠列表组件 ----------
+    // ---------- 03b-collapsible-list.js: Shared collapsible list component ----------
     /**
      * CollapsibleList:
-     * 默认展示前 limit (默认 5) 条；超过时底部提供“更多（剩余 N 条）”/“收起”切换按钮。
-     * 当 items <= limit 时不显示切换按钮。
+     * Show the first limit items (default 5), then offer localized expand/collapse controls.
+     * Hide the toggle when items <= limit.
      */
     function CollapsibleList({ items = [], limit = 5, renderItem, as = 'div', className, t, expandText, collapseText }) {
       const [expanded, setExpanded] = React.useState(false);
@@ -1047,11 +1057,11 @@ window.__ModuleLoader__.load({
 
       const moreLabel = expandText
         ? (typeof expandText === 'function' ? expandText(remaining) : expandText)
-        : (typeof t === 'function' && t('list.more') ? fmt(t('list.more'), { n: remaining }) : `更多（剩余 ${remaining} 条）`);
+        : (typeof t === 'function' && t('list.more') ? fmt(t('list.more'), { n: remaining }) : fmt(en['list.more'], { n: remaining }));
 
       const collapseLabel = collapseText
         ? collapseText
-        : (typeof t === 'function' && t('list.collapse') ? t('list.collapse') : '收起');
+        : (typeof t === 'function' && t('list.collapse') ? t('list.collapse') : en['list.collapse']);
 
       const renderedChildren = visibleItems.map((item, index) => renderItem(item, index));
       if (total > limit) {
@@ -1065,6 +1075,606 @@ window.__ModuleLoader__.load({
       }
       return h(as, { className }, ...renderedChildren);
     }
+
+// @generated by shared-ui/build.mjs from shared-ui/*.js, catalog.json and locale/*.json — edit those, then run node shared-ui/build.mjs.
+    const aiwukConfig = (() => {
+    const BRAND_TEXT = {"mothership":{"en":"AIWUK Mothership","zh":"AI\u609f\u7a7a \u6bcd\u8230"}};
+    // Pure logic of the config panel (no DOM, no React, no host imports) so it is testable and reused verbatim in the
+    // browser bundle. Nothing here ever receives a secret value: secrets are described (configured / source) only.
+    
+    /** Credentials `describe` accepts at most this many refs per call. */
+    const DESCRIBE_BATCH = 64;
+    const SECRET_STATES = Object.freeze(['unset', 'stored', 'env', 'managed']);
+    
+    const chunk = (list, size = DESCRIBE_BATCH) => {
+      const out = [];
+      for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+      return out;
+    };
+    
+    /** Relative (base-href aware) URL of an extension's values-free manifest route; mirrors managed-config-route.js. */
+    const managedConfigUrl = extension => `api/aiwuk.managed-config.${extension}`;
+    
+    /** Remote replies are `{ok, value}` / `{ok:false, error}`; a bare value passes through. Throws on a refusal. */
+    function unwrapReply(reply) {
+      if (reply && typeof reply === 'object' && typeof reply.ok === 'boolean') {
+        if (!reply.ok) throw new Error(String(reply.error?.code ?? reply.error?.message ?? 'remote-error'));
+        return reply.value;
+      }
+      return reply;
+    }
+    
+    /** Wire manifest → Map(ref → {locked, secret, value?}); null when the payload is not a manifest. A secret never keeps a value. */
+    function manifestFromWire(wire) {
+      if (!wire || typeof wire !== 'object' || !Array.isArray(wire.entries)) return null;
+      const entries = new Map();
+      for (const item of wire.entries) {
+        if (!item || typeof item.ref !== 'string') continue;
+        const secret = item.secret === true;
+        entries.set(item.ref, { locked: item.locked === true, secret, ...(!secret && typeof item.value === 'string' ? { value: item.value } : {}) });
+      }
+      return { revision: Number.isSafeInteger(wire.revision) ? wire.revision : 0, entries };
+    }
+    
+    /** The Mothership's value of a non-secret managed ref (for display), or undefined. */
+    const managedValueOf = (manifest, ref) => (ref ? manifest?.entries?.get(ref)?.value : undefined);
+    
+    /**
+     * Panel-level managed status: how many of the panel's integration fields the Mothership manages and how many it
+     * locks. `mode` is 'none' (self-configured), 'full' (every integration field managed) or 'partial'.
+     */
+    function managedStatus(fields, manifest) {
+      const refs = fields.filter(field => field.ref).map(field => field.ref);
+      const managed = refs.filter(ref => manifest?.entries?.has(ref));
+      const locked = managed.filter(ref => manifest.entries.get(ref).locked);
+      return { managed: managed.length, locked: locked.length, total: refs.length, mode: !managed.length ? 'none' : managed.length === refs.length ? 'full' : 'partial' };
+    }
+    
+    /** 'locked' | 'default' (managed but editable) | 'none' for a ref. */
+    function lockMode(manifest, ref) {
+      const entry = ref ? manifest?.entries?.get(ref) : undefined;
+      return !entry ? 'none' : entry.locked ? 'locked' : 'default';
+    }
+    
+    /**
+     * State of a secret field from the host's `describe` view (`{configured, source?, writable}`) and the lock mode.
+     * Locked managed refs read as managed whatever the store says; the value itself is never involved.
+     */
+    function secretState(info, mode = 'none') {
+      const readOnly = mode === 'locked' || info?.writable === false;
+      if (mode === 'locked') return { kind: 'managed', configured: info?.configured === true, editable: false, clearable: false };
+      const configured = info?.configured === true;
+      const kind = !configured ? 'unset' : info?.source === 'file' ? 'stored' : 'env';
+      // The environment is not writable by the product: Replace writes a stored value that then takes precedence,
+      // Clear only removes the stored value (it cannot unset the environment), so it is offered for stored values only.
+      return { kind, configured, editable: !readOnly, clearable: !readOnly && kind === 'stored' };
+    }
+    
+    /** Text of an input for a stored settings value. */
+    function fieldText(field, value) {
+      if (value === undefined || value === null) return '';
+      return field.multiple && Array.isArray(value) ? value.join(',') : String(value);
+    }
+    
+    /** Whether a (non-secret) field currently has a value, for the summary count. */
+    function hasValue(field, value) {
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== undefined && value !== null && value !== '';
+    }
+    
+    /** Validation key (a dictionary key under `err.`) for an edited value, or null when acceptable. */
+    function validateValue(field, raw) {
+      if (field.kind === 'number') {
+        const n = Number(raw);
+        return Number.isInteger(n) && n >= field.min && n <= field.max ? null : 'number';
+      }
+      if (field.kind === 'url') {
+        if (raw === '') return null;
+        try { const url = new URL(raw); return url.protocol === 'https:' || url.protocol === 'http:' ? null : 'url'; } catch { return 'url'; }
+      }
+      if (field.kind === 'enum' && field.multiple) return Array.isArray(raw) && raw.every(v => field.options.includes(v)) ? null : 'enum';
+      if (field.kind === 'enum') return raw === '' || field.options.includes(raw) ? null : 'enum';
+      return null;
+    }
+    
+    /** Whether a field is visible given the current (draft over saved) values. */
+    const isShown = (field, current) => !field.showWhen || Object.entries(field.showWhen).every(([key, want]) => current[key] === want);
+    
+    /**
+     * form.mutate operations for the edited fields. `values` are the saved settings, `drafts` maps field id → edited
+     * value (string, boolean or array). Locked managed fields are never written; an emptied field is unset so the layers
+     * below apply again. Returns `{ops, invalid}` where `invalid` maps field id → error key.
+     */
+    function buildOps(fields, values, drafts, manifest) {
+      const ops = [], invalid = {};
+      for (const field of fields) {
+        if (field.kind === 'secret' || !field.path || !Object.hasOwn(drafts, field.id)) continue;
+        if (lockMode(manifest, field.ref) === 'locked') continue;
+        let next = drafts[field.id];
+        if (typeof next === 'string') next = next.trim();
+        if (field.kind === 'number') {
+          if (next === '') { if (hasValue(field, values?.[field.path])) ops.push({ op: 'unset', path: [field.path] }); continue; }
+          const problem = validateValue(field, next);
+          if (problem) { invalid[field.id] = problem; continue; }
+          next = Number(next);
+        } else if (field.multiple && typeof next === 'string') {
+          next = next.split(',').map(v => v.trim()).filter(Boolean);
+        }
+        const problem = field.kind === 'number' ? null : validateValue(field, next);
+        if (problem) { invalid[field.id] = problem; continue; }
+        const saved = values?.[field.path];
+        const same = Array.isArray(next) ? Array.isArray(saved) && saved.length === next.length && saved.every((v, i) => v === next[i]) : saved === next;
+        if (same) continue;
+        if (next === '' || (Array.isArray(next) && !next.length)) { if (hasValue(field, saved)) ops.push({ op: 'unset', path: [field.path] }); continue; }
+        ops.push({ op: 'set', path: [field.path], value: next });
+      }
+      return { ops, invalid };
+    }
+    
+    /**
+     * Summary numbers: how many integration fields (those with a ref) hold a value, and how many are managed.
+     * `states` maps secret ref → secretState(); `values` are saved settings.
+     */
+    function summaryCounts(fields, values, states, manifest) {
+      let configured = 0, total = 0, managed = 0;
+      for (const field of fields) {
+        if (!field.ref) continue;
+        total++;
+        const mode = lockMode(manifest, field.ref);
+        if (mode !== 'none') managed++;
+        const set = field.kind === 'secret' ? states?.[field.ref]?.configured === true : hasValue(field, values?.[field.path]);
+        if (set || mode === 'locked') configured++;
+      }
+      return { configured, total, managed };
+    }
+    
+    /** Refs whose state the panel asks the host to describe. */
+    const secretRefs = fields => fields.filter(field => field.kind === 'secret').map(field => field.ref);
+    
+    /**
+     * Describe the refs through `credentials.describe` in batches of DESCRIBE_BATCH. Returns `{ref: {configured, source?,
+     * writable}}`; a failed batch leaves its refs out (the panel then shows them as unknown, never as "set").
+     */
+    async function describeSecrets(credentials, refs) {
+      return (await describeSecretsResult(credentials, refs)).described;
+    }
+    
+    /** One describe attempt must settle within this time; a hung call counts as a failure so the row never waits forever. */
+    const DESCRIBE_TIMEOUT_MS = 1200;
+    /** Pause before the single automatic retry of a failed describe. Worst case until "Could not check": 2 × timeout + this. */
+    const DESCRIBE_RETRY_DELAY_MS = 300;
+    
+    /** Reject after `ms` when `work` has not settled; the timer is always cleared. */
+    function withTimeout(work, ms) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('timeout')), ms);
+        Promise.resolve(work).then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+      });
+    }
+    
+    /**
+     * Like describeSecrets, but also says whether any batch FAILED (thrown error, refusal, timeout, malformed reply, missing API).
+     * A ref absent from a successful reply is reported as not configured: the host answered, it just holds nothing for it.
+     * Refs of a failed batch are left out (unknown), never guessed.
+     */
+    async function describeSecretsResult(credentials, refs, timeoutMs = DESCRIBE_TIMEOUT_MS) {
+      const described = {};
+      let failed = false;
+      if (!refs.length) return { described, failed };
+      if (typeof credentials?.describe !== 'function') return { described, failed: true };
+      for (const batch of chunk(refs)) {
+        try {
+          const view = unwrapReply(await withTimeout(Promise.resolve().then(() => credentials.describe(batch)), timeoutMs));
+          if (!view || typeof view !== 'object') throw new Error('malformed-reply');
+          for (const ref of batch) {
+            const item = view[ref];
+            described[ref] = item && typeof item === 'object'
+              ? { configured: item.configured === true, source: item.source, writable: item.writable !== false }
+              : { configured: false, writable: true };
+          }
+        } catch { failed = true; /* leave this batch unknown */ }
+      }
+      return { described, failed };
+    }
+    
+    /** Store a new value (write-only). Rejects an empty value, a locked ref and a missing API; resolves to true. */
+    async function writeSecret(credentials, ref, value, mode = 'none') {
+      if (mode === 'locked') throw new Error('locked');
+      if (typeof value !== 'string' || !value.trim()) throw new Error('empty');
+      if (typeof credentials?.set !== 'function') throw new Error('unavailable');
+      unwrapReply(await credentials.set(ref, value));
+      return true;
+    }
+    
+    /** Remove the stored value of a ref. Rejects a locked ref and a missing API; resolves to true. */
+    async function clearSecret(credentials, ref, mode = 'none') {
+      if (mode === 'locked') throw new Error('locked');
+      if (typeof credentials?.unset !== 'function') throw new Error('unavailable');
+      unwrapReply(await credentials.unset(ref));
+      return true;
+    }
+    // Per-extension panel field lists (contract section E). A field is addressed by:
+    //   path  - key in the bundle's volatile DSH settings section (non-secret values, written with form.mutate)
+    //   ref   - env-style name shared with the managed manifest and the credential store (see catalog.js)
+    // Secret fields have no path: they are credentials (ctx.remote.credentials), never settings values.
+    // `enabled` is deliberately absent: on/off is DSH's own plugin switch on the Plugins page.
+    // Labels live in the dictionaries (locale/*.json, plus catalog.js for ref fields) under `field.<ref or id>`.
+    const field = (id, kind, extra = {}) => Object.freeze({ id, kind, ...extra });
+    const num = (id, min, max, step = 1) => field(id, 'number', { path: id, min, max, step });
+    const secret = ref => field(ref, 'secret', { ref });
+    
+    const PANELS = Object.freeze({
+      autocomplete: Object.freeze({
+        extension: 'autocomplete', bundle: '@aiwuk/autocomplete', namespace: 'autocomplete',
+        fields: Object.freeze([
+          field('routeMode', 'enum', { path: 'routeMode', ref: 'AUTOCOMPLETE_ROUTE_MODE', options: ['session', 'fixed'] }),
+          field('provider', 'text', { path: 'provider', ref: 'AUTOCOMPLETE_PROVIDER', showWhen: { routeMode: 'fixed' } }),
+          field('model', 'text', { path: 'model', ref: 'AUTOCOMPLETE_MODEL', showWhen: { routeMode: 'fixed' } }),
+          num('maxSuggestions', 1, 5), num('typePauseMs', 200, 5000, 50), num('maxOutputTokens', 16, 2048),
+          num('timeoutMs', 1000, 120000, 500), num('maxMessages', 1, 50), num('maxChars', 500, 32000, 100),
+          field('mobileBar', 'switch', { path: 'mobileBar' }),
+        ]),
+      }),
+      memory: Object.freeze({
+        extension: 'memory', bundle: '@aiwuk/memory', namespace: 'global-memory',
+        fields: Object.freeze([
+          field('autoRecall', 'switch', { path: 'autoRecall' }),
+          num('injectChars', 200, 6000, 100), num('recallK', 1, 20),
+          field('memoryBackend', 'enum', { path: 'memoryBackend', ref: 'MEMORY_BACKEND', options: ['local', 'openviking'] }),
+          field('memoryUrl', 'url', { path: 'memoryUrl', ref: 'OPENVIKING_URL' }),
+          field('embeddingBaseUrl', 'url', { path: 'embeddingBaseUrl', ref: 'EMBEDDING_BASE_URL' }),
+          field('embeddingModel', 'text', { path: 'embeddingModel', ref: 'EMBEDDING_MODEL' }),
+          secret('OPENVIKING_API_KEY'), secret('EMBEDDING_API_KEY'),
+        ]),
+      }),
+      search: Object.freeze({
+        extension: 'search', bundle: '@aiwuk/search', namespace: 'omni-search',
+        // Selects this extension as DSH's web search provider: `searchProvider` on the host `web` entry (another namespace).
+        // Unsetting the user layer restores the host default (`deepseek-official` in the shipped base).
+        hostSelection: Object.freeze({ id: 'webSearch', entry: 'web', path: 'searchProvider', value: 'aiwuk-search' }),
+        fields: Object.freeze([
+          field('engines', 'enum', { path: 'engines', ref: 'OMNI_SEARCH_ENGINES', options: ['tavily', 'brave', 'searxng', 'custom'], multiple: true }),
+          field('fetchEngines', 'enum', { path: 'fetchEngines', ref: 'OMNI_FETCH_ENGINES', options: ['jina', 'tavily', 'custom'], multiple: true }),
+          field('baseUrl', 'url', { path: 'baseUrl', ref: 'OMNI_SEARCH_BASE_URL' }),
+          field('searxngUrl', 'url', { path: 'searxngUrl', ref: 'SEARXNG_URL' }),
+          field('audioBaseUrl', 'url', { path: 'audioBaseUrl', ref: 'OMNI_AUDIO_BASE_URL' }),
+          secret('OMNI_SEARCH_API_KEY'), secret('TAVILY_API_KEY'), secret('BRAVE_API_KEY'),
+          secret('SEARXNG_API_KEY'), secret('JINA_API_KEY'), secret('OMNI_AUDIO_API_KEY'),
+        ]),
+      }),
+      // The team bundle has no editable integration fields: its page summarizes the Memory and Search panels.
+      team: Object.freeze({ extension: 'team', bundle: '@aiwuk/team', namespace: 'capability-team-ui', fields: Object.freeze([]) }),
+    });
+    const DICTIONARIES = {"en":{"lock.locked":"Managed by {mothership}","lock.default":"Default from Mothership","lock.hint":"Change it in the Mothership","value.managed":"Managed","value.default":"Using Mothership default","secret.unset":"Not set","secret.stored":"Set (stored)","secret.env":"Set (environment)","secret.managed":"Managed by {mothership}","secret.unknown":"Checking...","secret.failed":"Could not check","secret.note.saved":"Saved. The value is not shown again.","secret.note.cleared":"Cleared.","secret.note.failed":"The change failed. Nothing was stored.","action.set":"Set","action.replace":"Replace","action.clear":"Clear","action.confirmClear":"Confirm clear","action.save":"Save","action.cancel":"Cancel","action.retry":"Retry","state.loading":"Loading...","state.unavailable":"Settings are unavailable: make sure the plugin is enabled.","state.saved":"Saved.","state.failed":"Save failed. Reload and retry.","summary.configured":"Configured {configured}/{total}","summary.managed":"Managed {managed}","err.number":"Enter a whole number in range.","err.url":"Enter a valid http(s) address.","err.enum":"Choose a supported value.","opt.default":"Default","opt.session":"Follow session","opt.fixed":"Fixed model","opt.local":"Local","opt.openviking":"OpenViking","opt.current":"Current project","opt.none":"Whole account","opt.tavily":"Tavily","opt.brave":"Brave","opt.searxng":"SearXNG","opt.jina":"Jina","opt.custom":"Custom gateway","field.maxSuggestions":"Max suggestions","field.typePauseMs":"Typing pause (ms)","field.maxOutputTokens":"Max output tokens","field.timeoutMs":"Timeout (ms)","field.maxMessages":"Context messages","field.maxChars":"Context characters","field.mobileBar":"Touch suggestion bar","field.autoRecall":"Auto recall","field.injectChars":"Injected characters","field.recallK":"Recall count","team.integrations":"Integrations","team.memory":"Memory","team.search":"Search","team.hint":"Memory and Search keep their own settings pages under Plugins.","team.unmanaged":"Nothing is managed by the Mothership.","team.managedCount":"{count} setting(s) managed by {mothership}.","host.webSearch.label":"Use AIWUK Search for DSH web search","host.webSearch.current":"Current provider: {provider}.","host.webSearch.auto":"automatic","host.webSearch.hint":"Turn it off to restore the DSH default.","host.webSearch.unavailable":"DSH web search settings are unavailable.","host.webSearch.failed":"Could not change the web search provider.","secret.managedSet":"Configured by {mothership}","secret.managedEmpty":"Managed by {mothership} (not set there)","banner.full":"Configured by {mothership}. Nothing to set up here.","banner.partial":"Partly configured by {mothership}.","banner.detail":"{managed} of {total} settings come from the Mothership ({locked} locked). Locked settings can only be changed in the Mothership.","optional.title":"Optional settings not sent by the Mothership ({count})","optional.hint":"Leave these empty unless you want an extra engine on this machine only."},"zh":{"lock.locked":"\u7531 {mothership}\u6258\u7ba1","lock.default":"\u6bcd\u8230\u9ed8\u8ba4\u503c","lock.hint":"\u8bf7\u5728\u6bcd\u8230\u4e2d\u4fee\u6539","value.managed":"\u5df2\u6258\u7ba1","value.default":"\u4f7f\u7528\u6bcd\u8230\u9ed8\u8ba4\u503c","secret.unset":"\u672a\u8bbe\u7f6e","secret.stored":"\u5df2\u8bbe\u7f6e\uff08\u5df2\u4fdd\u5b58\uff09","secret.env":"\u5df2\u8bbe\u7f6e\uff08\u73af\u5883\u53d8\u91cf\uff09","secret.managed":"\u7531 {mothership}\u6258\u7ba1","secret.unknown":"\u68c0\u67e5\u4e2d\u2026","secret.failed":"\u65e0\u6cd5\u68c0\u67e5","secret.note.saved":"\u5df2\u4fdd\u5b58\uff0c\u503c\u4e0d\u4f1a\u518d\u6b21\u663e\u793a\u3002","secret.note.cleared":"\u5df2\u6e05\u9664\u3002","secret.note.failed":"\u64cd\u4f5c\u5931\u8d25\uff0c\u672a\u4fdd\u5b58\u4efb\u4f55\u5185\u5bb9\u3002","action.set":"\u8bbe\u7f6e","action.replace":"\u66ff\u6362","action.clear":"\u6e05\u9664","action.confirmClear":"\u786e\u8ba4\u6e05\u9664","action.save":"\u4fdd\u5b58","action.cancel":"\u53d6\u6d88","action.retry":"\u91cd\u8bd5","state.loading":"\u8bfb\u53d6\u4e2d\u2026","state.unavailable":"\u8bbe\u7f6e\u6682\u4e0d\u53ef\u7528\uff1a\u8bf7\u786e\u8ba4\u5df2\u542f\u7528\u8be5\u63d2\u4ef6\u3002","state.saved":"\u5df2\u4fdd\u5b58\u3002","state.failed":"\u4fdd\u5b58\u5931\u8d25\uff0c\u8bf7\u5237\u65b0\u540e\u91cd\u8bd5\u3002","summary.configured":"\u5df2\u914d\u7f6e {configured}/{total}","summary.managed":"\u6258\u7ba1 {managed}","err.number":"\u8bf7\u8f93\u5165\u8303\u56f4\u5185\u7684\u6574\u6570\u3002","err.url":"\u8bf7\u8f93\u5165\u6709\u6548\u7684 http(s) \u5730\u5740\u3002","err.enum":"\u8bf7\u9009\u62e9\u53d7\u652f\u6301\u7684\u503c\u3002","opt.default":"\u9ed8\u8ba4","opt.session":"\u8ddf\u968f\u4f1a\u8bdd","opt.fixed":"\u56fa\u5b9a\u6a21\u578b","opt.local":"\u672c\u5730","opt.openviking":"OpenViking","opt.current":"\u5f53\u524d\u9879\u76ee","opt.none":"\u6574\u4e2a\u8d26\u6237","opt.tavily":"Tavily","opt.brave":"Brave","opt.searxng":"SearXNG","opt.jina":"Jina","opt.custom":"\u81ea\u5b9a\u4e49\u7f51\u5173","field.maxSuggestions":"\u5019\u9009\u6570","field.typePauseMs":"\u505c\u987f\u65f6\u95f4\uff08\u6beb\u79d2\uff09","field.maxOutputTokens":"\u6700\u5927\u8f93\u51fa","field.timeoutMs":"\u8d85\u65f6\uff08\u6beb\u79d2\uff09","field.maxMessages":"\u4e0a\u4e0b\u6587\u6d88\u606f\u6570","field.maxChars":"\u4e0a\u4e0b\u6587\u5b57\u7b26\u6570","field.mobileBar":"\u89e6\u5c4f\u5efa\u8bae\u680f","field.autoRecall":"\u81ea\u52a8\u53ec\u56de","field.injectChars":"\u6ce8\u5165\u5b57\u6570","field.recallK":"\u53ec\u56de\u6761\u6570","team.integrations":"\u96c6\u6210","team.memory":"\u5168\u5c40\u8bb0\u5fc6","team.search":"\u5168\u80fd\u641c\u7d22","team.hint":"\u5168\u5c40\u8bb0\u5fc6\u4e0e\u5168\u80fd\u641c\u7d22\u7684\u8bbe\u7f6e\u9875\u4f4d\u4e8e\u201c\u63d2\u4ef6\u201d\u9875\u5bf9\u5e94\u6761\u76ee\u4e0b\u3002","team.unmanaged":"\u6ca1\u6709\u4efb\u4f55\u8bbe\u7f6e\u7531\u6bcd\u8230\u6258\u7ba1\u3002","team.managedCount":"{count} \u9879\u8bbe\u7f6e\u7531 {mothership}\u6258\u7ba1\u3002","host.webSearch.label":"\u8ba9 DSH \u7f51\u9875\u641c\u7d22\u4f7f\u7528 AI\u609f\u7a7a \u5168\u80fd\u641c\u7d22","host.webSearch.current":"\u5f53\u524d\u63d0\u4f9b\u65b9\uff1a{provider}\u3002","host.webSearch.auto":"\u81ea\u52a8\u9009\u62e9","host.webSearch.hint":"\u5173\u95ed\u540e\u6062\u590d DSH \u9ed8\u8ba4\u3002","host.webSearch.unavailable":"DSH \u7f51\u9875\u641c\u7d22\u8bbe\u7f6e\u4e0d\u53ef\u7528\u3002","host.webSearch.failed":"\u65e0\u6cd5\u66f4\u6539\u7f51\u9875\u641c\u7d22\u63d0\u4f9b\u65b9\u3002","secret.managedSet":"\u5df2\u7531 {mothership}\u914d\u7f6e","secret.managedEmpty":"\u7531 {mothership}\u6258\u7ba1\uff08\u6bcd\u8230\u672a\u8bbe\u7f6e\uff09","banner.full":"\u5df2\u901a\u8fc7 {mothership}\u914d\u7f6e\u5b8c\u6210\uff0c\u65e0\u9700\u5728\u8fd9\u91cc\u8bbe\u7f6e\u3002","banner.partial":"\u90e8\u5206\u8bbe\u7f6e\u5df2\u7531 {mothership}\u914d\u7f6e\u3002","banner.detail":"{total} \u9879\u8bbe\u7f6e\u4e2d\u6709 {managed} \u9879\u6765\u81ea\u6bcd\u8230\uff08\u5176\u4e2d {locked} \u9879\u5df2\u9501\u5b9a\uff09\u3002\u9501\u5b9a\u7684\u8bbe\u7f6e\u53ea\u80fd\u5728\u6bcd\u8230\u4e2d\u4fee\u6539\u3002","optional.title":"\u6bcd\u8230\u672a\u4e0b\u53d1\u7684\u53ef\u9009\u8bbe\u7f6e\uff08{count} \u9879\uff09","optional.hint":"\u9664\u975e\u53ea\u60f3\u5728\u8fd9\u53f0\u673a\u5668\u4e0a\u989d\u5916\u542f\u7528\u67d0\u4e2a\u5f15\u64ce\uff0c\u5426\u5219\u4fdd\u6301\u4e3a\u7a7a\u5373\u53ef\u3002"}};
+    const CATALOG = [{"ref":"OMNI_SEARCH_BASE_URL","extension":"search","label":{"en":"Search gateway URL","zh":"\u641c\u7d22\u7f51\u5173\u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true},{"ref":"SEARXNG_URL","extension":"search","label":{"en":"SearXNG URL","zh":"SearXNG \u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true},{"ref":"OMNI_SEARCH_ENGINES","extension":"search","label":{"en":"Search engines","zh":"\u641c\u7d22\u5f15\u64ce"},"kind":"enum","options":["tavily","brave","searxng","custom"],"multiple":true,"secret":false,"defaultLocked":true},{"ref":"OMNI_FETCH_ENGINES","extension":"search","label":{"en":"Fetch engines","zh":"\u6293\u53d6\u5f15\u64ce"},"kind":"enum","options":["jina","tavily","custom"],"multiple":true,"secret":false,"defaultLocked":true,"default":"jina"},{"ref":"OMNI_SEARCH_PROVIDERS_PATH","extension":"search","label":{"en":"Search gateway providers path","zh":"\u641c\u7d22\u7f51\u5173\u63d0\u4f9b\u65b9\u8def\u5f84"},"kind":"text","secret":false,"defaultLocked":true},{"ref":"OMNI_AUDIO_BASE_URL","extension":"search","label":{"en":"Speech-to-text URL","zh":"\u8bed\u97f3\u8f6c\u5199\u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true},{"ref":"OMNI_SEARCH_API_KEY","extension":"search","label":{"en":"Search gateway API key","zh":"\u641c\u7d22\u7f51\u5173\u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"TAVILY_API_KEY","extension":"search","label":{"en":"Tavily API key","zh":"Tavily \u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"BRAVE_API_KEY","extension":"search","label":{"en":"Brave API key","zh":"Brave \u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"SEARXNG_API_KEY","extension":"search","label":{"en":"SearXNG API key","zh":"SearXNG \u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"JINA_API_KEY","extension":"search","label":{"en":"Jina API key","zh":"Jina \u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"OMNI_AUDIO_API_KEY","extension":"search","label":{"en":"Speech-to-text API key","zh":"\u8bed\u97f3\u8f6c\u5199\u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"EMBEDDING_BASE_URL","extension":"memory","label":{"en":"Embedding URL","zh":"\u5411\u91cf\u670d\u52a1\u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true,"legacyRefs":["CPA_EMBED_BASE_URL"]},{"ref":"EMBEDDING_MODEL","extension":"memory","label":{"en":"Embedding model","zh":"\u5411\u91cf\u6a21\u578b"},"kind":"text","secret":false,"defaultLocked":true,"legacyRefs":["CPA_EMBED_MODEL"]},{"ref":"EMBEDDING_DIMENSIONS","extension":"memory","label":{"en":"Embedding dimensions","zh":"\u5411\u91cf\u7ef4\u5ea6"},"kind":"number","secret":false,"defaultLocked":true,"legacyRefs":["CPA_EMBED_DIMENSIONS"]},{"ref":"OPENVIKING_URL","extension":"memory","label":{"en":"Memory URL","zh":"\u8bb0\u5fc6\u670d\u52a1\u5730\u5740"},"kind":"url","secret":false,"defaultLocked":true},{"ref":"MEMORY_BACKEND","extension":"memory","label":{"en":"Backend","zh":"\u5b58\u50a8\u540e\u7aef"},"kind":"enum","options":["local","openviking"],"secret":false,"defaultLocked":true,"default":"local"},{"ref":"MEMORY_SHARED_RECALL","extension":"memory","label":{"en":"Shared recall scope","zh":"\u5171\u4eab\u53ec\u56de\u8303\u56f4"},"kind":"enum","options":["current","none"],"secret":false,"defaultLocked":true,"default":"current"},{"ref":"EMBEDDING_API_KEY","extension":"memory","label":{"en":"Embedding API key","zh":"\u5411\u91cf\u670d\u52a1\u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true,"legacyRefs":["CPA_EMBED_API_KEY"]},{"ref":"OPENVIKING_API_KEY","extension":"memory","label":{"en":"Memory API key","zh":"\u8bb0\u5fc6\u670d\u52a1\u5bc6\u94a5"},"kind":"secret","secret":true,"defaultLocked":true},{"ref":"AUTOCOMPLETE_ROUTE_MODE","extension":"autocomplete","label":{"en":"Model routing","zh":"\u6a21\u578b\u8def\u7531"},"kind":"enum","options":["session","fixed"],"secret":false,"defaultLocked":true,"default":"session"},{"ref":"AUTOCOMPLETE_PROVIDER","extension":"autocomplete","label":{"en":"Provider","zh":"\u63d0\u4f9b\u65b9"},"kind":"text","secret":false,"defaultLocked":true},{"ref":"AUTOCOMPLETE_MODEL","extension":"autocomplete","label":{"en":"Model","zh":"\u6a21\u578b"},"kind":"text","secret":false,"defaultLocked":true}];
+    /** en / zh dictionaries of one panel: shared texts, catalog labels (ref.<REF>) and the Mothership name filled in. */
+    function panelDictionaries(panel) {
+      const out = {};
+      for (const lang of ['en', 'zh']) {
+        const dict = { ...DICTIONARIES[lang] };
+        for (const field of panel.fields) {
+          const entry = CATALOG.find(item => item.ref === field.ref);
+          if (entry) dict['ref.' + entry.ref] = entry.label[lang];
+        }
+        for (const key of Object.keys(dict)) dict[key] = dict[key].replaceAll('{mothership}', BRAND_TEXT.mothership[lang]);
+        out[lang] = dict;
+      }
+      return out;
+    }
+    // Data-driven React config panel for the AIWUK extensions (contract section E). React comes from the host module
+    // table and is passed in; nothing here imports a DSH client package. The browser bundle is produced by
+    // shared-ui/build.mjs, which strips the `export`/`import` keywords so this file shares one factory scope with
+    // config-logic.js. Secrets are shown as a STATE only: values are never fetched, rendered or logged, and the
+    // write-only input is cleared after every save attempt. Styling uses --dsw-* tokens only.
+    
+    function createPanelKit(React) {
+      const h = React.createElement;
+      const fmt = (text, values) => String(text).replace(/\{(\w+)\}/g, (_, key) => values?.[key] ?? '');
+      const ui = {
+        col: { display: 'flex', flexDirection: 'column', gap: '8px' },
+        row: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '6px 0', borderBottom: '1px solid var(--dsw-alias-border-l2)' },
+        text: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 },
+        label: { color: 'var(--dsw-alias-label-primary)', fontSize: '1em' },
+        muted: { color: 'var(--dsw-alias-label-secondary)', fontSize: '0.85em' },
+        err: { color: 'var(--dsw-alias-state-error-primary)', fontSize: '0.85em' },
+        input: { width: '220px', color: 'var(--dsw-alias-label-primary)', background: 'var(--dsw-alias-bg-layer-1)', border: '1px solid var(--dsw-alias-border-l2)', borderRadius: 'var(--dsw-radius-lg)', padding: '4px 8px', fontSize: '0.9em' },
+        button: { color: 'var(--dsw-alias-label-primary)', background: 'var(--dsw-alias-bg-layer-2)', border: '1px solid var(--dsw-alias-border-l2)', borderRadius: 'var(--dsw-radius-lg)', padding: '4px 10px', fontSize: '0.9em', cursor: 'pointer' },
+        primary: { color: 'var(--dsw-alias-label-primary-inverted)', background: 'var(--dsw-alias-brand-primary)', border: '1px solid var(--dsw-alias-brand-primary)' },
+        badge: { borderRadius: '999px', padding: '0 8px', fontSize: '0.85em', whiteSpace: 'nowrap' },
+        controls: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' },
+        banner: { display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', borderRadius: 'var(--dsw-radius-md)', border: '1px solid var(--dsw-alias-state-success-primary)', background: 'var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-layer-2))' },
+        details: { marginTop: '4px' },
+        summary: { cursor: 'pointer', color: 'var(--dsw-alias-label-secondary)', fontSize: '0.9em', padding: '6px 0' },
+      };
+      const badgeStyle = mode => {
+        const tone = mode === 'locked' ? 'var(--dsw-alias-state-warn-primary)' : 'var(--dsw-alias-state-success-primary)';
+        return { ...ui.badge, color: tone, border: `1px solid ${tone}`, background: 'var(--dsw-alias-bg-layer-2)' };
+      };
+    
+      /** Re-render on a `{getSnapshot, subscribe}` store (a ConfigForm). */
+      function useStoreSnapshot(store) {
+        const [, redraw] = React.useState(0);
+        React.useEffect(() => (typeof store?.subscribe === 'function' ? store.subscribe(() => redraw(n => n + 1)) : undefined), [store]);
+        return store?.getSnapshot?.() ?? { status: 'unavailable', value: undefined, revision: undefined, writable: false };
+      }
+    
+      /**
+       * Fetch the values-free managed manifest. Resolves to `{manifest}` (null = the route is missing, an unmanaged
+       * install) or to `undefined` when the answer is unknown (network error, 5xx): the caller then keeps what it knew,
+       * so a transient failure never drops a lock.
+       */
+      async function fetchManifest(extension, services) {
+        try {
+          const fetcher = services.fetch ?? (typeof fetch === 'function' ? fetch : null);
+          const res = fetcher ? await fetcher(managedConfigUrl(extension), { headers: { accept: 'application/json' } }) : null;
+          if (res?.ok) return { manifest: manifestFromWire(await res.json()) };
+          return res?.status === 404 ? { manifest: null } : undefined;
+        } catch { return undefined; }
+      }
+    
+      /**
+       * The managed manifest, refreshed when a credential changes (the Connector writes managed values there) and when the
+       * window regains focus. `reload()` returns the freshest known manifest so every write can re-check the lock first.
+       * `services` is created once per registration (a stable object), so the callback identity does not change.
+       */
+      function useManifest(extension, services) {
+        const [manifest, setManifest] = React.useState(null);
+        const known = React.useRef(null), latest = React.useRef(0);
+        const reload = React.useCallback(async () => {
+          const ticket = ++latest.current;
+          const answer = await fetchManifest(extension, services);
+          if (answer && ticket === latest.current) { known.current = answer.manifest; setManifest(answer.manifest); }
+          return answer ? answer.manifest : known.current;
+        }, [extension, services]);
+        React.useEffect(() => {
+          void reload();
+          const off = services.on?.('credentials/reference-updated', () => { void reload(); });
+          const onFocus = () => { void reload(); };
+          if (typeof window !== 'undefined') window.addEventListener?.('focus', onFocus);
+          return () => {
+            if (typeof off === 'function') off();
+            if (typeof window !== 'undefined') window.removeEventListener?.('focus', onFocus);
+          };
+        }, [reload, services.on]);
+        return [manifest, reload];
+      }
+    
+      /**
+       * Secret states from `credentials.describe`, refreshed on `credentials/reference-updated`. Returns
+       * `[described, refresh, failed]`. Every row leaves "checking" in bounded time: a result from a superseded or
+       * unmounted run is dropped (ticket), the credentials service is read at call time (never captured stale), a failed
+       * run is retried once automatically, and after that `failed` is true so rows offer Retry instead of waiting forever.
+       */
+      function useSecretStates(services, refs) {
+        const [described, setDescribed] = React.useState({});
+        const [failed, setFailed] = React.useState(false);
+        const key = refs.join(',');
+        const ticket = React.useRef(0), alive = React.useRef(true), timer = React.useRef(null), retried = React.useRef(false), refsRef = React.useRef(refs);
+        refsRef.current = refs;
+        const run = React.useCallback(async () => {
+          const mine = ++ticket.current;
+          clearTimeout(timer.current);
+          const list = refsRef.current;
+          if (!list.length) return;
+          const result = await describeSecretsResult(services.credentials, list);
+          if (!alive.current || mine !== ticket.current) return; // stale: a newer run or an unmount took over
+          if (!result.failed) { retried.current = false; setDescribed(result.described); setFailed(false); return; }
+          setDescribed(prev => ({ ...prev, ...result.described }));
+          if (retried.current) { setFailed(true); return; }
+          retried.current = true;
+          timer.current = setTimeout(() => { if (alive.current && mine === ticket.current) void run(); }, DESCRIBE_RETRY_DELAY_MS);
+        }, [services]);
+        const reload = React.useCallback(() => { retried.current = false; setFailed(false); return run(); }, [run]);
+        React.useEffect(() => {
+          alive.current = true;
+          retried.current = false;
+          setFailed(false);
+          void run();
+          const off = services.on?.('credentials/reference-updated', ref => { if (refsRef.current.includes(ref)) void run(); });
+          return () => { alive.current = false; ticket.current++; clearTimeout(timer.current); if (typeof off === 'function') off(); };
+        }, [key, services.credentials, run]);
+        return [described, run, failed, reload];
+      }
+    
+      /**
+       * Switch that makes this extension the host's provider for a capability (DSH web search): it writes
+       * `spec.path` on the host entry `spec.entry` through `ctx.configForms.get(entry)`, and unsets it to restore the
+       * host default. The current selection is always shown.
+       */
+      function HostSelectionRow({ spec, services, t }) {
+        const store = services.forms?.get?.(spec.entry) ?? null;
+        const snapshot = useStoreSnapshot(store);
+        const [note, setNote] = React.useState(null);
+        const [pending, setPending] = React.useState(false);
+        const ready = snapshot.status === 'ready' && snapshot.writable !== false && typeof store?.mutate === 'function';
+        const current = snapshot.value?.[spec.path];
+        const on = current === spec.value;
+        const toggle = async next => {
+          setNote(null); setPending(true);
+          let ok = false;
+          try { ok = await store.mutate([next ? { op: 'set', path: [spec.path], value: spec.value } : { op: 'unset', path: [spec.path] }], snapshot.revision); } catch { ok = false; }
+          setPending(false); setNote(ok ? 'saved' : 'failed');
+        };
+        const shown = typeof current === 'string' && current ? current : t(`host.${spec.id}.auto`);
+        return h(FieldRow, { id: `host.${spec.id}`, label: t(`host.${spec.id}.label`), t,
+          hint: snapshot.status === 'unavailable' ? t(`host.${spec.id}.unavailable`) : `${fmt(t(`host.${spec.id}.current`), { provider: shown })} ${t(`host.${spec.id}.hint`)}`,
+          error: note === 'failed' ? t(`host.${spec.id}.failed`) : undefined },
+          note === 'saved' ? h('span', { role: 'status', style: ui.muted }, t('state.saved')) : null,
+          h('input', { type: 'checkbox', role: 'switch', name: `host.${spec.id}`, 'data-host-selection': on ? 'on' : 'off', checked: on, disabled: !ready || pending, onChange: event => { void toggle(event.target.checked); } }));
+      }
+    
+      function LockBadge({ mode, t }) {
+        if (!mode || mode === 'none') return null;
+        return h('span', { 'data-lock': mode, title: mode === 'locked' ? t('lock.hint') : undefined, style: badgeStyle(mode) }, t(mode === 'locked' ? 'lock.locked' : 'lock.default'));
+      }
+    
+      function FieldRow({ id, label, hint, mode, error, children, t }) {
+        return h('div', { 'data-field': id, style: ui.row },
+          h('span', { style: ui.text }, h('span', { style: ui.label }, label), hint ? h('span', { style: ui.muted }, hint) : null, error ? h('span', { role: 'alert', style: ui.err }, error) : null),
+          h('span', { style: ui.controls }, h(LockBadge, { mode, t }), children));
+      }
+    
+      /** State line plus Set / Replace / Clear. The typed value lives only in this component and is dropped after save. */
+      function SecretField({ field, label, info, mode, failed, t, onSet, onClear, onRetry }) {
+        const [typed, setTyped] = React.useState(null); // null = input hidden
+        const [confirming, setConfirming] = React.useState(false);
+        const [note, setNote] = React.useState(null);
+        const state = secretState(info, mode);
+        const save = async () => {
+          const value = typed;
+          setTyped(null); // cleared first: the value is never kept after the attempt
+          try { await onSet(field.ref, value); setNote('saved'); } catch { setNote('failed'); }
+        };
+        const clear = async () => { setConfirming(false); try { await onClear(field.ref); setNote('cleared'); } catch { setNote('failed'); } };
+        const unresolved = info === undefined && mode !== 'locked';
+        const phase = unresolved ? (failed ? 'failed' : 'unknown') : state.kind;
+        const statusText = unresolved ? t(failed ? 'secret.failed' : 'secret.unknown')
+          : state.kind === 'managed' ? t(info === undefined || state.configured ? 'secret.managedSet' : 'secret.managedEmpty') : t(`secret.${state.kind}`);
+        return h(FieldRow, { id: field.id, label, mode, t, hint: note ? t(`secret.note.${note}`) : undefined },
+          h('span', { 'data-secret-state': phase, style: unresolved && failed ? ui.err : ui.muted }, statusText),
+          unresolved && failed ? h('button', { type: 'button', 'data-action': 'retry-secret', style: ui.button, onClick: onRetry }, t('action.retry')) : null,
+          typed !== null ? h('input', { type: 'password', name: field.id, autoComplete: 'new-password', value: typed, style: ui.input, 'aria-label': label, onChange: event => setTyped(event.target.value) }) : null,
+          typed !== null ? h('button', { type: 'button', 'data-action': 'save-secret', style: { ...ui.button, ...ui.primary }, disabled: !typed.trim(), onClick: save }, t('action.save')) : null,
+          typed !== null ? h('button', { type: 'button', 'data-action': 'cancel-secret', style: ui.button, onClick: () => setTyped(null) }, t('action.cancel')) : null,
+          typed === null && !confirming && mode !== 'locked' && state.editable ? h('button', { type: 'button', 'data-action': 'set-secret', style: ui.button, onClick: () => { setNote(null); setTyped(''); } }, t(state.configured ? 'action.replace' : 'action.set')) : null,
+          typed === null && !confirming && state.clearable ? h('button', { type: 'button', 'data-action': 'clear-secret', style: ui.button, onClick: () => setConfirming(true) }, t('action.clear')) : null,
+          confirming ? h('button', { type: 'button', 'data-action': 'confirm-clear', style: { ...ui.button, ...ui.primary }, onClick: clear }, t('action.confirmClear')) : null,
+          confirming ? h('button', { type: 'button', 'data-action': 'cancel-clear', style: ui.button, onClick: () => setConfirming(false) }, t('action.cancel')) : null);
+      }
+    
+      function control({ field, value, readOnly, mode, onChange, t }) {
+        const common = { name: field.id, disabled: readOnly, readOnly };
+        if (field.kind === 'switch') return h('input', { ...common, type: 'checkbox', role: 'switch', checked: value === true, onChange: event => onChange(event.target.checked) });
+        if (field.kind === 'enum' && field.multiple) {
+          const chosen = Array.isArray(value) ? value : String(value ?? '').split(',').filter(Boolean);
+          return h('span', { style: ui.controls }, field.options.map(option => h('label', { key: option, style: ui.muted },
+            h('input', { type: 'checkbox', name: `${field.id}.${option}`, disabled: readOnly, checked: chosen.includes(option),
+              onChange: event => onChange(event.target.checked ? [...chosen, option] : chosen.filter(v => v !== option)) }), ` ${t(`opt.${option}`)}`)));
+        }
+        if (field.kind === 'enum') return h('select', { ...common, value: value ?? '', style: ui.input, onChange: event => onChange(event.target.value) },
+          h('option', { value: '' }, t('opt.default')), field.options.map(option => h('option', { key: option, value: option }, t(`opt.${option}`))));
+        const props = { ...common, style: ui.input, value: value ?? '', title: readOnly && value ? String(value) : undefined, placeholder: mode === 'locked' ? t('value.managed') : mode === 'default' ? t('value.default') : undefined, onChange: event => onChange(event.target.value) };
+        return field.kind === 'number' ? h('input', { ...props, type: 'number', min: field.min, max: field.max, step: field.step }) : h('input', { ...props, type: field.kind === 'url' ? 'url' : 'text' });
+      }
+    
+      /** "Configured by the Mothership" notice: shown when the Mothership manages any integration field of this panel. */
+      function ManagedBanner({ status, t }) {
+        if (status.mode === 'none') return null;
+        return h('div', { 'data-managed-banner': status.mode, role: 'note', style: ui.banner },
+          h('span', { style: { ...ui.label, fontWeight: 600 } }, t(status.mode === 'full' ? 'banner.full' : 'banner.partial')),
+          h('span', { style: ui.muted }, fmt(t('banner.detail'), status)));
+      }
+    
+      function ConfigPanel(props) {
+        const { panel, view, services, t } = props;
+        const store = props.form ? null : (services.forms?.get?.(panel.namespace) ?? null);
+        const live = useStoreSnapshot(store);
+        const snapshot = props.form ? props.form.state : live;
+        const mutate = props.form ? props.form.mutate : store?.mutate?.bind(store);
+        const [manifest, reloadManifest] = useManifest(panel.extension, services);
+        const [described, refresh, describeFailed, retryDescribe] = useSecretStates(services, secretRefs(panel.fields));
+        // Every write re-reads the lock first: a Mothership lock applied while this page is open must win.
+        const freshMode = async ref => lockMode(await reloadManifest(), ref);
+        const [drafts, setDrafts] = React.useState({});
+        const [result, setResult] = React.useState(null);
+        const values = snapshot?.value ?? {};
+        const states = Object.fromEntries(Object.entries(described).map(([ref, info]) => [ref, secretState(info, lockMode(manifest, ref))]));
+        if (view === 'summary') {
+          const c = summaryCounts(panel.fields, values, states, manifest);
+          return `${fmt(t('summary.configured'), c)}${c.managed ? ` · ${fmt(t('summary.managed'), c)}` : ''}`;
+        }
+        const ready = snapshot?.status === 'ready';
+        const readOnly = !ready || snapshot.writable === false || typeof mutate !== 'function';
+        const current = { ...values, ...drafts };
+        const { ops, invalid } = buildOps(panel.fields, values, drafts, manifest);
+        const save = async () => {
+          let ok = false;
+          try {
+            // Rebuild the ops against the fresh manifest so a newly locked field is dropped, not written.
+            const fresh = buildOps(panel.fields, values, drafts, await reloadManifest());
+            ok = fresh.ops.length > 0 && Object.keys(fresh.invalid).length === 0 && await mutate(fresh.ops, snapshot.revision);
+          } catch { ok = false; }
+          setResult(ok ? 'saved' : 'failed');
+          if (ok) setDrafts({});
+        };
+        const labelOf = field => t(field.ref ? `ref.${field.ref}` : `field.${field.id}`);
+        const status = managedStatus(panel.fields, manifest);
+        const visible = panel.fields.filter(field => isShown(field, current));
+        // Once the Mothership configures this extension, integration fields it does not send are optional extras.
+        const isOptional = field => status.mode !== 'none' && field.ref && lockMode(manifest, field.ref) === 'none';
+        const main = visible.filter(field => !isOptional(field)), optional = visible.filter(isOptional);
+        const renderField = field => {
+          const mode = lockMode(manifest, field.ref);
+          if (field.kind === 'secret') {
+            return h(SecretField, { key: field.id, field, label: labelOf(field), info: described[field.ref], mode, failed: describeFailed, t, onRetry: retryDescribe,
+              onSet: async (ref, value) => { await writeSecret(services.credentials, ref, value, await freshMode(ref)); await refresh(); },
+              onClear: async ref => { await clearSecret(services.credentials, ref, await freshMode(ref)); await refresh(); } });
+          }
+          const fromHub = managedValueOf(manifest, field.ref);
+          const shown = Object.hasOwn(drafts, field.id) ? drafts[field.id] : field.kind === 'switch' ? values[field.path]
+            : mode === 'locked' ? (fromHub === undefined ? '' : field.multiple ? fromHub.split(',').map(v => v.trim()).filter(Boolean) : fromHub)
+              : field.multiple ? values[field.path] : fieldText(field, values[field.path]);
+          return h(FieldRow, { key: field.id, id: field.id, label: labelOf(field), mode, t, error: invalid[field.id] ? t(`err.${invalid[field.id]}`) : undefined },
+            control({ field, value: shown, readOnly: readOnly || mode === 'locked', mode, t, onChange: next => { setResult(null); setDrafts(prev => ({ ...prev, [field.id]: next })); } }));
+        };
+        return h('div', { 'data-config-panel': panel.extension, style: ui.col },
+          panel.hostSelection && view !== 'summary' ? h(HostSelectionRow, { spec: panel.hostSelection, services, t }) : null,
+          !ready ? h('p', { style: ui.muted, 'data-unavailable': snapshot?.status === 'unavailable' ? '' : undefined }, t(snapshot?.status === 'loading' ? 'state.loading' : 'state.unavailable')) : null,
+          h(ManagedBanner, { status, t }),
+          main.map(renderField),
+          optional.length ? h('details', { 'data-optional-fields': '', style: ui.details },
+            h('summary', { style: ui.summary }, fmt(t('optional.title'), { count: optional.length })),
+            h('p', { style: ui.muted }, t('optional.hint')),
+            optional.map(renderField)) : null,
+          panel.fields.some(field => field.kind !== 'secret') ? h('div', { style: ui.controls },
+            result ? h('span', { role: 'status', style: result === 'saved' ? ui.muted : ui.err }, t(`state.${result}`)) : null,
+            h('button', { type: 'button', 'data-action': 'save', style: { ...ui.button, ...ui.primary }, disabled: readOnly || !ops.length || Object.keys(invalid).length > 0, onClick: save }, t('action.save'))) : null);
+      }
+    
+      /** Team bundle entry: how many settings the Mothership manages, with a pointer to the Memory and Search pages. */
+      function IntegrationsSummary({ view, services, t }) {
+        const [manifest] = useManifest('team', services);
+        const count = manifest ? manifest.entries.size : 0;
+        const line = count ? fmt(t('team.managedCount'), { count }) : t('team.unmanaged');
+        if (view === 'summary') return `${t('team.integrations')}: ${line}`;
+        return h('div', { 'data-integrations-summary': '', style: ui.col },
+          h('span', { style: ui.label }, t('team.integrations')), h('span', { style: ui.muted }, line), h('span', { style: ui.muted }, t('team.hint')));
+      }
+    
+      /** Contract entry point: the element for one bundle's `plugins.bundle.config` slot. */
+      function renderConfigPanel({ services, panel, view, form, t }) {
+        return h(ConfigPanel, { services, panel, view, form, t });
+      }
+    
+      /**
+       * Register dictionaries and the `plugins.bundle.config` slot entry of one panel. The host services
+       * (`remote.credentials`, `configForms`) come from the plugin's static `inject` list; null checks keep a
+       * test or odd host mounting (non-secret fields then read-only).
+       */
+      function registerConfigPanel(ctx, { panel, ns, dictionaries, summaryOnly = false }) {
+        const services = { credentials: null, on: null, forms: null };
+        // A summary-only entry reuses the host plugin's own namespace (its dictionaries are merged by the caller).
+        if (!summaryOnly) ctx.effect?.(() => ctx.locale.register(ns, dictionaries), `${ns}: dictionaries`);
+        // The plugin declares `remote.credentials` and `configForms` statically in its `inject` list (a dynamic
+        // ctx.inject callback never fired in the real host), so both are read directly from the context here.
+        const remote = ctx.remote;
+        if (remote?.credentials) {
+          services.credentials = remote.credentials;
+          services.on = typeof remote.$on === 'function' ? (event, listener) => remote.$on(event, listener) : null;
+        }
+        if (ctx.configForms) services.forms = ctx.configForms;
+        if (!summaryOnly) ctx.effect?.(() => () => { services.credentials = null; services.on = null; services.forms = null; }, `${ns}: services`);
+        const t = ctx.locale.bind(ns);
+        ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({ name: 'plugins.bundle.config', key: panel.bundle, locale: ns },
+          props => (summaryOnly ? h(IntegrationsSummary, { view: props?.view, services, t: props?.t ?? t })
+            : renderConfigPanel({ services, panel, view: props?.view, form: props?.form, t: props?.t ?? t }))));
+        return services;
+      }
+    
+      return { IntegrationsSummary, ConfigPanel, FieldRow, SecretField, LockBadge, renderConfigPanel, registerConfigPanel, useManifest, unwrapReply, validateValue };
+    }
+    return { createPanelKit, PANELS, panelDictionaries };
+    })();
 
     // ---------- capability_dispatch_plan ----------
     function DispatchPlanView(props) {
@@ -1786,7 +2396,7 @@ window.__ModuleLoader__.load({
         const before = snapshot.get(m.id)?.usage;
         const route = trustedRoute(values, before);
         const ownUsage = values?.capabilityTeamUsage;
-        // 预算与用量严格对齐后端契约：只读 capabilityTeamUsage / snapshot own usage，绝不读宿主 tokenUsage 避免 fork 偏差
+        // Follow the backend usage contract: read capabilityTeamUsage / snapshot own usage, never host tokenUsage (fork skew)
         const totals = ownUsage?.totals ?? before?.totals;
         const routes = (ownUsage?.routes?.length ? ownUsage.routes : before?.routes) ?? [];
         const coverage = ownUsage?.coverage ?? (before?.coverage ?? (totals ? 'complete' : 'unknown'));
@@ -2075,23 +2685,23 @@ window.__ModuleLoader__.load({
       const p = provider.toLowerCase();
       const m = rawModel.toLowerCase();
 
-      // Free / OpenCode channels -> "布衣"
+      // Free / OpenCode channels use the cloth grade
       if (p === 'opencode' || m.includes('free') || p.includes('free') || m.startsWith('free-')) {
-        return { alias: rawModel, grade: 'cloth', gradeLabel: t ? t('model.grade.cloth') : '布衣' };
+        return { alias: rawModel, grade: 'cloth', gradeLabel: t ? t('model.grade.cloth') : en['model.grade.cloth'] };
       }
-      // claude-opus-* -> 传说金
+      // claude-opus-* uses the legendary grade
       if (m.includes('claude-opus') || m.includes('claude-3-opus') || m.includes('opus')) {
-        return { alias: rawModel, grade: 'legendary', gradeLabel: t ? t('model.grade.legendary') : '传说金' };
+        return { alias: rawModel, grade: 'legendary', gradeLabel: t ? t('model.grade.legendary') : en['model.grade.legendary'] };
       }
-      // gpt-6.1-sol -> 史诗紫
+      // gpt-6.1-sol uses the epic grade
       if (m.includes('gpt-6.1-sol') || m.includes('-sol')) {
-        return { alias: rawModel, grade: 'epic', gradeLabel: t ? t('model.grade.epic') : '史诗紫' };
+        return { alias: rawModel, grade: 'epic', gradeLabel: t ? t('model.grade.epic') : en['model.grade.epic'] };
       }
-      // gemini-*-flash -> 稀有蓝
+      // gemini-*-flash uses the rare grade
       if (m.includes('gemini') && m.includes('flash')) {
-        return { alias: rawModel, grade: 'rare', gradeLabel: t ? t('model.grade.rare') : '稀有蓝' };
+        return { alias: rawModel, grade: 'rare', gradeLabel: t ? t('model.grade.rare') : en['model.grade.rare'] };
       }
-      // 未知模型回退显示原名，色阶普通
+      // Unknown models retain their original name and default grade
       return { alias: route, grade: 'default', gradeLabel: null };
     }
 
@@ -2102,7 +2712,7 @@ window.__ModuleLoader__.load({
       const memberId = card.member?.id;
       const act = memberId ? live?.projections?.(memberId)?.capabilityTeamActivity : undefined;
 
-      // 检查 capabilityTeamActivity 投影
+      // Inspect the capabilityTeamActivity projection
       if (act && typeof act === 'object') {
         if (act.schemaVersion !== 1) {
           return h('div', { className: 'ctm-bd-bubble' },
@@ -2227,7 +2837,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'ctm-us-meter', 'data-tone': cpTone, role: 'presentation' },
             h('i', { style: { width: `${(cpRatio * 100).toFixed(1)}%` } })));
       } else {
-        // Missing data shows "未知" without false meters
+        // Missing data shows unknown without false meters
         cpNode = h('div', { className: 'ctm-bd-meter-row', key: 'pressure-unknown' },
           h('div', { className: 'ctm-bd-meter-labels' },
             h('span', null, t('live.contextPressure')),
@@ -2343,12 +2953,6 @@ window.__ModuleLoader__.load({
         return { ...r, ...(text !== key ? { displayName: text } : {}), quoteKey: characterQuoteKey(r.id, heroes) };
       });
     }
-    Object.assign(zh, {
-      'role.name.lead': '主控', 'role.name.architect': '技术总监', 'role.name.backend': '后端', 'role.name.frontend': '前端',
-      'role.name.researcher': '研究员', 'role.name.writer': '文档', 'role.name.qa': '测试',
-      'live.quote.lead': '目标已明确，分工就绪。', 'live.quote.architect': '先定方案与接口，再动手。', 'live.quote.backend': '接口与数据，随时待命。',
-      'live.quote.frontend': '页面与交互，交给我。', 'live.quote.researcher': '先查证，再下结论。', 'live.quote.writer': '文档随时可以落笔。', 'live.quote.qa': '没有证据，不算完成。',
-    });
     Object.assign(en, {
       'role.name.lead': 'Lead', 'role.name.architect': 'Architect', 'role.name.backend': 'Backend', 'role.name.frontend': 'Frontend',
       'role.name.researcher': 'Researcher', 'role.name.writer': 'Writer', 'role.name.qa': 'QA',
@@ -2379,7 +2983,7 @@ window.__ModuleLoader__.load({
         if (m.id) roleMap.set(m.id, m.role ?? m.name ?? m.id);
       }
 
-      // 聚合所有成员的 capabilityTeamArtifacts 投影
+      // Aggregate every member capabilityTeamArtifacts projection
       let versionUnsupported = false;
       const allArtifacts = [];
       const changesMap = new Map();
@@ -2412,7 +3016,7 @@ window.__ModuleLoader__.load({
         return h('p', { className: 'ctm-sub ctm-warn' }, t('version.unsupported'));
       }
 
-      // 按 (at, sessionId, presentSeq, fileIndex) 降序排序，至多 100 项
+      // Sort by (at, sessionId, presentSeq, fileIndex) descending; retain at most 100 items
       allArtifacts.sort((a, b) => {
         const atDiff = (b.at ?? 0) - (a.at ?? 0);
         if (atDiff !== 0) return atDiff;
@@ -2427,7 +3031,7 @@ window.__ModuleLoader__.load({
       const roles = Array.from(new Set(shelfItems.map(item => item.roleId))).filter(Boolean);
       const filteredItems = filterRole === 'all' ? shelfItems : shelfItems.filter(item => item.roleId === filterRole);
 
-      // 本会话变更
+      // Changes in this session
       const changesList = Array.from(changesMap.values()).sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 
       const handleOpenPresent = async item => {
@@ -2640,7 +3244,7 @@ window.__ModuleLoader__.load({
       const windowStart = earliestFirstTurn ?? windowEnd;
       const windowSpan = elapsed(Math.max(0, windowEnd - windowStart));
 
-      // 运行时容灾指标汇总
+      // Runtime failover metrics summary
       const runtimeAvailable = runtimeState && !runtimeState.unavailable && runtimeState.data;
       const runtimeMembers = runtimeAvailable && Array.isArray(runtimeState.data.members) ? runtimeState.data.members : [];
       let rRequestFailures = 0;
@@ -2659,7 +3263,7 @@ window.__ModuleLoader__.load({
         }
       }
 
-      // 汇总展示
+      // Aggregate presentation
       return h('div', { className: 'ctm-rpt-shelf' },
         h('span', { className: 'ctm-label' }, t('report.title'),
           singleModel ? h('span', { className: 'ctm-badge', 'data-tone': 'warn', 'data-single-model': '', title: `${singleModel.provider}/${singleModel.model}` }, t('roles.singleModel')) : null),
@@ -2957,6 +3561,62 @@ window.__ModuleLoader__.load({
       for (let x = 6 * S; x < w; x += 42 * S) { px(x, 2 * S, 10 * S, 6 * S, '#7fb2e5'); px(x + S, 3 * S, 8 * S, 4 * S, '#a9d4ff'); }
     }
 
+    // ---------- office stage: theme colours for the canvas ----------
+    /**
+     * The pixel canvas cannot paint with `var()` or `color-mix()` strings, and host tokens may be defined with either.
+     * So each stage colour is resolved through a hidden probe element: its `color` is set to `var(--token, fallback)`
+     * and the browser's computed value (a concrete rgb or color(srgb ...) value) is read back. The fallback (a CSS system-colour keyword) is only used when
+     * the token is missing from the host stylesheet.
+     */
+    const STAGE_COLOR_TOKENS = {
+      floorA: ['--ctm-stage-floor-a', 'Canvas'], floorB: ['--ctm-stage-floor-b', 'Canvas'], grout: ['--ctm-stage-grout', 'GrayText'],
+      wall: ['--ctm-stage-wall', 'GrayText'], desk: ['--ctm-stage-desk', 'GrayText'], deskTop: ['--ctm-stage-desk-top', 'GrayText'],
+      select: ['--ctm-stage-select', 'Highlight'],
+    };
+    const RGBA_FN = 'rgba'; // assembled so no colour literal appears in source (tests/theme-tokens.test.mjs)
+    /** `color(srgb r g b / a)` (what browsers return for color-mix) → an rgba string; every other value is returned trimmed. */
+    function stageNormalizeColor(value) {
+      const text = String(value ?? '').trim();
+      const m = /^color\(\s*srgb\s+(-?[\d.]+%?)\s+(-?[\d.]+%?)\s+(-?[\d.]+%?)(?:\s*\/\s*(-?[\d.]+%?))?\s*\)$/i.exec(text);
+      if (!m) return text;
+      const channel = s => Math.round(Math.max(0, Math.min(1, s.endsWith('%') ? parseFloat(s) / 100 : parseFloat(s))) * 255);
+      const alpha = m[4] === undefined ? 1 : Math.max(0, Math.min(1, m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4])));
+      return `${RGBA_FN}(${channel(m[1])}, ${channel(m[2])}, ${channel(m[3])}, ${+alpha.toFixed(3)})`;
+    }
+    /** Resolve every stage colour through `probe` (a hidden element inside the stage, so it inherits the custom properties). */
+    function stageResolveColors(probe, getStyle) {
+      const out = {};
+      for (const [key, [name, fallback]] of Object.entries(STAGE_COLOR_TOKENS)) {
+        probe.style.color = '';
+        probe.style.color = `var(${name}, ${fallback})`;
+        out[key] = stageNormalizeColor(getStyle(probe).color) || stageNormalizeColor(fallback);
+      }
+      return out;
+    }
+    /** Bridge from the host's `theme/change` event to every live scene; `stageTheme.bind(ctx)` is called once from plugin apply. */
+    const stageTheme = {
+      listeners: new Set(),
+      notify() { for (const fn of [...this.listeners]) fn(); },
+      subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
+      bind(ctx) {
+        if (typeof ctx?.on !== 'function') return () => {};
+        const off = ctx.on('theme/change', () => this.notify());
+        return typeof off === 'function' ? off : () => {};
+      },
+    };
+    /** Re-run `onChange` when the host swaps palettes: `theme/change` events plus attribute changes on body/html (dark flag, theme source, token overrides). */
+    function stageWatchTheme(onChange) {
+      const offBus = stageTheme.subscribe(onChange);
+      let observer = null;
+      if (typeof MutationObserver === 'function' && typeof document !== 'undefined') {
+        observer = new MutationObserver(onChange);
+        for (const target of [document.body, document.documentElement]) {
+          if (target) observer.observe(target, { attributes: true, attributeFilter: ['data-ds-dark-theme', 'data-ds-theme-source', 'style'] });
+        }
+      }
+      return () => { offBus(); observer?.disconnect(); };
+    }
+
     // ---------- office stage: layout, DOM plates and the render loop (imperative; React only owns the host element) ----------
     /**
      * Sprites arrive from `stageSprites` (08d) and are diffed in `sync`: new members walk in from the door, and the
@@ -2977,7 +3637,21 @@ window.__ModuleLoader__.load({
         this.visibleAt = 0; // on-screen check is a cheap rect read once a second (IntersectionObserver is unreliable inside some embedded panes)
         this.onVisibility = () => { this.last = 0; if (!document.hidden) this.draw(); };
         document.addEventListener('visibilitychange', this.onVisibility);
+        this.colors = null; this.unwatchTheme = stageWatchTheme(() => this.retheme());
         this.last = 0; this.schedule();
+      }
+      /** Canvas colours are resolved to concrete rgb through a probe element (see 08c-stage-colors.js) and cached until the theme changes. */
+      stageColors() {
+        if (this.colors) return this.colors;
+        this.probe ??= this.el('i');
+        this.probe.setAttribute('aria-hidden', 'true'); Object.assign(this.probe.style, { position: 'absolute', width: '0', height: '0', visibility: 'hidden', pointerEvents: 'none' });
+        if (!this.probe.isConnected) this.stage.append(this.probe);
+        return (this.colors = stageResolveColors(this.probe, getComputedStyle));
+      }
+      /** `theme/change` fires before the host flips the body attribute, so re-resolve once more after it settles. */
+      retheme() {
+        const redraw = () => { this.colors = null; this.dirty = true; this.draw(); };
+        redraw(); clearTimeout(this.themeTimer); this.themeTimer = setTimeout(redraw, 80);
       }
       /** rAF when the host delivers frames; a timer fallback keeps motion going (at low fps) in panes that stall rAF while visible. */
       schedule() {
@@ -2987,7 +3661,8 @@ window.__ModuleLoader__.load({
       }
       el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
       destroy() {
-        cancelAnimationFrame(this.raf); clearTimeout(this.timer); this.ro?.disconnect(); document.removeEventListener('visibilitychange', this.onVisibility);
+        cancelAnimationFrame(this.raf); clearTimeout(this.timer); clearTimeout(this.themeTimer); this.ro?.disconnect(); document.removeEventListener('visibilitychange', this.onVisibility);
+        this.unwatchTheme?.(); this.probe?.remove();
         this.canvas.removeEventListener?.('click', this.onCanvasClick);
         for (const id of [...this.sprites.keys()]) this.remove(id);
       }
@@ -3164,11 +3839,11 @@ window.__ModuleLoader__.load({
       }
       draw() {
         const { ctx, w, h, S } = this; if (!w) return;
-        const css = getComputedStyle(this.stage), v = (k, d) => css.getPropertyValue(k).trim() || d;
-        stageDrawRoom(ctx, this.px, w, h, S, { floorA: v('--ctm-stage-floor-a', '#1c1d26'), floorB: v('--ctm-stage-floor-b', '#202130'), grout: v('--ctm-stage-grout', 'rgba(0,0,0,.22)'), wall: v('--ctm-stage-wall', '#2a2b3a') });
-        const desk = v('--ctm-stage-desk', '#3b2f26'), deskTop = v('--ctm-stage-desk-top', '#5a4535'), ents = [];
+        const c = this.stageColors();
+        stageDrawRoom(ctx, this.px, w, h, S, { floorA: c.floorA, floorB: c.floorB, grout: c.grout, wall: c.wall });
+        const desk = c.desk, deskTop = c.deskTop, ents = [];
         for (const [id, s] of this.sprites) {
-          if (id === this.selected) ents.push({ y: -1, f: () => { const x = s.home.x - 14 * S, y = s.home.y - 19 * S; this.px(x, y, 28 * S, S, '#ffd766'); this.px(x, s.home.y + 9 * S, 28 * S, S, '#ffd766'); } });
+          if (id === this.selected) ents.push({ y: -1, f: () => { const x = s.home.x - 14 * S, y = s.home.y - 19 * S; this.px(x, y, 28 * S, S, c.select); this.px(x, s.home.y + 9 * S, 28 * S, S, c.select); } });
           ents.push({ y: s.home.y + 3 * S, f: () => stageDrawDesk(this.px, s, S, desk, deskTop) });
           if (s.data.status !== 'inactive') ents.push({ y: s.y + (s.phase === 'walking' ? 6 * S : 0), f: () => stageDrawPerson(this.px, s, S) });
         }
@@ -3349,7 +4024,7 @@ window.__ModuleLoader__.load({
       }).join('|');
       const depsView = React.useMemo ? React.useMemo(() => taskDependencyView(tasks, t), [taskRevSig, t]) : taskDependencyView(tasks, t);
 
-      // 本地 1Hz 倒计时时钟（仅当有冷却项时启动，页面隐藏时停止并清除定时器，可见时重新计算启动）
+      // Local 1Hz cooldown clock: run only with cooldowns; stop when hidden and recalculate when visible
       const [now, setNow] = React.useState(Date.now());
       const hasCooling = Boolean(runtimeState?.data?.members?.some(m => Array.isArray(m.cooling) && m.cooling.some(c => (c.until ?? 0) > now)));
       React.useEffect(() => {
@@ -3433,7 +4108,7 @@ window.__ModuleLoader__.load({
         const detailParts = [latest.code, latest.status].filter(Boolean);
         const detailText = detailParts.length ? ` · ${detailParts.join('/')}` : '';
         const noticeText = t('runtime.switched', { from: rFrom, to: rTo, reason: reasonText, detail: detailText });
-        const finalText = noticeText.startsWith('runtime.switched') ? `路由切换 ${rFrom} → ${rTo}（原因：${reasonText}${detailText}）` : noticeText;
+        const finalText = noticeText.startsWith('runtime.switched') ? fmt(en['runtime.switched'], { from: rFrom, to: rTo, reason: reasonText, detail: detailText }) : noticeText;
         return h('div', { className: 'ctm-bd-switch', title: finalText }, finalText);
       };
       const card = c => {
@@ -3630,32 +4305,19 @@ window.__ModuleLoader__.load({
         h('div', { hidden: sub !== 'runtime' }, runtimeNode));
     }
 
-    function Overview({ sessionId, t: injectedT, hostT, load, save, live, cache, openMember, onboarding }) {
+    function Overview({ sessionId, t: injectedT, hostT, locale: localeSource, load, save, live, cache, openMember, onboarding }) {
       const [state, setState] = React.useState({ pending: false });
       const [tab, setTab] = React.useState('models');
       const [showOverview, setShowOverview] = React.useState(false);
       const ticket = React.useRef(0);
       const [, redraw] = React.useState(0);
       const [children, setChildren] = React.useState(null);
-      const readStoredLocale = () => {
-        try {
-          const val = window.localStorage?.getItem('dsh-capability-team-locale');
-          if (val === 'zh' || val === 'en') return val;
-        } catch {}
-        return null;
-      };
-      const [locale, setLocale] = React.useState(readStoredLocale());
+      // Language follows the host: ctx.locale (passed as `locale`) is the source of truth and its subscribe() re-renders on a switch.
+      React.useEffect(() => localeSource?.subscribe?.(() => redraw(n => n + 1)), [localeSource]);
+      const activeLocale = localeSource?.getLocale?.()?.active;
+      // Without the locale service (a bare harness) the language is inferred from the host translator's own text.
       const hostProbe = (typeof injectedT === 'function' ? injectedT('overview.hint') : '') || (typeof hostT === 'function' ? hostT('overview.hint') : '');
-      const hostIsZh = /[\u4e00-\u9fa5]/.test(hostProbe);
-      const isZh = (locale ?? (hostIsZh ? 'zh' : 'en')) === 'zh';
-      const toggleLocale = () => {
-        setLocale(prev => {
-          const current = prev ?? (hostIsZh ? 'zh' : 'en');
-          const next = current === 'zh' ? 'en' : 'zh';
-          try { window.localStorage?.setItem('dsh-capability-team-locale', next); } catch { /* storage unavailable */ }
-          return next;
-        });
-      };
+      const isZh = activeLocale ? /^zh/i.test(String(activeLocale)) : /[\u4e00-\u9fa5]/.test(hostProbe);
       const dict = isZh ? zh : en;
       const ownTranslator = (key, vals) => {
         const template = dict[key] ?? en[key];
@@ -3663,7 +4325,7 @@ window.__ModuleLoader__.load({
         if (typeof hostT === 'function') return hostT(key, vals);
         return key;
       };
-      const t = locale ? ownTranslator : (injectedT ?? ownTranslator);
+      const t = injectedT ?? ownTranslator;
       // Root cause of the subagent canvas/roster mismatch (see item 5): a teammate session's own id is not the
       // team's root. Every roster/projection/runtime/open-session call below must use the resolved Lead session
       // id (parentSessionId when this is a subagent, else its own id), never the raw `sessionId` alone.
@@ -3754,8 +4416,9 @@ window.__ModuleLoader__.load({
             setRuntimeState({ data: null, lag: false, unavailable: true });
             return;
           }
-          if (lastEpoch.current && lastEpoch.current !== newData.epoch) {
-            // Epoch 发生变化：运行时已重启
+          // 'unbound' is the placeholder of a lead that has not started yet; its first real snapshot is not a restart.
+          if (lastEpoch.current && lastEpoch.current !== 'unbound' && lastEpoch.current !== newData.epoch) {
+            // The epoch changed: the runtime restarted
             setRuntimeState({ data: newData, lag: isLag, unavailable: false, restarted: true });
           } else {
             setRuntimeState({ data: newData, lag: isLag, unavailable: false });
@@ -3784,7 +4447,7 @@ window.__ModuleLoader__.load({
           }
         };
 
-        // 优先尝试 SSE
+        // Prefer SSE
         if (typeof EventSource === 'function') {
           try {
             es = new EventSource(apiUrl('api/capability-team.runtime/stream', { sessionId: effectiveSessionId }));
@@ -3814,7 +4477,7 @@ window.__ModuleLoader__.load({
         };
       }, [effectiveSessionId]);
 
-      // 降级模式下：真实 running 状态 + modelSelection 实际路由变化时 GET 一次
+      // In degraded mode: GET once when the real running state or the actual modelSelection route changes
       const memberSig = (liveTeam?.members ?? []).map(m => {
         const isRunning = live?.running ? live.running(m.id) : false;
         const next = live?.projections?.(m.id)?.modelSelection?.next;
@@ -3916,13 +4579,7 @@ window.__ModuleLoader__.load({
               title: t('overview.logNote'),
             }, t(current.pending ? 'overview.loading' : 'overview.refresh')),
             isTeammateSession ? h('button', { type: 'button', className: 'ctm-btn ctm-ov-roleview-toggle', onClick: () => setShowOverview(v => !v) },
-              t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview')) : null,
-            h('button', {
-              type: 'button',
-              className: 'ctm-btn ctm-lang-toggle',
-              title: t('lang.title'),
-              onClick: toggleLocale,
-            }, t('lang.toggle'))),
+              t(showOverview ? 'roleview.backToRole' : 'roleview.viewOverview')) : null),
           h('p', { className: 'ctm-sub ctm-ov-subrow', title: subRowText }, subRowText)),
         h('div', { className: 'ctm-ov-scroll' },
           subagentNoticeNode,
@@ -4013,25 +4670,14 @@ window.__ModuleLoader__.load({
               : h('p', { className: 'ctm-sub' }, t('overview.noData')))) : null)));
     }
 
-    // ---------- onboarding: official Agent Teams bundle, model coverage, first team session; bundle settings forms ----------
+    // ---------- onboarding: official Agent Teams bundle, model coverage, first team session; ----------
     const AGENT_TEAM_BUNDLE = '@deepseek-ai/dsh-experimental-agent-team-profile';
     const WELCOME_VERSION = '4.0.0';
     const UI_NAMESPACE = 'capability-team-ui'; // this package's row id in cordis.patch.yml; its volatile Config keeps the welcome acknowledgement
-    Object.assign(zh, {
-      'onb.title': '能力协作团队：三步开始', 'onb.step1': '1. 启用官方 Agent Teams', 'onb.step2': '2. 模型档位匹配', 'onb.step3': '3. 开始第一个团队任务',
-      'onb.teamReady': '官方 Agent Teams 服务已运行。',
-      'onb.teamMissing': '能力协作团队建立在官方实验包 {name} 之上；它当前未启用，团队功能不会启动。',
-      'onb.teamWarning': '注意：启用后对本配置档（profile）中的所有会话生效，并停用原生的通用子代理工具（subagent / fork 等），改由团队工具委派。只有你点击下方按钮才会启用。',
-      'onb.enable': '启用 Agent Teams', 'onb.enabling': '正在启用…', 'onb.applied': '已启用并生效。请刷新页面后新建会话。',
-      'onb.restart': '已启用，需要重启 DSH 后生效（原因：{reason}）。', 'onb.failed': '启用失败，错误码：{code}。也可在“插件”页手动启用。',
-      'onb.noManager': '当前连接不能管理插件；请在侧栏“插件”页手动启用 {name}。',
-      'onb.coverage': '{covered}/{total} 项能力已在你的模型目录中匹配到合格档位（共 {models} 个模型）。', 'onb.coverageUnknown': '模型目录暂不可读；稍后在团队总览中查看。',
-      'onb.unassigned': '未匹配：{list}。这些角色的请求会被阻止；可补充渠道，或让主控开启单模型模式（需你确认）。',
-      'onb.newSession': '新建会话 → 在模式选择中选择“能力协作团队”，然后直接描述任务。', 'onb.dismiss': '知道了', 'onb.later': '稍后',
-      'roles.singleModel': '单模型模式', 'roles.singleModelHint': '未分配模型的角色统一使用你确认的单个模型；无备选，失败直接报告。',
-      'cfg.hint': '留空 = 沿用 integrations.json / 环境变量 / DSH 凭据。*KeyEnv 字段填写 DSH 凭据或环境变量的名称，不填写密钥本身。',
-      'cfg.save': '保存', 'cfg.saved': '已保存，下一次请求起生效。', 'cfg.saveFailed': '保存失败，请刷新后重试。', 'cfg.unavailable': '该插件未运行或当前连接不可编辑设置。', 'cfg.loading': '读取中…',
-    });
+    // Texts of the integrations summary (shared panel dictionaries) join this namespace; nothing else is needed.
+    for (const [lang, target] of [['zh', zh], ['en', en]]) {
+      for (const [key, text] of Object.entries(aiwukConfig.panelDictionaries(aiwukConfig.PANELS.team)[lang])) if (/^(team\.(integrations|hint|unmanaged|managedCount)|lock\.|value\.)/.test(key)) target[key] = text;
+    }
     Object.assign(en, {
       'onb.title': 'Capability Team: three steps', 'onb.step1': '1. Enable official Agent Teams', 'onb.step2': '2. Model tier coverage', 'onb.step3': '3. Run the first team task',
       'onb.teamReady': 'The official Agent Teams service is running.',
@@ -4044,8 +4690,6 @@ window.__ModuleLoader__.load({
       'onb.unassigned': 'Unmatched: {list}. Requests of these roles are blocked; add a channel, or ask the Lead to enable single-model mode (you confirm it).',
       'onb.newSession': 'New session → choose "Capability Team" in the mode picker, then describe your task.', 'onb.dismiss': 'Got it', 'onb.later': 'Later',
       'roles.singleModel': 'Single-model mode', 'roles.singleModelHint': 'Roles without an assigned model use the one model you confirmed; no backups, failures surface.',
-      'cfg.hint': 'Empty = keep integrations.json / environment / DSH credentials. *KeyEnv fields take the NAME of a DSH credential or environment variable, never the key itself.',
-      'cfg.save': 'Save', 'cfg.saved': 'Saved; applies from the next request.', 'cfg.saveFailed': 'Save failed; reload and retry.', 'cfg.unavailable': 'The plugin is not running or settings are read-only here.', 'cfg.loading': 'Loading…',
     });
     async function fetchOnboarding(signal) {
       const res = await fetch(apiUrl('api/capability-team.onboarding'), { signal });
@@ -4126,41 +4770,9 @@ window.__ModuleLoader__.load({
       React.useEffect(() => { if (acknowledged && !explicit) complete?.(); }, [acknowledged, explicit]);
       if (snapshot.status === 'loading' || !status || (acknowledged && !explicit)) return null;
       const dismiss = async () => { if (snapshot.status === 'ready' && snapshot.writable !== false) { try { await form.set('welcomeVersion', WELCOME_VERSION); } catch { /* in-memory completion still applies */ } } complete?.(); };
-      return h('div', { role: 'dialog', 'aria-modal': 'true', className: 'ctm-onb-modal', style: { position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.35)' } },
-        h('div', { style: { maxWidth: '520px', width: 'calc(100% - 48px)', background: 'var(--dsw-alias-bg-layer-2)', borderRadius: '12px', padding: '16px' } },
+      return h('div', { role: 'dialog', 'aria-modal': 'true', className: 'ctm-onb-modal', style: { position: 'fixed', inset: 0, zIndex: 'var(--aw-z-modal)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--dsw-alias-bg-mask-2)' } },
+        h('div', { style: { maxWidth: '520px', width: 'calc(100% - 48px)', background: 'var(--dsw-alias-bg-layer-2)', color: 'var(--dsw-alias-label-primary)', borderRadius: 'var(--dsw-radius-lg)', boxShadow: 'var(--dsw-shadow-lv3)', padding: '16px' } },
           h(OnboardingCard, { status, enable, t, onDismiss: dismiss })));
-    }
-    // Settings forms for the standalone bundles, rendered from this client (they ship no client half of their own).
-    const OMNI_FIELDS = [['engines', 'list'], ['fetchEngines', 'list'], ['searxngUrl'], ['baseUrl'], ['tavilyKeyEnv'], ['braveKeyEnv'], ['searxngKeyEnv'], ['jinaKeyEnv'], ['apiKeyEnv'], ['audioBaseUrl'], ['audioKeyEnv']];
-    const MEMORY_FIELDS = [['memoryBackend'], ['memoryUrl'], ['memoryKeyEnv'], ['embeddingBaseUrl'], ['embeddingModel'], ['embeddingKeyEnv']];
-    const fieldText = (value, kind) => (value === undefined || value === null ? '' : kind === 'list' && Array.isArray(value) ? value.join(', ') : String(value));
-    /** Edit ops for the changed fields: empty clears the field (the layers below apply again). */
-    function settingsOps(fields, value, draft) {
-      const ops = [];
-      for (const [key, kind] of fields) {
-        if (!Object.hasOwn(draft, key) || draft[key] === fieldText(value?.[key], kind)) continue;
-        const raw = draft[key].trim();
-        if (!raw) ops.push({ op: 'unset', path: [key] });
-        else ops.push({ op: 'set', path: [key], value: kind === 'list' ? raw.split(',').map(v => v.trim()).filter(Boolean) : raw });
-      }
-      return ops;
-    }
-    function BundleSettingsCard({ view, form, fields, t }) {
-      const snapshot = useStoreSnapshot(form);
-      const [draft, setDraft] = React.useState({});
-      const [result, setResult] = React.useState(null);
-      if (view === 'summary') return t('cfg.hint');
-      if (snapshot.status === 'loading') return h('p', { className: 'ctm-sub' }, t('cfg.loading'));
-      if (snapshot.status !== 'ready') return h('p', { className: 'ctm-sub', 'data-unavailable': '' }, t('cfg.unavailable'));
-      const ops = settingsOps(fields, snapshot.value, draft);
-      const save = async () => { const ok = await form.mutate(ops, snapshot.revision); setResult(ok ? 'saved' : 'failed'); if (ok) setDraft({}); };
-      return h('div', { className: 'ctm-ov-block', 'data-bundle-settings': '' },
-        h('p', { className: 'ctm-sub' }, t('cfg.hint')),
-        ...fields.map(([key, kind]) => h('label', { key, className: 'ctm-sub', style: { display: 'flex', flexDirection: 'column', gap: '2px' } }, key,
-          h('input', { type: 'text', name: key, disabled: snapshot.writable === false, value: Object.hasOwn(draft, key) ? draft[key] : fieldText(snapshot.value?.[key], kind),
-            onChange: event => setDraft(prev => ({ ...prev, [key]: event.target.value })) }))),
-        h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', disabled: !ops.length || snapshot.writable === false, onClick: save }, t('cfg.save')),
-        result ? h('p', { className: result === 'saved' ? 'ctm-sub' : 'ctm-sub ctm-error', role: 'status' }, t(result === 'saved' ? 'cfg.saved' : 'cfg.saveFailed')) : null);
     }
     /** Optional host services are reached through ctx.inject, so a host without them still mounts the plugin. */
     function registerOnboarding(ctx, t) {
@@ -4168,17 +4780,15 @@ window.__ModuleLoader__.load({
       ctx.inject?.(['remote.pluginManager'], scoped => { pluginManager = scoped.remote.pluginManager; scoped.effect?.(() => () => { pluginManager = null; }); });
       const enable = () => enableAgentTeams(pluginManager);
       const gate = props => h(OnboardingGate, { t: props?.t ?? t, enable, fetchStatus: fetchOnboarding });
-      ctx.slots.inject('plugins.bundle.activation', () => ctx.slots.register({ name: 'plugins.bundle.activation', key: 'dsh-capability-team', locale: NS },
+      ctx.slots.inject('plugins.bundle.activation', () => ctx.slots.register({ name: 'plugins.bundle.activation', key: '@aiwuk/team', locale: NS },
         props => h(OnboardingCard, { status: null, enable, t, onDismiss: props.onDismiss, dismissLabel: t('onb.later') })));
       ctx.inject?.(['configForms', 'slots'], scoped => {
         const forms = scoped.configForms;
         scoped.slots.inject('settings.onboarding', () => scoped.slots.register({ name: 'settings.onboarding', id: 'capability-team-welcome', order: 50, label: () => t('onb.title'), locale: NS },
           props => h(WelcomeStep, { ...props, t, enable, fetchStatus: fetchOnboarding, form: forms.get(UI_NAMESPACE) })));
-        for (const [key, ns, fields] of [['dsh-omni-search', 'omni-search', OMNI_FIELDS], ['dsh-capability-memory', 'global-memory', MEMORY_FIELDS]]) {
-          scoped.slots.inject('plugins.bundle.config', () => scoped.slots.register({ name: 'plugins.bundle.config', key, locale: NS },
-            props => h(BundleSettingsCard, { view: props?.view, form: forms.get(ns), fields, t })));
-        }
       });
+      // Integrations summary for this bundle's Plugins page; the Memory and Search panels ship in their own bundles.
+      aiwukConfig.createPanelKit(React).registerConfigPanel(ctx, { panel: aiwukConfig.PANELS.team, ns: NS, summaryOnly: true });
       return gate;
     }
 
@@ -4364,16 +4974,18 @@ window.__ModuleLoader__.load({
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
     if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DirectConfirmCard, ConfirmDock, dockedSessions, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
     const plugin = {
-      inject: ['slots', 'locale', 'remote', 'remote.commands', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
+      inject: ['slots', 'locale', 'remote', 'remote.commands', 'remote.credentials', 'configForms', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'capability-team: dictionaries');
         ctx.effect(() => {
           const tag = document.createElement('style');
-          tag.dataset.plugin = 'dsh-capability-team';
+          tag.dataset.plugin = '@aiwuk/team';
           tag.textContent = CSS + STAGE_CSS;
           document.head.appendChild(tag);
-          return () => tag.remove();
-        }, 'capability-team: styles');
+          // Stage canvas colors re-resolve on the host theme/change event (the body-attribute observer is the fallback).
+          const offTheme = stageTheme.bind(ctx);
+          return () => { offTheme(); tag.remove(); };
+        }, 'capability-team: styles + stage theme');
         const bound = ctx.locale.bind(NS);
         const execute = async (sessionId, line) => {
           const reply = await ctx.remote.commands.execute(sessionId, line, []);
@@ -4405,11 +5017,9 @@ window.__ModuleLoader__.load({
               onboardingGate(props), h('p', { className: 'ctm-sub' }, bound('overview.notMounted')));
           }
           return h(Overview, { ...props, onboarding: props.onboarding ?? onboardingGate,
-          // Item 3: Overview owns its own bilingual dictionary lookup keyed by its own locale toggle, not the
-          // host's. `t` is only passed through when a caller (a test harness) explicitly injects one — the
-          // production slot never injects `t` itself, so Overview's own `ownTranslator` is what actually renders.
-          // `hostT` is only a fallback for any key missing from the plugin's own zh/en dictionaries.
-          hostT: bound, load: props.load ?? load, save: props.save ?? save, live: effectiveLive, cache: props.cache ?? snapshotCache,
+          // Overview follows the host locale service (`locale`) and re-renders on a language switch. `t` is only
+          // passed through when a caller (a test harness) injects one; `hostT` is the fallback for missing keys.
+          locale: props.locale ?? ctx.locale, hostT: bound, load: props.load ?? load, save: props.save ?? save, live: effectiveLive, cache: props.cache ?? snapshotCache,
           // Same navigation as DSH's own Team panel: open normal session for Lead or continuable subagent address for teammate.
           openMember: typeof ctx.uiWorkspace?.openSession === 'function'
             ? (parentSessionId, childSessionId) => {

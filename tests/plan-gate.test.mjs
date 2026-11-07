@@ -17,14 +17,14 @@ function fixture(planFirst = true) {
 }
 test('未提交或待批时只能只读分析与协调；批准后放行', async () => {
   const f = fixture();
-  assert.match(f.call(f.mate, 'write', { file_path: 'a.js' }), /须先调用 capability_submit_plan/);
+  assert.match(f.call(f.mate, 'write', { file_path: 'a.js' }), /must call capability_submit_plan/);
   assert.equal(f.call(f.mate, 'read', { file_path: 'a.js' }), undefined);
   assert.equal(f.call(f.mate, 'send_message'), undefined);
   assert.equal(f.call(f.mate, SUBMIT_TOOL), undefined);
   await f.run(f.mate, SUBMIT_TOOL, { plan: '改 a.js 的接口并补测试' });
   assert.deepEqual([f.sent[0].from, f.sent[0].to], ['M', 'lead']);
   assert.match(f.sent[0].text, /role=lv-bu/);
-  assert.match(f.call(f.mate, 'bash'), /已提交，等待主控批准/);
+  assert.match(f.call(f.mate, 'bash'), /Submitted, awaiting Lead approval/);
   await f.run(f.lead, REVIEW_TOOL, { role: 'lv-bu', approve: true });
   assert.deepEqual([f.sent[1].from, f.sent[1].to], ['L', 'lv-bu']);
   assert.equal(f.call(f.mate, 'bash'), undefined);
@@ -33,20 +33,20 @@ test('未提交或待批时只能只读分析与协调；批准后放行', async
 test('退回必须写意见；新的派活计划使旧批准失效', async () => {
   const f = fixture();
   await f.run(f.mate, SUBMIT_TOOL, { plan: 'v1' });
-  await assert.rejects(f.run(f.lead, REVIEW_TOOL, { role: 'lv-bu', approve: false }), /必须写明修改意见/);
+  await assert.rejects(f.run(f.lead, REVIEW_TOOL, { role: 'lv-bu', approve: false }), /require revision feedback/);
   await f.run(f.lead, REVIEW_TOOL, { role: 'lv-bu', approve: false, feedback: '先别动数据库' });
-  assert.match(f.call(f.mate, 'edit', { file_path: 'a.js' }), /被退回.*先别动数据库/);
-  await assert.rejects(f.run(f.lead, REVIEW_TOOL, { role: 'lv-bu', approve: true }), /没有待审批的计划/);
+  assert.match(f.call(f.mate, 'edit', { file_path: 'a.js' }), /Rejected.*先别动数据库/);
+  await assert.rejects(f.run(f.lead, REVIEW_TOOL, { role: 'lv-bu', approve: true }), /no plan awaiting approval/);
   await f.run(f.mate, SUBMIT_TOOL, { plan: 'v2' });
   await f.run(f.lead, REVIEW_TOOL, { role: 'lv-bu', approve: true });
   assert.equal(f.call(f.mate, 'edit', { file_path: 'a.js' }), undefined);
   f.gate.reset({ id: 'T' }, ['lv-bu']);
-  assert.match(f.call(f.mate, 'edit', { file_path: 'a.js' }), /尚未提交计划/);
+  assert.match(f.call(f.mate, 'edit', { file_path: 'a.js' }), /No plan submitted yet/);
 });
 test('未开启 planFirst 的角色不受影响，也不能提交计划；只有主控能审批', async () => {
   const f = fixture(false);
   assert.equal(f.call(f.mate, 'bash'), undefined);
-  await assert.rejects(f.run(f.mate, SUBMIT_TOOL, { plan: 'x' }), /不需要提交计划/);
-  await assert.rejects(f.run(f.mate, REVIEW_TOOL, { role: 'lv-bu', approve: true }), /只有主控/);
-  assert.throws(() => effectiveConfig({ capabilities: { qa: { planFirst: 'yes' } } }), /planFirst 必须为布尔值/);
+  await assert.rejects(f.run(f.mate, SUBMIT_TOOL, { plan: 'x' }), /does not require a plan/);
+  await assert.rejects(f.run(f.mate, REVIEW_TOOL, { role: 'lv-bu', approve: true }), /Only the Lead/);
+  assert.throws(() => effectiveConfig({ capabilities: { qa: { planFirst: 'yes' } } }), /planFirst must be a boolean/);
 });

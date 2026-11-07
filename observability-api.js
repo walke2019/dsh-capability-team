@@ -2,6 +2,13 @@ import { runtimeBinding } from './runtime-observability.js';
 import { safeId } from './activity-summary.js';
 export const RUNTIME_PATH = '/api/capability-team.runtime';
 export const RUNTIME_STREAM_PATH = `${RUNTIME_PATH}/stream`;
+/** Epoch of the placeholder snapshot of a team lead whose runtime is not bound yet (a draft session before its first message). */
+export const UNBOUND_EPOCH = 'unbound';
+const UNBOUND_POLL_MS = 1000;
+/** Empty but well-formed snapshot: the Team overview renders "no activity yet" instead of an error. */
+export function emptySnapshot(leadSessionId) {
+  return { schemaVersion: 1, leadSessionId, epoch: UNBOUND_EPOCH, revision: 0, generatedAt: 0, coverage: { mode: 'unbound', since: 0 }, members: [], taskControl: null };
+}
 function resolve(ctx, request) {
   const url = new URL(request.url), ids = url.searchParams.getAll('sessionId');
   if (ids.length !== 1 || !safeId(ids[0]) || [...url.searchParams.keys()].some(k => k !== 'sessionId')) return { error: 400 };
@@ -12,9 +19,10 @@ function resolve(ctx, request) {
   if (!teams || !ctx.agentPresets) return { error: 503 };
   const membership = teams.tryMembership(agent);
   if (!membership || membership.role !== 'lead' || ctx.agentPresets?.composedPreset(agent.ctx) !== 'capability-team') return { error: 404 };
-  const binding = runtimeBinding(agent);
-  if (!binding) return { error: 503 };
-  return { binding, agent, snapshot: () => binding.runtime.snapshot(agent.id, teams.listMembers(agent)) };
+  // A draft lead has no runtime until its first message: answer with an empty snapshot, not an error.
+  const current = () => runtimeBinding(agent);
+  const snapshot = () => { const binding = current(); return binding ? binding.runtime.snapshot(agent.id, teams.listMembers(agent)) : emptySnapshot(agent.id); };
+  return { current, agent, snapshot };
 }
 export function handleRuntime(ctx, request, stream = false) {
   if (request.method !== 'GET') return new Response('method not allowed', { status: 405 });
@@ -26,23 +34,35 @@ export function handleRuntime(ctx, request, stream = false) {
     try { return Response.json(resolved.snapshot(), { headers: { 'cache-control': 'no-store' } }); }
     catch { return Response.json({ error: 503 }, { status: 503 }); }
   }
-  let dispose = () => {}, timer = null, closed = false, abortCleanup = () => {};
+  let dispose = () => {}, timer = null, poll = null, closed = false, abortCleanup = () => {};
   const body = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
-      const close = () => { if (closed) return; closed = true; if (timer) clearTimeout(timer); dispose(); request.signal.removeEventListener('abort', close); controller.close(); };
+      const close = () => { if (closed) return; closed = true; if (timer) clearTimeout(timer); if (poll) clearInterval(poll); dispose(); request.signal.removeEventListener('abort', close); controller.close(); };
       const emit = () => {
         timer = null; if (closed) return;
         try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(resolved.snapshot())}\n\n`)); }
         catch { close(); }
       };
       emit();
-      dispose = resolved.binding.runtime.onChanged(() => { if (!closed && timer === null) timer = setTimeout(emit, 350); });
+      const attach = binding => { dispose = binding.runtime.onChanged(() => { if (!closed && timer === null) timer = setTimeout(emit, 350); }); };
+      const bound = resolved.current();
+      if (bound) attach(bound);
+      else {
+        // Idle until the lead's runtime appears (first message), then push the real snapshot and follow its changes.
+        poll = setInterval(() => {
+          if (closed) return;
+          const binding = resolved.current();
+          if (!binding) return;
+          clearInterval(poll); poll = null; attach(binding); emit();
+        }, UNBOUND_POLL_MS);
+        poll.unref?.();
+      }
       abortCleanup = () => request.signal.removeEventListener('abort', close);
       request.signal.addEventListener('abort', close, { once: true });
       if (request.signal.aborted) close();
     },
-    cancel() { closed = true; if (timer) clearTimeout(timer); dispose(); abortCleanup(); },
+    cancel() { closed = true; if (timer) clearTimeout(timer); if (poll) clearInterval(poll); dispose(); abortCleanup(); },
   });
   return new Response(body, { headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-store', 'x-accel-buffering': 'no' } });
 }

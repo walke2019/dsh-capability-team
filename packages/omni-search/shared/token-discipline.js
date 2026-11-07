@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Token rules for the team (part of the iron rules). Measured on this project: prompt caching already works
 // (93–98% of prompt tokens are cache reads), so cost is driven by how much context every step resends —
 // sessions ran at ~150k tokens per step because DSH compacts only at 80% of the window. The levers are a small,
@@ -21,25 +22,25 @@ export const TRIMMED_TOOLS = new Set(['bash', 'pwsh', 'grep', 'glob', 'job_outpu
 export function validateTokenRules(value) {
   if (value === undefined || value === null) return { ...TOKEN_RULES };
   if (value === false) return false;
-  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('tokens 须为对象或 false');
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(modelText('token-discipline.552'));
   const extra = Object.keys(value).filter(k => !KEYS.includes(k));
-  if (extra.length) throw new Error(`tokens 不支持字段 ${extra.join(', ')}`);
+  if (extra.length) throw new Error(modelText('token-discipline.553', { 0: extra.join(', ') }));
   const out = { ...TOKEN_RULES, ...value };
-  if (typeof out.idleCompactRatio !== 'number' || out.idleCompactRatio < 0.1 || out.idleCompactRatio > 0.9) throw new Error('tokens.idleCompactRatio 须为 0.1–0.9');
-  for (const k of ['trimToolOutputChars', 'keepHeadChars', 'keepTailChars']) if (!Number.isSafeInteger(out[k]) || out[k] < 200 || out[k] > 200000) throw new Error(`tokens.${k} 须为 200–200000 的整数`);
-  if (out.keepHeadChars + out.keepTailChars >= out.trimToolOutputChars) throw new Error('tokens 的保留头尾之和须小于 trimToolOutputChars');
+  if (typeof out.idleCompactRatio !== 'number' || out.idleCompactRatio < 0.1 || out.idleCompactRatio > 0.9) throw new Error(modelText('token-discipline.554'));
+  for (const k of ['trimToolOutputChars', 'keepHeadChars', 'keepTailChars']) if (!Number.isSafeInteger(out[k]) || out[k] < 200 || out[k] > 200000) throw new Error(modelText('token-discipline.555', { 0: k }));
+  if (out.keepHeadChars + out.keepTailChars >= out.trimToolOutputChars) throw new Error(modelText('token-discipline.556'));
   return out;
 }
 /** Model-facing token rules, appended to the file rules in the team policy. */
 export function tokenRuleText(rules) {
   if (!rules) return '';
-  return `Token 铁律：每一步都会重发整段上下文（缓存读取也计费），所以要让上下文小而稳定——只读需要的行段，同一内容不重复读取；命令、搜索输出超过 ${rules.trimToolOutputChars} 字会只保留开头和结尾，完整内容存到文件，需要时用 grep 按行查；不做任务范围外的调研；一次汇报说清，不发进度；空闲时上下文超过窗口 ${Math.round(rules.idleCompactRatio * 100)}% 会自动压缩，接手时以交接、看板和代码为准。`;
+  return modelText('token-discipline.557', { 0: rules.trimToolOutputChars, 1: Math.round(rules.idleCompactRatio * 100) });
 }
 /** Head + tail of a long text with a pointer to the full copy. Pure. */
 export function trimText(text, rules, spillPath) {
   const head = text.slice(0, rules.keepHeadChars);
   const tail = text.slice(-rules.keepTailChars);
-  return `${head}\n\n[…已省略中间 ${text.length - head.length - tail.length} 字（共 ${text.length} 字）。完整输出：${spillPath}，需要时用 grep 或 read 的 offset/limit 查看…]\n\n${tail}`;
+  return modelText('token-discipline.558', { 0: head, 1: text.length - head.length - tail.length, 2: text.length, 3: spillPath, 4: tail });
 }
 export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'capability-team-spill'), rulesOf, trimmedTools = TRIMMED_TOOLS, ratesOf } = {}) {
   const compacting = new WeakSet();

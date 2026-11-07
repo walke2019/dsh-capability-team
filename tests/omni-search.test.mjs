@@ -26,14 +26,14 @@ test('密钥先取 DSH 凭据库，再取环境变量；状态只报有无', asy
 });
 
 test('HTTP 200 也要校验真实结果；错误按状态码给出处理提示，不回显正文', async () => {
-  assert.throws(() => checkResult('search', { status: 'ok' }), /没有 results/);
-  assert.throws(() => checkResult('fetch', { url: 'x', content: '  ' }), /没有网页正文/);
+  assert.throws(() => checkResult('search', { status: 'ok' }), /without a results list/);
+  assert.throws(() => checkResult('fetch', { url: 'x', content: '  ' }), /without page content/);
   assert.deepEqual(checkResult('search', { results: [] }).results, []);
   const call = (status, body) => gateway('search', { query: 'q' }, { settings: { config, key: 'K' }, fetcher: async () => reply(status, body) });
-  await assert.rejects(call(429, { error: 'secret upstream detail' }), e => /429（限流，请退避后重试）/.test(e.message) && !e.message.includes('secret'));
-  await assert.rejects(call(401, {}), /客户端鉴权/);
-  await assert.rejects(call(502, {}), /上游失败/);
-  await assert.rejects(call(200, { provider: 'x' }), /没有 results/);
+  await assert.rejects(call(429, { error: 'secret upstream detail' }), e => /429 \(Rate limited; back off before retrying\)/.test(e.message) && !e.message.includes('secret'));
+  await assert.rejects(call(401, {}), /Client authentication failed/);
+  await assert.rejects(call(502, {}), /Upstream failure/);
+  await assert.rejects(call(200, { provider: 'x' }), /without a results list/);
   assert.equal((await call(200, { provider: 'serper', results: [{ url: 'https://a' }] })).results.length, 1);
 });
 
@@ -54,8 +54,8 @@ test('语音：授权前不读文件，超限不读；multipart 上传真实字�
   const file = join(dir, 'clip.wav');
   await writeFile(file, Buffer.from('RIFF....WAVEfmt fake-bytes'));
   await assert.rejects(readAudio(file, 1024, async () => { throw new Error('用户未授权上传该文件'); }), /未授权/);
-  await assert.rejects(readAudio(file, 4, async () => assert.fail('不应询问')), /超过上传上限/);
-  await assert.rejects(readAudio(join(dir, 'a.exe'), 1024), /不支持的音频格式/);
+  await assert.rejects(readAudio(file, 4, async () => assert.fail('不应询问')), /exceeding upload limit/);
+  await assert.rejects(readAudio(join(dir, 'a.exe'), 1024), /Unsupported audio format/);
   let asked = 0;
   const bytes = await readAudio(file, 1024, async size => { asked = size; });
   assert.equal(asked, bytes.byteLength);
@@ -70,22 +70,22 @@ test('语音：授权前不读文件，超限不读；multipart 上传真实字�
   assert.deepEqual(Buffer.from(await part.arrayBuffer()), bytes);
   assert.equal(sent.init.body.get('model'), 'whisper-large-v3-turbo');
   assert.ok(![...sent.init.body.values()].some(v => v === 'K'));
-  await assert.rejects(transcribe({ bytes, name: 'clip.wav' }, { settings, fetcher: async () => reply(200, { text: '' }) }), /没有转写文本/);
-  await assert.rejects(transcribe({ bytes, name: 'clip.wav' }, { settings, fetcher: async () => reply(413, {}) }), /413（内容超过服务上限）/);
+  await assert.rejects(transcribe({ bytes, name: 'clip.wav' }, { settings, fetcher: async () => reply(200, { text: '' }) }), /without transcript text/);
+  await assert.rejects(transcribe({ bytes, name: 'clip.wav' }, { settings, fetcher: async () => reply(413, {}) }), /413 \(Content exceeds service limit\)/);
   const status = await audioStatus({ settings, fetcher: async () => reply(200, { mode: 'direct' }) });
-  assert.match(status.note, /不代表上游/);
+  assert.match(status.note, /does not guarantee upstream/);
 });
 
 test('语音：符号链接按真实目标检查格式并在确认框显示真实路径；状态接口不回传凭据或响应片段', async () => {
   const dir = await realpath(await mkdtemp(join(tmpdir(), 'audio-link-')));
   const secret = join(dir, 'id_rsa'); await writeFile(secret, 'PRIVATE KEY');
   await symlink(secret, join(dir, 'meeting.mp3'));
-  await assert.rejects(readAudio(join(dir, 'meeting.mp3'), 1024, async () => assert.fail('不应询问')), /不支持的音频格式/);
+  await assert.rejects(readAudio(join(dir, 'meeting.mp3'), 1024, async () => assert.fail('不应询问')), /Unsupported audio format/);
   const real = join(dir, 'real.wav'); await writeFile(real, 'RIFF');
   await symlink(real, join(dir, 'alias.mp3'));
   let shown; await readAudio(join(dir, 'alias.mp3'), 1024, async (_size, path) => { shown = path; });
   assert.equal(shown, real);
   const settings = { key: 'sk-live-SECRET123', keyEnv: 'K', config: { baseUrl: 'https://gw.example', statusPath: '/s', headers: {} } };
-  await assert.rejects(audioStatus({ settings, fetcher: async () => reply(200, { client: { auth: 'Bearer sk-live-SECRET123' } }) }), /包含凭据/);
-  await assert.rejects(audioStatus({ settings, fetcher: async () => reply(200, 'not-json-body-xyz') }), error => /不是 JSON/.test(error.message) && !error.message.includes('not-json'));
+  await assert.rejects(audioStatus({ settings, fetcher: async () => reply(200, { client: { auth: 'Bearer sk-live-SECRET123' } }) }), /contains credentials/);
+  await assert.rejects(audioStatus({ settings, fetcher: async () => reply(200, 'not-json-body-xyz') }), error => /non-JSON data/.test(error.message) && !error.message.includes('not-json'));
 });

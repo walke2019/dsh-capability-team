@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Portable team templates: roles, capability duties and policies, workflow and failover. Channels, models, backups
 // and long-context routes belong to one user's DSH catalog, so they are never exported; after an import, automatic
 // matching (or a later save) assigns them.
@@ -20,17 +21,17 @@ export function toTemplate(effective) {
  * replaced, and a template capability field that is absent clears the project's value back to the default.
  */
 export function templatePatch(template, current) {
-  if (!isMap(template) || template.format !== TEMPLATE_FORMAT) throw new Error(`不是能力协作团队模板（format 须为 ${TEMPLATE_FORMAT}）`);
-  if (template.version !== TEMPLATE_VERSION) throw new Error(`模板版本 ${template.version} 不受支持，当前只支持 ${TEMPLATE_VERSION}`);
+  if (!isMap(template) || template.format !== TEMPLATE_FORMAT) throw new Error(modelText('template.499', { 0: TEMPLATE_FORMAT }));
+  if (template.version !== TEMPLATE_VERSION) throw new Error(modelText('template.500', { 0: template.version, 1: TEMPLATE_VERSION }));
   const extra = Object.keys(template).filter(k => !['format', 'version', 'name', 'workflow', 'failover', 'capabilities', 'roles'].includes(k));
-  if (extra.length) throw new Error(`模板含未知字段 ${extra.join(', ')}`);
-  if (!isMap(template.capabilities) || !isMap(template.roles)) throw new Error('模板须包含 capabilities 与 roles 对象');
-  if (!isMap(template.roles.lead)) throw new Error('模板须包含 lead 角色');
+  if (extra.length) throw new Error(modelText('template.501', { 0: extra.join(', ') }));
+  if (!isMap(template.capabilities) || !isMap(template.roles)) throw new Error(modelText('template.502'));
+  if (!isMap(template.roles.lead)) throw new Error(modelText('template.503'));
   const capabilities = {};
   for (const [id, c] of Object.entries(template.capabilities)) {
-    if (!isMap(c)) throw new Error(`模板能力 ${id} 须为对象`);
+    if (!isMap(c)) throw new Error(modelText('template.504', { 0: id }));
     const unknown = Object.keys(c).filter(k => !PORTABLE.includes(k));
-    if (unknown.length) throw new Error(`模板能力 ${id} 含不可导入的字段 ${unknown.join(', ')}（模型与渠道不随模板迁移）`);
+    if (unknown.length) throw new Error(modelText('template.505', { 0: id, 1: unknown.join(', ') }));
     // Fields the template leaves out are cleared so the project ends up matching the template.
     const cleared = { search: false, prefer: [] };
     capabilities[id] = Object.fromEntries(PORTABLE.map(k => [k, c[k] ?? (k in cleared ? cleared[k] : null)]));

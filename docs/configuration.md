@@ -115,14 +115,14 @@ Configuration can be supplied through the bundles' settings forms, `integrations
 
 | Bundle | Form field | Integrations target |
 |---|---|---|
-| `dsh-omni-search` | `engines`, `fetchEngines`, `searxngUrl`, `baseUrl`, `tavilyKeyEnv`, `braveKeyEnv`, `searxngKeyEnv`, `jinaKeyEnv`, `apiKeyEnv` | `search.*` (same names) |
-| `dsh-omni-search` | `audioBaseUrl`, `audioKeyEnv` | `audio.baseUrl`, `audio.apiKeyEnv` |
-| `dsh-capability-memory` | `embeddingBaseUrl`, `embeddingModel`, `embeddingKeyEnv` | `embeddings.baseUrl`, `.model`, `.apiKeyEnv` |
-| `dsh-capability-memory` | `memoryBackend`, `memoryUrl`, `memoryKeyEnv` | `memory.backend`, `.url`, `.apiKeyEnv` |
+| `@aiwuk/search` | `engines`, `fetchEngines`, `searxngUrl`, `baseUrl`, `tavilyKeyEnv`, `braveKeyEnv`, `searxngKeyEnv`, `jinaKeyEnv`, `apiKeyEnv` | `search.*` (same names) |
+| `@aiwuk/search` | `audioBaseUrl`, `audioKeyEnv` | `audio.baseUrl`, `audio.apiKeyEnv` |
+| `@aiwuk/memory` | `embeddingBaseUrl`, `embeddingModel`, `embeddingKeyEnv` | `embeddings.baseUrl`, `.model`, `.apiKeyEnv` |
+| `@aiwuk/memory` | `memoryBackend`, `memoryUrl`, `memoryKeyEnv` | `memory.backend`, `.url`, `.apiKeyEnv` |
 
 If an old nested copy of schemastery without `.volatile()` shadows DSH's, the bundle refuses to load with an error naming the directory to delete. Install and enable the independent plugins `packages/omni-search` and `packages/global-memory` in the DSH plugin manager (or install their corresponding `.tgz` packages), then restart DSH. The team plugin's memory hub reads the same configuration as `global-memory`.
 
-`omni-search` (`dsh-omni-search`) provides `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe`, and `omni_transcribe_status` to all sessions without a UI. The names deliberately differ from DSH's built-in `web_search` / `web_fetch`. Team-plugin roles with `search: false` cannot call these five tools. If a tool/plugin is unavailable or disabled, report that truthfully. `global-memory` reads embedding and memory-backend settings.
+`omni-search` (`@aiwuk/search`) provides `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe`, and `omni_transcribe_status` to all sessions without a UI. The names deliberately differ from DSH's built-in `web_search` / `web_fetch`. Team-plugin roles with `search: false` cannot call these five tools. If a tool/plugin is unavailable or disabled, report that truthfully. `global-memory` reads embedding and memory-backend settings.
 
 ### Search and fetch engines
 
@@ -153,7 +153,7 @@ Breaking change: the old names are no longer recognized.
 
 | Old | New |
 |---|---|
-| `packages/cpa-tools` | `packages/omni-search` (`dsh-omni-search`, patch id `omni-search`) |
+| `packages/cpa-tools` | `packages/omni-search` (`@aiwuk/search`, patch id `omni-search`) |
 | `cpa_search`, `cpa_fetch`, `cpa_search_providers`, `cpa_transcribe`, `cpa_transcribe_status` | `omni_search`, `omni_fetch`, `omni_search_providers`, `omni_transcribe`, `omni_transcribe_status` |
 | `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY` (the `custom` engine) |
 | `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |

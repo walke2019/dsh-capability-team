@@ -1,3 +1,4 @@
+import { t, roleText, m as modelText } from './i18n.js';
 // Team configuration is data: the seed below is only the initial default.
 // Every project may override tiers, capabilities and roles through the
 // conversational save tool; nothing here is consulted by name.
@@ -27,7 +28,7 @@ function deepFreeze(value) {
   return Object.freeze(value);
 }
 export const seed = deepFreeze({
-  name: '默认配置',
+  name: t('config.050'),
   // Same-route retries first (DSH provider retry policy, then `retries` more), then same-tier backups.
   failover: {
     retries: 2, initialDelayMs: 1000, maxDelayMs: 15000, cooldownMs: 60000,
@@ -66,88 +67,88 @@ export const seed = deepFreeze({
   tiers: { high: [], upper: [], medium: [], low: [] },
   capabilities: {
     // whenToUse tells the Lead when to pick a capability; job says what it does.
-    orchestrator: { job: '意图分析、任务分派、决策与最终交付', tier: 'high', search: true, prefer: ['claude', 'gpt', 'gemini'] },
-    'technical-director': { job: '技术方案、任务拆解、接口契约与技术验收', whenToUse: '需求跨多个模块、需要先定方案或接口契约，或要对他人的实现做技术验收时', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
-    backend: { job: '服务端、数据库、接口与后端测试', whenToUse: '要修改服务端代码、数据库结构或接口，或修复后端缺陷时', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'deepseek', 'qwen', 'kimi', 'glm'] },
-    frontend: { job: '页面、组件、交互与前端测试', whenToUse: '要修改页面、组件、样式或前端交互，或修复界面缺陷时', tier: 'medium', search: false, prefer: ['gemini', 'claude', 'gpt'] },
+    orchestrator: { job: roleText('config.051'), tier: 'high', search: true, prefer: ['claude', 'gpt', 'gemini'] },
+    'technical-director': { job: roleText('config.052'), whenToUse: roleText('config.053'), tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
+    backend: { job: roleText('config.054'), whenToUse: roleText('config.055'), tier: 'upper', search: false, prefer: ['gpt', 'claude', 'deepseek', 'qwen', 'kimi', 'glm'] },
+    frontend: { job: roleText('config.056'), whenToUse: roleText('config.057'), tier: 'medium', search: false, prefer: ['gemini', 'claude', 'gpt'] },
     // access: tools a role may not use, whether it may run commands, and the project paths it may edit.
-    research: { job: '调用检索工具、核实来源与交叉验证', whenToUse: '需要联网查资料、核实版本或文档、对比方案出处时；只读，不改文件', tier: 'medium', search: true, prefer: ['gemini', 'gpt', 'grok'],
+    research: { job: roleText('config.058'), whenToUse: roleText('config.059'), tier: 'medium', search: true, prefer: ['gemini', 'gpt', 'grok'],
       // read-only is DSH's own sandbox preset: once it is in effect the session may run read-only commands.
       access: { editPaths: [], shell: false, preset: 'read-only' } },
-    writer: { job: '文档与交付说明', whenToUse: '要写或改 README、说明文档、变更记录、交付说明时；只改文档，不改代码', tier: 'low', search: false, prefer: ['gpt', 'claude', 'gemini', 'deepseek', 'qwen'],
+    writer: { job: roleText('config.060'), whenToUse: roleText('config.061'), tier: 'low', search: false, prefer: ['gpt', 'claude', 'gemini', 'deepseek', 'qwen'],
       access: { editPaths: ['**/*.md', '**/*.mdx', '**/*.txt', 'docs/**'], shell: false } },
-    qa: { job: '测试计划、回归测试、接口与界面验收、失败复现及证据；区分实测、模拟与未验证，不默认修改业务实现', whenToUse: '实现完成后需要独立验证、编写或运行测试、复现缺陷并留存证据时', tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
+    qa: { job: roleText('config.062'), whenToUse: roleText('config.063'), tier: 'upper', search: false, prefer: ['gpt', 'claude', 'gemini'] },
   },
   roles: structuredClone(DEFAULT_ROLES), // roster-defaults.js; the hero roster is the optional three-kingdoms theme
 });
 function text(value, max, label, multiline = false) {
   if (typeof value !== 'string' || !value.trim() || value.length > max || (multiline ? TEXT_CONTROL : LINE_CONTROL).test(value)) {
-    throw new Error(`${label}须为1–${max}字符且不含控制字符`);
+    throw new Error(modelText('config.064', { 0: label, 1: max }));
   }
   return value.trim();
 }
 function entries(map, label) {
-  if (!isMap(map)) throw new Error(`${label}必须为对象`);
-  for (const id of Object.keys(map)) if (!ID.test(id)) throw new Error(`${label}标识 ${id} 须为小写短横线格式`);
+  if (!isMap(map)) throw new Error(modelText('config.065', { 0: label }));
+  for (const id of Object.keys(map)) if (!ID.test(id)) throw new Error(modelText('config.066', { 0: label, 1: id }));
   return Object.entries(map);
 }
 function onlyKeys(value, allowed, label) {
-  if (!isMap(value)) throw new Error(`${label}必须为对象`);
+  if (!isMap(value)) throw new Error(modelText('config.067', { 0: label }));
   const extra = Object.keys(value).filter(k => !allowed.includes(k));
-  if (extra.length) throw new Error(`${label}含未知字段 ${extra.join(', ')}`);
+  if (extra.length) throw new Error(modelText('config.068', { 0: label, 1: extra.join(', ') }));
 }
 /** Validate one complete effective configuration and return a normalized copy. */
 export function validateConfig(config, { trustedRoutes } = {}) {
-  const name = text(config.name ?? seed.name, 80, '配置名称');
+  const name = text(config.name ?? seed.name, 80, modelText('config.069'));
   const tierDrift = [];
   const tiers = {};
-  for (const [id, models] of entries(config.tiers, '档位')) {
-    if (!Array.isArray(models) || models.length > 200) throw new Error(`档位 ${id} 须为不超过200项的模型ID数组`);
-    const list = models.map(m => text(m, 200, `档位 ${id} 的模型ID`));
-    if (new Set(list).size !== list.length) throw new Error(`档位 ${id} 含重复模型`);
+  for (const [id, models] of entries(config.tiers, modelText('config.070'))) {
+    if (!Array.isArray(models) || models.length > 200) throw new Error(modelText('config.071', { 0: id }));
+    const list = models.map(m => text(m, 200, modelText('config.072', { 0: id })));
+    if (new Set(list).size !== list.length) throw new Error(modelText('config.073', { 0: id }));
     tiers[id] = list;
   }
   const capabilities = {};
-  for (const [id, c] of entries(config.capabilities, '能力')) {
-    onlyKeys(c, CAPABILITY_KEYS, `能力 ${id}`);
-    if (!Object.hasOwn(tiers, c.tier)) throw new Error(`能力 ${id} 的档位 ${c.tier} 未配置`);
-    if (c.search !== undefined && typeof c.search !== 'boolean') throw new Error(`能力 ${id} 的 search 必须为布尔值`);
-    if (c.planFirst !== undefined && c.planFirst !== null && typeof c.planFirst !== 'boolean') throw new Error(`能力 ${id} 的 planFirst 必须为布尔值`);
-    if (c.prefer !== undefined && (!Array.isArray(c.prefer) || c.prefer.length > 20)) throw new Error(`能力 ${id} 的 prefer 须为厂商标识数组`);
-    const common = { job: text(c.job, 2000, `能力 ${id} 的职责`, true),
-      ...(c.whenToUse === undefined || c.whenToUse === null ? {} : { whenToUse: text(c.whenToUse, 500, `能力 ${id} 的适用场景`) }), tier: c.tier, search: c.search === true, prefer: (c.prefer ?? []).map(v => text(v, 40, `能力 ${id} 的厂商偏好`)),
-      ...(c.access === undefined || c.access === null ? {} : { access: validateAccess(c.access, `能力 ${id} 的权限`) }),
+  for (const [id, c] of entries(config.capabilities, modelText('config.074'))) {
+    onlyKeys(c, CAPABILITY_KEYS, modelText('config.075', { 0: id }));
+    if (!Object.hasOwn(tiers, c.tier)) throw new Error(modelText('config.076', { 0: id, 1: c.tier }));
+    if (c.search !== undefined && typeof c.search !== 'boolean') throw new Error(modelText('config.077', { 0: id }));
+    if (c.planFirst !== undefined && c.planFirst !== null && typeof c.planFirst !== 'boolean') throw new Error(modelText('config.078', { 0: id }));
+    if (c.prefer !== undefined && (!Array.isArray(c.prefer) || c.prefer.length > 20)) throw new Error(modelText('config.079', { 0: id }));
+    const common = { job: text(c.job, 2000, modelText('config.080', { 0: id }), true),
+      ...(c.whenToUse === undefined || c.whenToUse === null ? {} : { whenToUse: text(c.whenToUse, 500, modelText('config.081', { 0: id })) }), tier: c.tier, search: c.search === true, prefer: (c.prefer ?? []).map(v => text(v, 40, modelText('config.082', { 0: id }))),
+      ...(c.access === undefined || c.access === null ? {} : { access: validateAccess(c.access, modelText('config.083', { 0: id })) }),
       ...(c.planFirst === true ? { planFirst: true } : {}),
       // How much of DSH's skill catalog a teammate with this capability sees (teammate-context.js); compact by default.
-      ...(c.skills === undefined || c.skills === null ? {} : { skills: validateSkillsPolicy(c.skills, `能力 ${id}`) }),
+      ...(c.skills === undefined || c.skills === null ? {} : { skills: validateSkillsPolicy(c.skills, modelText('config.084', { 0: id })) }),
       // Per-session budget of billable tokens (uncached input + cache write + output) for each member with this capability.
-      ...(c.maxTokens === undefined || c.maxTokens === null ? {} : { maxTokens: count(c.maxTokens, 1000, 1e10, `能力 ${id} 的 maxTokens`) }) };
+      ...(c.maxTokens === undefined || c.maxTokens === null ? {} : { maxTokens: count(c.maxTokens, 1000, 1e10, modelText('config.085', { 0: id })) }) };
     if (c.provider === undefined && c.model === undefined) {
-      if (c.fallbacks?.length) throw new Error(`能力 ${id} 未指定主模型，不能只配置备选`);
-      if (c.longContext) throw new Error(`能力 ${id} 未指定主模型，不能只配置长上下文路由`);
+      if (c.fallbacks?.length) throw new Error(modelText('config.086', { 0: id }));
+      if (c.longContext) throw new Error(modelText('config.087', { 0: id }));
       capabilities[id] = { ...common, fallbacks: [] };
       continue;
     }
-    const model = text(c.model, 200, `能力 ${id} 的模型ID`);
+    const model = text(c.model, 200, modelText('config.088', { 0: id }));
     const trust = { trusted: trustedRoutes?.get(id), capability: id, drift: tierDrift };
-    adoptIntoTier(tiers, c.tier, model, `能力 ${id} 的模型`, trust);
-    const provider = text(c.provider, 200, `能力 ${id} 的渠道`);
+    adoptIntoTier(tiers, c.tier, model, modelText('config.089', { 0: id }), trust);
+    const provider = text(c.provider, 200, modelText('config.090', { 0: id }));
     capabilities[id] = { ...common, provider, model,
-      fallbacks: validateFallbacks(c.fallbacks ?? [], { provider, model }, tiers, c.tier, `能力 ${id}`, trust),
-      ...(c.longContext === undefined || c.longContext === null ? {} : { longContext: validateLongContext(c.longContext, { provider, model }, tiers, c.tier, `能力 ${id} 的长上下文路由`, trust) }) };
+      fallbacks: validateFallbacks(c.fallbacks ?? [], { provider, model }, tiers, c.tier, modelText('config.091', { 0: id }), trust),
+      ...(c.longContext === undefined || c.longContext === null ? {} : { longContext: validateLongContext(c.longContext, { provider, model }, tiers, c.tier, modelText('config.092', { 0: id }), trust) }) };
   }
-  if (!capabilities.orchestrator) throw new Error('必须保留 orchestrator 能力');
+  if (!capabilities.orchestrator) throw new Error(modelText('config.093'));
   const roles = {}; const names = new Set();
-  for (const [id, r] of entries(config.roles, '角色')) {
-    onlyKeys(r, ROLE_KEYS, `角色 ${id}`);
-    if (!Object.hasOwn(capabilities, r.capability)) throw new Error(`角色 ${id} 绑定了未知能力 ${r.capability}`);
-    if ((id === 'lead') !== (r.capability === 'orchestrator')) throw new Error('lead 必须且只有 lead 可以绑定 orchestrator 能力');
-    const displayName = text(r.displayName, 40, `角色 ${id} 的显示名`);
-    if (names.has(displayName)) throw new Error(`显示名 ${displayName} 重复`);
+  for (const [id, r] of entries(config.roles, modelText('config.094'))) {
+    onlyKeys(r, ROLE_KEYS, modelText('config.095', { 0: id }));
+    if (!Object.hasOwn(capabilities, r.capability)) throw new Error(modelText('config.096', { 0: id, 1: r.capability }));
+    if ((id === 'lead') !== (r.capability === 'orchestrator')) throw new Error(modelText('config.097'));
+    const displayName = text(r.displayName, 40, modelText('config.098', { 0: id }));
+    if (names.has(displayName)) throw new Error(modelText('config.099', { 0: displayName }));
     names.add(displayName);
-    roles[id] = { displayName, capability: r.capability, ...(r.description === undefined ? {} : { description: text(r.description, 2000, `角色 ${id} 的职责描述`, true) }) };
+    roles[id] = { displayName, capability: r.capability, ...(r.description === undefined ? {} : { description: text(r.description, 2000, modelText('config.100', { 0: id }), true) }) };
   }
-  if (!roles.lead) throw new Error('必须保留 lead 角色');
+  if (!roles.lead) throw new Error(modelText('config.101'));
   return { name, failover: validateFailover(config.failover ?? seed.failover), workflow: validateWorkflow(config.workflow ?? seed.workflow), tiers, capabilities, roles, ...(tierDrift.length ? { tierDrift } : {}), ...patchSingleModel(undefined, config.singleModel ?? null) };
 }
 /**
@@ -163,108 +164,108 @@ function adoptIntoTier(tiers, tier, model, label, trust) {
   const trusted = trust?.trusted?.has(model);
   const elsewhere = Object.keys(tiers).find(t => t !== tier && tiers[t].includes(model));
   if (elsewhere) {
-    if (!trusted) throw new Error(`${label} ${model} 已归入 ${elsewhere} 档，与 ${tier} 档不在同一档位中；不允许跨档或自动降档，需先调整档位`);
+    if (!trusted) throw new Error(modelText('config.102', { 0: label, 1: model, 2: elsewhere, 3: tier }));
     trust.drift.push({ capability: trust.capability, model, tier, gradedAs: elsewhere });
     return;
   }
   const refused = trusted ? undefined : unroutableReason(model);
-  if (refused) throw new Error(`${label} ${model} 是${refused}，不能作为角色路由；确需使用时先把它明确写进 ${tier} 档的 tiers 列表`);
+  if (refused) throw new Error(modelText('config.103', { 0: label, 1: model, 2: refused, 3: tier }));
   tiers[tier].push(model);
 }
 /** Same-tier route taken once a session's next prompt reaches thresholdTokens; never another tier. */
 function validateLongContext(lc, primary, tiers, tier, label, trust) {
   onlyKeys(lc, ['thresholdTokens', 'provider', 'model'], label);
-  const route = { provider: text(lc.provider, 200, `${label}的渠道`), model: text(lc.model, 200, `${label}的模型ID`) };
+  const route = { provider: text(lc.provider, 200, modelText('config.104', { 0: label })), model: text(lc.model, 200, modelText('config.105', { 0: label })) };
   adoptIntoTier(tiers, tier, route.model, label, trust);
-  if (route.provider === primary.provider && route.model === primary.model) throw new Error(`${label}不能与主模型相同`);
-  return { thresholdTokens: count(lc.thresholdTokens, 8000, 10000000, `${label}的 thresholdTokens`), ...route };
+  if (route.provider === primary.provider && route.model === primary.model) throw new Error(modelText('config.106', { 0: label }));
+  return { thresholdTokens: count(lc.thresholdTokens, 8000, 10000000, modelText('config.107', { 0: label })), ...route };
 }
 /** Access policy: denied tool names (or prefix*), shell on/off, and project-relative globs that may be edited (absent = any). */
 function validateAccess(a, label) {
   onlyKeys(a, ACCESS_KEYS, label);
-  if (a.shell !== undefined && typeof a.shell !== 'boolean') throw new Error(`${label}的 shell 必须为布尔值`);
-  const deny = toolNames(a.deny ?? [], `${label}的禁用工具`);
-  for (const name of deny) if (!/^[A-Za-z0-9_.:-]+\*?$/.test(name)) throw new Error(`${label}的禁用工具 ${name} 须为工具名或以 * 结尾的前缀`);
+  if (a.shell !== undefined && typeof a.shell !== 'boolean') throw new Error(modelText('config.108', { 0: label }));
+  const deny = toolNames(a.deny ?? [], modelText('config.109', { 0: label }));
+  for (const name of deny) if (!/^[A-Za-z0-9_.:-]+\*?$/.test(name)) throw new Error(modelText('config.110', { 0: label, 1: name }));
   let editPaths = null;
   if (a.editPaths !== undefined && a.editPaths !== null) {
-    if (!Array.isArray(a.editPaths) || a.editPaths.length > 50) throw new Error(`${label}的 editPaths 须为不超过50项的路径规则数组`);
-    editPaths = [...new Set(a.editPaths.map(v => text(v, 200, `${label}的路径规则`).split('\\').join('/').replace(/^\.\//, '')))];
+    if (!Array.isArray(a.editPaths) || a.editPaths.length > 50) throw new Error(modelText('config.111', { 0: label }));
+    editPaths = [...new Set(a.editPaths.map(v => text(v, 200, modelText('config.112', { 0: label })).split('\\').join('/').replace(/^\.\//, '')))];
     for (const v of editPaths) {
-      if (v.startsWith('/') || /^[A-Za-z]:/.test(v) || v.startsWith('~') || v.split('/').includes('..')) throw new Error(`${label}的路径规则 ${v} 须为项目内的相对路径，不能含 ..`);
+      if (v.startsWith('/') || /^[A-Za-z]:/.test(v) || v.startsWith('~') || v.split('/').includes('..')) throw new Error(modelText('config.113', { 0: label, 1: v }));
     }
   }
   let preset;
   if (a.preset !== undefined && a.preset !== null) {
-    preset = text(a.preset, 64, `${label}的 preset`);
-    if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(preset) || ['custom', 'auto'].includes(preset)) throw new Error(`${label}的 preset 须为 DSH 权限预设名（不能是 custom 或 auto）`);
+    preset = text(a.preset, 64, modelText('config.114', { 0: label }));
+    if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(preset) || ['custom', 'auto'].includes(preset)) throw new Error(modelText('config.115', { 0: label }));
   }
   return { deny, editPaths, shell: a.shell !== false, ...(preset ? { preset } : {}) };
 }
 function toolNames(list, label) {
-  if (!Array.isArray(list) || list.length > 100) throw new Error(`${label}须为不超过100项的工具名数组`);
+  if (!Array.isArray(list) || list.length > 100) throw new Error(modelText('config.116', { 0: label }));
   return [...new Set(list.map(n => text(n, 80, label)))];
 }
 function oneOf(value, allowed, label) {
-  if (!allowed.includes(value)) throw new Error(`${label}须为 ${allowed.join(' / ')}`);
+  if (!allowed.includes(value)) throw new Error(modelText('config.117', { 0: label, 1: allowed.join(' / ') }));
   return value;
 }
 function validateWorkflow(w) {
-  onlyKeys(w, WORKFLOW_KEYS, '工作流约束');
+  onlyKeys(w, WORKFLOW_KEYS, modelText('config.118'));
   const merged = { ...seed.workflow, ...w };
-  if (!WORKFLOW_MODES.includes(merged.mode)) throw new Error(`工作流模式须为 ${WORKFLOW_MODES.join(' / ')}`);
+  if (!WORKFLOW_MODES.includes(merged.mode)) throw new Error(modelText('config.119', { 0: WORKFLOW_MODES.join(' / ') }));
   const out = {
     mode: merged.mode,
-    analysisBudget: count(merged.analysisBudget, 0, 50, '指派前只读分析次数'),
-    directBudget: count(merged.directBudget, 0, 50, '主控自行执行次数'),
-    freeTools: oneOf(merged.freeTools, FREE_TOOL_LEVELS, '免费模型工具级别'),
-    freeModels: toolNames(merged.freeModels, '免费模型列表'),
-    analysisTools: toolNames(merged.analysisTools, '分析类工具'),
-    coordinationTools: toolNames(merged.coordinationTools, '协调类工具'),
+    analysisBudget: count(merged.analysisBudget, 0, 50, modelText('config.120')),
+    directBudget: count(merged.directBudget, 0, 50, modelText('config.121')),
+    freeTools: oneOf(merged.freeTools, FREE_TOOL_LEVELS, modelText('config.122')),
+    freeModels: toolNames(merged.freeModels, modelText('config.123')),
+    analysisTools: toolNames(merged.analysisTools, modelText('config.124')),
+    coordinationTools: toolNames(merged.coordinationTools, modelText('config.125')),
     fileLimits: validateFileLimits(merged.fileLimits),
-    confirmDispatch: oneOf(merged.confirmDispatch, CONFIRM_MODES, '分派确认方式'),
+    confirmDispatch: oneOf(merged.confirmDispatch, CONFIRM_MODES, modelText('config.126')),
     rotation: validateRotation(merged.rotation),
     tokens: validateTokenRules(merged.tokens),
-    enforceWriteScopes: (() => { if (typeof merged.enforceWriteScopes !== 'boolean') throw new Error('enforceWriteScopes 须为 true 或 false'); return merged.enforceWriteScopes; })(),
+    enforceWriteScopes: (() => { if (typeof merged.enforceWriteScopes !== 'boolean') throw new Error(modelText('config.127')); return merged.enforceWriteScopes; })(),
   };
   const both = out.analysisTools.filter(n => out.coordinationTools.includes(n));
-  if (both.length) throw new Error(`工具 ${both.join(', ')} 不能同时属于分析类和协调类`);
+  if (both.length) throw new Error(modelText('config.128', { 0: both.join(', ') }));
   return out;
 }
 /** Ordered same-tier backups: never another tier, never the primary twice. */
 function validateFallbacks(list, primary, tiers, tier, label, trust) {
-  if (!Array.isArray(list) || list.length > MAX_FALLBACKS) throw new Error(`${label} 的备选须为不超过${MAX_FALLBACKS}项的数组`);
+  if (!Array.isArray(list) || list.length > MAX_FALLBACKS) throw new Error(modelText('config.129', { 0: label, 1: MAX_FALLBACKS }));
   const seen = new Set([`${primary.provider}\u0000${primary.model}`]);
   return list.map((f, i) => {
-    onlyKeys(f, ['provider', 'model'], `${label} 的第${i + 1}个备选`);
-    const route = { provider: text(f.provider, 200, `${label} 备选渠道`), model: text(f.model, 200, `${label} 备选模型ID`) };
-    adoptIntoTier(tiers, tier, route.model, `${label} 的备选`, trust);
+    onlyKeys(f, ['provider', 'model'], modelText('config.130', { 0: label, 1: i + 1 }));
+    const route = { provider: text(f.provider, 200, modelText('config.131', { 0: label })), model: text(f.model, 200, modelText('config.132', { 0: label })) };
+    adoptIntoTier(tiers, tier, route.model, modelText('config.133', { 0: label }), trust);
     const key = `${route.provider}\u0000${route.model}`;
-    if (seen.has(key)) throw new Error(`${label} 的备选 ${route.provider}/${route.model} 与主模型或其他备选重复`);
+    if (seen.has(key)) throw new Error(modelText('config.134', { 0: label, 1: route.provider, 2: route.model }));
     seen.add(key);
     return route;
   });
 }
 function count(value, min, max, label) {
-  if (!Number.isSafeInteger(value) || value < min || value > max) throw new Error(`${label}须为${min}–${max}的整数`);
+  if (!Number.isSafeInteger(value) || value < min || value > max) throw new Error(modelText('config.135', { 0: label, 1: min, 2: max }));
   return value;
 }
 function codes(list, label) {
-  if (!Array.isArray(list) || list.length > 50) throw new Error(`${label}须为数组`);
+  if (!Array.isArray(list) || list.length > 50) throw new Error(modelText('config.136', { 0: label }));
   return list.map(c => text(c, 64, label));
 }
 function validateFailover(f) {
-  onlyKeys(f, FAILOVER_KEYS, '容灾策略');
+  onlyKeys(f, FAILOVER_KEYS, modelText('config.137'));
   const merged = { ...seed.failover, ...f };
   const out = {
-    retries: count(merged.retries, 0, 10, '同一模型的追加重试次数'),
-    initialDelayMs: count(merged.initialDelayMs, 100, 60000, '首次重试等待毫秒数'),
-    maxDelayMs: count(merged.maxDelayMs, 100, 120000, '最长重试等待毫秒数'),
-    cooldownMs: count(merged.cooldownMs, 5000, 600000, '故障模型冷却毫秒数'),
-    retryCodes: codes(merged.retryCodes, '可重试错误码'),
-    failoverCodes: codes(merged.failoverCodes, '可切换错误码'),
-    failoverStatuses: merged.failoverStatuses.map(s => count(s, 400, 599, 'HTTP状态码')),
+    retries: count(merged.retries, 0, 10, modelText('config.138')),
+    initialDelayMs: count(merged.initialDelayMs, 100, 60000, modelText('config.139')),
+    maxDelayMs: count(merged.maxDelayMs, 100, 120000, modelText('config.140')),
+    cooldownMs: count(merged.cooldownMs, 5000, 600000, modelText('config.141')),
+    retryCodes: codes(merged.retryCodes, modelText('config.142')),
+    failoverCodes: codes(merged.failoverCodes, modelText('config.143')),
+    failoverStatuses: merged.failoverStatuses.map(s => count(s, 400, 599, modelText('config.144'))),
   };
-  if (out.initialDelayMs > out.maxDelayMs) throw new Error('首次重试等待不能大于最长等待');
+  if (out.initialDelayMs > out.maxDelayMs) throw new Error(modelText('config.145'));
   return out;
 }
 // null in a stored override removes the entry; objects merge field by field.
@@ -315,7 +316,7 @@ export function effectiveConfig(overrides = {}, base = seed, { trustedFrom } = {
 /** Base configuration from preset config: bindings may rename or add seed roles. */
 export function baseConfig(config = {}) {
   if (config.bindings === undefined) return seed;
-  if (!isMap(config.bindings)) throw new Error('bindings 必须为对象');
+  if (!isMap(config.bindings)) throw new Error(modelText('config.146'));
   const roles = Object.fromEntries(Object.entries(config.bindings).map(([id, b]) => [id, isMap(b) ? { ...b } : b]));
   return deepFreeze(validateConfig({ ...seed, roles }));
 }
@@ -335,7 +336,7 @@ export function withAutoRoutes(base, match) {
 }
 /** Upgrade the earlier names/descriptions/routes file format in memory. */
 export function migrateProject(raw) {
-  if (!isMap(raw)) throw new Error('项目团队配置文件格式无效');
+  if (!isMap(raw)) throw new Error(modelText('config.147'));
   const { revision = 0, name, failover, workflow, roster, singleModel, names = {}, descriptions = {}, routes = {}, tiers = {}, capabilities = {}, roles = {} } = raw;
   const legacyRoles = {};
   for (const id of new Set([...Object.keys(names), ...Object.keys(descriptions)])) {
@@ -349,15 +350,15 @@ export function migrateProject(raw) {
  */
 export function applyPatch(overrides, patch) {
   const next = { revision: overrides.revision ?? 0, name: overrides.name, ...(overrides.roster === undefined ? {} : { roster: overrides.roster }), ...patchSingleModel(overrides.singleModel, patch.singleModel) };
-  if (patch.name !== undefined) next.name = text(patch.name, 80, '配置名称');
+  if (patch.name !== undefined) next.name = text(patch.name, 80, modelText('config.148'));
   if (next.name === undefined) delete next.name;
   // failover is one object: fields merge, null restores the preset policy.
   const failover = patch.failover === null ? undefined : patch.failover === undefined ? overrides.failover : { ...(overrides.failover ?? {}), ...patch.failover };
-  if (patch.failover !== undefined && patch.failover !== null) onlyKeys(patch.failover, FAILOVER_KEYS, '容灾策略');
+  if (patch.failover !== undefined && patch.failover !== null) onlyKeys(patch.failover, FAILOVER_KEYS, modelText('config.149'));
   if (failover !== undefined) next.failover = failover;
   // workflow follows the same rule: fields merge, null restores the preset policy.
   const workflow = patch.workflow === null ? undefined : patch.workflow === undefined ? overrides.workflow : { ...(overrides.workflow ?? {}), ...patch.workflow };
-  if (patch.workflow !== undefined && patch.workflow !== null) onlyKeys(patch.workflow, WORKFLOW_KEYS, '工作流约束');
+  if (patch.workflow !== undefined && patch.workflow !== null) onlyKeys(patch.workflow, WORKFLOW_KEYS, modelText('config.150'));
   if (workflow !== undefined) next.workflow = workflow;
   for (const section of SECTIONS) {
     next[section] = { ...(overrides[section] ?? {}) };
@@ -380,18 +381,18 @@ export function roleView(effective) {
     return { id, displayName: r.displayName, capability: r.capability, description: r.description ?? c.job, ...(c.whenToUse ? { whenToUse: c.whenToUse } : {}), provider: route.provider, model: route.model, tier: c.tier, search: c.search, fallbacks: route.fallbacks, ...rolePolicies(c), ...(route.singleModel ? { singleModel: true } : {}) };
   });
 }
-const SECTION_LABEL = { tiers: '档位', capabilities: '能力', roles: '角色' };
+const SECTION_LABEL = { tiers: t('config.151'), capabilities: t('config.152'), roles: t('config.153') };
 /** Human-readable list of every field that differs between two effective configurations. */
 export function describeChanges(before, after) {
-  const lines = [...(before.name === after.name ? [] : [`配置名称：${before.name} → ${after.name}`]), ...singleModelChanges(before.singleModel, after.singleModel)];
+  const lines = [...(before.name === after.name ? [] : [t('config.154', { 0: before.name, 1: after.name })]), ...singleModelChanges(before.singleModel, after.singleModel)];
   const fa = JSON.stringify(before.failover); const fb = JSON.stringify(after.failover);
-  if (fa !== fb) lines.push(`容灾策略：${fa} → ${fb}`);
+  if (fa !== fb) lines.push(t('config.155', { 0: fa, 1: fb }));
   const wa = JSON.stringify(before.workflow); const wb = JSON.stringify(after.workflow);
-  if (wa !== wb) lines.push(`工作流约束：${wa} → ${wb}`);
+  if (wa !== wb) lines.push(t('config.156', { 0: wa, 1: wb }));
   for (const section of SECTIONS) {
     for (const id of new Set([...Object.keys(before[section]), ...Object.keys(after[section])])) {
       const a = JSON.stringify(before[section][id]); const b = JSON.stringify(after[section][id]);
-      if (a !== b) lines.push(`${SECTION_LABEL[section]} ${id}：${a ?? '（新增）'} → ${b ?? '（删除）'}`);
+      if (a !== b) lines.push(`${SECTION_LABEL[section]} ${id}：${a ?? t('config.157')} → ${b ?? t('config.158')}`);
     }
   }
   return lines;
@@ -404,7 +405,7 @@ export function resolveRole(membership, effective) {
   const own = Object.hasOwn(effective.roles, name) || !Object.hasOwn(effective.roles, base) ? name : base;
   const id = legacyRoleId(own, effective.roles) ?? legacyRoleId(base, effective.roles) ?? own; // `lv-bu(-rN)` routes as backend
   const role = Object.hasOwn(effective.roles, id) ? effective.roles[id] : undefined;
-  if (!role) throw new Error(`队友 ${id} 未在当前项目的团队配置中登记，无法确定模型。主控请加载 project-role-theme 技能，经用户确认后用 capability_team_save 登记该角色及能力；不按名称猜测模型。`);
+  if (!role) throw new Error(modelText('config.159', { 0: id }));
   const c = effective.capabilities[role.capability]; const r = effectiveRoute(c, effective.singleModel);
   return { id, displayName: role.displayName, capability: role.capability, description: role.description ?? c.job, provider: r.provider, model: r.model, tier: c.tier, search: c.search, fallbacks: r.fallbacks, failover: effective.failover, ...rolePolicies(c), ...(r.unassigned ? { unassigned: true } : {}), ...(r.singleModel ? { singleModel: true } : {}) };
 }

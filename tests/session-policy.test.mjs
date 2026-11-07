@@ -11,11 +11,11 @@ test('会话策略持久化、隔离、版本冲突及损坏时拒绝', async ()
     await saveSessionPolicy('a', ['fixture/model'], 0, root);
     assert.deepEqual((await readSessionPolicy('a', root)).disabledRoutes, ['fixture/model']);
     assert.deepEqual((await readSessionPolicy('b', root)).disabledRoutes, []);
-    await assert.rejects(saveSessionPolicy('a', [], 0, root), /已变化/);
+    await assert.rejects(saveSessionPolicy('a', [], 0, root), /changed/);
     await saveSessionPolicy('a', [], 1, root);
     assert.equal((await readSessionPolicy('a', root)).revision, 2);
     await writeFile(sessionPolicyPath('a', root), '{broken');
-    await assert.rejects(readSessionPolicy('a', root), /损坏/);
+    await assert.rejects(readSessionPolicy('a', root), /corrupt/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('两个并发保存不能覆盖同一版本', async () => {
@@ -38,8 +38,8 @@ test('模型策略全局共享：一个主会话保存后，其他会话及新�
     assert.equal(saved.revision, 1);
     assert.deepEqual((await team.policy(leadB)).disabledRoutes, ['@cf/*', 'p/m']);
     assert.deepEqual((await team.policy(mateB)).disabledRoutes, ['@cf/*', 'p/m']);
-    await assert.rejects(team.savePolicy(leadB, [], 0), /已变化/);
-    await assert.rejects(team.savePolicy(mateB, [], 1), /仅主会话/);
+    await assert.rejects(team.savePolicy(leadB, [], 0), /changed/);
+    await assert.rejects(team.savePolicy(mateB, [], 1), /Only the main session/);
     await team.savePolicy(leadB, ['@cf/*'], 1);
     assert.deepEqual((await readGlobalPolicy(root)).disabledRoutes, ['@cf/*']);
     assert.notEqual(globalPolicyPath(root), sessionPolicyPath('session-a', root));

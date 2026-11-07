@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Extract only recorded model identities, never prompt/content/replayState.
 // Request headers prove configuration admission, not successful provider completion.
 import { foldUsage } from './usage.js';
@@ -20,7 +21,7 @@ export async function readTeamEvidence(query, teams, agent) {
   try { members = teams ? teams.listMembers(agent) : [{ id: agent.id, name: 'lead' }]; }
   catch (error) {
     return [{ sessionId: agent.id, name: 'lead', ...await readRequestEvidence(query, agent.id),
-      unavailable: `团队成员读取失败：${error.message ?? error}` }];
+      unavailable: modelText('request-evidence.357', { 0: error.message ?? error }) }];
   }
   const result = [];
   // Deliberately sequential: bound peak log memory to one member at a time.
@@ -31,7 +32,7 @@ export async function readTeamEvidence(query, teams, agent) {
   return result;
 }
 export async function readRequestEvidence(query, sessionId) {
-  if (!query) return { records: [], unavailable: '当前宿主未提供会话日志查询服务' };
+  if (!query) return { records: [], unavailable: modelText('request-evidence.358') };
   try {
     const snapshot = await query.readSession(sessionId);
     return { records: requestEvidence(snapshot), usage: foldUsage(snapshot) };

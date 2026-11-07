@@ -1,18 +1,16 @@
-# Capability Memory for DSH
+# AIWUK Memory for DSH
 
-[![npm](https://img.shields.io/npm/v/dsh-capability-memory.svg)](https://www.npmjs.com/package/dsh-capability-memory)
-
-Part of [Capability Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
+Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) ([main README](../../README.md)); usable on its own in any session.
 
 ```bash
-dsh plugin add dsh-capability-memory
+dsh plugin add @aiwuk/memory
 ```
 
-Requires DSH >= 0.2.1-rc.3 and Node.js >= 22.
+Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22.
 
-A profile-wide, Host-only bundle (`dsh-capability-memory`, patch id `global-memory`) providing `memory_search`, `memory_write`, and bounded automatic recall. It does not create an agent preset or automatic transcript ingestion. Memory is local by default; OpenAI-compatible embeddings and an OpenViking shared backend are optional. A settings form on DSH's Plugins page is coming in this release; until then, use the configuration described below.
+A profile-wide, Host-only bundle (`@aiwuk/memory`, patch id `global-memory`) providing `memory_search`, `memory_write`, and bounded automatic recall. It does not create an agent preset or automatic transcript ingestion. Memory is local by default; OpenAI-compatible embeddings and an OpenViking shared backend are optional. Its settings live on the plugin's page under DSH's **Plugins** (see [Settings page](#settings-page)).
 
-Since 0.3.0 the package is published as `dsh-capability-memory` (formerly `@local/dsh-global-memory`); the patch id `global-memory` is unchanged. Update profile and bundle-list references — see the [CHANGELOG](../../CHANGELOG.md).
+Since 1.0.0 the package is published as `@aiwuk/memory` (formerly `dsh-capability-memory`, and before that `@local/dsh-global-memory`); the patch id `global-memory`, the tools and the credential names are unchanged. See [docs/migration-aiwuk.md](../../docs/migration-aiwuk.md) and the [CHANGELOG](../../CHANGELOG.md).
 
 ## Build and enable from source
 
@@ -25,7 +23,17 @@ The `dsh plugin add` command above is the normal path. To run from a checkout in
 5. If activation is `failed`, inspect the activation error; resolve `overridden` activation conflicts; restart for `restart-required`. Restart after replacing an installed JS package. Begin a new user task to trigger recall (hot reload never replays history).
 6. Verify a non-team session has both memory tools. Explicitly write a harmless project note, then search it. A later new task can recall it. Capability-team lead/member/rotation sessions must have only their existing team tools and no global-memory context.
 
-Only one instance may run per profile. Disable the bundle, plugin, or set `enabled: false` to stop it. No client watcher/rebuild is needed.
+Only one instance may run per profile. Disable the bundle, plugin, or set `enabled: false` to stop it. The settings page is a client extension; use a page reload after updating the package.
+
+## Settings page
+
+Installed through an AIWUK Mothership? Everything is already configured and the page says so; see [standalone setup](../../docs/standalone-setup.md) for standalone installs and the AI-agent checklist.
+
+Open the plugin on DSH's **Plugins** page. The page edits the live (volatile) settings and shows every integration setting:
+
+- **Secrets are write-only.** `OPENVIKING_API_KEY` and `EMBEDDING_API_KEY` show a state only (Not set / Set (stored) / Set (environment) / Configured by AIWUK Mothership). You can Set, Replace or Clear a stored value; the value is never read back or shown, and the input is cleared after every save. Values go to DSH's credential store (`~/.dsh/.credentials.yaml`, plain YAML, mode 0600). If the state cannot be read the row shows "Could not check" with a Retry button.
+- **Configured by the Mothership.** When an AIWUK Mothership manages this extension the page opens with a notice ("Configured by AIWUK Mothership"), shows the pushed URLs, models and engine lists read-only, and folds the settings the Mothership does not send under "Optional settings".
+- **Mothership lock badges.** When an AIWUK Mothership manages a setting, the row carries a badge: "Managed by AIWUK Mothership" (locked, read-only here; change it in the Mothership) or "Default from Mothership" (editable; your own value wins). The lock is a policy signal for the UI, not a security boundary on the machine.
 
 ## Configuration
 

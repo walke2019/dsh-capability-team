@@ -1,3 +1,4 @@
+import { roleText, m as modelText } from './i18n.js';
 // Built-in role rosters. The neutral roster is the default; "three-kingdoms" is an optional skin applied
 // per project through capability_team_import { theme }. Projects saved before 4.0 keep their hero roster.
 const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -14,13 +15,13 @@ export const DEFAULT_ROLES = frozen({
 });
 /** The pre-4.0 default roster, kept as the optional "three-kingdoms" theme. */
 export const THREE_KINGDOMS_ROLES = frozen({
-  lead: { displayName: '孙权', capability: 'orchestrator' },
-  'zhuge-liang': { displayName: '诸葛亮', capability: 'technical-director' },
-  'lv-bu': { displayName: '吕布', capability: 'backend' },
-  'diao-chan': { displayName: '貂蝉', capability: 'frontend' },
-  'zhao-yun': { displayName: '赵云', capability: 'research' },
-  'chen-lin': { displayName: '陈琳', capability: 'writer' },
-  'zhou-yu': { displayName: '周瑜', capability: 'qa' },
+  lead: { displayName: roleText('roster-defaults.364'), capability: 'orchestrator' },
+  'zhuge-liang': { displayName: roleText('roster-defaults.365'), capability: 'technical-director' },
+  'lv-bu': { displayName: roleText('roster-defaults.366'), capability: 'backend' },
+  'diao-chan': { displayName: roleText('roster-defaults.367'), capability: 'frontend' },
+  'zhao-yun': { displayName: roleText('roster-defaults.368'), capability: 'research' },
+  'chen-lin': { displayName: roleText('roster-defaults.369'), capability: 'writer' },
+  'zhou-yu': { displayName: roleText('roster-defaults.370'), capability: 'qa' },
 });
 export const ROLE_THEMES = Object.freeze({ default: DEFAULT_ROLES, 'three-kingdoms': THREE_KINGDOMS_ROLES });
 /** Hero id → neutral id with the same capability; lets members spawned under the old roster keep routing. */
@@ -62,7 +63,7 @@ export function legacyRoleId(name, roles) {
 /** Save patch that replaces the project's roster with a built-in theme; other roles are removed, per-role descriptions kept. */
 export function themePatch(theme, current) {
   const roles = Object.hasOwn(ROLE_THEMES, theme) ? ROLE_THEMES[theme] : undefined;
-  if (!roles) throw new Error(`未知的内置角色主题 ${theme}；可用：${Object.keys(ROLE_THEMES).join(' / ')}`);
+  if (!roles) throw new Error(modelText('roster-defaults.371', { 0: theme, 1: Object.keys(ROLE_THEMES).join(' / ') }));
   const patch = Object.fromEntries(Object.entries(roles).map(([id, r]) => [id, { ...r }]));
   for (const id of Object.keys(current.roles ?? {})) if (!Object.hasOwn(patch, id)) patch[id] = false;
   return { roles: patch };

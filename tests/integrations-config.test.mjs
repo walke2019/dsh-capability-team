@@ -21,12 +21,12 @@ test('默认不指向任何网关，也不带任何厂商专用字段', () => {
 test('校验：https、路径、环境变量名、请求头；密钥不能放进请求头', () => {
   assert.deepEqual(validateIntegrations({ search: { baseUrl: 'https://gw.example/api/' } }), { search: { baseUrl: 'https://gw.example/api' } });
   assert.throws(() => validateIntegrations({ search: { baseUrl: 'http://gw.example' } }), /https/);
-  assert.throws(() => validateIntegrations({ search: { searchPath: 'v1/search' } }), /以 \/ 开头/);
-  assert.throws(() => validateIntegrations({ search: { searchPath: '/a/../b' } }), /以 \/ 开头/);
-  assert.throws(() => validateIntegrations({ embeddings: { apiKeyEnv: 'sk-123' } }), /环境变量名/);
+  assert.throws(() => validateIntegrations({ search: { searchPath: 'v1/search' } }), /path starting with \//);
+  assert.throws(() => validateIntegrations({ search: { searchPath: '/a/../b' } }), /path starting with \//);
+  assert.throws(() => validateIntegrations({ embeddings: { apiKeyEnv: 'sk-123' } }), /environment variable name/);
   assert.throws(() => validateIntegrations({ embeddings: { headers: { Authorization: 'Bearer x' } } }), /apiKeyEnv/);
-  assert.throws(() => validateIntegrations({ embeddings: { apiKey: 'x' } }), /不是支持的字段/);
-  assert.throws(() => validateIntegrations({ other: {} }), /不支持/);
+  assert.throws(() => validateIntegrations({ embeddings: { apiKey: 'x' } }), /not a supported field/);
+  assert.throws(() => validateIntegrations({ other: {} }), /does not support other/);
 });
 
 test('只读分层：环境变量 › 用户文件 › 默认值，并标注来源', async () => {
@@ -71,13 +71,13 @@ test('嵌入环境变量：EMBEDDING_* 优先，CPA_EMBED_* 仅在主变量未�
 test('MEMORY_BACKENDS 列表校验 memory.backend', () => {
   assert.deepEqual([...configApi.MEMORY_BACKENDS], ['local', 'openviking']);
   assert.equal(validateIntegrations({ memory: { backend: 'openviking' } }).memory.backend, 'openviking');
-  assert.throws(() => validateIntegrations({ memory: { backend: 'mem0' } }), /local 或 openviking/);
+  assert.throws(() => validateIntegrations({ memory: { backend: 'mem0' } }), /local or openviking/);
 });
 
 test('memory.sharedRecall：默认 current，可由文件或 MEMORY_SHARED_RECALL 设置，非法值被忽略', async () => {
   const root = await tmp();
   assert.equal(resolveIntegrations({ root, env: {} }).effective.memory.sharedRecall, 'current');
-  assert.throws(() => validateIntegrations({ memory: { sharedRecall: 'all' } }), /current 或 none/);
+  assert.throws(() => validateIntegrations({ memory: { sharedRecall: 'all' } }), /current or none/);
   await writeFile(join(root, 'integrations.json'), JSON.stringify({ integrations: { memory: { sharedRecall: 'none' } } }));
   const file = resolveIntegrations({ root, env: {} });
   assert.equal(file.effective.memory.sharedRecall, 'none'); assert.equal(file.sources.memory.sharedRecall, 'file');
@@ -90,11 +90,11 @@ test('memory.sharedRecall：默认 current，可由文件或 MEMORY_SHARED_RECAL
 test('搜索引擎配置：引擎列表、SearXNG 地址、各引擎密钥名', async () => {
   assert.deepEqual(validateIntegrations({ search: { engines: ['brave', 'tavily', 'brave'] } }).search.engines, ['brave', 'tavily']);
   assert.throws(() => validateIntegrations({ search: { engines: ['google'] } }), /tavily/);
-  assert.throws(() => validateIntegrations({ search: { engines: [] } }), /非空/);
+  assert.throws(() => validateIntegrations({ search: { engines: [] } }), /non-empty list/);
   assert.throws(() => validateIntegrations({ search: { fetchEngines: ['brave'] } }), /jina/);
   assert.equal(validateIntegrations({ search: { searxngUrl: 'http://127.0.0.1:8888/' } }).search.searxngUrl, 'http://127.0.0.1:8888');
   assert.throws(() => validateIntegrations({ search: { searxngUrl: 'http://searx.example.com' } }), /https/);
-  assert.throws(() => validateIntegrations({ search: { braveKeyEnv: 'bad key' } }), /环境变量名/);
+  assert.throws(() => validateIntegrations({ search: { braveKeyEnv: 'bad key' } }), /environment variable name/);
   const root = await tmp();
   const r = resolveIntegrations({ root, env: { SEARXNG_URL: 'https://searx.example.com', TAVILY_API_KEY: 't', OMNI_SEARCH_BASE_URL: 'https://gateway.example.com', OMNI_SEARCH_API_KEY: 'c' } });
   assert.equal(r.effective.search.searxngUrl, 'https://searx.example.com');

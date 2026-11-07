@@ -8,7 +8,7 @@ import { createTeam } from '../team.js';
 import { loadProject } from '../theme.js';
 import { seed } from '../config.js';
 import { CATALOG, fakeLlm } from './fixture.mjs';
-function harness(root, { role = 'lead', answer = '保存', extra = [] } = {}) {
+function harness(root, { role = 'lead', answer = 'Save', extra = [] } = {}) {
   const tools = {}; const contexts = []; const listeners = {}; const asked = []; let skill;
   const membership = agent => agent.member ?? { role, name: role };
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' },
@@ -46,17 +46,17 @@ test('技能与工具注册；子角色不能保存', async () => {
     const h = harness(root, { role: 'teammate' });
     assert.equal(h.skill.name, 'project-role-theme');
     assert.deepEqual(Object.keys(h.tools), ['capability_team_read', 'capability_model_catalog', 'capability_team_save', 'capability_team_export', 'capability_team_import']);
-    await assert.rejects(h.tools.capability_team_save.execute({ expected_revision: 0 }, { agent: h.agent() }), /仅主控/);
+    await assert.rejects(h.tools.capability_team_save.execute({ expected_revision: 0 }, { agent: h.agent() }), /Only the Lead/);
     const exported = JSON.parse(await h.tools.capability_team_export.execute({}, { agent: h.agent() }));
     assert.equal(exported.format, 'capability-team-template');
-    await assert.rejects(h.tools.capability_team_import.execute({ expected_revision: 0, template: exported }, { agent: h.agent() }), /仅主控/);
+    await assert.rejects(h.tools.capability_team_import.execute({ expected_revision: 0, template: exported }, { agent: h.agent() }), /Only the Lead/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('保存前弹出真人确认框，取消则不写入', async () => {
   const root = await temp();
   try {
-    const no = harness(root, { answer: '取消' });
-    await assert.rejects(no.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'backend': { displayName: '后端' } } }, { agent: no.agent() }), /未确认/);
+    const no = harness(root, { answer: 'Cancel' });
+    await assert.rejects(no.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'backend': { displayName: '后端' } } }, { agent: no.agent() }), /did not confirm/);
     assert.match(no.asked[0].questions[0].detail, /后端/);
     assert.equal((await loadProject(root, seed, root)).revision, 0);
     const yes = harness(root);
@@ -71,8 +71,8 @@ test('导入模板与保存走同一确认流程：取消不写入，确认后�
     const template = JSON.parse(await h.tools.capability_team_export.execute({}, { agent: h.agent() }));
     template.roles = { lead: template.roles.lead, 'qa': { displayName: '质检', capability: 'qa' } };
     template.capabilities.qa.planFirst = true;
-    const no = harness(root, { answer: '取消' });
-    await assert.rejects(no.tools.capability_team_import.execute({ expected_revision: 0, template }, { agent: no.agent() }), /未确认/);
+    const no = harness(root, { answer: 'Cancel' });
+    await assert.rejects(no.tools.capability_team_import.execute({ expected_revision: 0, template }, { agent: no.agent() }), /did not confirm/);
     assert.match(no.asked[0].questions[0].detail, /质检/);
     assert.equal((await loadProject(root, seed, root)).revision, 0);
     const saved = JSON.parse(await h.tools.capability_team_import.execute({ expected_revision: 0, template }, { agent: h.agent() }));
@@ -88,7 +88,7 @@ test('新模型必须在DSH目录中，档位可同步扩充', async () => {
     const h = harness(root, { extra: ['fresh-model'] });
     const { tiers } = JSON.parse(await h.tools.capability_team_read.execute({}, { agent: h.agent() })).effective;
     const save = (args) => h.tools.capability_team_save.execute({ expected_revision: 0, ...args }, { agent: h.agent() });
-    await assert.rejects(save({ tiers: { upper: [...tiers.upper, 'ghost'] }, capabilities: { qa: { provider: 'openai', model: 'ghost', fallbacks: [] } } }), /不在当前DSH模型目录/);
+    await assert.rejects(save({ tiers: { upper: [...tiers.upper, 'ghost'] }, capabilities: { qa: { provider: 'openai', model: 'ghost', fallbacks: [] } } }), /absent from the current DSH model catalog/);
     assert.equal(h.asked.length, 0); // catalog failure never asks the user
     await save({ tiers: { upper: [...tiers.upper, 'fresh-model'] }, capabilities: { qa: { provider: 'openai', model: 'fresh-model', fallbacks: [] } } });
     assert.equal((await loadProject(root, h.team.base, root)).effective.capabilities.qa.model, 'fresh-model');
@@ -107,7 +107,7 @@ test('每个团队成员获得自己的动态上下文，随保存即时更新',
     assert.match(text, /质量负责人/); assert.match(text, /负责回归/); assert.doesNotMatch(text, /QA/);
     const outsider = h.agent({ role: 'teammate', name: 'nobody' });
     await h.listeners['agent/created']({ agent: outsider });
-    assert.match(h.contexts[1].text(), /未在当前项目的团队配置中登记/);
+    assert.match(h.contexts[1].text(), /is not registered in this project's team configuration/);
     h.listeners['agent/disposed']({ agent: member });
     assert.equal(h.contexts[0].disposed, true);
   } finally { await rm(root, { recursive: true, force: true }); }

@@ -1,3 +1,4 @@
+import { m as modelText, t } from './i18n.js';
 // Dispatch confirmation: before a delegate plan takes effect, the user sees every assigned role with its
 // primary model and up to three fallbacks, and may change them for this task or save them as the project
 // default. The Web card answers over api/capability-team.dispatch-confirm; hosts without the card fall back
@@ -56,28 +57,28 @@ export function planRoutes(plan, effective, disabledRoutes, catalog) {
 }
 /** Validate the user's answer against the offered candidates; returns normalized routes or throws. */
 export function validateAnswer(offered, answer) {
-  if (!answer || typeof answer !== 'object') throw new Error('无效的确认结果');
+  if (!answer || typeof answer !== 'object') throw new Error(modelText('dispatch-confirm.166'));
   if (answer.decision === 'cancel') return { decision: 'cancel' };
-  if (answer.decision !== 'confirm') throw new Error('decision 须为 confirm 或 cancel');
+  if (answer.decision !== 'confirm') throw new Error(modelText('dispatch-confirm.167'));
   const scope = answer.scope ?? 'task';
-  if (!['task', 'project'].includes(scope)) throw new Error('scope 须为 task 或 project');
+  if (!['task', 'project'].includes(scope)) throw new Error(modelText('dispatch-confirm.168'));
   const given = new Map((Array.isArray(answer.routes) ? answer.routes : []).map(r => [r?.role, r]));
   const routes = offered.map(o => {
     const r = given.get(o.role);
     const chosen = r ?? { primary: o.primary, fallbacks: o.fallbacks };
     const allowed = route => o.candidates.some(c => sameRoute(c, route));
     const primary = typeof chosen.primary === 'string' ? parseRoute(chosen.primary) : chosen.primary;
-    if (!primary?.provider || !primary?.model || !allowed(primary)) throw new Error(`${o.displayName ?? o.role} 的主模型 ${primary ? routeKey(primary) : String(chosen.primary)} 不在目录可用模型中`);
+    if (!primary?.provider || !primary?.model || !allowed(primary)) throw new Error(modelText('dispatch-confirm.169', { 0: o.displayName ?? o.role, 1: primary ? routeKey(primary) : String(chosen.primary) }));
     const list = (Array.isArray(chosen.fallbacks) ? chosen.fallbacks : []).map(f => (typeof f === 'string' ? parseRoute(f) : f));
-    if (list.length > MAX_ROUTE_FALLBACKS) throw new Error(`${o.displayName ?? o.role} 的回退模型最多 ${MAX_ROUTE_FALLBACKS} 个`);
+    if (list.length > MAX_ROUTE_FALLBACKS) throw new Error(modelText('dispatch-confirm.170', { 0: o.displayName ?? o.role, 1: MAX_ROUTE_FALLBACKS }));
     const seen = new Set([routeKey(primary)]);
     for (const f of list) {
-      if (!f?.provider || !f?.model || !allowed(f)) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${f ? routeKey(f) : '?'} 不在目录可用模型中`);
-      if (seen.has(routeKey(f))) throw new Error(`${o.displayName ?? o.role} 的回退模型 ${routeKey(f)} 与主模型或其他回退重复`);
+      if (!f?.provider || !f?.model || !allowed(f)) throw new Error(modelText('dispatch-confirm.171', { 0: o.displayName ?? o.role, 1: f ? routeKey(f) : '?' }));
+      if (seen.has(routeKey(f))) throw new Error(modelText('dispatch-confirm.172', { 0: o.displayName ?? o.role, 1: routeKey(f) }));
       seen.add(routeKey(f));
     }
     if (scope === 'project' && [primary, ...list].some(route => o.candidates.find(c => sameRoute(c, route))?.sameTier === false))
-      throw new Error('跨档选择仅本次生效，不能保存为项目默认；请选择仅本次任务');
+      throw new Error(modelText('dispatch-confirm.173'));
     // Compared with the configured route, so a preselected habit still counts as a change when saved as default.
     const ref = o.base ?? o;
     const changed = !sameRoute(primary, ref.primary) || keyOf({ primary, fallbacks: list }) !== keyOf(ref);
@@ -87,7 +88,7 @@ export function validateAnswer(offered, answer) {
     const byCap = new Map();
     for (const r of routes.filter(x => x.changed)) {
       const prior = byCap.get(r.capability);
-      if (prior && keyOf(prior) !== keyOf(r)) throw new Error(`能力 ${r.capability} 被多个角色设成不同模型，无法保存为项目默认；请改为仅本次任务`);
+      if (prior && keyOf(prior) !== keyOf(r)) throw new Error(modelText('dispatch-confirm.174', { 0: r.capability }));
       byCap.set(r.capability, r);
     }
   }
@@ -108,47 +109,47 @@ export function pendingView(leadId, callId) {
 /** Resolve a pending request with the card's answer; throws (with status) when it cannot. */
 export function answerPending(leadId, callId, answer) {
   const request = leads.get(leadId)?.pending.get(callId);
-  if (!request) throw Object.assign(new Error('没有等待确认的分派'), { status: 404, code: 'NOT_FOUND' });
-  if (answer?.catalogVersion !== undefined && answer.catalogVersion !== request.catalogVersion) throw Object.assign(new Error('可用模型已变化，请刷新后重新确认'), { status: 409, code: 'CONFLICT' });
+  if (!request) throw Object.assign(new Error(modelText('dispatch-confirm.175')), { status: 404, code: 'NOT_FOUND' });
+  if (answer?.catalogVersion !== undefined && answer.catalogVersion !== request.catalogVersion) throw Object.assign(new Error(modelText('dispatch-confirm.176')), { status: 409, code: 'CONFLICT' });
   let result;
   try { result = request.validate(answer); } catch (error) { throw Object.assign(error, { status: 422, code: 'INVALID' }); }
   request.resolve(result);
   return { schemaVersion: 1, status: 'resolved', decision: result.decision };
 }
-const fallbackText = r => r.fallbacks.length ? r.fallbacks.map(routeKey).join('、') : '无';
-const routeLine = r => `${r.displayName ?? r.role}（${r.capability}）：主 ${r.primary ? routeKey(r.primary) : '未分配'}；回退 ${fallbackText(r)}`;
-/** Native question box: confirm as offered, or type changes as "角色: 主模型, 回退1, 回退2". */
+const fallbackText = r => r.fallbacks.length ? r.fallbacks.map(routeKey).join('、') : t('dispatch-confirm.177');
+const routeLine = r => t('dispatch-confirm.178', { 0: r.displayName ?? r.role, 1: r.capability, 2: r.primary ? routeKey(r.primary) : t('dispatch-confirm.179'), 3: fallbackText(r) });
+/** Native question box: confirm as offered, or type changes as "role: primary, fallback1, fallback2". */
 async function askNative(userQuestions, exec, offered, signal) {
   const answer = await userQuestions.ask({ agent: exec.agent, signal, questions: [{
-    id: 'dispatch', header: '确认分派',
-    question: '按以下角色和模型分派？要调整就选“仅本次调整”或“保存为项目默认”，并在输入框逐行填写“角色id: 主模型, 回退1, 回退2”（回退最多 3 个）。',
+    id: 'dispatch', header: t('dispatch-confirm.180'),
+    question: t('dispatch-confirm.181'),
     detail: offered.map(routeLine).join('\n'),
-    options: [{ label: '确认分派' }, { label: '仅本次调整' }, { label: '保存为项目默认' }, { label: '取消' }],
+    options: [{ label: t('dispatch-confirm.182') }, { label: t('dispatch-confirm.183') }, { label: t('dispatch-confirm.184') }, { label: t('dispatch-confirm.185') }],
   }] });
   const item = answer.answers.find(a => a.id === 'dispatch');
   const choice = item?.selected?.[0];
-  if (!choice || choice === '取消') return { decision: 'cancel', note: item?.custom };
-  if (choice === '确认分派') return { decision: 'confirm', scope: 'task', routes: [] };
+  if (!choice || choice === t('dispatch-confirm.186')) return { decision: 'cancel', note: item?.custom };
+  if (choice === t('dispatch-confirm.187')) return { decision: 'confirm', scope: 'task', routes: [] };
   const routes = String(item.custom ?? '').split(/\n|；|;/).map(line => line.trim()).filter(Boolean).map(line => {
     const [role, rest = ''] = line.split(/[:：]/);
     const [primary, ...fallbacks] = rest.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
     return { role: role.trim(), primary, fallbacks };
   });
-  return { decision: 'confirm', scope: choice === '保存为项目默认' ? 'project' : 'task', routes };
+  return { decision: 'confirm', scope: choice === t('dispatch-confirm.188') ? 'project' : 'task', routes };
 }
 /** The Lead's request to work without its step limit has one question: allow or refuse. */
 export function validateDirectAnswer(answer) {
-  if (answer?.decision !== 'confirm' && answer?.decision !== 'cancel') throw new Error('decision 须为 confirm 或 cancel');
+  if (answer?.decision !== 'confirm' && answer?.decision !== 'cancel') throw new Error(modelText('dispatch-confirm.189'));
   return { decision: answer.decision };
 }
 async function askDirectNative(userQuestions, exec, plan, signal) {
   const answer = await userQuestions.ask({ agent: exec.agent, signal, questions: [{
-    id: 'direct', header: '主控亲自完成',
-    question: '允许主控亲自完成这项工作吗？允许后本轮不限执行步数，你发下一条消息时恢复限制；文件规则和权限不变。',
-    detail: `需求分析：${plan.analysis}\n理由：${plan.reason}`,
-    options: [{ label: '允许' }, { label: '不允许' }],
+    id: 'direct', header: t('dispatch-confirm.190'),
+    question: t('dispatch-confirm.191'),
+    detail: t('dispatch-confirm.192', { 0: plan.analysis, 1: plan.reason }),
+    options: [{ label: t('dispatch-confirm.193') }, { label: t('dispatch-confirm.194') }],
   }] });
-  return { decision: answer.answers.find(a => a.id === 'direct')?.selected?.[0] === '允许' ? 'confirm' : 'cancel' };
+  return { decision: answer.answers.find(a => a.id === 'direct')?.selected?.[0] === t('dispatch-confirm.195') ? 'confirm' : 'cancel' };
 }
 const minutesOf = ms => Number((ms / 60000).toFixed(1));
 /**
@@ -171,12 +172,12 @@ function waitForAnswer(ctx, state, exec, callId, spec, { graceMs, heartbeatMs, t
     const finish = (fn, value) => { if (settled) return; settled = true; cleanup(); fn(value); };
     request.resolve = value => finish(resolve, value);
     const fail = error => finish(reject, error);
-    if (exec.signal?.aborted) { fail(new Error(`${spec.subject}已中止`)); return; }
+    if (exec.signal?.aborted) { fail(new Error(modelText('dispatch-confirm.196', { 0: spec.subject }))); return; }
     state.pending.set(callId, request);
-    onAbort = () => fail(new Error(`${spec.subject}已中止`));
+    onAbort = () => fail(new Error(modelText('dispatch-confirm.197', { 0: spec.subject })));
     exec.signal?.addEventListener?.('abort', onAbort, { once: true });
-    deadline = setTimeout(() => fail(new Error(`${spec.subject}超时（${minutesOf(timeoutMs)} 分钟无人确认），${spec.consequence}。`
-      + `${nativeError ? `原生问答框也不可用（${nativeError.code ?? nativeError.message}）。` : ''}${spec.retry}`)), timeoutMs);
+    deadline = setTimeout(() => fail(new Error(modelText('dispatch-confirm.198', { 0: spec.subject, 1: minutesOf(timeoutMs), 2: spec.consequence })
+      + `${nativeError ? modelText('dispatch-confirm.199', { 0: nativeError.code ?? nativeError.message }) : ''}${spec.retry}`)), timeoutMs);
     deadline.unref?.();
     // Only a card that never showed up within graceMs means the host has no card: then ask once in the native
     // question box. A card that was seen keeps the request even when its heartbeat stalls (background tabs throttle
@@ -216,9 +217,9 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
     /** Ask the user whether the Lead may finish this turn without its step limit; throws unless they allow it. */
     async confirmDirect(exec, plan) {
       const callId = exec.callId ?? `direct-${Date.now()}`;
-      const result = await waitForAnswer(ctx, stateOf(exec.agent.id), exec, callId, { kind: 'direct', plan, subject: '主控亲自完成确认', consequence: '执行限制没有放开', retry: '请询问用户是否重新确认。',
+      const result = await waitForAnswer(ctx, stateOf(exec.agent.id), exec, callId, { kind: 'direct', plan, subject: modelText('dispatch-confirm.200'), consequence: modelText('dispatch-confirm.201'), retry: modelText('dispatch-confirm.202'),
         validate: validateDirectAnswer, ask: signal => askDirectNative(ctx.userQuestions, exec, plan, signal) }, { graceMs, heartbeatMs, timeoutMs });
-      if (result.decision === 'cancel') throw new Error('用户没有放开主控的执行限制，本次计划未生效。请询问用户要如何调整，或重新制定计划。');
+      if (result.decision === 'cancel') throw new Error(modelText('dispatch-confirm.203'));
       return true;
     },
     /**
@@ -244,9 +245,9 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
       if (mode === 'never' || (mode === 'on-change' && unchanged)) return { asked: false, routes: offered };
       const catalogVersion = createHash('sha256').update(JSON.stringify(offered.map(r => r.candidates))).digest('hex').slice(0, 16);
       const callId = exec.callId ?? `dispatch-${Date.now()}`;
-      const result = await waitForAnswer(ctx, state, exec, callId, { offered, catalogVersion, subject: '分派确认', consequence: '未创建或通知任何队友', retry: '请询问用户是否重新分派。',
+      const result = await waitForAnswer(ctx, state, exec, callId, { offered, catalogVersion, subject: modelText('dispatch-confirm.204'), consequence: modelText('dispatch-confirm.205'), retry: modelText('dispatch-confirm.206'),
         validate: answer => validateAnswer(offered, answer), ask: signal => askNative(ctx.userQuestions, exec, offered, signal) }, { graceMs, heartbeatMs, timeoutMs });
-      if (result.decision === 'cancel') throw new Error('用户取消了这次分派，未创建或通知任何队友。请询问用户要如何调整。');
+      if (result.decision === 'cancel') throw new Error(modelText('dispatch-confirm.207'));
       if (result.scope === 'project') await saveDefaults(exec, result.routes);
       if (project) void prefs.record(project, result.routes).catch(() => {});
       for (const r of result.routes) {

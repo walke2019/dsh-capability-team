@@ -1,4 +1,4 @@
-// Persistence for per-task routes confirmed in the dispatch card ("只用于这次任务"). Lead sessions survive a
+// Persistence for per-task routes confirmed in the dispatch card ("this task only"). Lead sessions survive a
 // DSH restart, so their confirmed routes do too: one small JSON file per Lead under the plugin root, written
 // atomically (temp file + rename) and read lazily the first time a Lead is seen after start.
 import { createHash, randomUUID } from 'node:crypto';

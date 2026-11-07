@@ -1,0 +1,14 @@
+{
+  "enabled": "Enable search and speech providers and tools.",
+  "engines": "Search engines in fallback order.",
+  "fetchEngines": "Page extraction engines in fallback order.",
+  "searxngUrl": "SearXNG instance URL.",
+  "baseUrl": "Custom search gateway URL.",
+  "tavilyKeyEnv": "Credential reference for the Tavily API key.",
+  "braveKeyEnv": "Credential reference for the Brave API key.",
+  "searxngKeyEnv": "Credential reference for the SearXNG API key.",
+  "jinaKeyEnv": "Credential reference for the Jina API key.",
+  "apiKeyEnv": "Credential reference for the search gateway API key.",
+  "audioBaseUrl": "Cloud speech transcription gateway URL.",
+  "audioKeyEnv": "Credential reference for the speech gateway API key."
+}

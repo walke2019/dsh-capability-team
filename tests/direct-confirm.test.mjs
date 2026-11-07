@@ -34,17 +34,17 @@ test('用户允许后：主控本轮不限步数，下一条用户消息恢复�
   assert.equal(out.directBudget, null);
   assert.equal(out.confirmed.by, 'user');
   for (let i = 0; i < W.directBudget + 5; i++) assert.equal(h.call('pwsh'), undefined);
-  assert.match(h.wf.status(h.lead, W), /不限执行次数/);
+  assert.match(h.wf.status(h.lead, W), /no execution-step limit/);
   h.user();
   await h.plan(plain);
   for (let i = 0; i < W.directBudget; i++) assert.equal(h.call('pwsh'), undefined);
-  assert.match(h.call('pwsh'), /已达本轮上限/);
+  assert.match(h.call('pwsh'), /reached this turn's direct execution limit/);
 });
 
 test('用户拒绝：计划不生效，执行类工具仍被拦截', async () => {
-  const h = harness(() => { throw new Error('用户没有放开主控的执行限制'); });
+  const h = harness(() => { throw new Error('The user did not lift the Lead execution limit'); });
   h.user();
-  await assert.rejects(h.plan(personal), /没有放开/);
+  await assert.rejects(h.plan(personal), /did not lift/);
   assert.equal(h.wf.state(h.lead).plan, undefined);
   assert.match(h.call('pwsh'), /capability_dispatch_plan/);
 });
@@ -70,7 +70,7 @@ test('放行不跨计划：换成普通计划恢复预算，改为 delegate 后�
   assert.equal(h.wf.state(h.lead).directConfirmed, false);
   await h.plan(personal);
   await h.plan({ analysis: 'a', mode: 'delegate', assignments: [{ role: 'backend', task: 't' }] });
-  assert.match(h.call('pwsh'), /主控只负责分派/);
+  assert.match(h.call('pwsh'), /Lead only dispatches/);
 });
 
 test('确认期间用户发来新消息：这次放行失效，不带入新一轮', async () => {
@@ -81,7 +81,7 @@ test('确认期间用户发来新消息：这次放行失效，不带入新一�
   await new Promise(r => setTimeout(r, 5));
   h.user();
   release();
-  await assert.rejects(pending, /放行已失效/);
+  await assert.rejects(pending, /permission expired/);
   assert.equal(h.wf.state(h.lead).directConfirmed, undefined);
   assert.equal(h.wf.state(h.lead).plan, undefined);
 });
@@ -106,27 +106,27 @@ test('确认请求：拒绝抛错，无效答复不算放行', async () => {
   assert.throws(() => answerPending('direct-2', 'c1', {}), e => e.status === 422);
   assert.equal(pendingView('direct-2', 'c1').status, 'pending');
   answerPending('direct-2', 'c1', { decision: 'cancel' });
-  await assert.rejects(waiting, /没有放开/);
+  await assert.rejects(waiting, /did not lift/);
   forgetLead('direct-2');
 });
 
 test('确认请求：没有卡片时回退到问答框，只有选“允许”才放行', async () => {
-  for (const [label, allowed] of [['允许', true], ['不允许', false]]) {
+  for (const [label, allowed] of [['Allow', true], ['Do not allow', false]]) {
     const questions = [];
     const userQuestions = { ask: async q => { questions.push(q.questions[0]); return { answers: [{ id: 'direct', selected: [label] }] }; } };
     const waiting = createDispatchConfirm({ userQuestions }, {}, { graceMs: 10, heartbeatMs: 10, timeoutMs: 5000 }).confirmDirect(exec(`direct-3-${label}`, 'c1'), directPlan);
-    if (allowed) assert.equal(await waiting, true); else await assert.rejects(waiting, /没有放开/);
+    if (allowed) assert.equal(await waiting, true); else await assert.rejects(waiting, /did not lift/);
     assert.ok(questions[0].detail.includes(directPlan.reason));
     forgetLead(`direct-3-${label}`);
   }
 });
 
 test('确认请求：超时或中止都不放行，错误说明限制没有放开', async () => {
-  await assert.rejects(createDispatchConfirm({}, {}, { graceMs: 10, heartbeatMs: 10, timeoutMs: 40 }).confirmDirect(exec('direct-4', 'c1'), directPlan), /主控亲自完成确认超时.*执行限制没有放开/);
+  await assert.rejects(createDispatchConfirm({}, {}, { graceMs: 10, heartbeatMs: 10, timeoutMs: 40 }).confirmDirect(exec('direct-4', 'c1'), directPlan), /Direct-work confirmation timed out.*Execution limits were not lifted/);
   const abort = new AbortController();
   const waiting = createDispatchConfirm({}, {}, { graceMs: 1000 }).confirmDirect(exec('direct-4', 'c2', abort.signal), directPlan);
   abort.abort();
-  await assert.rejects(waiting, /主控亲自完成确认已中止/);
+  await assert.rejects(waiting, /Direct-work confirmation aborted/);
   assert.equal(pendingView('direct-4', 'c2').status, 'none');
   forgetLead('direct-4');
 });

@@ -11,9 +11,9 @@ test('token 规则：默认值、校验、写进团队铁律', () => {
   assert.deepEqual(validateTokenRules(undefined), TOKEN_RULES);
   assert.equal(validateTokenRules(false), false);
   assert.throws(() => validateTokenRules({ idleCompactRatio: 0.95 }), /0\.1–0\.9/);
-  assert.throws(() => validateTokenRules({ keepHeadChars: 5000, keepTailChars: 2000 }), /小于/);
+  assert.throws(() => validateTokenRules({ keepHeadChars: 5000, keepTailChars: 2000 }), /less than/);
   assert.deepEqual(effectiveConfig({}).workflow.tokens, TOKEN_RULES);
-  assert.match(policy, /Token 铁律/);
+  assert.match(policy, /Token rules/);
   assert.equal(tokenRuleText(false), '');
 });
 
@@ -27,7 +27,7 @@ test('长的命令输出只保留头尾，完整内容存到文件；读文件�
   const out = await td.trim({ name: 'bash', callId: 'c1', agent: member }, { content: [{ type: 'text', text: long }] });
   assert.ok(out[0].text.length < 5200);
   assert.ok(!out[0].text.includes('MIDDLE'));
-  assert.match(out[0].text, /完整输出：.*c1\.txt/);
+  assert.match(out[0].text, /Full output:.*c1\.txt/);
   assert.equal(await readFile(join(dir, 'c1.txt'), 'utf8'), long);
   for (const name of ['brisk_pwsh', 'mcp__s__brisk_pwsh']) {
     const aliased = await td.trim({ name, callId: name, agent: member }, { content: [{ type: 'text', text: long }] });

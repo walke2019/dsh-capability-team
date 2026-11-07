@@ -1,0 +1,296 @@
+[
+  {
+    "ref": "OMNI_SEARCH_BASE_URL",
+    "extension": "search",
+    "label": {
+      "en": "Search gateway URL",
+      "zh": "搜索网关地址"
+    },
+    "kind": "url",
+    "secret": false,
+    "defaultLocked": true
+  },
+  {
+    "ref": "SEARXNG_URL",
+    "extension": "search",
+    "label": {
+      "en": "SearXNG URL",
+      "zh": "SearXNG 地址"
+    },
+    "kind": "url",
+    "secret": false,
+    "defaultLocked": true
+  },
+  {
+    "ref": "OMNI_SEARCH_ENGINES",
+    "extension": "search",
+    "label": {
+      "en": "Search engines",
+      "zh": "搜索引擎"
+    },
+    "kind": "enum",
+    "options": [
+      "tavily",
+      "brave",
+      "searxng",
+      "custom"
+    ],
+    "multiple": true,
+    "secret": false,
+    "defaultLocked": true
+  },
+  {
+    "ref": "OMNI_FETCH_ENGINES",
+    "extension": "search",
+    "label": {
+      "en": "Fetch engines",
+      "zh": "抓取引擎"
+    },
+    "kind": "enum",
+    "options": [
+      "jina",
+      "tavily",
+      "custom"
+    ],
+    "multiple": true,
+    "secret": false,
+    "defaultLocked": true,
+    "default": "jina"
+  },
+  {
+    "ref": "OMNI_SEARCH_PROVIDERS_PATH",
+    "extension": "search",
+    "label": {
+      "en": "Search gateway providers path",
+      "zh": "搜索网关提供方路径"
+    },
+    "kind": "text",
+    "secret": false,
+    "defaultLocked": true
+  },
+  {
+    "ref": "OMNI_AUDIO_BASE_URL",
+    "extension": "search",
+    "label": {
+      "en": "Speech-to-text URL",
+      "zh": "语音转写地址"
+    },
+    "kind": "url",
+    "secret": false,
+    "defaultLocked": true
+  },
+  {
+    "ref": "OMNI_SEARCH_API_KEY",
+    "extension": "search",
+    "label": {
+      "en": "Search gateway API key",
+      "zh": "搜索网关密钥"
+    },
+    "kind": "secret",
+    "secret": true,
+    "defaultLocked": true
+  },
+  {
+    "ref": "TAVILY_API_KEY",
+    "extension": "search",
+    "label": {
+      "en": "Tavily API key",
+      "zh": "Tavily 密钥"
+    },
+    "kind": "secret",
+    "secret": true,
+    "defaultLocked": true
+  },
+  {
+    "ref": "BRAVE_API_KEY",
+    "extension": "search",
+    "label": {
+      "en": "Brave API key",
+      "zh": "Brave 密钥"
+    },
+    "kind": "secret",
+    "secret": true,
+    "defaultLocked": true
+  },
+  {
+    "ref": "SEARXNG_API_KEY",
+    "extension": "search",
+    "label": {
+      "en": "SearXNG API key",
+      "zh": "SearXNG 密钥"
+    },
+    "kind": "secret",
+    "secret": true,
+    "defaultLocked": true
+  },
+  {
+    "ref": "JINA_API_KEY",
+    "extension": "search",
+    "label": {
+      "en": "Jina API key",
+      "zh": "Jina 密钥"
+    },
+    "kind": "secret",
+    "secret": true,
+    "defaultLocked": true
+  },
+  {
+    "ref": "OMNI_AUDIO_API_KEY",
+    "extension": "search",
+    "label": {
+      "en": "Speech-to-text API key",
+      "zh": "语音转写密钥"
+    },
+    "kind": "secret",
+    "secret": true,
+    "defaultLocked": true
+  },
+  {
+    "ref": "EMBEDDING_BASE_URL",
+    "extension": "memory",
+    "label": {
+      "en": "Embedding URL",
+      "zh": "向量服务地址"
+    },
+    "kind": "url",
+    "secret": false,
+    "defaultLocked": true,
+    "legacyRefs": [
+      "CPA_EMBED_BASE_URL"
+    ]
+  },
+  {
+    "ref": "EMBEDDING_MODEL",
+    "extension": "memory",
+    "label": {
+      "en": "Embedding model",
+      "zh": "向量模型"
+    },
+    "kind": "text",
+    "secret": false,
+    "defaultLocked": true,
+    "legacyRefs": [
+      "CPA_EMBED_MODEL"
+    ]
+  },
+  {
+    "ref": "EMBEDDING_DIMENSIONS",
+    "extension": "memory",
+    "label": {
+      "en": "Embedding dimensions",
+      "zh": "向量维度"
+    },
+    "kind": "number",
+    "secret": false,
+    "defaultLocked": true,
+    "legacyRefs": [
+      "CPA_EMBED_DIMENSIONS"
+    ]
+  },
+  {
+    "ref": "OPENVIKING_URL",
+    "extension": "memory",
+    "label": {
+      "en": "Memory URL",
+      "zh": "记忆服务地址"
+    },
+    "kind": "url",
+    "secret": false,
+    "defaultLocked": true
+  },
+  {
+    "ref": "MEMORY_BACKEND",
+    "extension": "memory",
+    "label": {
+      "en": "Backend",
+      "zh": "存储后端"
+    },
+    "kind": "enum",
+    "options": [
+      "local",
+      "openviking"
+    ],
+    "secret": false,
+    "defaultLocked": true,
+    "default": "local"
+  },
+  {
+    "ref": "MEMORY_SHARED_RECALL",
+    "extension": "memory",
+    "label": {
+      "en": "Shared recall scope",
+      "zh": "共享召回范围"
+    },
+    "kind": "enum",
+    "options": [
+      "current",
+      "none"
+    ],
+    "secret": false,
+    "defaultLocked": true,
+    "default": "current"
+  },
+  {
+    "ref": "EMBEDDING_API_KEY",
+    "extension": "memory",
+    "label": {
+      "en": "Embedding API key",
+      "zh": "向量服务密钥"
+    },
+    "kind": "secret",
+    "secret": true,
+    "defaultLocked": true,
+    "legacyRefs": [
+      "CPA_EMBED_API_KEY"
+    ]
+  },
+  {
+    "ref": "OPENVIKING_API_KEY",
+    "extension": "memory",
+    "label": {
+      "en": "Memory API key",
+      "zh": "记忆服务密钥"
+    },
+    "kind": "secret",
+    "secret": true,
+    "defaultLocked": true
+  },
+  {
+    "ref": "AUTOCOMPLETE_ROUTE_MODE",
+    "extension": "autocomplete",
+    "label": {
+      "en": "Model routing",
+      "zh": "模型路由"
+    },
+    "kind": "enum",
+    "options": [
+      "session",
+      "fixed"
+    ],
+    "secret": false,
+    "defaultLocked": true,
+    "default": "session"
+  },
+  {
+    "ref": "AUTOCOMPLETE_PROVIDER",
+    "extension": "autocomplete",
+    "label": {
+      "en": "Provider",
+      "zh": "提供方"
+    },
+    "kind": "text",
+    "secret": false,
+    "defaultLocked": true
+  },
+  {
+    "ref": "AUTOCOMPLETE_MODEL",
+    "extension": "autocomplete",
+    "label": {
+      "en": "Model",
+      "zh": "模型"
+    },
+    "kind": "text",
+    "secret": false,
+    "defaultLocked": true
+  }
+]

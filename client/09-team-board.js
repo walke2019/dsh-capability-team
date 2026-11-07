@@ -16,7 +16,7 @@
       }).join('|');
       const depsView = React.useMemo ? React.useMemo(() => taskDependencyView(tasks, t), [taskRevSig, t]) : taskDependencyView(tasks, t);
 
-      // 本地 1Hz 倒计时时钟（仅当有冷却项时启动，页面隐藏时停止并清除定时器，可见时重新计算启动）
+      // Local 1Hz cooldown clock: run only with cooldowns; stop when hidden and recalculate when visible
       const [now, setNow] = React.useState(Date.now());
       const hasCooling = Boolean(runtimeState?.data?.members?.some(m => Array.isArray(m.cooling) && m.cooling.some(c => (c.until ?? 0) > now)));
       React.useEffect(() => {
@@ -100,7 +100,7 @@
         const detailParts = [latest.code, latest.status].filter(Boolean);
         const detailText = detailParts.length ? ` · ${detailParts.join('/')}` : '';
         const noticeText = t('runtime.switched', { from: rFrom, to: rTo, reason: reasonText, detail: detailText });
-        const finalText = noticeText.startsWith('runtime.switched') ? `路由切换 ${rFrom} → ${rTo}（原因：${reasonText}${detailText}）` : noticeText;
+        const finalText = noticeText.startsWith('runtime.switched') ? fmt(en['runtime.switched'], { from: rFrom, to: rTo, reason: reasonText, detail: detailText }) : noticeText;
         return h('div', { className: 'ctm-bd-switch', title: finalText }, finalText);
       };
       const card = c => {

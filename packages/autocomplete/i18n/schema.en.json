@@ -1,0 +1,13 @@
+{
+  "enabled": "Enable composer suggestions; accepting one fills the composer and never sends it.",
+  "routeMode": "session follows the active session; fixed uses the provider and model below (both required).",
+  "provider": "Existing provider ID for fixed routing. Not an API key.",
+  "model": "Model ID for fixed routing.",
+  "maxSuggestions": "Suggestion candidates per prediction (1-5).",
+  "typePauseMs": "Typing pause before a continuation is requested, in ms.",
+  "mobileBar": "On touch devices, show suggestions in a tappable bar above the composer.",
+  "maxOutputTokens": "Maximum generated tokens per prediction.",
+  "timeoutMs": "Prediction timeout in ms.",
+  "maxMessages": "Recent conversation messages used as context.",
+  "maxChars": "Maximum context characters per prediction."
+}

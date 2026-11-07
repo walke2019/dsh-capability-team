@@ -8,6 +8,11 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Mothership-managed config pages (Search 1.0.2, Memory 1.0.2, Autocomplete 1.0.1, Team 5.0.2): a page managed by an AIWUK Mothership opens with a "Configured by AIWUK Mothership" notice, shows the pushed non-secret values (URLs, models, engine lists) read-only, reports managed keys as "Configured by AIWUK Mothership", and folds integration settings the Mothership does not send under "Optional settings". The `api/aiwuk.managed-config.<ext>` route now carries `value` for non-secret refs only; secret refs (flagged or matching the forced-secret pattern) are never resolved or sent.
+- `docs/standalone-setup.md` (and zh-CN): Mothership-managed vs. standalone setup for Search, Memory and Autocomplete, with an AI-agent checklist.
+- `npm test` runs every test file with an isolated empty `DSH_HOME` (`tests/isolated-home.mjs`), so a developer's real managed-config file can no longer change test results.
+- AIWUK Search settings page: "Use AIWUK Search for DSH web search" sets `searchProvider: aiwuk-search` on the host `web` entry through `configForms` (unset restores DSH's default) and shows the current provider.
+- Config pages: a secret row whose state cannot be read now shows "Could not check" with a Retry button instead of waiting forever; one automatic retry runs first.
 - Optional macOS desktop Mothership restart adapter and installer: preserve the native connector protocol, terminate the complete desktop app gracefully, and relaunch once after an authenticated restart request. Includes lifecycle tests and deployment/rollback instructions.
 
 - New companion package `dsh-capability-autocomplete` 0.2.0 (`packages/autocomplete`): composer ghost-text suggestions for DSH Web, inline continuation while typing and next-message suggestions after a reply. Tab accepts, Alt+Up/Down cycles, Esc dismisses; nothing is sent automatically. Routes through the session model or a fixed provider/model.
@@ -20,11 +25,71 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- Locked canonical managed credentials now override legacy/custom key aliases for their exact integration section and search engine. Missing locked credentials do not fall back to local aliases; standalone and unlocked configurations retain their existing behavior. Presence metadata reports the effective canonical ref, and both canonical credentials and ignored aliases remain covered by redaction. This shared resolver fix ships in Team 5.0.1, Search 1.0.1 and Memory 1.0.1.
+- Config pages: secret rows could stay on "Checking..." although `credentials/describe` answered. Describe results are now ticketed (a stale or post-unmount result is ignored), a ref absent from a successful reply reads as not configured, a hung or failed call times out into the failure state, and the effect re-runs when the credentials service changes.
+- Team overview on a draft session (before the first message): `/api/capability-team.runtime` and `/stream` answered 503. They now return 200 with an empty snapshot (epoch `unbound`) and an idle stream that switches to real snapshots once the runtime binds.
+- READMEs no longer say a settings form is "coming"; they describe write-only secrets, Mothership lock badges and the web-search provider toggle.
+
+### Known host limitations
+
+- DSH 0.2.2-rc.1 agent presets take only plain strings for `name` and `description` (`AgentPreset.Config` is `z.string()`, `PresetDefinition.name?: string`, and the preset picker renders them verbatim; only built-in presets get localized copy), so the AIWUK Team preset description stays English in the Chinese UI.
+
 - `dsh-capability-autocomplete` 0.4.2: the touch suggestion strip spanned the whole composer column and started left of the input box. Its left and right edges now match the input box exactly, re-measured on resize.
 - `dsh-capability-autocomplete` 0.4.1: on phones the suggestion strip was absolutely positioned over the area above the composer and covered the workspace and mode controls. It now sits in the composer dock (laid out in flow, no height while empty) and the ✦ moves into the composer tool row, or into the strip on screens narrower than 360 px where the tool row has no room. Suggestions also stand down in multi-agent sessions while a dispatch confirmation is docked or a teammate view is read-only.
 
 - `dsh-capability-autocomplete` 0.3.1: the settings form (model routing, provider/model, candidates) was missing on instances where DSH is installed by pnpm, because the optional `@deepseek-ai/schemastery` peer could not be resolved from the profile and the plugin exported no `Config`. schemastery is now a direct dependency pinned to the version DSH ships.
 - Autocomplete works across terminals: the client calls the endpoint relative to the page, and the endpoint accepts the forwarded host of the Mothership hub tunnel or a reverse proxy as same-origin, so phones and remote browsers are no longer refused as cross-origin.
+
+## [5.0.0] — AIWUK rebrand
+
+### Changed
+
+- **BREAKING (package names):** the packages move to the `@aiwuk` scope. Loader ids, tool names, credential and
+  environment variable names and data directories are unchanged, so existing configuration carries over.
+  - `dsh-capability-team` 4.0.1 → `@aiwuk/team` 5.0.0 (the routing plugin is now `@aiwuk/team/roles`; patch id `capability-team-ui` unchanged)
+  - `dsh-capability-autocomplete` 0.4.2 → `@aiwuk/autocomplete` 1.0.0 (patch id `autocomplete` unchanged)
+  - `dsh-capability-memory` 0.3.0 → `@aiwuk/memory` 1.0.0 (patch id `global-memory` unchanged)
+  - `dsh-omni-search` 0.3.0 → `@aiwuk/search` 1.0.0 (patch id `omni-search` unchanged)
+  Steps and rollback: [docs/migration-aiwuk.md](docs/migration-aiwuk.md). The old names are not on the public npm registry; roll back from your original source (Hub tarball or link:).
+- Display names: AIWUK Team / AI悟空 协作团队, AIWUK Autocomplete / AI悟空 输入补全, AIWUK Memory / AI悟空 全局记忆,
+  AIWUK Search / AI悟空 全能搜索 (plugin locale `meta.title` and `meta.description`).
+- The client module ids are now the package names (`@aiwuk/team`, `@aiwuk/autocomplete`), as the host keys client
+  module rows by package name.
+- All four packages declare `engines.dsh` `>=0.2.2-rc.1 <0.3.0`; the `@deepseek-ai/dsh-*` peer ranges are raised to
+  `>=0.2.2-rc.1`. The host evaluates `engines.dsh` alone, with prerelease versions included in the range check.
+
+### Added
+
+- `brand.js`: `BRAND`, `EXTENSIONS` and `RENAME_MAP` as the single source for brand names, copied into the
+  `omni-search` and `global-memory` `shared/` closures by their `build-shared.mjs`.
+- `tests/brand.test.mjs`: asserts the rename map, versions and engines, and that no old package name remains outside
+  the allowed places.
+- Visual config pages on the DSH Plugins page (slot `plugins.bundle.config`) for Team, Memory, Search and
+  Autocomplete, generated from `shared-ui/`. API keys are set, replaced or cleared through the DSH credential store;
+  the page only shows whether a key is set and never reads the value back.
+- Mothership-managed configuration: extensions read the values-free manifest the AIWUK Connector stores at
+  credential record `mothership-connector/managed-config` (file fallback `<DSH home>/aiwuk/managed-config.json`). A
+  locked ref wins over local settings and is shown read-only ("Managed by AIWUK Mothership"); an unlocked ref is a
+  default below local sources. Each extension serves the manifest at `GET /api/aiwuk.managed-config.<ext>`.
+- `@aiwuk/search` registers a native DSH web search provider (`aiwuk-search`) and, when the experimental service is
+  present, a cloud speech-to-text provider (`aiwuk-cloud-stt`). The `omni_*` tools are kept. A native fetch provider
+  is deferred until the fetch path reports the real target status.
+- Server-side i18n (`i18n.js`, `locale/server.*.json`): model-facing tool text is English; user-facing text follows
+  `AIWUK_LOCALE`, then the host `locale.preference`, then English.
+
+### Changed (UI)
+
+- All client UI follows the DSH dark/light theme through `--dsw-*` host tokens; the stage's own palette,
+  `prefers-color-scheme` and the overview's private language toggle are removed. The pixel stage resolves token
+  colors for the canvas and redraws on `theme/change`.
+- Autocomplete fleet route: each locked field applies on its own; an incomplete fixed route falls back to `session`.
+
+### Compatibility
+
+- Verified by running the host's `evaluatePluginCompatibility` (`dsh-app-boot`, installed DSH 0.2.2-rc.1) on all four
+  manifests: compatible with 0.2.2-rc.1 and 0.2.2, incompatible with 0.2.1-rc.5 and 0.3.0. A full session on a clean
+  0.2.2-rc.1 instance was not run: unverified.
+- The first-run importer for personal installs is future work; use the documented commands for now.
 
 ## [4.0.1] - 2026-11-05
 

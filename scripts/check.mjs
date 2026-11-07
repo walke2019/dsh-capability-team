@@ -16,6 +16,12 @@ async function walk(dir) {
   }
   return result;
 }
+// Config panel fragments and the memory/search client bundles are generated from shared-ui/.
+{
+  const panels = spawnSync(process.execPath, [join(root, 'shared-ui/build.mjs'), '--check'], { encoding: 'utf8', windowsHide: true });
+  if (panels.status !== 0) throw new Error(panels.stderr || panels.stdout || 'Config panel build is stale');
+  console.log('CONFIG_PANEL_BUILD_OK');
+}
 // The standalone Host bundle has a separate publication closure.
 for (const bundle of ['global-memory', 'omni-search']) {
 const globalRoot = join(root, 'packages', bundle);
@@ -97,6 +103,8 @@ if (process.argv[2] === 'package') {
     }
   }
   console.log(`PACKAGE_CLOSURE_OK files=${shipped.size} imports=${imports}`);
-  for (const file of await readdir(join(root, 'locale'))) if (file.endsWith('.json')) JSON.parse(await readFile(join(root, 'locale', file), 'utf8'));
+  for (const dir of ['locale', 'i18n']) for (const file of await readdir(join(root, dir))) if (file.endsWith('.json')) JSON.parse(await readFile(join(root, dir, file), 'utf8'));
+  // The host reads every locale/*.json as a language dictionary (dsh-app-boot), so the name must be a language id.
+  for (const file of await readdir(join(root, 'locale'))) if (file.endsWith('.json') && !/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/.test(file.slice(0, -5))) throw new Error(`locale/${file} must use a language id as its filename`);
   console.log(`BUILD_CHECK_OK syntax=${checked} exports=${Object.keys(pkg.exports).length}`);
 } else console.log(`LINT_OK syntax=${checked}`);

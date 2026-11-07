@@ -21,7 +21,7 @@ const live = value => ({ get: () => value });
 
 test('stale schemastery without .volatile() fails with an actionable load error', () => {
   const stale = { string: () => ({ default: () => ({}) }) };
-  assert.throws(() => assertVolatile(stale, 'dsh-omni-search'), /no \.volatile\(\).*node_modules\/dsh-omni-search\/node_modules\/@deepseek-ai\/schemastery.*restart DSH/);
+  assert.throws(() => assertVolatile(stale, '@aiwuk/search'), /no \.volatile\(\).*node_modules\/@aiwuk\/search\/node_modules\/@deepseek-ai\/schemastery.*restart DSH/);
 });
 
 test('settings layer: only set fields are read; empty strings and lists count as unset', () => {
@@ -75,7 +75,14 @@ test('Config schemas: Standard Schema, volatile fields, credential-ref key names
   for (const key of Object.keys(omni.SETTINGS_FIELDS)) assert.equal(typeof o[key].get, 'function', key);
   assert.ok(O['~standard'].validate({ engines: ['nope'] }).issues);
   const m = M['~standard'].validate({ autoRecall: false }).value;
-  assert.deepEqual([m.enabled, m.autoRecall, m.injectChars, m.recallK, m.recallTimeoutMs, m.syncWrites], [true, false, 2400, 6, 2000, true]);
+  // `enabled` stays a plain value (DSH's plugin switch); every other option is a volatile live reference.
+  assert.equal(m.enabled, true);
+  for (const key of memory.LIVE_OPTIONS) assert.equal(typeof m[key].get, 'function', key);
+  assert.deepEqual([m.autoRecall, m.injectChars, m.recallK, m.recallTimeoutMs, m.syncWrites].map(ref => ref.get()), [false, 2400, 6, 2000, true]);
+  const described = JSON.stringify(M.toJSON());
+  assert.match(described, /"en-US":"Inject relevant memories/);
+  assert.match(described, /"zh-CN":"[^"]+"/);
+  assert.equal((described.match(/"volatile":true/g) ?? []).length, 13, 'every field except enabled is volatile');
   for (const key of Object.keys(memory.SETTINGS_FIELDS)) assert.equal(typeof m[key].get, 'function', key);
   assert.ok(M['~standard'].validate({ memoryBackend: 'other' }).issues);
   const json = JSON.stringify(O.toJSON());

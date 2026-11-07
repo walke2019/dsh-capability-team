@@ -1,6 +1,7 @@
 // Host half: an owner-only, same-origin SSE endpoint. It never writes the transcript and never takes routes from clients.
 import { PredictionError, parseRequest, predict, readConfig } from './predictor.js';
 import { loadFleetDefaults, withFleetDefaults } from './fleet-defaults.js';
+import { registerManagedRoute } from './managed-route.js';
 export { FLEET_KEYS } from './fleet-defaults.js';
 export { Config } from './schema.js';
 export const name = 'autocomplete';
@@ -57,6 +58,8 @@ export function apply(ctx, live = {}) {
     scoped.effect?.(() => () => { credentials = null; fleet = {}; });
     void refreshFleet();
   });
+  // The settings card reads which routes are managed/locked from this values-free manifest route.
+  registerManagedRoute(ctx, () => credentials);
   ctx.on?.('loader/volatile-update', () => void refreshFleet());
   ctx.on?.('credentials/record-updated', () => void refreshFleet());
   ctx.effect(() => {

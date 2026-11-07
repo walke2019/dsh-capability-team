@@ -17,12 +17,6 @@
         return { ...r, ...(text !== key ? { displayName: text } : {}), quoteKey: characterQuoteKey(r.id, heroes) };
       });
     }
-    Object.assign(zh, {
-      'role.name.lead': '主控', 'role.name.architect': '技术总监', 'role.name.backend': '后端', 'role.name.frontend': '前端',
-      'role.name.researcher': '研究员', 'role.name.writer': '文档', 'role.name.qa': '测试',
-      'live.quote.lead': '目标已明确，分工就绪。', 'live.quote.architect': '先定方案与接口，再动手。', 'live.quote.backend': '接口与数据，随时待命。',
-      'live.quote.frontend': '页面与交互，交给我。', 'live.quote.researcher': '先查证，再下结论。', 'live.quote.writer': '文档随时可以落笔。', 'live.quote.qa': '没有证据，不算完成。',
-    });
     Object.assign(en, {
       'role.name.lead': 'Lead', 'role.name.architect': 'Architect', 'role.name.backend': 'Backend', 'role.name.frontend': 'Frontend',
       'role.name.researcher': 'Researcher', 'role.name.writer': 'Writer', 'role.name.qa': 'QA',

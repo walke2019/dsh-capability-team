@@ -77,7 +77,7 @@ test('custom：沿用网关协议（路径、请求头、provider），结果归
   } });
   const s = settings({ baseUrl: 'https://gateway.example.com', headers: { 'X-Team': 'a' }, providers: ['p1'] }, { custom: 'ck' });
   assert.deepEqual(await omni('search', { query: 'q', provider: 'p1' }, { settings: s, fetcher: m.fetcher }), { engine: 'custom', results: [{ title: 'C', url: 'https://c.example.com', snippet: 's' }] });
-  await assert.rejects(omni('search', { query: 'q', provider: 'p1' }, { settings: settings({}, { tavily: 't' }), fetcher: m.fetcher }), /provider 参数只适用于自定义/);
+  await assert.rejects(omni('search', { query: 'q', provider: 'p1' }, { settings: settings({}, { tavily: 't' }), fetcher: m.fetcher }), /provider applies only to custom/);
 });
 
 test('容灾：超时、网络错误、401/403、429、5xx 换下一个引擎；400 不换', async () => {
@@ -100,12 +100,12 @@ test('容灾：超时、网络错误、401/403、429、5xx 换下一个引擎；
   // All engines down: the error lists each one without upstream bodies or keys.
   const down = mock({ 'https://api.tavily.com/search': () => reply(503, 'tk leaked'), 'https://api.search.brave.com/': () => reply(429, 'bk leaked') });
   await assert.rejects(omni('search', { query: 'q' }, { settings: settings({}, { tavily: 'tk', brave: 'bk' }), fetcher: down.fetcher }),
-    e => /全部引擎不可用/.test(e.message) && /tavily: .*503/.test(e.message) && /brave: .*429/.test(e.message) && !/leaked|tk|bk/.test(e.message.replace(/tavily|brave/gi, '')));
+    e => /All Search engines are unavailable/.test(e.message) && /tavily: .*503/.test(e.message) && /brave: .*429/.test(e.message) && !/leaked|tk|bk/.test(e.message.replace(/tavily|brave/gi, '')));
 });
 
 test('输入无效时不发任何请求；调用方取消时不换引擎', async () => {
   const m = mock({});
-  await assert.rejects(omni('search', { query: ' ' }, { settings: settings({}, { tavily: 't' }), fetcher: m.fetcher }), /搜索词无效/);
+  await assert.rejects(omni('search', { query: ' ' }, { settings: settings({}, { tavily: 't' }), fetcher: m.fetcher }), /Invalid search query/);
   await assert.rejects(omni('search', { query: 'q', max_results: 50 }, { settings: settings({}, { tavily: 't' }), fetcher: m.fetcher }), /1–20/);
   assert.equal(m.calls.length, 0);
   const controller = new AbortController(); controller.abort();
@@ -116,10 +116,10 @@ test('输入无效时不发任何请求；调用方取消时不换引擎', async
 
 test('响应含密钥被拦截且不换引擎；超过 1MB 被拒绝；200 无结果列表视为不可用', async () => {
   const echo = mock({ 'https://api.tavily.com/search': reply(200, { results: [{ url: 'https://x.example.com', content: 'tk' }] }), 'https://api.search.brave.com/': reply(200, { web: { results: [] } }) });
-  await assert.rejects(omni('search', { query: 'q' }, { settings: settings({}, { tavily: 'tk', brave: 'bk' }), fetcher: echo.fetcher }), /响应包含凭据/);
+  await assert.rejects(omni('search', { query: 'q' }, { settings: settings({}, { tavily: 'tk', brave: 'bk' }), fetcher: echo.fetcher }), /Response contains credentials/);
   assert.equal(echo.calls.length, 1);
   const big = JSON.stringify({ results: [{ url: 'https://x.example.com', content: 'x'.repeat(1024 * 1024 + 10) }] });
-  await assert.rejects(omni('search', { query: 'q' }, { settings: settings({}, { tavily: 'tk' }), fetcher: async () => reply(200, big) }), /超过1MB/);
+  await assert.rejects(omni('search', { query: 'q' }, { settings: settings({}, { tavily: 'tk' }), fetcher: async () => reply(200, big) }), /exceeds 1MB/);
   const shape = mock({ 'https://api.tavily.com/search': reply(200, { answer: 'x' }), 'https://api.search.brave.com/': reply(200, { type: 'search', web: { results: [] } }) });
   assert.equal((await omni('search', { query: 'q' }, { settings: settings({}, { tavily: 'tk', brave: 'bk' }), fetcher: shape.fetcher })).engine, 'brave');
 });
@@ -146,12 +146,12 @@ test('抓取：Tavily extract 与 custom 抓取，按 fetchEngines 顺序容灾�
   assert.equal(m.calls.length, 3);
   const t = mock({ 'https://api.tavily.com/extract': reply(200, { results: [{ url: 'https://public.example.com/', raw_content: 'body' }] }) });
   assert.deepEqual(await omni('fetch', { url: 'https://public.example.com' }, { settings: settings({ fetchEngines: ['tavily'] }, { tavily: 'tk' }), fetcher: t.fetcher }), { engine: 'tavily', url: 'https://public.example.com/', content: 'body' });
-  for (const url of ['http://127.0.0.1/', 'http://192.168.1.1/', 'http://10.0.0.1/', 'http://169.254.169.254/']) await assert.rejects(omni('fetch', { url }, { settings: settings(), fetcher: async () => assert.fail('不应请求') }), /公开/);
-  await assert.rejects(omni('fetch', { url: 'https://public.example.com' }, { settings: settings(), fetcher: async () => reply(200, { data: { content: ' ' } }) }), /全部引擎不可用.*没有网页正文/);
+  for (const url of ['http://127.0.0.1/', 'http://192.168.1.1/', 'http://10.0.0.1/', 'http://169.254.169.254/']) await assert.rejects(omni('fetch', { url }, { settings: settings(), fetcher: async () => assert.fail('不应请求') }), /public/);
+  await assert.rejects(omni('fetch', { url: 'https://public.example.com' }, { settings: settings(), fetcher: async () => reply(200, { data: { content: ' ' } }) }), /All Page fetch engines are unavailable.*without page content/);
 });
 
 test('渠道列表只在 custom 引擎可用时工作', async () => {
-  await assert.rejects(omni('providers', {}, { settings: settings({ providersPath: '/p' }, { tavily: 't' }), fetcher: async () => assert.fail() }), /自定义搜索引擎/);
+  await assert.rejects(omni('providers', {}, { settings: settings({ providersPath: '/p' }, { tavily: 't' }), fetcher: async () => assert.fail() }), /custom search/);
   const out = await omni('providers', {}, { settings: settings({ baseUrl: 'https://gateway.example.com', providersPath: '/p' }, { custom: 'ck' }), fetcher: async () => reply(200, { data: ['a'] }) });
   assert.deepEqual(out.data, ['a']);
 });

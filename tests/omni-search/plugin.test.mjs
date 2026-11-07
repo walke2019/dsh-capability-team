@@ -14,7 +14,7 @@ async function fixture(t) {
   t.after(async () => { if (old === undefined) delete process.env.CAPABILITY_TEAM_HOME; else process.env.CAPABILITY_TEAM_HOME = old; await rm(root, { recursive: true, force: true }); });
   const defs = new Map(), disposers = []; let consent = false, asked = 0;
   const ctx = { tools: { register: def => { assert.ok(!defs.has(def.name)); defs.set(def.name, def); return () => defs.delete(def.name); } }, effect: fn => disposers.push(fn()),
-    workingDirectory: { ensure: async () => root }, userQuestions: { ask: async () => { asked++; return { answers: [{ id: 'upload', selected: consent ? ['允许上传'] : ['拒绝'] }] }; } },
+    workingDirectory: { ensure: async () => root }, userQuestions: { ask: async ({ questions }) => { asked++; return { answers: [{ id: 'upload', selected: [questions[0].options[consent ? 0 : 1].label] }] }; } },
     inject: (deps, fn) => { if (deps.includes('credentials')) fn({ credentials: { resolve: async () => ({ value: 'credential-test-key' }) }, effect: fn => disposers.push(fn()) }); },
   };
   return { root, ctx, defs, dispose: () => disposers.reverse().forEach(fn => fn?.()), allow: () => { consent = true; }, asked: () => asked };
@@ -23,7 +23,7 @@ test('profile bundle registers valid tools independent of team/preset and cleans
   const f = await fixture(t);
   // Zero config: four tools, no provider param, no providers tool (that belongs to the custom engine).
   apply(f.ctx);
-  assert.deepEqual(inject, ['tools','workingDirectory','userQuestions']);
+  assert.deepEqual(inject, ['tools', 'workingDirectory', 'userQuestions']);
   assert.deepEqual([...f.defs.keys()], ['omni_search','omni_fetch','omni_transcribe','omni_transcribe_status']);
   assert.equal(f.defs.get('omni_search').parameters.properties.provider, undefined);
   for (const def of f.defs.values()) assert.doesNotThrow(() => assertToolSchema(def.parameters));
@@ -35,7 +35,7 @@ test('profile bundle registers valid tools independent of team/preset and cleans
   apply(c.ctx);
   assert.deepEqual([...c.defs.keys()], ['omni_search','omni_fetch','omni_search_providers','omni_transcribe','omni_transcribe_status']);
   for (const def of c.defs.values()) assert.doesNotThrow(() => assertToolSchema(def.parameters));
-  await assert.rejects(c.defs.get('omni_search').execute({ query: 'probe' }, { agent: {}, signal: undefined }), /网关地址/);
+  await assert.rejects(c.defs.get('omni_search').execute({ query: 'probe' }, { agent: {}, signal: undefined }), /gateway URL/);
   c.dispose();
   const off = await fixture(t); apply(off.ctx, { enabled: false }); assert.equal(off.defs.size, 0); off.dispose();
   assert.throws(() => apply({}, { integrations: {} }), /Invalid/);
@@ -57,7 +57,7 @@ test('credential service is resolved, search/fetch execute in any session; trans
   assert.match(await f.defs.get('omni_search').execute({ query: 'probe' }, exec), /reference/);
   assert.match(await f.defs.get('omni_fetch').execute({ url: 'https://public.example.com' }, exec), /reference page/);
   assert.match(await f.defs.get('omni_search_providers').execute({}, exec), /available/);
-  await assert.rejects(f.defs.get('omni_transcribe').execute({ file_path: 'clip.wav' }, exec), /未授权/);
+  await assert.rejects(f.defs.get('omni_transcribe').execute({ file_path: 'clip.wav' }, exec), /did not authorize/);
   assert.equal(uploads, 0); f.allow();
   assert.match(await f.defs.get('omni_transcribe').execute({ file_path: 'clip.wav' }, exec), /transcript/);
   assert.equal(uploads, 1); assert.equal(f.asked(), 2); f.dispose();
@@ -105,6 +105,6 @@ test('read-only config/API, team non-registration, roles missing-tool warning an
   await buildShared(true);
   const config = await import('../../packages/omni-search/shared/integrations-config.js');
   for (const key of ['saveIntegrations','handleIntegrations','applyIntegrationsApi','setPluginIntegrations']) assert.equal(config[key], undefined);
-  const roles = await readFile(new URL('../../roles.js', import.meta.url), 'utf8'); assert.match(roles, /工具未安装、未启用、当前会话不可用/);
+  const { policy } = await import('../../roles.js'); assert.match(policy, /unavailable, disabled, uninstalled or missing-credential tools/);
   const team = await readFile(new URL('../../integrations.js', import.meta.url), 'utf8'); assert.doesNotMatch(team, /omni_search|applyTranscribe/);
 });

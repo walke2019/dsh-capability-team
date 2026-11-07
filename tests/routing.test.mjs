@@ -43,12 +43,16 @@ test('未分配模型时拒绝请求，不静默继承主控模型', async () =>
     const f = fakeCtx(() => ({ role: 'teammate', name: 'lv-bu' }), () => root);
     f.ctx.llm = { listProviders: () => [], listModels: async () => [] };
     apply(f.ctx, createTeam(f.ctx, {}, { root }));
-    await assert.rejects(f.request({}, { provider: 'parent', model: 'inherited' }), /未分配合格模型.*不会自动沿用/);
+    await assert.rejects(f.request({}, { provider: 'parent', model: 'inherited' }), /no eligible model.*not inherited/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
-test('maxTokens denial precedes temporary override and longContext restores after release',async()=>{const f=fakeCtx(()=>({role:'teammate',name:'dev'}),()=>'/project');let overridden=true,calls=0,over=false,tokens=120;const role={provider:'p',model:'mid',maxTokens:10,longContext:{provider:'p',model:'long',thresholdTokens:100}};f.ctx.get=k=>k==='sessionProjections'?{stateOf:(_s,key)=>key==='capabilityTeamUsage'?{totals:{uncachedInputTokens:over?10:0,outputTokens:0,cacheWriteTokens:0,cacheReadTokens:0}}:key==='contextPressure'?{surfaceTokens:tokens}:undefined}:undefined;const control={route:async(_a,r)=>{calls++;return overridden?{...r,provider:'p',model:'override',taskLeaseSignature:'lease:1',longContext:undefined}:r;}};applyRoles(f.ctx,{owns:()=>true,resolve:async()=>role},createFailover(),undefined,control);const agent={session:{}};assert.equal((await f.request(agent,{})).model,'override');overridden=false;assert.equal((await f.request(agent,{},1,2)).model,'long');overridden=true;assert.equal((await f.request(agent,{},1,3)).model,'override');tokens=90;overridden=false;assert.equal((await f.request(agent,{},1,4)).model,'mid');over=true;await assert.rejects(()=>f.request(agent,{},1,5),/预算/);assert.equal(calls,4);});
+test('maxTokens denial precedes temporary override and longContext restores after release',async()=>{const f=fakeCtx(()=>({role:'teammate',name:'dev'}),()=>'/project');let overridden=true,calls=0,over=false,tokens=120;const role={provider:'p',model:'mid',maxTokens:10,longContext:{provider:'p',model:'long',thresholdTokens:100}};f.ctx.get=k=>k==='sessionProjections'?{stateOf:(_s,key)=>key==='capabilityTeamUsage'?{totals:{uncachedInputTokens:over?10:0,outputTokens:0,cacheWriteTokens:0,cacheReadTokens:0}}:key==='contextPressure'?{surfaceTokens:tokens}:undefined}:undefined;const control={route:async(_a,r)=>{calls++;return overridden?{...r,provider:'p',model:'override',taskLeaseSignature:'lease:1',longContext:undefined}:r;}};applyRoles(f.ctx,{owns:()=>true,resolve:async()=>role},createFailover(),undefined,control);const agent={session:{}};assert.equal((await f.request(agent,{})).model,'override');overridden=false;assert.equal((await f.request(agent,{},1,2)).model,'long');overridden=true;assert.equal((await f.request(agent,{},1,3)).model,'override');tokens=90;overridden=false;assert.equal((await f.request(agent,{},1,4)).model,'mid');over=true;await assert.rejects(()=>f.request(agent,{},1,5),/budget/);assert.equal(calls,4);});
 test('静态规则不含角色名、模型或档位', () => {
-  for (const r of Object.values(seed.roles)) assert.equal(policy.includes(r.displayName), false);
+  // Lead and QA are generic coordination terms in English, not roster-specific names.
+  for (const r of Object.values(seed.roles)) {
+    if (!['Lead', 'QA'].includes(r.displayName)) assert.equal(policy.includes(r.displayName), false);
+  }
+  assert.doesNotMatch(policy, /Sun Quan|Zhuge Liang|Lu Bu|Diao Chan|Zhao Yun|Chen Lin|Zhou Yu/);
   for (const c of Object.values(base.capabilities)) assert.equal(policy.includes(c.model), false);
 });
 test('项目配置在请求时生效，未登记队友给出可执行的报错', async () => {
@@ -60,7 +64,7 @@ test('项目配置在请求时生效，未登记队友给出可执行的报错',
     await saveProject(root, { tiers: { medium: [...base.tiers.medium, 'new-model'] }, capabilities: { research: { provider: 'p2', model: 'new-model', fallbacks: [] } } }, 0, { root, base });
     assert.deepEqual(await f.request({}, {}), { provider: 'p2', model: 'new-model' });
     m = { role: 'teammate', name: 'guan-yu' };
-    await assert.rejects(f.request({}, {}), /未在当前项目的团队配置中登记.*capability_team_save/);
+    await assert.rejects(f.request({}, {}), /is not registered in this project's team configuration.*capability_team_save/);
     await saveProject(root, { roles: { 'guan-yu': { displayName: '运维', capability: 'backend' } } }, 1, { root, base });
     assert.equal((await f.request({}, {})).model, base.capabilities.backend.model);
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -112,11 +116,11 @@ test('队友共享主会话禁用策略，策略变化立即影响同一步请�
     membership = { role: 'teammate', name: 'lv-bu', root: lead };
     const rerouted = await f.request(mate, {});
     assert.ok(!all.includes(`${rerouted.provider}/${rerouted.model}`));
-    await assert.rejects(team.savePolicy(mate, [], 1), /仅主会话/);
+    await assert.rejects(team.savePolicy(mate, [], 1), /Only the main session/);
     membership = { role: 'lead', root: lead };
     await team.savePolicy(lead, team.detection().entries.map(r => `${r.provider}/${r.model}`), 1);
     membership = { role: 'teammate', name: 'lv-bu', root: lead };
-    await assert.rejects(f.request(mate, {}), /未分配合格模型/);
+    await assert.rejects(f.request(mate, {}), /no eligible model/);
     membership = { role: 'lead', root: lead };
     await team.savePolicy(lead, [], 2);
     membership = { role: 'teammate', name: 'lv-bu', root: lead };
@@ -125,8 +129,8 @@ test('队友共享主会话禁用策略，策略变化立即影响同一步请�
 });
 test('免费通道禁止付费与参数注入', () => {
   const allowed = ['opencode/a-free'];
-  assert.throws(() => freeArgs('test', 'paid/model', allowed), /免费/);
-  assert.throws(() => freeArgs('test', undefined, allowed), /免费/);
-  assert.throws(() => freeArgs('', 'opencode/a-free', allowed), /任务/);
+  assert.throws(() => freeArgs('test', 'paid/model', allowed), /free/);
+  assert.throws(() => freeArgs('test', undefined, allowed), /free/);
+  assert.throws(() => freeArgs('', 'opencode/a-free', allowed), /[Tt]ask/);
   assert.deepEqual(freeArgs('--model paid/x', 'opencode/a-free', allowed).slice(-2), ['--', '--model paid/x']);
 });

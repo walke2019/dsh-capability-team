@@ -12,7 +12,7 @@ function load() {
     useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}],
     useRef: initial => ({ current: initial }), useCallback: fn => fn, useEffect() {}, useLayoutEffect() {}, Fragment: 'Fragment',
   };
-  const window = { __ModuleLoader__: { load: spec => { assert.equal(spec.id, 'dsh-capability-autocomplete'); plugin = spec.factory(() => React); } },
+  const window = { __ModuleLoader__: { load: spec => { assert.equal(spec.id, '@aiwuk/autocomplete'); plugin = spec.factory(() => React); } },
     __acTestHook: value => { hooks = value; } };
   new Script(source).runInNewContext({ window });
   return { plugin, hooks };
@@ -29,12 +29,12 @@ test('registers the composer overlay, settings row and bundle config card', () =
   plugin.apply({
     locale: { register: (ns, dicts) => { dictionaries = dicts; }, bind: () => key => key },
     effect: fn => fn(),
-    inject: (names, fn) => fn({ configForms: { get: name => ({ name }) }, effect() {} }),
+    configForms: { get: name => ({ name }) },
     slots: { inject: (_n, fn) => fn(), register: (meta, component) => registered.push({ meta, component }) },
   });
   assert.deepEqual(registered.map(r => r.meta.name), ['conversation.input.overlay', 'conversation.input.dock', 'conversation.input.right',
     'settings.general.item', 'plugins.bundle.config']);
-  assert.equal(registered[4].meta.key, 'dsh-capability-autocomplete');
+  assert.equal(registered[4].meta.key, '@aiwuk/autocomplete');
   assert.deepEqual(Object.keys(dictionaries.zh).sort(), Object.keys(dictionaries.en).sort());
   assert.equal(registered[0].component({ sessionId: 's' }).props.form.name, 'autocomplete');
 });

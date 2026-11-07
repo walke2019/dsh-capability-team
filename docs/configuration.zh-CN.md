@@ -115,14 +115,14 @@
 
 | 插件 | 表单字段 | 对应集成字段 |
 |---|---|---|
-| `dsh-omni-search` | `engines`、`fetchEngines`、`searxngUrl`、`baseUrl`、`tavilyKeyEnv`、`braveKeyEnv`、`searxngKeyEnv`、`jinaKeyEnv`、`apiKeyEnv` | `search.*`（同名） |
-| `dsh-omni-search` | `audioBaseUrl`、`audioKeyEnv` | `audio.baseUrl`、`audio.apiKeyEnv` |
-| `dsh-capability-memory` | `embeddingBaseUrl`、`embeddingModel`、`embeddingKeyEnv` | `embeddings.baseUrl`、`.model`、`.apiKeyEnv` |
-| `dsh-capability-memory` | `memoryBackend`、`memoryUrl`、`memoryKeyEnv` | `memory.backend`、`.url`、`.apiKeyEnv` |
+| `@aiwuk/search` | `engines`、`fetchEngines`、`searxngUrl`、`baseUrl`、`tavilyKeyEnv`、`braveKeyEnv`、`searxngKeyEnv`、`jinaKeyEnv`、`apiKeyEnv` | `search.*`（同名） |
+| `@aiwuk/search` | `audioBaseUrl`、`audioKeyEnv` | `audio.baseUrl`、`audio.apiKeyEnv` |
+| `@aiwuk/memory` | `embeddingBaseUrl`、`embeddingModel`、`embeddingKeyEnv` | `embeddings.baseUrl`、`.model`、`.apiKeyEnv` |
+| `@aiwuk/memory` | `memoryBackend`、`memoryUrl`、`memoryKeyEnv` | `memory.backend`、`.url`、`.apiKeyEnv` |
 
 若残留的旧版 schemastery（无 `.volatile()`）遮蔽了 DSH 自带版本，插件会拒绝加载，并在错误中指明需删除的目录。在 DSH 插件管理器安装并启用 `packages/omni-search` 与 `packages/global-memory` 目录（或对应 `.tgz` 包），然后重启 DSH。团队插件的记忆枢纽也读取 `global-memory` 使用的同一份配置。
 
-`omni-search`（`dsh-omni-search`）无界面，向所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status`，名称刻意区别于 DSH 内置的 `web_search` / `web_fetch`；团队插件中 `search: false` 的角色不能调用这五个工具。插件/工具未安装或未启用时，应如实报告。`global-memory` 读取嵌入和记忆后端配置。
+`omni-search`（`@aiwuk/search`）无界面，向所有会话提供 `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status`，名称刻意区别于 DSH 内置的 `web_search` / `web_fetch`；团队插件中 `search: false` 的角色不能调用这五个工具。插件/工具未安装或未启用时，应如实报告。`global-memory` 读取嵌入和记忆后端配置。
 
 ### 搜索与抓取引擎
 
@@ -153,7 +153,7 @@
 
 | 旧 | 新 |
 |---|---|
-| `packages/cpa-tools` | `packages/omni-search`（`dsh-omni-search`，patch id `omni-search`） |
+| `packages/cpa-tools` | `packages/omni-search`（`@aiwuk/search`，patch id `omni-search`） |
 | `cpa_search`、`cpa_fetch`、`cpa_search_providers`、`cpa_transcribe`、`cpa_transcribe_status` | `omni_search`、`omni_fetch`、`omni_search_providers`、`omni_transcribe`、`omni_transcribe_status` |
 | `CPA_SEARCH_BASE_URL` / `CPA_SEARCH_API_KEY` | `OMNI_SEARCH_BASE_URL` / `OMNI_SEARCH_API_KEY`（`custom` 引擎） |
 | `CPA_AUDIO_BASE_URL` / `CPA_AUDIO_API_KEY` | `OMNI_AUDIO_BASE_URL` / `OMNI_AUDIO_API_KEY` |

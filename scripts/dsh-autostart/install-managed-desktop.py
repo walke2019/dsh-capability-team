@@ -1,4 +1,4 @@
-"""安装桌面中枢重启适配器；仅配置与备份，不退出桌面应用。"""
+"""Install the desktop Mothership restart adapter; configures and backs up only, never quits the desktop app."""
 
 from datetime import datetime
 from pathlib import Path
@@ -24,7 +24,7 @@ def install():
     if 'DSH_DESKTOP_AGENT_LABEL' not in os.environ and len(existing) == 1:
         label = plistlib.loads(existing[0].read_bytes())['Label']
     if not isinstance(label, str) or not re.fullmatch(r'[A-Za-z0-9._-]+', label):
-        raise RuntimeError('登录项标识无效')
+        raise RuntimeError('invalid login item identifier')
     plist = agents / (label + '.plist')
     backup.mkdir(parents=True, mode=0o700)
     target.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -42,11 +42,11 @@ def install():
                     '-o', str(target / 'desktop-terminate')], check=True)
     os.chmod(target / 'desktop-terminate', 0o700)
     text = patch.read_text()
-    # 名称是覆盖条目的匹配条件，不能直接改名；关闭原条目并显式插入适配器。
+    # The name is the override entry's match key and cannot be renamed; disable the original entry and insert the adapter explicitly.
     if 'id: mothership-desktop-connector' not in text:
         match = re.search(r'^- id: mothership-connector\n.*?(?=^- |\Z)', text, re.M | re.S)
         if match is None:
-            raise RuntimeError('找不到原连接器配置，保留原配置并停止')
+            raise RuntimeError('original connector config not found; keeping the existing config and stopping')
         block = match.group()
         if not re.search(r'^  disabled:', block, re.M):
             block = block.replace('  config:', '  disabled: false\n  config:', 1)
@@ -75,9 +75,9 @@ def install():
     }
     plist.write_bytes(plistlib.dumps(config))
     os.chmod(plist, 0o644)
-    print('适配器与监督器已安装：' + str(target))
-    print('原配置备份：' + str(backup))
-    print('需正常退出当前桌面端后重新载入此 LaunchAgent：' + str(plist))
+    print('adapter and supervisor installed: ' + str(target))
+    print('original config backup: ' + str(backup))
+    print('quit the current desktop app normally, then reload this LaunchAgent: ' + str(plist))
 
 
 if __name__ == '__main__':

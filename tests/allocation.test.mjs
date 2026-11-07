@@ -16,7 +16,7 @@ test('只校验发生变化的路由', () => {
   const after = effectiveConfig({ capabilities: { qa: { model: 'claude-sonnet-5-5', fallbacks: [] } } }, base);
   const routes = changedRoutes(before, after);
   assert.deepEqual(routes.map(r => r.capability), ['qa']);
-  assert.throws(() => verifyRoutes(routes, { entries: [] }), /不在当前DSH模型目录/);
+  assert.throws(() => verifyRoutes(routes, { entries: [] }), /absent from the current DSH model catalog/);
   verifyRoutes(routes, { entries: [{ provider: base.capabilities.qa.provider, model: 'claude-sonnet-5-5' }] });
 });
 test('请求只替换渠道与模型，丢弃模型专属参数', () => {

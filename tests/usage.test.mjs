@@ -31,7 +31,7 @@ test('预算：maxTokens 校验，达到上限阻止，投影缺席时不拦截'
   const role = resolveRole({ role: 'teammate', name: 'chen-lin' }, effective);
   assert.equal(role.maxTokens, 5000);
   assert.equal(budgetDenial(role, { uncachedInputTokens: 3000, outputTokens: 1999, cacheReadTokens: 90000, cacheWriteTokens: 0 }), undefined);
-  assert.match(budgetDenial(role, { uncachedInputTokens: 3000, outputTokens: 2000, cacheReadTokens: 0, cacheWriteTokens: 0 }), /达到预算上限 5000/);
+  assert.match(budgetDenial(role, { uncachedInputTokens: 3000, outputTokens: 2000, cacheReadTokens: 0, cacheWriteTokens: 0 }), /reaching limit 5000/);
   assert.equal(budgetDenial(role, undefined), undefined);
   assert.equal(budgetDenial(resolveRole({ role: 'lead' }, effective), { outputTokens: 1e9 }), undefined);
   assert.throws(() => effectiveConfig({ capabilities: { qa: { maxTokens: 10 } } }), /maxTokens/);

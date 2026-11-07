@@ -14,10 +14,10 @@ test('子任务：默认每个角色一条；可拆分、带写入范围和依�
     'diao-chan': JSON.stringify([{ key: 'ui', subject: '接页面', write_scopes: ['client'], blocked_by: ['api'] }]),
   });
   assert.deepEqual(split.map(t => [t.key, t.writeScopes, t.blockedBy]), [['api', ['server/api'], []], ['ui', ['client'], ['api']]]);
-  assert.throws(() => planTasks(assignments, { 'lv-bu': [{ subject: 'x', blocked_by: ['later'] }] }), /前面已列出/);
-  assert.throws(() => planTasks(assignments, { 'lv-bu': [{ key: 'a', subject: 'x' }], 'diao-chan': [{ key: 'a', subject: 'y' }] }), /重复/);
-  assert.throws(() => normalizeScope('../etc'), /相对路径/);
-  assert.throws(() => normalizeScope('/abs'), /相对路径/);
+  assert.throws(() => planTasks(assignments, { 'lv-bu': [{ subject: 'x', blocked_by: ['later'] }] }), /previously listed/);
+  assert.throws(() => planTasks(assignments, { 'lv-bu': [{ key: 'a', subject: 'x' }], 'diao-chan': [{ key: 'a', subject: 'y' }] }), /[Dd]uplicate/);
+  assert.throws(() => normalizeScope('../etc'), /relative/);
+  assert.throws(() => normalizeScope('/abs'), /relative/);
   assert.equal(inScope('client/a.js', 'client'), true);
   assert.equal(inScope('client2/a.js', 'client'), false);
 });
@@ -59,7 +59,7 @@ test('建看板任务：已存在的队友立刻分到可开始的任务；被�
   assert.deepEqual(byRole['diao-chan'][0].blockedBy, ['task-1']);
   assert.equal(tasks[0].ownerName, 'lv-bu', '吕布已存在，直接分给他');
   assert.equal(tasks[1].ownerName, undefined, '貂蝉还没创建');
-  assert.match(tasks[1].description, /指派给：貂蝉（diao-chan）/);
+  assert.match(tasks[1].description, /Assigned to: 貂蝉 \(diao-chan\)/);
 });
 
 test('队友开工时领到自己的任务；轮换后接替者接手旧成员未完成的任务', async () => {
@@ -70,7 +70,7 @@ test('队友开工时领到自己的任务；轮换后接替者接手旧成员�
   roster.push({ id: 'diao-chan-r2', name: 'diao-chan-r2', role: 'teammate' });
   await board.transfer(lead, 'diao-chan', 'diao-chan-r2');
   assert.equal(tasks[0].ownerName, 'diao-chan-r2');
-  assert.match(board.context({ id: 'diao-chan-r2' }), /task-1「前端页面」（已分给你，进行中）/);
+  assert.match(board.context({ id: 'diao-chan-r2' }), /task-1「前端页面」\(assigned to you, in progress\)/);
   assert.equal(board.context({ id: 'lead' }), '', '主控没有这段上下文');
 });
 
@@ -81,7 +81,7 @@ test('写入范围：只拦认领了带范围任务的队友，范围外的修�
   const exec = (name, args) => ({ name, arguments: args, agent: { id: 'diao-chan', session: {} } });
   assert.equal(board.guard(exec('edit', { file_path: 'client/10-overview.js' })), undefined);
   for (const name of ['edit', 'brisk_edit', 'mcp__s__brisk_edit', 'mcp__other__custom_edit']) {
-    assert.match(board.guard(exec(name, { file_path: 'server.js' })), /不在你认领的看板任务（task-1）的写入范围内：client/);
+    assert.match(board.guard(exec(name, { file_path: 'server.js' })), /outside the write scopes of your claimed board tasks \(task-1\): client/);
   }
   assert.equal(board.guard(exec('read', { file_path: 'server.js' })), undefined, '读不受限');
   assert.equal(board.guard(exec('edit', { file_path: 'server.js' }), { enforce: false }), undefined, '可关闭');

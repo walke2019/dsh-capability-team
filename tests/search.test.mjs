@@ -11,7 +11,7 @@ test('无网关地址明确失败，不使用内置地址', async () => assert.r
 test('网关地址只接受不含凭据的 https', () => {
   assert.equal(gatewayBase('https://gateway.example.com/api/'), 'https://gateway.example.com/api');
   for (const raw of ['http://gateway.example.com', 'https://u:p@gateway.example.com', 'https://gateway.example.com/?k=1', 'not a url']) assert.throws(() => gatewayBase(raw), /OMNI_SEARCH_BASE_URL/);
-  assert.throws(() => gatewayBase(undefined), /未配置网关地址/);
+  assert.throws(() => gatewayBase(undefined), /gateway URL not configured/);
 });
 test('路径、附加请求头、鉴权与超时都来自配置', async () => {
   const config = { searchPath: '/api/find', headers: { 'User-Agent': 'Custom/1.0' }, providers: ['duckduckgo-free'] };
@@ -23,7 +23,7 @@ test('路径、附加请求头、鉴权与超时都来自配置', async () => {
 test('错误不回显上游正文与密钥', async () => assert.rejects(gateway('search', { query: '文档' }, { settings: settings(), fetcher: async () => new Response('test-only', { status: 403 }) }), /HTTP 403/));
 test('拒绝私网凭据和非法渠道', () => {
   for (const url of ['http://127.0.0.1','http://169.254.169.254','http://user:pass@example.com','file:///tmp/test']) assert.throws(() => requestBody('fetch', { url }));
-  assert.throws(() => requestBody('search', { query: 'test', provider: 'other' }, { ...INTEGRATION_DEFAULTS.search, providers: ['a'] }), /渠道无效/, '配置了渠道列表时只接受列表内的');
+  assert.throws(() => requestBody('search', { query: 'test', provider: 'other' }, { ...INTEGRATION_DEFAULTS.search, providers: ['a'] }), /search provider/, '配置了渠道列表时只接受列表内的');
   assert.equal(requestBody('search', { query: 'test', provider: 'other' }).provider, 'other', '未配置列表时交给网关判断');
   assert.throws(() => requestBody('search', { query: 'test', provider: 'bad name' }));
 });

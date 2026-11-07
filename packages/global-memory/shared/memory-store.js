@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Memory store: one JSONL file per project plus a global file, a BM25 full-text index built in memory
 // (Latin words + CJK character bigrams), optional vectors, and hybrid ranking by reciprocal rank fusion.
 // Writes merge near-duplicates instead of piling them up; ranking decays with age and rises with use.
@@ -25,7 +26,7 @@ export function tokenize(text) {
   const out = [];
   const s = String(text ?? '').toLowerCase();
   for (const w of s.match(/[a-z0-9_][a-z0-9_.-]*/g) ?? []) out.push(w);
-  const cjk = s.match(/[㐀-鿿豈-﫿]+/g) ?? [];
+  const cjk = s.match(/[\u3400-\u9fff\uf900-\ufaff]+/g) ?? [];
   for (const run of cjk) { for (let i = 0; i < run.length; i++) { out.push(run[i]); if (i + 1 < run.length) out.push(run.slice(i, i + 2)); } }
   return out;
 }
@@ -141,10 +142,10 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
   const raw = {
     /** Insert, or merge into a near-duplicate in the same scope (same normalized text, or cosine ≥ threshold). */
     async write({ scope, kind, text, tags = [], source = {}, vector = null, model = null, key: topic = null }) {
-      if (!MEMORY_KINDS.includes(kind)) throw new Error(`记忆类型须为 ${MEMORY_KINDS.join(' / ')}`);
+      if (!MEMORY_KINDS.includes(kind)) throw new Error(modelText('memory-store.308', { 0: MEMORY_KINDS.join(' / ') }));
       const body = normText(text).slice(0, limits.maxText);
-      if (body.length < 4) throw new Error('记忆内容太短');
-      if (scope.kind !== 'global' && !scope.project) throw new Error('缺少项目');
+      if (body.length < 4) throw new Error(modelText('memory-store.309'));
+      if (scope.kind !== 'global' && !scope.project) throw new Error(modelText('memory-store.310'));
       const fk = keyOf(scope);
       const list = await load(fk);
       const same = m => m.kind === kind && JSON.stringify(m.scope) === JSON.stringify(scope) && !m.supersededBy;

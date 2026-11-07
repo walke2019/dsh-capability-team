@@ -1,3 +1,4 @@
+import { m as modelText } from './i18n.js';
 // Per-capability access policy for every team member: denied tools, shell, and the project paths that may be edited.
 // The check is lexical (no filesystem I/O) and runs as a monotonic tools.guard, so no later listener can allow a denied call.
 import { isAbsolute, relative, resolve } from 'node:path';
@@ -39,7 +40,7 @@ export function presetActive(presets, session, access) {
 export function ensurePreset(presets, session, access, log = () => {}) {
   if (!access?.preset || typeof presets?.set !== 'function' || presetActive(presets, session, access)) return;
   try { presets.set(session, access.preset); }
-  catch (error) { log(`无法应用权限预设 ${access.preset}：${error.message ?? error}；命令仍按 access.shell 拦截`); }
+  catch (error) { log(modelText('access.000', { 0: access.preset, 1: error.message ?? error })); }
 }
 /**
  * Pure decision for one call under a capability's access policy; returns a denial reason or undefined.
@@ -47,26 +48,26 @@ export function ensurePreset(presets, session, access, log = () => {}) {
  */
 export function checkAccess(exec, access, { project, cwd, label, sandboxed = false }) {
   if (!access) return undefined;
-  if (access.deny.length && matchesRestrictedTool(exec.name, access.deny)) return `${label}不允许使用工具 ${exec.name}（项目团队配置的 access.deny）。需要时请向 lead 汇报，由主控改派或经用户确认调整权限。`;
-  if (!access.shell && !sandboxed && matchesRestrictedTool(exec.name, SHELL_TOOLS)) return `${label}不允许执行命令（项目团队配置的 access.shell=false${access.preset ? `，权限预设 ${access.preset} 尚未生效` : ''}）。需要运行命令时请向 lead 汇报。`;
+  if (access.deny.length && matchesRestrictedTool(exec.name, access.deny)) return modelText('access.001', { 0: label, 1: exec.name });
+  if (!access.shell && !sandboxed && matchesRestrictedTool(exec.name, SHELL_TOOLS)) return modelText('access.002', { 0: label, 1: access.preset ? modelText('access.003', { 0: access.preset }) : '' });
   if (!access.editPaths) return undefined;
   const target = editTarget(exec);
   if (target === undefined) return undefined;
-  const scope = access.editPaths.length ? `只允许修改 ${access.editPaths.join('、')}` : '不允许修改任何文件';
-  if (!target || target.startsWith('~')) return `${label}${scope}；无法确认 ${exec.name} 的目标路径，已拒绝。`;
+  const scope = access.editPaths.length ? modelText('access.004', { 0: access.editPaths.join('、') }) : modelText('access.005');
+  if (!target || target.startsWith('~')) return modelText('access.006', { 0: label, 1: scope, 2: exec.name });
   const rel = relative(project, resolve(cwd, target)).split('\\').join('/');
-  if (!rel || rel.startsWith('../') || rel === '..' || isAbsolute(rel)) return `${label}${scope}；${target} 不在项目内，已拒绝。`;
-  if (!access.editPaths.some(pattern => globRegex(pattern).test(rel))) return `${label}${scope}（相对项目根目录）；${rel} 不在允许范围内。需要修改时请向 lead 汇报。`;
+  if (!rel || rel.startsWith('../') || rel === '..' || isAbsolute(rel)) return modelText('access.007', { 0: label, 1: scope, 2: target });
+  if (!access.editPaths.some(pattern => globRegex(pattern).test(rel))) return modelText('access.008', { 0: label, 1: scope, 2: rel });
   return undefined;
 }
 /** Model-facing one-line summary of an access policy. */
 export function accessSummary(access) {
   if (!access) return undefined;
   const parts = [];
-  if (access.editPaths) parts.push(access.editPaths.length ? `只能修改 ${access.editPaths.join('、')}` : '不能修改文件');
-  if (access.preset) parts.push(`运行在 DSH 权限预设 ${access.preset} 中${access.shell ? '' : '，命令只在该沙箱内执行'}`);
-  else if (!access.shell) parts.push('不能执行命令');
-  if (access.deny.length) parts.push(`禁用工具 ${access.deny.join('、')}`);
+  if (access.editPaths) parts.push(access.editPaths.length ? modelText('access.009', { 0: access.editPaths.join('、') }) : modelText('access.010'));
+  if (access.preset) parts.push(modelText('access.011', { 0: access.preset, 1: access.shell ? '' : modelText('access.012') }));
+  else if (!access.shell) parts.push(modelText('access.013'));
+  if (access.deny.length) parts.push(modelText('access.014', { 0: access.deny.join('、') }));
   return parts.length ? parts.join('；') : undefined;
 }
 import { ownsCapabilityTeam } from './preset-guard.js';
@@ -80,13 +81,13 @@ export function applyAccess(ctx, team) {
     try { effective = team.loadSync(project, exec.agent).effective; role = resolveRole(membership, effective); }
     catch (error) {
       // An unregistered teammate is already blocked at request routing; a broken config fails closed.
-      return /未在当前项目的团队配置中登记/.test(error.message) ? undefined : `团队配置读取失败，已停止执行：${error.message}`;
+      return /is not registered in this project's team configuration/.test(error.message) ? undefined : modelText('access.015', { 0: error.message });
     }
     const searchTools = new Set(['omni_search','omni_fetch','omni_search_providers','omni_transcribe','omni_transcribe_status']);
-    if (!role.search && searchTools.has(restrictiveToolName(exec.name, searchTools))) return `能力 ${role.capability} 未开启外部服务（search=true）；需经用户确认调整团队配置`;
+    if (!role.search && searchTools.has(restrictiveToolName(exec.name, searchTools))) return modelText('access.016', { 0: role.capability });
     const cwd = ctx.workingDirectory.get?.(exec.agent.session) ?? project;
     const sandboxed = presetActive(ctx.get?.('permissionPresets'), exec.agent.session, role.access);
-    return checkAccess(exec, role.access, { project, cwd, sandboxed, label: `角色 ${role.displayName}（${role.capability}）` })
+    return checkAccess(exec, role.access, { project, cwd, sandboxed, label: modelText('access.017', { 0: role.displayName, 1: role.capability }) })
       ?? checkFileLimits(exec, effective.workflow.fileLimits, { project, cwd, role: membership.role });
   }));
 }
