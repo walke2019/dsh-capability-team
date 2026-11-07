@@ -99,7 +99,7 @@ Visual settings pages for the companion packages are on DSH's **Plugins** page (
 - **Mothership lock badges**: settings managed by an AIWUK Mothership show "Managed by AIWUK Mothership" (locked) or "Default from Mothership" (editable).
 - **Web-search provider toggle** (AIWUK Search page): "Use AIWUK Search for DSH web search" selects `aiwuk-search` for DSH's native `web_search`; turning it off restores DSH's default.
 
-Full reference: [docs/configuration.md](docs/configuration.md) — tiers and auto-matching, permissions, budgets, plan-first, dispatch workflow, failover and long context, rotation, memory, and all environment variables.
+Search, Memory and Autocomplete setup (Mothership-managed vs. standalone, with an AI-agent checklist): [docs/standalone-setup.md](docs/standalone-setup.md). Full reference: [docs/configuration.md](docs/configuration.md) — tiers and auto-matching, permissions, budgets, plan-first, dispatch workflow, failover and long context, rotation, memory, and all environment variables.
 
 ## Roster and themes
 

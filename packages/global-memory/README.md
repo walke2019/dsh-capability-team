@@ -27,9 +27,12 @@ Only one instance may run per profile. Disable the bundle, plugin, or set `enabl
 
 ## Settings page
 
+Installed through an AIWUK Mothership? Everything is already configured and the page says so; see [standalone setup](../../docs/standalone-setup.md) for standalone installs and the AI-agent checklist.
+
 Open the plugin on DSH's **Plugins** page. The page edits the live (volatile) settings and shows every integration setting:
 
-- **Secrets are write-only.** `OPENVIKING_API_KEY` and `EMBEDDING_API_KEY` show a state only (Not set / Set (stored) / Set (environment) / Managed by AIWUK Mothership). You can Set, Replace or Clear a stored value; the value is never read back or shown, and the input is cleared after every save. Values go to DSH's credential store (`~/.dsh/.credentials.yaml`, plain YAML, mode 0600). If the state cannot be read the row shows "Could not check" with a Retry button.
+- **Secrets are write-only.** `OPENVIKING_API_KEY` and `EMBEDDING_API_KEY` show a state only (Not set / Set (stored) / Set (environment) / Configured by AIWUK Mothership). You can Set, Replace or Clear a stored value; the value is never read back or shown, and the input is cleared after every save. Values go to DSH's credential store (`~/.dsh/.credentials.yaml`, plain YAML, mode 0600). If the state cannot be read the row shows "Could not check" with a Retry button.
+- **Configured by the Mothership.** When an AIWUK Mothership manages this extension the page opens with a notice ("Configured by AIWUK Mothership"), shows the pushed URLs, models and engine lists read-only, and folds the settings the Mothership does not send under "Optional settings".
 - **Mothership lock badges.** When an AIWUK Mothership manages a setting, the row carries a badge: "Managed by AIWUK Mothership" (locked, read-only here; change it in the Mothership) or "Default from Mothership" (editable; your own value wins). The lock is a policy signal for the UI, not a security boundary on the machine.
 
 ## Configuration

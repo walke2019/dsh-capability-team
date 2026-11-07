@@ -171,9 +171,13 @@ export function resolveIntegrations({ root = defaultRoot(), env = process.env, m
       });
       effective[section][key] = layer.value; sources[section][key] = sourceLabel(layer); locked[section][key] = layer.locked;
     }
-    keys[section] = keyState(sectionKeyNames(section, effective[section]), env, store, manifest, effective[section].apiKeyEnv);
+    const names = sectionKeyNames(section, effective[section], manifest);
+    keys[section] = keyState(names, env, store, manifest, names[0]);
   }
-  keys.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => [engine, keyState([effective.search[field]], env, store, manifest, effective.search[field])]));
+  keys.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => {
+    const names = sectionKeyNames('search', effective.search, manifest, field);
+    return [engine, keyState(names, env, store, manifest, names[0])];
+  }));
   const resolved = { revision: file.revision, effective, sources, locked, keys, fileLayer: file.value };
   // The environment, store and manifest stay attached but non-enumerable, so a serialized view never carries them.
   for (const [name, value] of Object.entries({ env, store, managed: manifest })) Object.defineProperty(resolved, name, { value });
@@ -184,10 +188,12 @@ function keyState(names, env, store, manifest, label) {
   const hit = findKey(names, env, store, manifest);
   return { env: label, present: !!hit, source: hit?.source ?? 'default', locked: names.some(name => manifest?.entries?.get(name)?.locked === true) };
 }
-/** Key names for a section's apiKeyEnv: the configured one, plus its legacy fallback while it is the default. */
-function sectionKeyNames(section, config) {
-  const name = config.apiKeyEnv, legacy = LEGACY_KEY_ENV[section]?.[name];
-  return legacy && name === INTEGRATION_DEFAULTS[section].apiKeyEnv ? [name, legacy] : [name];
+/** A locked canonical credential owns only its section/engine field; local aliases cannot bypass that lock. */
+function sectionKeyNames(section, config, manifest, field = 'apiKeyEnv') {
+  const canonical = INTEGRATION_DEFAULTS[section][field];
+  if (manifest?.entries?.get(canonical)?.locked === true) return [canonical];
+  const name = config[field], legacy = LEGACY_KEY_ENV[section]?.[name];
+  return legacy && name === canonical ? [name, legacy] : [name];
 }
 // Each name is tried in order. A locked managed name reads only the store (the managed value); an unlocked managed
 // name lets a local environment value win over it; any other name reads the store before the environment.
@@ -204,17 +210,17 @@ function findKey(names, env, store, manifest) {
 const storeOf = (resolved, env) => (env === resolved.env ? resolved.store : env === process.env ? credentialCache : undefined);
 const lookup = (names, resolved, env) => findKey(names, env, storeOf(resolved, env), resolved.managed)?.value;
 /** The API key for a section, read from the credential/environment variable its config names. */
-export const keyOf = (section, resolved, env = resolved.env ?? process.env) => lookup(sectionKeyNames(section, resolved.effective[section]), resolved, env);
+export const keyOf = (section, resolved, env = resolved.env ?? process.env) => lookup(sectionKeyNames(section, resolved.effective[section], resolved.managed), resolved, env);
 /** The key of one search/fetch engine (tavily, brave, searxng, jina, custom); undefined when not set. */
 export const engineKeyOf = (engine, resolved, env = resolved.env ?? process.env) => {
   if (engine === 'custom') return keyOf('search', resolved, env);
   const field = SEARCH_KEY_FIELDS[engine];
-  return field ? lookup([resolved.effective.search[field]], resolved, env) : undefined;
+  return field ? lookup(sectionKeyNames('search', resolved.effective.search, resolved.managed, field), resolved, env) : undefined;
 };
-/** Every key name the effective config can read (section keys, legacy fallbacks, search engine keys). */
+/** Include effective canonical refs and local aliases for refresh and redaction, even when a lock ignores an alias. */
 export function keyNames(resolved) {
-  const names = SECTIONS.flatMap(section => sectionKeyNames(section, resolved.effective[section]));
-  for (const field of KEY_FIELDS) if (resolved.effective.search[field]) names.push(resolved.effective.search[field]);
+  const names = SECTIONS.flatMap(section => [...sectionKeyNames(section, resolved.effective[section], resolved.managed), ...sectionKeyNames(section, resolved.effective[section])]);
+  for (const field of KEY_FIELDS) names.push(...sectionKeyNames('search', resolved.effective.search, resolved.managed, field), resolved.effective.search[field]);
   return [...new Set(names)];
 }
 // DSH's credential store (ctx.credentials, the keys saved in Settings) is consulted first, so every key name
@@ -279,8 +285,14 @@ export async function keyPresence(resolved) {
     return { env: label, present: !!hit, source: hit?.source ?? 'default', locked: names.some(name => resolved.managed?.entries?.get(name)?.locked === true) };
   };
   const out = {};
-  for (const section of SECTIONS) out[section] = state(sectionKeyNames(section, resolved.effective[section]), resolved.effective[section].apiKeyEnv);
-  out.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => [engine, state([resolved.effective.search[field]], resolved.effective.search[field])]));
+  for (const section of SECTIONS) {
+    const names = sectionKeyNames(section, resolved.effective[section], resolved.managed);
+    out[section] = state(names, names[0]);
+  }
+  out.search.engines = Object.fromEntries(Object.entries(SEARCH_KEY_FIELDS).map(([engine, field]) => {
+    const names = sectionKeyNames('search', resolved.effective.search, resolved.managed, field);
+    return [engine, state(names, names[0])];
+  }));
   return out;
 }
 /** Safe view for the Overview: effective values, the layer each came from, and key presence (never key values). */

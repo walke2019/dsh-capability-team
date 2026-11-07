@@ -3,7 +3,7 @@
 // shared-ui/build.mjs, which strips the `export`/`import` keywords so this file shares one factory scope with
 // config-logic.js. Secrets are shown as a STATE only: values are never fetched, rendered or logged, and the
 // write-only input is cleared after every save attempt. Styling uses --dsw-* tokens only.
-import { DESCRIBE_RETRY_DELAY_MS, buildOps, clearSecret, describeSecretsResult, fieldText, isShown, lockMode, managedConfigUrl, manifestFromWire, secretRefs, secretState, summaryCounts, unwrapReply, validateValue, writeSecret } from './config-logic.js';
+import { DESCRIBE_RETRY_DELAY_MS, buildOps, clearSecret, describeSecretsResult, fieldText, isShown, lockMode, managedConfigUrl, managedStatus, managedValueOf, manifestFromWire, secretRefs, secretState, summaryCounts, unwrapReply, validateValue, writeSecret } from './config-logic.js';
 
 export function createPanelKit(React) {
   const h = React.createElement;
@@ -20,6 +20,9 @@ export function createPanelKit(React) {
     primary: { color: 'var(--dsw-alias-label-primary-inverted)', background: 'var(--dsw-alias-brand-primary)', border: '1px solid var(--dsw-alias-brand-primary)' },
     badge: { borderRadius: '999px', padding: '0 8px', fontSize: '0.85em', whiteSpace: 'nowrap' },
     controls: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' },
+    banner: { display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', borderRadius: 'var(--dsw-radius-md)', border: '1px solid var(--dsw-alias-state-success-primary)', background: 'var(--dsw-alias-state-success-tertiary, var(--dsw-alias-bg-layer-2))' },
+    details: { marginTop: '4px' },
+    summary: { cursor: 'pointer', color: 'var(--dsw-alias-label-secondary)', fontSize: '0.9em', padding: '6px 0' },
   };
   const badgeStyle = mode => {
     const tone = mode === 'locked' ? 'var(--dsw-alias-state-warn-primary)' : 'var(--dsw-alias-state-success-primary)';
@@ -163,7 +166,8 @@ export function createPanelKit(React) {
     const clear = async () => { setConfirming(false); try { await onClear(field.ref); setNote('cleared'); } catch { setNote('failed'); } };
     const unresolved = info === undefined && mode !== 'locked';
     const phase = unresolved ? (failed ? 'failed' : 'unknown') : state.kind;
-    const statusText = unresolved ? t(failed ? 'secret.failed' : 'secret.unknown') : t(`secret.${state.kind}`);
+    const statusText = unresolved ? t(failed ? 'secret.failed' : 'secret.unknown')
+      : state.kind === 'managed' ? t(info === undefined || state.configured ? 'secret.managedSet' : 'secret.managedEmpty') : t(`secret.${state.kind}`);
     return h(FieldRow, { id: field.id, label, mode, t, hint: note ? t(`secret.note.${note}`) : undefined },
       h('span', { 'data-secret-state': phase, style: unresolved && failed ? ui.err : ui.muted }, statusText),
       unresolved && failed ? h('button', { type: 'button', 'data-action': 'retry-secret', style: ui.button, onClick: onRetry }, t('action.retry')) : null,
@@ -187,8 +191,16 @@ export function createPanelKit(React) {
     }
     if (field.kind === 'enum') return h('select', { ...common, value: value ?? '', style: ui.input, onChange: event => onChange(event.target.value) },
       h('option', { value: '' }, t('opt.default')), field.options.map(option => h('option', { key: option, value: option }, t(`opt.${option}`))));
-    const props = { ...common, style: ui.input, value: value ?? '', placeholder: mode === 'locked' ? t('value.managed') : mode === 'default' ? t('value.default') : undefined, onChange: event => onChange(event.target.value) };
+    const props = { ...common, style: ui.input, value: value ?? '', title: readOnly && value ? String(value) : undefined, placeholder: mode === 'locked' ? t('value.managed') : mode === 'default' ? t('value.default') : undefined, onChange: event => onChange(event.target.value) };
     return field.kind === 'number' ? h('input', { ...props, type: 'number', min: field.min, max: field.max, step: field.step }) : h('input', { ...props, type: field.kind === 'url' ? 'url' : 'text' });
+  }
+
+  /** "Configured by the Mothership" notice: shown when the Mothership manages any integration field of this panel. */
+  function ManagedBanner({ status, t }) {
+    if (status.mode === 'none') return null;
+    return h('div', { 'data-managed-banner': status.mode, role: 'note', style: ui.banner },
+      h('span', { style: { ...ui.label, fontWeight: 600 } }, t(status.mode === 'full' ? 'banner.full' : 'banner.partial')),
+      h('span', { style: ui.muted }, fmt(t('banner.detail'), status)));
   }
 
   function ConfigPanel(props) {
@@ -224,20 +236,34 @@ export function createPanelKit(React) {
       if (ok) setDrafts({});
     };
     const labelOf = field => t(field.ref ? `ref.${field.ref}` : `field.${field.id}`);
+    const status = managedStatus(panel.fields, manifest);
+    const visible = panel.fields.filter(field => isShown(field, current));
+    // Once the Mothership configures this extension, integration fields it does not send are optional extras.
+    const isOptional = field => status.mode !== 'none' && field.ref && lockMode(manifest, field.ref) === 'none';
+    const main = visible.filter(field => !isOptional(field)), optional = visible.filter(isOptional);
+    const renderField = field => {
+      const mode = lockMode(manifest, field.ref);
+      if (field.kind === 'secret') {
+        return h(SecretField, { key: field.id, field, label: labelOf(field), info: described[field.ref], mode, failed: describeFailed, t, onRetry: retryDescribe,
+          onSet: async (ref, value) => { await writeSecret(services.credentials, ref, value, await freshMode(ref)); await refresh(); },
+          onClear: async ref => { await clearSecret(services.credentials, ref, await freshMode(ref)); await refresh(); } });
+      }
+      const fromHub = managedValueOf(manifest, field.ref);
+      const shown = Object.hasOwn(drafts, field.id) ? drafts[field.id] : field.kind === 'switch' ? values[field.path]
+        : mode === 'locked' ? (fromHub === undefined ? '' : field.multiple ? fromHub.split(',').map(v => v.trim()).filter(Boolean) : fromHub)
+          : field.multiple ? values[field.path] : fieldText(field, values[field.path]);
+      return h(FieldRow, { key: field.id, id: field.id, label: labelOf(field), mode, t, error: invalid[field.id] ? t(`err.${invalid[field.id]}`) : undefined },
+        control({ field, value: shown, readOnly: readOnly || mode === 'locked', mode, t, onChange: next => { setResult(null); setDrafts(prev => ({ ...prev, [field.id]: next })); } }));
+    };
     return h('div', { 'data-config-panel': panel.extension, style: ui.col },
       panel.hostSelection && view !== 'summary' ? h(HostSelectionRow, { spec: panel.hostSelection, services, t }) : null,
       !ready ? h('p', { style: ui.muted, 'data-unavailable': snapshot?.status === 'unavailable' ? '' : undefined }, t(snapshot?.status === 'loading' ? 'state.loading' : 'state.unavailable')) : null,
-      panel.fields.filter(field => isShown(field, current)).map(field => {
-        const mode = lockMode(manifest, field.ref);
-        if (field.kind === 'secret') {
-          return h(SecretField, { key: field.id, field, label: labelOf(field), info: described[field.ref], mode, failed: describeFailed, t, onRetry: retryDescribe,
-            onSet: async (ref, value) => { await writeSecret(services.credentials, ref, value, await freshMode(ref)); await refresh(); },
-            onClear: async ref => { await clearSecret(services.credentials, ref, await freshMode(ref)); await refresh(); } });
-        }
-        const shown = Object.hasOwn(drafts, field.id) ? drafts[field.id] : field.kind === 'switch' ? values[field.path] : mode === 'locked' ? '' : field.multiple ? values[field.path] : fieldText(field, values[field.path]);
-        return h(FieldRow, { key: field.id, id: field.id, label: labelOf(field), mode, t, error: invalid[field.id] ? t(`err.${invalid[field.id]}`) : undefined },
-          control({ field, value: shown, readOnly: readOnly || mode === 'locked', mode, t, onChange: next => { setResult(null); setDrafts(prev => ({ ...prev, [field.id]: next })); } }));
-      }),
+      h(ManagedBanner, { status, t }),
+      main.map(renderField),
+      optional.length ? h('details', { 'data-optional-fields': '', style: ui.details },
+        h('summary', { style: ui.summary }, fmt(t('optional.title'), { count: optional.length })),
+        h('p', { style: ui.muted }, t('optional.hint')),
+        optional.map(renderField)) : null,
       panel.fields.some(field => field.kind !== 'secret') ? h('div', { style: ui.controls },
         result ? h('span', { role: 'status', style: result === 'saved' ? ui.muted : ui.err }, t(`state.${result}`)) : null,
         h('button', { type: 'button', 'data-action': 'save', style: { ...ui.button, ...ui.primary }, disabled: readOnly || !ops.length || Object.keys(invalid).length > 0, onClick: save }, t('action.save'))) : null);

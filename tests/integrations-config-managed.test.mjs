@@ -5,9 +5,10 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { resolveIntegrations, keyOf, keyPresence, describeIntegrations, setCredentialResolver, setManagedReader, refreshCredentials, useCredentials } from '../integrations-config.js';
+import { resolveIntegrations, keyOf, engineKeyOf, keyNames, knownSecretValues, keyPresence, describeIntegrations, setCredentialResolver, setManagedReader, refreshCredentials, useCredentials, INTEGRATION_DEFAULTS, SEARCH_KEY_FIELDS } from '../integrations-config.js';
 import { resolveRef } from '../managed-ref.js';
 import { SOURCE_KINDS } from '../managed-resolve.js';
+import { gateway } from '../search.js';
 
 const URL_REF = 'SEARXNG_URL';
 const manifest = (...entries) => ({ revision: 1, entries: new Map(entries.map(([ref, locked]) => [ref, { locked, secret: false }])) });
@@ -78,6 +79,67 @@ test('keys: presence and source only, locked managed keys ignore the environment
   assert.equal(unlocked.keys.search.engines.tavily.source, 'env', 'a local env key beats an unlocked managed default');
   for (const view of [describeIntegrations(lockedKey), await keyPresence(lockedKey)]) assert.ok(!JSON.stringify(view).includes(secret) && !JSON.stringify(view).includes('env-should-lose'));
   assert.equal(JSON.stringify(lockedKey).includes(secret), false, 'the store and manifest are non-enumerable');
+});
+
+test('locked canonical section credentials override custom aliases without leaking values', async () => {
+  for (const section of ['search', 'audio', 'memory', 'embeddings']) {
+    const canonical = INTEGRATION_DEFAULTS[section].apiKeyEnv;
+    const alias = 'LEGACY_SECTION_KEY', secret = `managed-${section}-test-secret`;
+    const store = new Map([[canonical, secret], [alias, 'stored-alias-secret']]);
+    const r = resolveIntegrations({ root: '/nonexistent', env: { [canonical]: 'env-canonical-secret', [alias]: 'env-alias-secret' }, credentials: store,
+      settings: { [section]: { apiKeyEnv: alias } }, managed: manifest([canonical, true]) });
+    assert.equal(keyOf(section, r), secret, section);
+    const expected = { env: canonical, present: true, source: 'managed-locked', locked: true };
+    assert.deepEqual(r.keys[section], section === 'search' ? { ...expected, engines: r.keys.search.engines } : expected);
+    assert.deepEqual((await keyPresence(r))[section], section === 'search' ? { ...expected, engines: r.keys.search.engines } : expected);
+    assert.ok(keyNames(r).includes(canonical));
+    assert.ok(knownSecretValues(r).includes(secret), 'the effective credential must remain redactable');
+    assert.ok(!JSON.stringify(describeIntegrations(r)).includes(secret));
+    store.delete(canonical);
+    assert.equal(keyOf(section, r), undefined, 'a missing locked credential must not fall back to a user alias');
+  }
+});
+
+test('a legacy file key alias cannot replace the locked credential on the gateway wire', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'managed-key-'));
+  try {
+    await writeFile(join(root, 'integrations.json'), JSON.stringify({ integrations: { search: { apiKeyEnv: 'CPA_API_KEY', baseUrl: U('gateway') } } }));
+    const r = resolveIntegrations({ root, env: { CPA_API_KEY: 'obsolete-test-secret' }, credentials: new Map([['OMNI_SEARCH_API_KEY', 'managed-test-secret']]),
+      managed: manifest(['OMNI_SEARCH_API_KEY', true]) });
+    let calls = 0;
+    const result = await gateway('search', { query: 'public documentation' }, { settings: { config: r.effective.search, key: keyOf('search', r) }, fetcher: async (_url, init) => {
+      calls++;
+      assert.equal(init.headers.Authorization, 'Bearer managed-test-secret');
+      assert.ok(!init.body.includes('managed-test-secret') && !init.body.includes('obsolete-test-secret'));
+      return new Response(JSON.stringify({ results: [{ url: U('result') }] }), { headers: { 'content-type': 'application/json' } });
+    } });
+    assert.equal(calls, 1);
+    assert.equal(result.results.length, 1);
+    assert.ok(!JSON.stringify(result).includes('managed-test-secret'));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('canonical managed credentials are isolated by engine and section', async () => {
+  for (const [engine, field] of Object.entries(SEARCH_KEY_FIELDS)) {
+    const canonical = INTEGRATION_DEFAULTS.search[field], alias = 'CUSTOM_ENGINE_KEY';
+    const r = resolveIntegrations({ root: '/nonexistent', env: { [canonical]: 'env-secret', [alias]: 'alias-secret' },
+      credentials: new Map([[canonical, 'managed-engine-secret']]), settings: { search: { [field]: alias } }, managed: manifest([canonical, true]) });
+    assert.equal(engineKeyOf(engine, r), 'managed-engine-secret', engine);
+    assert.deepEqual(r.keys.search.engines[engine], { env: canonical, present: true, source: 'managed-locked', locked: true });
+    assert.deepEqual((await keyPresence(r)).search.engines[engine], r.keys.search.engines[engine]);
+    for (const other of Object.keys(SEARCH_KEY_FIELDS).filter(name => name !== engine)) assert.equal(engineKeyOf(other, r), undefined, `${engine} must not supply ${other}`);
+    for (const section of ['audio', 'memory', 'embeddings']) assert.equal(keyOf(section, r), undefined);
+  }
+});
+
+test('unmanaged and unlocked custom credential aliases keep their existing behavior', () => {
+  for (const managed of [null, manifest(['OMNI_SEARCH_API_KEY', false])]) {
+    const r = resolveIntegrations({ root: '/nonexistent', env: { CUSTOM_KEY: 'alias-secret' }, credentials: new Map([['OMNI_SEARCH_API_KEY', 'canonical-secret']]),
+      settings: { search: { apiKeyEnv: 'CUSTOM_KEY' } }, managed });
+    assert.equal(keyOf('search', r), 'alias-secret');
+    assert.equal(engineKeyOf('custom', r), 'alias-secret');
+    assert.deepEqual(r.keys.search.engines.custom, { env: 'CUSTOM_KEY', present: true, source: 'env', locked: false });
+  }
 });
 
 test('backward compatible: legacy sources strings and the settings reader still work, and the real-environment path is unchanged', () => {

@@ -8,6 +8,9 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Mothership-managed config pages (Search 1.0.2, Memory 1.0.2, Autocomplete 1.0.1, Team 5.0.2): a page managed by an AIWUK Mothership opens with a "Configured by AIWUK Mothership" notice, shows the pushed non-secret values (URLs, models, engine lists) read-only, reports managed keys as "Configured by AIWUK Mothership", and folds integration settings the Mothership does not send under "Optional settings". The `api/aiwuk.managed-config.<ext>` route now carries `value` for non-secret refs only; secret refs (flagged or matching the forced-secret pattern) are never resolved or sent.
+- `docs/standalone-setup.md` (and zh-CN): Mothership-managed vs. standalone setup for Search, Memory and Autocomplete, with an AI-agent checklist.
+- `npm test` runs every test file with an isolated empty `DSH_HOME` (`tests/isolated-home.mjs`), so a developer's real managed-config file can no longer change test results.
 - AIWUK Search settings page: "Use AIWUK Search for DSH web search" sets `searchProvider: aiwuk-search` on the host `web` entry through `configForms` (unset restores DSH's default) and shows the current provider.
 - Config pages: a secret row whose state cannot be read now shows "Could not check" with a Retry button instead of waiting forever; one automatic retry runs first.
 
@@ -21,6 +24,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- Locked canonical managed credentials now override legacy/custom key aliases for their exact integration section and search engine. Missing locked credentials do not fall back to local aliases; standalone and unlocked configurations retain their existing behavior. Presence metadata reports the effective canonical ref, and both canonical credentials and ignored aliases remain covered by redaction. This shared resolver fix ships in Team 5.0.1, Search 1.0.1 and Memory 1.0.1.
 - Config pages: secret rows could stay on "Checking..." although `credentials/describe` answered. Describe results are now ticketed (a stale or post-unmount result is ignored), a ref absent from a successful reply reads as not configured, a hung or failed call times out into the failure state, and the effect re-runs when the credentials service changes.
 - Team overview on a draft session (before the first message): `/api/capability-team.runtime` and `/stream` answered 503. They now return 200 with an empty snapshot (epoch `unbound`) and an idle stream that switches to real snapshots once the runtime binds.
 - READMEs no longer say a settings form is "coming"; they describe write-only secrets, Mothership lock badges and the web-search provider toggle.

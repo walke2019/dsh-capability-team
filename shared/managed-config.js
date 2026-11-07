@@ -61,3 +61,24 @@ async function fromFile(path, read) {
 export async function readManagedManifest(ctx, { env = process.env, home = dshHome(env), read = readFile } = {}) {
   return (await fromRecord(ctx?.credentials)) ?? (await fromFile(managedConfigFilePath(home), read));
 }
+
+/** Longest non-secret managed value shown in a browser panel (URLs, model ids, engine lists). */
+export const MAX_SHOWN_VALUE = 512;
+/**
+ * Values of the NON-secret managed refs (URLs, models, engine lists), read from the credential store so the panel can
+ * show what the Mothership configured. Secret refs (flagged or matching the forced-secret pattern) are never read.
+ * Returns `{ref: value}`; a ref without a value or a failing lookup is left out. Never throws.
+ */
+export async function managedValues(credentials, manifest) {
+  const out = {};
+  if (!manifest || typeof credentials?.resolve !== 'function') return out;
+  for (const [ref, entry] of manifest.entries) {
+    if (entry.secret || FORCED_SECRET_PATTERN.test(ref)) continue;
+    try {
+      const hit = await credentials.resolve(ref);
+      const value = typeof hit === 'string' ? hit : hit?.value;
+      if (typeof value === 'string' && value && value.length <= MAX_SHOWN_VALUE) out[ref] = value;
+    } catch { /* leave it out */ }
+  }
+  return out;
+}

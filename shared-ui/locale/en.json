@@ -62,5 +62,12 @@
   "host.webSearch.auto": "automatic",
   "host.webSearch.hint": "Turn it off to restore the DSH default.",
   "host.webSearch.unavailable": "DSH web search settings are unavailable.",
-  "host.webSearch.failed": "Could not change the web search provider."
+  "host.webSearch.failed": "Could not change the web search provider.",
+  "secret.managedSet": "Configured by {mothership}",
+  "secret.managedEmpty": "Managed by {mothership} (not set there)",
+  "banner.full": "Configured by {mothership}. Nothing to set up here.",
+  "banner.partial": "Partly configured by {mothership}.",
+  "banner.detail": "{managed} of {total} settings come from the Mothership ({locked} locked). Locked settings can only be changed in the Mothership.",
+  "optional.title": "Optional settings not sent by the Mothership ({count})",
+  "optional.hint": "Leave these empty unless you want an extra engine on this machine only."
 }

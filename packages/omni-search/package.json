@@ -1,6 +1,6 @@
 {
   "name": "@aiwuk/search",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "type": "module",
   "description": "AIWUK Search: profile-wide multi-engine web search, page fetch and user-approved audio transcription for DeepSeek Harness (DSH)",
   "license": "MIT",

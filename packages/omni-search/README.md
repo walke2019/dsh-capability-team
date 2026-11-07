@@ -68,9 +68,12 @@ The capability-team plugin does not register these tools. Its existing capabilit
 
 ## Settings page
 
+Installed through an AIWUK Mothership? Everything is already configured and the page says so; see [standalone setup](../../docs/standalone-setup.md) for standalone installs and the AI-agent checklist.
+
 Open the plugin on DSH's **Plugins** page. It edits the live (volatile) settings and shows the integration settings:
 
-- **Secrets are write-only.** The six keys (`OMNI_SEARCH_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY`, `SEARXNG_API_KEY`, `JINA_API_KEY`, `OMNI_AUDIO_API_KEY`) show a state only (Not set / Set (stored) / Set (environment) / Managed by AIWUK Mothership). Set, Replace or Clear a stored value; it is never read back or shown, and the input is cleared after each save. Values go to DSH's credential store (`~/.dsh/.credentials.yaml`, plain YAML, mode 0600). If the state cannot be read the row shows "Could not check" with a Retry button.
+- **Secrets are write-only.** The six keys (`OMNI_SEARCH_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY`, `SEARXNG_API_KEY`, `JINA_API_KEY`, `OMNI_AUDIO_API_KEY`) show a state only (Not set / Set (stored) / Set (environment) / Configured by AIWUK Mothership). Set, Replace or Clear a stored value; it is never read back or shown, and the input is cleared after each save. Values go to DSH's credential store (`~/.dsh/.credentials.yaml`, plain YAML, mode 0600). If the state cannot be read the row shows "Could not check" with a Retry button.
+- **Configured by the Mothership.** When an AIWUK Mothership manages this extension the page opens with a notice ("Configured by AIWUK Mothership"), shows the pushed URLs, models and engine lists read-only, and folds the settings the Mothership does not send under "Optional settings".
 - **Mothership lock badges.** A setting managed by an AIWUK Mothership carries a badge: "Managed by AIWUK Mothership" (locked, read-only; change it in the Mothership) or "Default from Mothership" (editable; your value wins). The lock is a policy signal, not a security boundary on the machine.
 - **Web-search provider toggle.** "Use AIWUK Search for DSH web search" sets `searchProvider: aiwuk-search` on DSH's `web` entry (`cordis.patch.yml`), so DSH's native `web_search` uses this plugin. Turning it off removes that setting and restores DSH's default. The row shows the current provider. Without a selection DSH picks a provider only when exactly one is usable, otherwise it reports `WEB_PROVIDER_AMBIGUOUS`; the environment variable `DSH_WEB_SEARCH_PROVIDER` is the equivalent setting.
 

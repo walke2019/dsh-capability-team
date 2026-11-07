@@ -23,14 +23,30 @@ export function unwrapReply(reply) {
   return reply;
 }
 
-/** Wire manifest → Map(ref → {locked, secret}); null when the payload is not a manifest. */
+/** Wire manifest → Map(ref → {locked, secret, value?}); null when the payload is not a manifest. A secret never keeps a value. */
 export function manifestFromWire(wire) {
   if (!wire || typeof wire !== 'object' || !Array.isArray(wire.entries)) return null;
   const entries = new Map();
   for (const item of wire.entries) {
-    if (item && typeof item.ref === 'string') entries.set(item.ref, { locked: item.locked === true, secret: item.secret === true });
+    if (!item || typeof item.ref !== 'string') continue;
+    const secret = item.secret === true;
+    entries.set(item.ref, { locked: item.locked === true, secret, ...(!secret && typeof item.value === 'string' ? { value: item.value } : {}) });
   }
   return { revision: Number.isSafeInteger(wire.revision) ? wire.revision : 0, entries };
+}
+
+/** The Mothership's value of a non-secret managed ref (for display), or undefined. */
+export const managedValueOf = (manifest, ref) => (ref ? manifest?.entries?.get(ref)?.value : undefined);
+
+/**
+ * Panel-level managed status: how many of the panel's integration fields the Mothership manages and how many it
+ * locks. `mode` is 'none' (self-configured), 'full' (every integration field managed) or 'partial'.
+ */
+export function managedStatus(fields, manifest) {
+  const refs = fields.filter(field => field.ref).map(field => field.ref);
+  const managed = refs.filter(ref => manifest?.entries?.has(ref));
+  const locked = managed.filter(ref => manifest.entries.get(ref).locked);
+  return { managed: managed.length, locked: locked.length, total: refs.length, mode: !managed.length ? 'none' : managed.length === refs.length ? 'full' : 'partial' };
 }
 
 /** 'locked' | 'default' (managed but editable) | 'none' for a ref. */

@@ -62,5 +62,12 @@
   "host.webSearch.auto": "自动选择",
   "host.webSearch.hint": "关闭后恢复 DSH 默认。",
   "host.webSearch.unavailable": "DSH 网页搜索设置不可用。",
-  "host.webSearch.failed": "无法更改网页搜索提供方。"
+  "host.webSearch.failed": "无法更改网页搜索提供方。",
+  "secret.managedSet": "已由 {mothership}配置",
+  "secret.managedEmpty": "由 {mothership}托管（母舰未设置）",
+  "banner.full": "已通过 {mothership}配置完成，无需在这里设置。",
+  "banner.partial": "部分设置已由 {mothership}配置。",
+  "banner.detail": "{total} 项设置中有 {managed} 项来自母舰（其中 {locked} 项已锁定）。锁定的设置只能在母舰中修改。",
+  "optional.title": "母舰未下发的可选设置（{count} 项）",
+  "optional.hint": "除非只想在这台机器上额外启用某个引擎，否则保持为空即可。"
 }
