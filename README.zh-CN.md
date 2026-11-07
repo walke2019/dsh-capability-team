@@ -134,6 +134,8 @@ flowchart LR
 
 ## 参与贡献
 
+macOS 桌面实例接入 AIWUK 中枢后，可按[桌面托管重启说明](docs/macos-desktop-restart.md)安装可选部署适配器；它复用连接器原生协议，通过本机监督器重启整个桌面应用。
+
 欢迎提交 Issue 和 Pull Request，请使用 [Issue 模板](.github/ISSUE_TEMPLATE) 和 [PR 模板](.github/PULL_REQUEST_TEMPLATE.md)。请先阅读[开发指南](docs/development.zh-CN.md)和仓库规范 [AGENTS.md](AGENTS.md)。提交前运行 `npm test`、`npm run lint` 和 `npm run build`。
 
 ## 许可

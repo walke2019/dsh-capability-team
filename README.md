@@ -134,6 +134,8 @@ All are independent profile bundles: they also work outside team sessions, and t
 
 ## Contributing
 
+For macOS desktop instances using the AIWUK Mothership connector, see [managed desktop restart](docs/macos-desktop-restart.md). This optional deployment adapter preserves the native connector protocol and restarts the full desktop app through a local supervisor.
+
 Issues and pull requests are welcome; please use the [issue templates](.github/ISSUE_TEMPLATE) and the [pull request template](.github/PULL_REQUEST_TEMPLATE.md). Read the [development guide](docs/development.md) and the repository rules in [AGENTS.md](AGENTS.md) first. Before submitting, run `npm test`, `npm run lint` and `npm run build`.
 
 ## License

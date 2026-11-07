@@ -8,6 +8,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Optional macOS desktop Mothership restart adapter and installer: preserve the native connector protocol, terminate the complete desktop app gracefully, and relaunch once after an authenticated restart request. Includes lifecycle tests and deployment/rollback instructions.
+
 - New companion package `dsh-capability-autocomplete` 0.2.0 (`packages/autocomplete`): composer ghost-text suggestions for DSH Web, inline continuation while typing and next-message suggestions after a reply. Tab accepts, Alt+Up/Down cycles, Esc dismisses; nothing is sent automatically. Routes through the session model or a fixed provider/model.
 - The owner-only `POST /autocomplete/predict` endpoint refuses cross-site requests, sends only user/assistant text as quoted context, caps concurrent predictions at four and never writes the transcript.
 - Settings are read from the host ConfigForm (Settings → General and the plugin card) instead of browser storage, so the server and the client share one source of truth.
