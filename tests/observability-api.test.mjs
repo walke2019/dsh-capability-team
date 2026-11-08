@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import './keep-alive.mjs';
 import { handleRuntime, applyObservabilityApi, emptySnapshot, UNBOUND_EPOCH, RUNTIME_PATH } from '../observability-api.js';
 import { bindRuntime, createRuntimeObservability } from '../runtime-observability.js';
 const req = (id = 'lead') => new Request(`http://host${RUNTIME_PATH}?sessionId=${id}`);

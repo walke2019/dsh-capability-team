@@ -1,6 +1,7 @@
 // The Lead's step limit lifts only when the user allows it, and only until their next message.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import './keep-alive.mjs';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { createWorkflow } from '../workflow.js';

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import '../keep-alive.mjs';
 import { PredictionError, readConfig, parseRequest, resolveRoute, buildPrompt, suggestionsFrom, predict } from '../../packages/autocomplete/predictor.js';
 import { DEFAULT_CONFIG, LIMITS, createConfig } from '../../packages/autocomplete/schema.js';
 

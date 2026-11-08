@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import './keep-alive.mjs';
 import { answerPending, confirmedRoute, createDispatchConfirm, forgetLead, handleDispatchConfirm, pendingView, planRoutes, validateAnswer, withConfirmedRoute } from '../dispatch-confirm.js';
 import { effectiveConfig } from '../config.js';
 import { applyModelPolicy } from '../model-policy.js';
