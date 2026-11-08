@@ -5,6 +5,10 @@ import { m as modelText } from './i18n.js';
 // each Assistant settlement contributes its last usage sample; a failed assistant/attempt
 // and llm/retry-started close the slot. Same-slot message corrections replace it. Samples are attributed to the
 // route of the latest request header, which is the route the attempt was sent to.
+// Why this fold stays instead of DSH's native `tokenUsage` projection: the native one has no route dimension (no
+// per-model rows, no lastRoute) and its init ignores the fork-inherited prefix, so a forked member would be charged
+// for its parent's tokens and role budgets (maxTokens) would trip early. Wall times (turns, steps, llm/tool/ttft/decode)
+// are not folded here; they come from the native `sessionStats` projection.
 const BUCKETS = ['uncachedInputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens'];
 export const zeroUsage = () => ({ uncachedInputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 });
 const numeric = value => Number.isFinite(value) && value >= 0 ? Math.min(value, Number.MAX_SAFE_INTEGER) : 0;

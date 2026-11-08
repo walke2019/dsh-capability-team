@@ -7,7 +7,7 @@ const apply = (d, events) => events.reduce(d.apply, init(d));
 test('projection inheritance, unrelated identity, stable view and replay', () => {
   for (const d of observabilityDefinitions) {
     const s = init(d); assert.equal(d.apply(s, event(0, 'tool/call')), s); assert.equal(d.apply(s, event(3, 'unrelated')), s); assert.equal(d.wire.view(s), d.wire.view(s));
-    assert.equal(d.stateVersion, d === r ? 3 : 1); assert.deepEqual(d.stateSchema.parse(JSON.parse(JSON.stringify(s))), s); assert.throws(() => d.stateSchema.parse({}));
+    assert.equal(d.stateVersion, d === r ? 4 : 1); assert.deepEqual(d.stateSchema.parse(JSON.parse(JSON.stringify(s))), s); assert.throws(() => d.stateSchema.parse({}));
   }
 });
 test('activity concurrent pairs, source.callId, fail, turn-end and bounded secret-free wire', () => {
@@ -36,10 +36,10 @@ test('own usage projection and report exclude parent usage and agree on plugin a
   assert.equal(report.view.usageCoverage.coverage, 'complete');
   assert.equal(ownUsageDefinition.apply(own, events.at(-1)), own);
 });
-test('report slot replacement, host retries, timing and own-event counters', () => {
+test('report slot replacement, host retries and own-event counters (no duplicated timing)', () => {
   const events = [event(2, 'turn/start'), event(3, 'step/start', { turn: 1, step: 1 }), event(4, 'assistant/attempt', { turn: 1, step: 1, stream: [{ type: 'chunk', time: 350, chunk: { type: 'text-delta', text: 'sk-BAIT' } }, { type: 'chunk', chunk: { type: 'usage', usage: { inputTokens: 10, outputTokens: 2 } } }] }), event(5, 'assistant/message', { turn: 1, step: 1, usage: { inputTokens: 20, outputTokens: 3 } }), event(6, 'llm/retry-started', { turn: 1, step: 1 }), event(7, 'assistant/message', { turn: 1, step: 1, usage: { inputTokens: 5, outputTokens: 1 } }), event(8, 'tool/call', { callId: 'x', name: 'send_message' }), event(9, 'tool/result', { message: { source: { callId: 'x' } } }), event(10, 'team/task'), event(11, 'step/end', { turn: 1, step: 1 }), event(12, 'turn/end', { reason: { kind: 'error' } })];
-  const s = apply(r, events); assert.equal(s.view.usage.uncachedInputTokens, 35); assert.equal(s.view.timing.llmMs, 200); assert.equal(s.view.timing.ttftMs, 50); assert.equal(s.view.timing.toolMs, 100); assert.equal(s.view.counters.hostRetriesStarted, 1); assert.equal(s.view.counters.failedTurns, 1); assert.equal(s.view.counters.sendMessageAccepted, 1); assert.equal(s.view.counters.boardMutations, 1); assert.ok(!JSON.stringify(s).includes('sk-BAIT')); assert.deepEqual(apply(r, events), s);
+  const s = apply(r, events); assert.equal(s.view.usage.uncachedInputTokens, 35); assert.equal(s.view.timing, undefined); // wall times are DSH's native sessionStats now assert.equal(s.view.counters.hostRetriesStarted, 1); assert.equal(s.view.counters.failedTurns, 1); assert.equal(s.view.counters.sendMessageAccepted, 1); assert.equal(s.view.counters.boardMutations, 1); assert.ok(!JSON.stringify(s).includes('sk-BAIT')); assert.deepEqual(apply(r, events), s);
   assert.equal(r.init({ origin: 'subagent' }).view.counters.boardMutations, null);
   const cancelled = apply(r, [event(2, 'step/start', { turn: 1, step: 1 }), event(3, 'assistant/attempt', { turn: 1, step: 1, stream: [{ type: 'chunk', time: 250, chunk: { type: 'text-delta', text: 'secret' } }] }), event(4, 'step/end', { turn: 1, step: 1 }), event(5, 'turn/end', { reason: { kind: 'cancelled' } })]);
-  assert.equal(cancelled.view.timing.llmMs, 0); assert.equal(cancelled.view.timing.ttftMs, 0); assert.equal(cancelled.view.counters.failedTurns, 0);
+  assert.equal(cancelled.view.counters.failedTurns, 0);
 });
