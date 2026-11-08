@@ -1,4 +1,5 @@
 import { activeEngines, omni, searchSettings } from '../shared/search.js';
+import { INTEGRATION_DEFAULTS } from '../shared/integrations-config.js';
 import { transcribe, audioSettings } from '../shared/transcribe.js';
 import { BRAND } from '../shared/brand.js';
 
@@ -23,6 +24,39 @@ export function searchProvider() {
       signal?.throwIfAborted();
       return { sources: result.results.map(({ url, title, snippet, published }) => ({ url, ...(title ? { title } : {}),
         ...(snippet ? { snippet } : {}), ...(published && !Number.isNaN(Date.parse(published)) ? { publishedAt: new Date(published).toISOString() } : {}) })), truncated: false };
+    },
+  };
+}
+
+export const FETCH_PROVIDER_ID = 'aiwuk-fetch';
+
+/** The fetch provider id the user selected for DSH (`web.fetchProvider` setting or env override), if readable. */
+export function selectedFetchProvider(web) {
+  try {
+    const configured = web?.config?.fetchProvider?.get?.();
+    return typeof configured === 'string' && configured ? configured : process.env.DSH_WEB_FETCH_PROVIDER || undefined;
+  } catch { return undefined; }
+}
+
+/**
+ * Native `web_fetch` provider backed by the same engine chain as omni_fetch.
+ * It is opt-in: DSH's anonymous `http` fetch provider is always available, and `ctx.web` throws
+ * WEB_PROVIDER_AMBIGUOUS when several providers are usable and none is selected. So this provider reports
+ * available() only when the user explicitly selected it; unreadable selection fails closed (unavailable).
+ */
+export function fetchProvider(web) {
+  return {
+    id: FETCH_PROVIDER_ID,
+    available() {
+      if (selectedFetchProvider(web) !== FETCH_PROVIDER_ID) return false;
+      try { return (searchSettings().config.fetchEngines ?? INTEGRATION_DEFAULTS.search.fetchEngines).length > 0; }
+      catch { return false; }
+    },
+    async fetch(request, signal) {
+      signal?.throwIfAborted();
+      const result = await omni('fetch', { url: request.url, format: 'markdown' }, { signal });
+      signal?.throwIfAborted();
+      return { url: result.url || request.url, statusCode: 200, body: { kind: 'text', content: result.content }, truncated: false };
     },
   };
 }
@@ -55,12 +89,12 @@ export function speechProvider() {
 }
 
 export function registerNativeProviders(ctx) {
-  for (const [name, method, factory] of [['web', 'registerSearchProvider', searchProvider], ['speechToText', 'register', speechProvider]]) {
+  for (const [name, method, factory] of [['web', 'registerSearchProvider', searchProvider], ['web', 'registerFetchProvider', fetchProvider], ['speechToText', 'register', speechProvider]]) {
     try {
       ctx.inject?.([name], scoped => {
         try {
           const service = scoped[name];
-          if (typeof service?.[method] === 'function') scoped.effect(() => service[method](factory()));
+          if (typeof service?.[method] === 'function') scoped.effect(() => service[method](factory(service)));
         } catch (error) { ctx.logger?.warn?.(`omni-search: native provider registration failed: ${error?.message ?? error}`); }
       });
     } catch (error) { ctx.logger?.warn?.(`omni-search: native provider injection failed: ${error?.message ?? error}`); }
