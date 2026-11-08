@@ -82,7 +82,9 @@ export function createRuntime(ctx, config, service, store) {
     if (!allowed(agent) || context.signal?.aborted || states.get(agent.id) !== state) return result;
     return { ...result, contexts: result.contexts?.map(c => c.name === CONTEXT ? { ...c, text: state.block } : c) };
   }
-  const listeners = [ctx.on('agent/created', ({ agent }) => install(agent)), ctx.on('agent/pre-step', (payload, next) => { install(payload?.agent); return next(); }), ctx.on('agent/disposed', ({ agent }) => remove(agent)), ctx.on('agent/inbox/claimed', claimed), ctx.on('system-prompt/assemble', assemble)];
+  // agent/created is dispatched with ctx.serial: a non-nullish return value stops later listeners
+  // (including the native Team tool installer), so creation listeners must not return anything.
+  const listeners = [ctx.on('agent/created', ({ agent }) => { install(agent); }), ctx.on('agent/pre-step', (payload, next) => { install(payload?.agent); return next(); }), ctx.on('agent/disposed', ({ agent }) => remove(agent)), ctx.on('agent/inbox/claimed', claimed), ctx.on('system-prompt/assemble', assemble)];
   for (const agent of ctx.agents.list()) install(agent);
   const cleanup = () => { disposed = true; for (const id of [...states.keys()]) remove({ id }); listeners.forEach(fn => fn?.()); identity.clear(); };
   ctx.effect(() => cleanup);

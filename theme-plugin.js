@@ -157,7 +157,7 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
     installed.set(agent, () => { removeReader(); removeWriter(); removeContext(); removeBudgetContext(); });
   };
   for (const agent of ctx.agents.list()) void install(agent);
-  ctx.on('agent/created', ({ agent }) => install(agent));
+  ctx.on('agent/created', async ({ agent }) => { await install(agent); });
   ctx.on('agent/disposed', ({ agent }) => { installed.get(agent)?.(); installed.delete(agent); });
   // A blank session reused for another preset is recomposed without agent/created or agent/disposed.
   ctx.on('agent-preset/selected', sessionId => {

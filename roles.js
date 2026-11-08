@@ -26,7 +26,7 @@ export function apply(ctx, team, failover, observability, taskControl) {
     installed.add(agent);
     agent.ctx.systemPrompt.context({ name: 'capability-team:policy', order: 95, text: () => team.owns(agent) ? policy : '' });
   };
-  ctx.on('agent/created', ({ agent }) => installPolicy(agent));
+  ctx.on('agent/created', ({ agent }) => { installPolicy(agent); });
   for (const agent of ctx.agents?.list?.() ?? []) installPolicy(agent);
   const longContext = createLongContext();
   const hadOverride = new WeakSet();

@@ -55,7 +55,7 @@ export function scopeTools(ctx) {
     },
   });
   const scoped = new Proxy(ctx, { get: (target, prop) => (prop === 'tools' ? tools : target[prop]) });
-  ctx.on('agent/created', ({ agent }) => install(agent));
+  ctx.on('agent/created', ({ agent }) => { install(agent); });
   ctx.on('agent/pre-step', (payload, next) => { install(payload?.agent); return next(); });
   ctx.on('agent/disposed', ({ agent }) => uninstall(agent));
   ctx.on('agent-preset/selected', sessionId => {
