@@ -70,6 +70,21 @@
           scrollEl?.removeEventListener('scroll', measure);
         };
       }, [ghost.mode, draft, sessionId, current]);
+      React.useLayoutEffect(() => {
+        if (typeof document === 'undefined') return undefined;
+        const ID = 'aiwuk-autocomplete-ghost-style';
+        if (!document.getElementById(ID)) {
+          const tag = document.createElement('style');
+          tag.id = ID;
+          tag.textContent = '[data-aiwuk-ghost-next] [data-composer-placeholder]{visibility:hidden !important;}';
+          (document.head || document.documentElement).appendChild(tag);
+        }
+        const card = anchorRef.current?.closest('[data-composer-card]') || anchorRef.current?.parentElement;
+        if (!card) return undefined;
+        if (visible && ghost.mode === 'next') card.setAttribute('data-aiwuk-ghost-next', '');
+        else card.removeAttribute('data-aiwuk-ghost-next');
+        return () => { card.removeAttribute('data-aiwuk-ghost-next'); };
+      }, [visible, ghost.mode]);
       React.useEffect(() => {
         if (!visible) return undefined;
         const onSelectionChange = () => {
@@ -110,8 +125,8 @@
       return h(React.Fragment, null, anchor,
         h('div', { key: 'ghost', 'data-composer-prediction': ghost.mode, style: { position: 'absolute', top: `${box.top}px`, left: `${box.left}px`,
           maxWidth: box.maxWidth ? `${box.maxWidth}px` : undefined, height: `${box.height}px`, display: 'flex', alignItems: 'center', gap: '6px',
-          color: 'var(--dsw-alias-label-tertiary, #888)', pointerEvents: 'none', userSelect: 'none', whiteSpace: 'nowrap', overflow: 'hidden', zIndex: 10 } },
-          h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.85 } }, current),
+          color: 'var(--dsw-alias-label-tertiary, #888)', pointerEvents: 'none', userSelect: 'none', whiteSpace: 'pre', overflow: 'hidden', zIndex: 10 } },
+          h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.85, whiteSpace: 'pre' } }, current),
           ghost.items.length > 1 ? h('span', { style: tag }, `${ghost.index + 1}/${ghost.items.length}`) : null,
           ghost.active ? null : h('kbd', { style: tag }, 'Tab')));
     }

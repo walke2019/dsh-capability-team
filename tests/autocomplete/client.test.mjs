@@ -125,6 +125,187 @@ test('caretAtEnd handles real multi-p DOM: caret at end shows ghost text, in mid
   assert.equal(atFirstLineEnd, null, 'caret at end of earlier paragraph must hide ghost text');
 });
 
+test('GhostOverlay hides placeholder while next-mode ghost shows and restores on dismiss/typing/unmount', () => {
+  const states = [];
+  let cursor = 0;
+  let stateCursor = 0;
+  const effects = [];
+  const cleanups = [];
+  const layoutEffects = [];
+  const layoutCleanups = [];
+
+  const layoutDeps = [];
+  const effectDeps = [];
+
+  const React = {
+    createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
+    useState: initial => {
+      const i = stateCursor++;
+      if (!(i in states)) states[i] = typeof initial === 'function' ? initial() : initial;
+      return [states[i], val => { states[i] = typeof val === 'function' ? val(states[i]) : val; }];
+    },
+    useRef: initial => ({ current: initial }),
+    useCallback: fn => fn,
+    useEffect: (fn, deps) => {
+      const i = cursor++;
+      effects[i] = { fn, deps };
+    },
+    useLayoutEffect: (fn, deps) => {
+      const i = cursor++;
+      layoutEffects[i] = { fn, deps };
+    },
+    Fragment: 'Fragment',
+  };
+
+  const attrs = {};
+  const card = {
+    setAttribute: (name, val) => { attrs[name] = val; },
+    removeAttribute: name => { delete attrs[name]; },
+    getBoundingClientRect: () => ({ top: 0, left: 0, right: 800, bottom: 200, width: 800, height: 200 }),
+    contains: () => true,
+    closest: sel => (sel === '[data-composer-card]' ? card : null),
+    querySelector: sel => (sel === '[data-input-scroll]' ? null : null),
+  };
+  const editor = {
+    getBoundingClientRect: () => ({ top: 10, left: 10, right: 790, bottom: 100, width: 780, height: 90 }),
+  };
+  const anchorNode = {
+    isConnected: true,
+    closest: sel => (sel === '[data-composer-card]' ? card : null),
+    parentElement: card,
+  };
+
+  const createdElements = [];
+  const headElements = [];
+  const document = {
+    createElement: tag => {
+      const el = { tagName: tag.toUpperCase(), id: '', textContent: '', dataset: {} };
+      createdElements.push(el);
+      return el;
+    },
+    getElementById: id => (createdElements.find(el => el.id === id) ?? null),
+    head: {
+      appendChild: el => { headElements.push(el); },
+    },
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  const window = {
+    getComputedStyle: () => ({ paddingTop: '8px', paddingLeft: '14px', lineHeight: '24px' }),
+    addEventListener() {},
+    removeEventListener() {},
+    __ModuleLoader__: { load: spec => spec.factory(() => React) },
+    __acTestHook: v => { testHooks = v; },
+  };
+  let testHooks;
+  new Script(source).runInNewContext({
+    window,
+    document,
+    Node: { TEXT_NODE: 3, ELEMENT_NODE: 1 },
+    setTimeout: () => 0,
+    clearTimeout() {},
+  });
+
+  const runEffects = () => {
+    for (let i = 0; i < layoutEffects.length; i++) {
+      const effect = layoutEffects[i];
+      if (effect) {
+        const prev = layoutDeps[i];
+        if (!prev || !effect.deps || effect.deps.length !== prev.length || !effect.deps.every((d, k) => Object.is(d, prev[k]))) {
+          layoutCleanups[i]?.();
+          layoutDeps[i] = effect.deps;
+          layoutCleanups[i] = effect.fn();
+        }
+      }
+    }
+    for (let i = 0; i < effects.length; i++) {
+      const effect = effects[i];
+      if (effect) {
+        const prev = effectDeps[i];
+        if (!prev || !effect.deps || effect.deps.length !== prev.length || !effect.deps.every((d, k) => Object.is(d, prev[k]))) {
+          cleanups[i]?.();
+          effectDeps[i] = effect.deps;
+          cleanups[i] = effect.fn();
+        }
+      }
+    }
+  };
+
+  const config = { enabled: true, typePauseMs: 700 };
+  let currentDraft = '';
+  const useInput = fn => fn({ draft: currentDraft });
+  const useSession = fn => fn({ running: false });
+
+  // 1. Initial render with next suggestion
+  cursor = 0;
+  stateCursor = 0;
+  testHooks.GhostOverlay({ sessionId: 's1', useInput, useSession, config });
+  const ghostIdx = states.findIndex(s => s && typeof s === 'object' && 'items' in s && 'mode' in s);
+  const boxIdx = 2; // useState for box in GhostOverlay
+  states[ghostIdx] = { mode: 'next', items: ['Suggested next message'], index: 0, stream: '', active: false };
+  states[boxIdx] = { top: 18, left: 24, height: 24 };
+
+  // Re-render so visible is true and anchorRef can be attached
+  cursor = 0;
+  stateCursor = 0;
+  const tree = testHooks.GhostOverlay({ sessionId: 's1', useInput, useSession, config });
+  const anchorJsx = tree.children[0];
+  anchorJsx.props.ref.current = anchorNode;
+
+  runEffects();
+
+  // Style tag injected into document.head
+  assert.equal(document.getElementById('aiwuk-autocomplete-ghost-style')?.id, 'aiwuk-autocomplete-ghost-style');
+  assert.ok(headElements.some(el => el.textContent.includes('data-aiwuk-ghost-next') && el.textContent.includes('visibility:hidden')));
+
+  // Ghost text container and span preserve leading whitespace with whiteSpace: pre
+  const ghostContainer = tree.children[1];
+  assert.equal(ghostContainer.props.style.whiteSpace, 'pre');
+  const ghostSpan = ghostContainer.children[0];
+  assert.equal(ghostSpan.props.style.whiteSpace, 'pre');
+
+  // Next mode is visible with empty draft: placeholder must be hidden
+  assert.ok('data-aiwuk-ghost-next' in attrs, 'card should have data-aiwuk-ghost-next attribute');
+
+  // 2. User starts typing (draft is no longer empty)
+  currentDraft = 'hello';
+  cursor = 0;
+  stateCursor = 0;
+  testHooks.GhostOverlay({ sessionId: 's1', useInput, useSession, config });
+  runEffects();
+  assert.ok(!('data-aiwuk-ghost-next' in attrs), 'attribute must be removed when user types');
+
+  // 3. Continue mode with draft: attribute must not be present
+  states[ghostIdx] = { mode: 'continue', items: [' world'], index: 0, stream: '', active: false };
+  cursor = 0;
+  stateCursor = 0;
+  testHooks.GhostOverlay({ sessionId: 's1', useInput, useSession, config });
+  runEffects();
+  assert.ok(!('data-aiwuk-ghost-next' in attrs), 'continue mode must not hide placeholder');
+
+  // 4. Back to next mode: draft cleared, suggestion arrives
+  currentDraft = '';
+  cursor = 0;
+  stateCursor = 0;
+  testHooks.GhostOverlay({ sessionId: 's1', useInput, useSession, config });
+  runEffects();
+  assert.ok(!('data-aiwuk-ghost-next' in attrs), 'attribute absent when draft clears before suggestion arrives');
+
+  states[ghostIdx] = { mode: 'next', items: ['Suggested next message'], index: 0, stream: '', active: false };
+  states[boxIdx] = { top: 18, left: 24, height: 24 };
+  cursor = 0;
+  stateCursor = 0;
+  const tree4 = testHooks.GhostOverlay({ sessionId: 's1', useInput, useSession, config });
+  tree4.children[0].props.ref.current = anchorNode;
+  runEffects();
+  assert.ok('data-aiwuk-ghost-next' in attrs, 'attribute present again when suggestion arrives');
+
+  // Run cleanups (simulating unmount)
+  for (const c of layoutCleanups) c?.();
+  for (const c of cleanups) c?.();
+  assert.ok(!('data-aiwuk-ghost-next' in attrs), 'attribute must be removed on unmount');
+});
+
 test('settings card reports loading/unavailable and saves through the ConfigForm', async () => {
   const { hooks } = load();
   const t = key => key;
