@@ -7,6 +7,7 @@ import { appendFile, mkdir, readFile, rename, stat, unlink, writeFile } from 'no
 import { join } from 'node:path';
 import { cosine } from './memory-embed.js';
 import { acquireLock } from './theme.js';
+import { redactSecrets } from './memory-redact.js';
 /** Several DSH processes (Desktop, `dsh web`, profiles) share the files: writes and compaction take a file lock. */
 async function withFileLock(path, fn) {
   let handle = null;
@@ -216,4 +217,54 @@ export function createMemoryStore(root, { now = Date.now, limits = MEMORY_LIMITS
   const store = { ...raw };
   for (const name of ['write', 'search', 'markUsed', 'unembedded', 'setVector', 'prune', 'remove']) store[name] = (...args) => serial(() => raw[name](...args));
   return store;
+}
+
+// Shared write/search pipeline of the team memory hub (capability_memory_*) and @aiwuk/memory (memory_*): secret
+// redaction, embedding, scope mapping (including the team `role` scope), write plus shared-backend sync and use
+// counting live here once. Tool contracts, result shapes and recall policy stay with the two callers; the storage
+// format is untouched, so existing memory files stay readable.
+export const MEMORY_SCOPES = Object.freeze(['project', 'role', 'session', 'global']);
+/** Store scope of a write. `role` is the team scope: visible to the same role of the same project. */
+export function storeScope(scope, { project, session, role }) {
+  if (scope === 'global') return { kind: 'global' };
+  if (scope === 'project') return { kind: 'project', project };
+  if (scope === 'session') return { kind: 'session', project, session };
+  if (scope === 'role') return { kind: 'role', project, role };
+  throw new Error(`Unknown memory scope: ${scope}`);
+}
+export function createMemoryCore({ store, embedder, backend, secrets = () => [] }) {
+  /** Redact known credential values and token shapes before text is stored, embedded, synced or recalled. */
+  const clean = async text => redactSecrets(String(text ?? ''), await Promise.resolve(secrets()).catch(() => []));
+  /** One embedding as { vector, model }, or null when the embedder is unavailable or fails. */
+  async function embed(text, purpose) {
+    try { const out = await embedder.embed([text], purpose); return out ? { vector: out.vectors[0], model: out.model } : null; } catch { return null; }
+  }
+  return {
+    clean,
+    embed,
+    /**
+     * Save one memory; `text` is redacted here, `key`/`tags` are prepared by the caller. Session scope never syncs.
+     * `sync` enables shared-backend sync, `vectorize` enables embedding. A sync failure is reported as `syncError`.
+     * Returns the store result plus { embedded, sync: 'local-only' | 'queued' | 'disabled' }.
+     */
+    async write(who, { kind, text, scope, key = null, tags = [], source, project = who.project, vectorize = true, sync = true }) {
+      const body = await clean(text);
+      const embedded = vectorize ? await embed(body, 'passage') : null;
+      const saved = await store.write({ scope: storeScope(scope, { project, session: who.session, role: who.role }), kind, text: body, tags, key,
+        vector: embedded?.vector ?? null, model: embedded?.model ?? null, ...(source ? { source } : {}) });
+      const result = { ...saved, embedded: !!embedded, sync: scope === 'session' ? 'local-only' : 'disabled' };
+      if (scope !== 'session' && sync) {
+        try {
+          if (saved.superseded?.length) await backend.revoke?.(saved.superseded);
+          if (!saved.merged || saved.superseded?.length) result.sync = (await backend.enqueue(saved.memory, who)) ? 'queued' : 'disabled';
+        } catch (error) { result.syncError = error?.message ?? String(error); }
+      }
+      return result;
+    },
+    /** Count a recall hit on the local memories among `memories`; shared-backend rows are not in the store. */
+    async markUsed(memories) {
+      const local = memories.filter(m => MEMORY_SCOPES.includes(m?.scope?.kind));
+      if (local.length) await store.markUsed(local);
+    },
+  };
 }

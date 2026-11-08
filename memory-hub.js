@@ -6,13 +6,12 @@ import { m as modelText } from './i18n.js';
 // context and does not resend the runtime snapshot every step.
 import { createEmbedder } from './memory-embed.js';
 import { createMemoryBackend } from './memory-backends.js';
-import { redactSecrets } from './memory-redact.js';
-import { MEMORY_KINDS, MEMORY_LIMITS, createMemoryStore } from './memory-store.js';
+import { MEMORY_KINDS, MEMORY_LIMITS, MEMORY_SCOPES, createMemoryCore, createMemoryStore } from './memory-store.js';
 import { baseName } from './session-rotation.js';
 import { params } from './tool-schema.js';
 import { ownsCapabilityTeam } from './preset-guard.js';
 const output = { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text', text: v }] };
-const SCOPES = ['project', 'role', 'session', 'global'];
+const SCOPES = MEMORY_SCOPES;
 const messageText = message => (Array.isArray(message?.content) ? message.content.map(c => c?.text ?? '').join('\n') : String(message?.text ?? message?.content ?? '')).trim();
 export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root), embedder = createEmbedder(), backend = createMemoryBackend({ label: modelText('memory-hub.280') }), secrets = () => [] } = {}) {
   const recall = new Map(); // agent id → { query, block }
@@ -22,7 +21,9 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
     if (!m || !ownsCapabilityTeam(ctx, agent)) return undefined;
     return { project: team.pinned(agent) ?? team.pinned(m.root ?? agent), role: m.role === 'lead' ? 'lead' : baseName(m.name), session: agent.id, lead: m.role === 'lead', leadId: (m.root ?? agent).id, name: m.name ?? 'lead' };
   };
-  const embedOne = async (text, purpose) => { const out = await embedder.embed([text], purpose); return out ? { vector: out.vectors[0], model: out.model } : null; };
+  // Redaction, embedding, scope mapping, write + shared-backend sync and use counting are shared with @aiwuk/memory.
+  const core = createMemoryCore({ store, embedder, backend, secrets });
+  const embedOne = (text, purpose) => core.embed(text, purpose);
   async function backfill(project) {
     if (!embedder.available) return;
     const missing = await store.unembedded(project, 16, embedder.vectorKey);
@@ -36,24 +37,14 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       if (!SCOPES.includes(scope)) throw new Error(modelText('memory-hub.282', { 0: SCOPES.join(' / ') }));
       if (scope === 'global' && !who.lead) throw new Error(modelText('memory-hub.283'));
       // Secrets never enter memory: it is recalled into other members' prompts and may leave this machine.
-      const clean = redactSecrets(String(text ?? ''), await Promise.resolve(secrets()).catch(() => []));
-      const embedded = await embedOne(clean, 'passage');
-      const s = scope === 'global' ? { kind: 'global' } : scope === 'project' ? { kind: 'project', project: who.project }
-        : scope === 'session' ? { kind: 'session', project: who.project, session: who.session } : { kind: 'role', project: who.project, role: who.role };
-      const saved = await store.write({ scope: s, kind, text: clean, tags: Array.isArray(tags) ? tags.map(String).slice(0, 10) : [], key: key ? String(key).slice(0, 120) : null,
-        vector: embedded?.vector ?? null, model: embedded?.model ?? null, source: { member: who.name, session: who.session, lead: who.leadId, at: Date.now() } });
       // Session-scoped notes stay local; everything else also becomes shared long-term memory.
-      if (scope !== 'session') {
-        try {
-          if (saved.superseded?.length) backend.revoke?.(saved.superseded);
-          if (!saved.merged || saved.superseded?.length) backend.enqueue(saved.memory, who);
-        } catch (error) { saved.syncError = error.message; }
-      }
+      const saved = await core.write(who, { kind, text, scope, project: who.project, key: key ? String(key).slice(0, 120) : null,
+        tags: Array.isArray(tags) ? tags.map(String).slice(0, 10) : [], source: { member: who.name, session: who.session, lead: who.leadId, at: Date.now() } });
       return saved;
     },
     async search(who, { query, k = 6, kinds }) {
       // The query goes to the embedding service and the shared backend, so it is filtered like a stored memory.
-      const q = redactSecrets(String(query ?? '').slice(0, 4000), await Promise.resolve(secrets()).catch(() => [])).slice(0, 2000);
+      const q = (await core.clean(String(query ?? '').slice(0, 4000))).slice(0, 2000);
       const limit = Math.min(Math.max(1, k), 20);
       const [embedded, shared] = await Promise.all([q ? embedOne(q, 'query') : null, kinds ? [] : backend.recall(q)]);
       void backfill(who.project).catch(() => {});
@@ -86,8 +77,7 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       const { results } = await hub.search(who, { query, k: 8 });
       const block = store.format(results, MEMORY_LIMITS.injectChars);
       recall.set(agent.id, { query, block, ids: results.map(r => r.memory.id) });
-      const local = results.filter(r => SCOPES.includes(r.memory.scope.kind)); // backend hits are not in the store
-      if (local.length) await store.markUsed(local.map(r => r.memory));
+      await core.markUsed(results.map(r => r.memory)); // backend hits are not in the store
     },
     recallText(agent) {
       const r = recall.get(agent.id);

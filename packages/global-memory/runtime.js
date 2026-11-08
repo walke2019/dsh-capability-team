@@ -47,7 +47,7 @@ export function createRuntime(ctx, config, service, store) {
       if (!query) return;
       const who = await identity.get(agent);
       if (controller.signal.aborted || !allowed(agent)) return;
-      const found = await service.search(who, { query, k: config.recallK });
+      const found = await service.search(who, { query, k: config.recallK }, { markUsed: true });
       const rows = found.results.map(m => ({ memory: { ...m, scope: { kind: m.scope } } }));
       const body = store.format(rows, config.injectChars - TITLE.length);
       if (states.get(agent.id) === state && state.generation === generation && !controller.signal.aborted && allowed(agent)) state.block = body ? (TITLE + body).slice(0, config.injectChars) : '';
