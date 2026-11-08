@@ -75,5 +75,9 @@
     function candidateOf(ghost, draft) {
       const raw = ghost.items.length ? ghost.items[Math.min(ghost.index, ghost.items.length - 1)] ?? ''
         : ghost.stream.trim().split(/\r?\n/)[0]?.replace(/^[-*0-9.)\s]+/, '') ?? '';
-      return ghost.mode === 'continue' && raw.startsWith(draft) ? raw.slice(draft.length) : raw;
+      if (ghost.mode !== 'continue') return raw;
+      if (raw.startsWith(draft)) return raw.slice(draft.length);
+      const lowerRaw = raw.toLowerCase(), lowerDraft = draft.toLowerCase();
+      if (lowerRaw.startsWith(lowerDraft)) return raw.slice(draft.length);
+      return raw;
     }

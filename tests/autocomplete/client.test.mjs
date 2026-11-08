@@ -47,6 +47,82 @@ test('helpers parse SSE frames, detect trigger tokens and merge ready config', (
   assert.equal(hooks.isTriggerToken('plain text'), false);
   assert.equal(hooks.configOf({ status: 'ready', value: { typePauseMs: 900 } }).typePauseMs, 900);
   assert.equal(hooks.configOf({ status: 'loading' }).enabled, true);
+  assert.equal(hooks.candidateOf({ mode: 'continue', items: ['hello world!'], index: 0 }, 'hello'), ' world!');
+  assert.equal(hooks.candidateOf({ mode: 'continue', items: ['Hello World!'], index: 0 }, 'hello'), ' World!');
+  assert.equal(hooks.candidateOf({ mode: 'next', items: ['Suggest something'], index: 0 }, ''), 'Suggest something');
+});
+
+test('caretAtEnd handles real multi-p DOM: caret at end shows ghost text, in middle hides it', () => {
+  const text1 = { nodeType: 3, textContent: 'First line' };
+  const span1 = { nodeType: 1, textContent: 'First line', childNodes: [text1] };
+  const p1 = { nodeType: 1, textContent: 'First line', childNodes: [span1] };
+
+  const text2 = { nodeType: 3, textContent: 'Second line' };
+  const span2 = { nodeType: 1, textContent: 'Second line', childNodes: [text2] };
+  const p2 = { nodeType: 1, textContent: 'Second line', childNodes: [span2] };
+
+  // In real browser DOM, element.textContent concatenates text without newlines ("First lineSecond line")
+  // while draft is "First line\nSecond line".
+  const allNodes = [text1, span1, p1, text2, span2, p2];
+  const editor = {
+    nodeType: 1,
+    textContent: 'First lineSecond line',
+    childNodes: [p1, p2],
+    contains: node => allNodes.includes(node) || node === editor,
+  };
+
+  const createHarness = (container, offset) => {
+    const range = {
+      collapsed: true,
+      startContainer: container,
+      startOffset: offset,
+      getBoundingClientRect: () => ({ left: container === text2 && offset === 11 ? 190 : 130, top: container === text2 ? 40 : 20, width: 0, height: 20 }),
+      getClientRects: () => [{ left: container === text2 && offset === 11 ? 190 : 130, top: container === text2 ? 40 : 20, width: 0, height: 20 }],
+    };
+    const document = {
+      createRange: () => {
+        let sc, so;
+        return {
+          selectNodeContents() {},
+          setStart(c, o) { sc = c; so = o; },
+          setEnd() {},
+          toString: () => {
+            // Suffix text after (sc, so):
+            if (sc === text2 && so === 11) return '';
+            if (sc === text2 && so === 3) return 'ond line';
+            if (sc === text1 && so === 10) return 'Second line';
+            return 'remaining text';
+          },
+          getBoundingClientRect: () => ({ left: 180, right: 190, top: 40, width: 10, height: 20 }),
+        };
+      },
+    };
+    const window = {
+      getSelection: () => ({ rangeCount: 1, getRangeAt: () => range }),
+      __ModuleLoader__: { load: spec => spec.factory(() => ({})) },
+      __acTestHook: v => { hooks = v; },
+    };
+    let hooks;
+    new Script(source).runInNewContext({ window, document, Node: { TEXT_NODE: 3, ELEMENT_NODE: 1 } });
+    return hooks;
+  };
+
+  // Case A: Caret at the very end of multi-<p> editor (end of Second line)
+  const hooksEnd = createHarness(text2, 11);
+  const atEnd = hooksEnd.caretAtEnd(editor, 'First line\nSecond line');
+  assert.ok(atEnd, 'caret at end of multiline draft must show ghost text');
+  assert.equal(atEnd.left, 190);
+  assert.equal(atEnd.top, 40);
+
+  // Case B: Caret in middle of second line -> hides ghost text
+  const hooksMiddle = createHarness(text2, 3);
+  const inMiddle = hooksMiddle.caretAtEnd(editor, 'First line\nSecond line');
+  assert.equal(inMiddle, null, 'caret in middle of multiline text must hide ghost text');
+
+  // Case C: Caret at end of first line (middle of document) -> hides ghost text
+  const hooksFirstLineEnd = createHarness(text1, 10);
+  const atFirstLineEnd = hooksFirstLineEnd.caretAtEnd(editor, 'First line\nSecond line');
+  assert.equal(atFirstLineEnd, null, 'caret at end of earlier paragraph must hide ghost text');
 });
 
 test('settings card reports loading/unavailable and saves through the ConfigForm', async () => {

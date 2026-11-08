@@ -80,7 +80,11 @@
       let rect = range.getBoundingClientRect();
       if (!rect.width && !rect.height) rect = range.getClientRects()[0] ?? rect;
       if ((!rect.width && !rect.height) || (!rect.top && !rect.left)) {
-        const node = range.startContainer, offset = range.startOffset;
+        let node = range.startContainer, offset = range.startOffset;
+        if (node?.nodeType === Node.ELEMENT_NODE && offset > 0) {
+          node = node.childNodes[offset - 1] || node;
+          offset = node.nodeType === Node.TEXT_NODE ? node.textContent?.length ?? 0 : node.childNodes?.length ?? 0;
+        }
         if (node?.nodeType === Node.TEXT_NODE && offset > 0) {
           const probe = document.createRange();
           probe.setStart(node, offset - 1); probe.setEnd(node, offset);
@@ -91,15 +95,15 @@
       return !rect.width && !rect.height ? null : { left: rect.left, top: rect.top, height: rect.height };
     }
     /** The caret position, only when it sits at the end of the draft (continuations append, never splice). */
-    function caretAtEnd(editor, draft) {
+    function caretAtEnd(editor, _draft) {
       const selection = window.getSelection();
       if (!selection?.rangeCount) return null;
       const range = selection.getRangeAt(0);
       if (!range.collapsed || !editor.contains(range.startContainer)) return null;
-      const prefixRange = document.createRange();
-      prefixRange.selectNodeContents(editor);
-      prefixRange.setEnd(range.startContainer, range.startOffset);
-      const prefix = collapse(prefixRange.toString().trimEnd());
-      const rect = caretRect(range);
-      return rect && prefix && prefix === collapse(draft.trimEnd()) ? rect : null;
+      const suffix = document.createRange();
+      suffix.selectNodeContents(editor);
+      suffix.setStart(range.startContainer, range.startOffset);
+      if (suffix.toString().trim() !== '') return null;
+      if (!editor.textContent?.trim()) return null;
+      return caretRect(range);
     }

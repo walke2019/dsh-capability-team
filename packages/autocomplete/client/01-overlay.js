@@ -63,8 +63,23 @@
         };
         measure();
         window.addEventListener('resize', measure);
-        return () => window.removeEventListener('resize', measure);
+        const scrollEl = anchorRef.current?.closest('[data-composer-card]')?.querySelector('[data-input-scroll]');
+        scrollEl?.addEventListener('scroll', measure, { passive: true });
+        return () => {
+          window.removeEventListener('resize', measure);
+          scrollEl?.removeEventListener('scroll', measure);
+        };
       }, [ghost.mode, draft, sessionId, current]);
+      React.useEffect(() => {
+        if (!visible) return undefined;
+        const onSelectionChange = () => {
+          const found = composerNear(anchorRef.current);
+          if (!found) return;
+          if (ghost.mode === 'continue' && !caretAtEnd(found.editor, draft)) setBox(null);
+        };
+        document.addEventListener('selectionchange', onSelectionChange);
+        return () => document.removeEventListener('selectionchange', onSelectionChange);
+      }, [visible, ghost.mode, draft]);
       React.useEffect(() => {
         if (!visible) return undefined;
         const onKeyDown = event => {
