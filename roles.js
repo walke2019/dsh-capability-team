@@ -26,7 +26,7 @@ export function apply(ctx, team, failover, observability, taskControl) {
     installed.add(agent);
     agent.ctx.systemPrompt.context({ name: 'capability-team:policy', order: 95, text: () => team.owns(agent) ? policy : '' });
   };
-  ctx.on('agent/created', ({ agent }) => { installPolicy(agent); });
+  ctx.on('agent/created', async ({ agent }) => { installPolicy(agent); await preselect(ctx, team, failover, agent); });
   for (const agent of ctx.agents?.list?.() ?? []) installPolicy(agent);
   const longContext = createLongContext();
   const hadOverride = new WeakSet();
@@ -58,12 +58,48 @@ export function apply(ctx, team, failover, observability, taskControl) {
         observability.request(agent, { turn, step, role, routed, selected });
       } catch { /* telemetry must never change model selection */ }
     }
+    // DSH fixes provider/model before step preparation; a different route can only take effect from the next step.
+    if (agent.model?.select && !sameRoute(previous, selected)) {
+      agent.model.select({ provider: selected.provider, model: selected.model });
+      ctx.logger?.info?.(`capability-team: ${previous.provider}/${previous.model} -> ${selected.provider}/${selected.model} from the next step`);
+      return previous;
+    }
+    if (agent.model?.select) return (lead && leadRequest(previous, selected)) || keepEffort(previous, allocatedRequest(previous, selected));
     return (lead && leadRequest(previous, selected)) || allocatedRequest(previous, selected);
   });
   ctx.on('agent/request-error', async ({ agent, failure, signal }, next) => {
     const downstream = await next(); // DSH provider retry policy keeps priority.
     if (team.owns(agent)) { try { observability?.failure(agent, failure); } catch { /* read-only telemetry */ } }
     if (downstream?.kind === 'retry' || !team.owns(agent)) return downstream;
-    return (await failover.recover(agent, failure, signal)) ? { kind: 'retry' } : undefined;
+    const before = failover.status(agent)?.active;
+    if (!(await failover.recover(agent, failure, signal))) return undefined;
+    const after = failover.status(agent)?.active;
+    // A retry reuses the step's fixed route, so a switch is recorded for the next step instead of retried here.
+    if (agent.model?.select && after && after !== before) {
+      const slash = after.indexOf('/');
+      agent.model.select({ provider: after.slice(0, slash), model: after.slice(slash + 1) });
+      return undefined;
+    }
+    return { kind: 'retry' };
   });
+}
+const sameRoute = (a, b) => a?.provider === b?.provider && a?.model === b?.model;
+/** Same route as the step's selection: its reasoning effort is part of the fixed selection and must be kept. */
+function keepEffort(previous, request) {
+  return previous.reasoningEffort === undefined ? request : { ...request, reasoningEffort: previous.reasoningEffort };
+}
+/**
+ * Select a teammate's role route when it is created, before its first step fixes a model. Without this the
+ * teammate starts on the inherited Lead model and DSH rejects the per-role route in agent/request.
+ */
+export async function preselect(ctx, team, failover, agent) {
+  try {
+    if (!agent?.model?.select || !team.owns(agent) || ctx.agentTeams?.tryMembership?.(agent)?.role !== 'teammate') return;
+    const role = await team.resolve(agent);
+    if (role.unassigned || !role.provider) return; // agent/request fails closed with guidance
+    const route = failover.route(agent, 0, 0, role);
+    if (!sameRoute(agent.model.current?.(), route)) agent.model.select({ provider: route.provider, model: route.model });
+  } catch (error) {
+    ctx.logger?.warn?.(`capability-team: route preselection failed: ${String(error?.message ?? error)}`);
+  }
 }
