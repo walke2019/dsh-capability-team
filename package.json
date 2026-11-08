@@ -8,7 +8,7 @@
   "repository": { "type": "git", "url": "git+https://github.com/walke2019/dsh-capability-team.git" },
   "bugs": { "url": "https://github.com/walke2019/dsh-capability-team/issues" },
   "keywords": ["aiwuk", "dsh", "dsh-plugin", "deepseek-harness", "cordis", "agent-team", "multi-agent", "model-routing", "failover", "ai-agent", "llm"],
-  "engines": { "node": ">=22", "dsh": ">=0.2.2-rc.1 <0.3.0" },
+  "engines": { "node": ">=24.9", "dsh": ">=0.2.2-rc.1 <0.3.0" },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.1",
     "@deepseek-ai/dsh-agent-preset": ">=0.2.2-rc.1",

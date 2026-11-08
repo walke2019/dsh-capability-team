@@ -43,7 +43,7 @@ for (const pkg of PACKAGES) {
     assert.equal(manifest.name, pkg.name);
     assert.equal(manifest.name, EXTENSIONS[pkg.key].pkg);
     assert.equal(manifest.version, pkg.version);
-    assert.deepEqual(manifest.engines, { node: '>=22', dsh: '>=0.2.2-rc.1 <0.3.0' });
+    assert.deepEqual(manifest.engines, { node: '>=24.9', dsh: '>=0.2.2-rc.1 <0.3.0' });
     for (const [peer, range] of Object.entries(manifest.peerDependencies ?? {})) {
       if (peer.startsWith('@deepseek-ai/dsh-')) assert.equal(range, '>=0.2.2-rc.1', peer);
     }
