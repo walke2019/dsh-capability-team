@@ -1,6 +1,6 @@
 {
   "name": "@aiwuk/team",
-  "version": "5.0.3",
+  "version": "5.0.4",
   "description": "AIWUK Team, a capability-routed multi-agent team preset for DeepSeek Harness (DSH) with per-role model routing, same-tier failover and conversational team configuration",
   "license": "MIT",
   "author": "walke2019",
