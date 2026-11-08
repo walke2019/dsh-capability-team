@@ -19,18 +19,39 @@ jobs:
     outputs:
       matrix: ${{ steps.tags.outputs.matrix }}
     steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      # A dist-tag can lag behind the supported range (e.g. alpha older than the rc baseline);
+      # such versions are rejected by DSH as incompatible-version by design, so skip them.
+      - name: Install semver for range filtering
+        run: npm install --prefix "$RUNNER_TEMP/semver" --no-audit --no-fund semver@7
+
       - id: tags
         name: Read @deepseek-ai/dsh dist-tags
         run: |
           node --input-type=module -e "
+          import { readFileSync } from 'node:fs';
+          import { createRequire } from 'node:module';
+          const semver = createRequire(process.env.RUNNER_TEMP + '/semver/')('semver');
+          const range = JSON.parse(readFileSync('package.json', 'utf8')).engines?.dsh;
+          if (!range) throw new Error('package.json engines.dsh is missing');
           const url = 'https://registry.npmjs.org/-/package/@deepseek-ai%2fdsh/dist-tags';
           const response = await fetch(url);
           if (!response.ok) throw new Error('dist-tags request failed: HTTP ' + response.status);
           const tags = await response.json();
           const include = ['latest', 'next', 'alpha']
             .filter(tag => tags[tag])
+            .filter(tag => {
+              const ok = semver.satisfies(tags[tag], range, { includePrerelease: true });
+              if (!ok) console.log('skip ' + tag + ' (' + tags[tag] + '): outside engines.dsh ' + range);
+              return ok;
+            })
             .map(tag => ({ tag, version: tags[tag] }));
-          if (!include.length) throw new Error('No latest/next/alpha dist-tag found for @deepseek-ai/dsh');
+          if (!include.length) throw new Error('No latest/next/alpha dist-tag of @deepseek-ai/dsh satisfies engines.dsh ' + range);
           console.log(JSON.stringify(include, null, 2));
           const { appendFileSync } = await import('node:fs');
           appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify({ include }) + '\n');
