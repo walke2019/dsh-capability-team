@@ -12,6 +12,14 @@ export function selectedRoute(agent) {
     return current?.provider && current?.model ? { provider: current.provider, model: current.model } : undefined;
   } catch { return undefined; }
 }
+/** The last `model/selection` recorded in a session log, or undefined. */
+export function lastSelection(events) {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const { provider, model } = events[i]?.type === 'model/selection' ? events[i].data ?? {} : {};
+    if (typeof provider === 'string' && typeof model === 'string') return { provider, model };
+  }
+  return undefined;
+}
 /** One roster row with `model` replaced by the member's selected model id. The row's `provider` is the subagent backend (spawn/fork), not the LLM provider, so it is left as is. */
 export function correctRow(row, lookup) {
   if (!row || typeof row !== 'object' || typeof row.target !== 'string') return row;
@@ -33,10 +41,34 @@ export function correctRoster(value, lookup) {
   return value;
 }
 export function applyMemberModels(ctx) {
-  const lookupFor = lead => target => {
-    if (target === 'lead') return selectedRoute(lead);
-    const member = ctx.agentTeams.listMembers(lead).find(m => m.name === target && m.role !== 'lead');
-    return member ? selectedRoute(ctx.agents?.get?.(member.id)) : undefined;
+  // An idle teammate is unloaded; DSH then falls back to its creation options (the Lead model) and no live
+  // Agent is left to ask. Remember each session's last selection, which DSH records as `model/selection`.
+  const recorded = new Map(); // session id → { provider, model }
+  try {
+    ctx.on('session/event', (session, event) => {
+      if (event?.type !== 'model/selection' || !session?.id) return;
+      const { provider, model } = event.data ?? {};
+      if (typeof provider === 'string' && typeof model === 'string') recorded.set(session.id, { provider, model });
+    });
+  } catch { /* host without session observers: live selections only */ }
+  // After a DSH restart neither is available: read the member's durable log once (DSH's sessionQuery).
+  const coldRoute = async id => {
+    if (recorded.has(id)) return recorded.get(id);
+    try {
+      const snapshot = await ctx.get?.('sessionQuery')?.readSession(id);
+      const route = lastSelection(snapshot?.events ?? []);
+      if (route) recorded.set(id, route);
+      return route;
+    } catch { return undefined; }
+  };
+  const routesFor = async (lead, rows) => {
+    const members = ctx.agentTeams.listMembers(lead);
+    const routes = new Map([['lead', selectedRoute(lead)]]);
+    for (const row of Array.isArray(rows) ? rows : [rows?.member]) {
+      const member = members.find(m => m.name === row?.target && m.role !== 'lead');
+      if (member) routes.set(member.name, selectedRoute(ctx.agents?.get?.(member.id)) ?? await coldRoute(member.id));
+    }
+    return target => routes.get(target);
   };
   ctx.on('tools/post-execute', async (exec, result, next) => {
     const decision = await next();
@@ -45,7 +77,7 @@ export function applyMemberModels(ctx) {
       if (!ROSTER_TOOLS.has(restrictiveToolName(exec?.name, ROSTER_TOOLS)) || !ownsCapabilityTeam(ctx, exec.agent)) return decision;
       const membership = ctx.agentTeams.tryMembership(exec.agent);
       if (!membership?.root) return decision;
-      const value = correctRoster(result.value, lookupFor(membership.root));
+      const value = correctRoster(result.value, await routesFor(membership.root, result.value));
       return value === result.value ? decision : { ...decision, value };
     } catch { return decision; } // display correction must never break the native tool
   });

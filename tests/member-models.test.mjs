@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import { applyMemberModels, correctRoster, selectedRoute } from '../member-models.js';
 
 const agentOn = (provider, model, preset = 'capability-team') => ({ ctx: { preset }, model: { current: () => ({ provider, model }) } });
-function fixture({ preset = 'capability-team' } = {}) {
+function fixture({ preset = 'capability-team', logs = {} } = {}) {
   const lead = { id: 'L', ...agentOn('cpa', 'claude-opus-5-5', preset) };
   const researcher = { id: 'R', ...agentOn('cpa', 'gemini-3.8-flash-high', preset) };
   const agents = new Map([['L', lead], ['R', researcher]]);
   const listeners = {};
+  let reads = 0;
   const ctx = {
+    get: name => name === 'sessionQuery' ? { readSession: async id => { reads++; return { events: logs[id] ?? [] }; } } : undefined,
     agents: { get: id => agents.get(id) },
     agentPresets: { composedPreset: c => c.preset },
     agentTeams: {
@@ -23,8 +25,26 @@ function fixture({ preset = 'capability-team' } = {}) {
     { target: 'researcher', role: 'teammate', status: 'inactive', provider: 'spawn', model: 'claude-opus-5-5', diagnostics: [] }];
   const run = (name, value, decision = { kind: 'accept' }, result = { isError: false, value }) =>
     listeners['tools/post-execute']({ name, agent: lead }, result, async () => decision);
-  return { run, rows, lead, researcher };
+  const unload = id => agents.delete(id);
+  const event = (id, type, data) => listeners['session/event']({ id }, { type, data });
+  return { run, rows, lead, researcher, unload, event, reads: () => reads };
 }
+
+test('an idle (unloaded) teammate keeps its selected model, from the live selection event or its durable log', async () => {
+  const f = fixture({ logs: { R: [{ type: 'model/selection', data: { provider: 'cpa', model: 'old' } }, { type: 'model/selection', data: { provider: 'cpa', model: 'gemini-3.8-flash-high' } }] } });
+  f.event('R', 'model/selection', { provider: 'cpa', model: 'gemini-3.8-flash-high' });
+  f.unload('R');
+  assert.equal((await f.run('list_agents', f.rows)).value[1].model, 'gemini-3.8-flash-high');
+  assert.equal(f.reads(), 0, 'the recorded selection needs no log read');
+  const cold = fixture({ logs: { R: [{ type: 'model/selection', data: { provider: 'cpa', model: 'old' } }, { type: 'model/selection', data: { provider: 'cpa', model: 'gemini-3.8-flash-high' } }] } });
+  cold.unload('R'); // after a DSH restart: no live agent, no observed event
+  assert.equal((await cold.run('list_agents', cold.rows)).value[1].model, 'gemini-3.8-flash-high');
+  await cold.run('list_agents', cold.rows);
+  assert.equal(cold.reads(), 1, 'the durable log is read once per member');
+  const none = fixture();
+  none.unload('R');
+  assert.deepEqual(await none.run('list_agents', none.rows), { kind: 'accept' }, 'no selection anywhere keeps the native row');
+});
 
 test('list_agents reports each teammate with its selected role model, not the inherited Lead model', async () => {
   const f = fixture();
