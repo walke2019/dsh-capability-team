@@ -21,7 +21,7 @@ const EXPECTED_RENAME = {
 };
 const PACKAGES = [
   { dir: '.', key: 'team', name: '@aiwuk/team', version: '5.0.7' },
-  { dir: 'packages/autocomplete', key: 'autocomplete', name: '@aiwuk/autocomplete', version: '1.0.3' },
+  { dir: 'packages/autocomplete', key: 'autocomplete', name: '@aiwuk/autocomplete', version: '1.0.4' },
   { dir: 'packages/global-memory', key: 'memory', name: '@aiwuk/memory', version: '1.0.4' },
   { dir: 'packages/omni-search', key: 'search', name: '@aiwuk/search', version: '1.0.4' },
 ];
