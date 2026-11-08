@@ -7,3 +7,11 @@ docs/demo/
 /.claude/launch.json
 /.claude/settings.local.json
 /local-dsh-capability-team-*.tgz
+
+# Generated build outputs: rebuilt by `prepack` / `pretest` (npm run build:client, build:global-memory, build:omni-search)
+/client.js
+/packages/global-memory/client.js
+/packages/omni-search/client.js
+/packages/global-memory/shared/
+/packages/omni-search/shared/
+/packages/autocomplete/client.js

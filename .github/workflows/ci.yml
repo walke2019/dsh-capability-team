@@ -20,7 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [22, 24]
+        # engines.node is >=24.9; 24.x resolves to the newest 24 release, which is above that floor.
+        node: ["24.x"]
     steps:
       - uses: actions/checkout@v5
 
@@ -28,9 +29,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      # `npm test` runs pretest, which rewrites client.js; verify the committed copy first.
-      - name: Check committed client.js
-        run: node scripts/build-client.mjs --check
+      # client.js and the packages' shared/ copies are generated and not committed: build them before anything reads them.
+      - name: Build generated files
+        run: npm run build:client && npm run build:global-memory && npm run build:omni-search && npm run build:autocomplete
 
       # Run through npm so npm_execpath is set for scripts/pack-package.mjs.
       - name: Test

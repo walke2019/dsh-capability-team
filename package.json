@@ -36,7 +36,8 @@
   "type": "module",
   "scripts": {
     "build:client": "node shared-ui/build.mjs && node scripts/build-client.mjs",
-    "pretest": "node shared-ui/build.mjs && node scripts/build-client.mjs",
+    "pretest": "node shared-ui/build.mjs && node scripts/build-client.mjs && node packages/global-memory/scripts/build-shared.mjs && node packages/omni-search/scripts/build-shared.mjs && node packages/autocomplete/scripts/build-client.mjs",
+    "prepack": "node shared-ui/build.mjs && node scripts/build-client.mjs",
     "test": "node --import ./tests/isolated-home.mjs --test tests/*.test.mjs && node --import ./tests/isolated-home.mjs --test tests/global-memory/*.test.mjs && node --import ./tests/isolated-home.mjs --test tests/omni-search/*.test.mjs && node --import ./tests/isolated-home.mjs --test tests/autocomplete/*.test.mjs",
     "build:global-memory": "node packages/global-memory/scripts/build-shared.mjs",
     "build:omni-search": "node packages/omni-search/scripts/build-shared.mjs",
