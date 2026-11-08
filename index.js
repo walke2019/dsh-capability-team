@@ -1,4 +1,5 @@
 import { apply as applyRoles } from './roles.js';
+import { applyMemberModels } from './member-models.js';
 import { ownsCapabilityTeam } from './preset-guard.js';
 import { apply as applyIntegrations } from './integrations.js';
 import { apply as applyTheme } from './theme-plugin.js';
@@ -81,6 +82,7 @@ export function apply(host, config = {}) {
   applyAccess(ctx, team);
   applyTeammateWait(ctx);
   applyRoles(ctx, team, failover, observability, taskControl);
+  applyMemberModels(host);
   applyIntegrations(ctx, team);
   applyTheme(ctx, team, failover, workflow, planGate, taskControl);
 }
