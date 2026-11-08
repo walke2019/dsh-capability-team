@@ -14,7 +14,7 @@ Unchanged: tool names (`capability_*`, `memory_*`, `omni_*`), credential and env
 as `~/.dsh/capability-team-themes`. Overrides in `cordis.patch.yml` are keyed by the Loader `id`, so your settings
 carry over; only the `name:` value of an entry that pins the old package name needs to change.
 
-Requirements: DSH `>=0.2.2-rc.1 <0.3.0` and Node.js >= 22. On an older DSH the host reports
+Requirements: DSH `>=0.2.2-rc.1 <0.3.0` and Node.js >= 24.9. On an older DSH the host reports
 `incompatible-version` and does not start the new packages; keep the old ones there.
 
 ## Steps for a personal install

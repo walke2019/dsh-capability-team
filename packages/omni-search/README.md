@@ -6,7 +6,7 @@ Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) (
 dsh plugin add @aiwuk/search
 ```
 
-Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22. Configure it on the plugin's page under DSH's **Plugins** (see [Settings page](#settings-page)), or through the integrations file, environment variables or the DSH credential store as described below.
+Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 24.9. Configure it on the plugin's page under DSH's **Plugins** (see [Settings page](#settings-page)), or through the integrations file, environment variables or the DSH credential store as described below.
 
 A vendor-neutral, profile-wide Host-only bundle (`@aiwuk/search`, patch id `omni-search`) exposing multi-engine web search and page fetch, plus user-approved audio transcription, to ordinary sessions, other presets, subagents, and teams:
 
@@ -132,7 +132,7 @@ Use the DSH Plugins page to enable or disable the plugin; the legacy `enabled` a
 
 When DSH exposes its optional web and experimental speech-to-text services, the plugin registers the `aiwuk-search` and `aiwuk-cloud-stt` providers. Select the provider with the toggle on this plugin's settings page (or in DSH's own settings); the plugin never changes the selection by itself. Search uses the same engine order and credentials as the tools. The cloud speech provider sends recordings to the configured audio gateway and relies on the host's consent flow; the legacy `omni_transcribe` tool continues to require its own per-file approval.
 
-A native fetch provider is deferred: the extraction engines do not reliably expose the target response status, body kind and truncation. The existing `omni_fetch` tool remains available, as does DSH's own native web fetch provider.
+The plugin also offers an opt-in native fetch provider, `aiwuk-fetch`. It is off by default, because DSH's built-in `http` fetch provider would otherwise make web fetch ambiguous (`WEB_PROVIDER_AMBIGUOUS`). It is enabled only when DSH's web setting `fetchProvider` or the environment variable `DSH_WEB_FETCH_PROVIDER` is `aiwuk-fetch`. The `omni_fetch` tool is unchanged and remains available either way.
 
 ## Audio consent and privacy
 

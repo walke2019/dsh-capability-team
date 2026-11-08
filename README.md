@@ -5,7 +5,7 @@
 [![CI](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml/badge.svg)](https://github.com/walke2019/dsh-capability-team/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![DSH >= 0.2.2-rc.1](https://img.shields.io/badge/DSH-%3E%3D%200.2.2--rc.1-6f42c1.svg)
-![Node >= 22](https://img.shields.io/badge/Node-%3E%3D%2022-339933.svg)
+![Node >= 24.9](https://img.shields.io/badge/Node-%3E%3D%2024.9-339933.svg)
 
 **English** | [简体中文](README.zh-CN.md)
 
@@ -21,7 +21,7 @@ A multi-agent team preset for DeepSeek Harness (DSH). It is a thin enhancement l
 
 ## Quick start
 
-Requirements: DSH >= 0.2.2-rc.1 (below 0.3.0), Node.js >= 22, and the official `@deepseek-ai/dsh-experimental-agent-team-profile` bundle enabled in your DSH profile.
+Requirements: DSH >= 0.2.2-rc.1 (below 0.3.0), Node.js >= 24.9, and the official `@deepseek-ai/dsh-experimental-agent-team-profile` bundle enabled in your DSH profile.
 
 **1. Install**
 

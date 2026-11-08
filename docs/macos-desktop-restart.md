@@ -4,7 +4,7 @@
 
 连接器的原生 `instance-restart` 指令通过外部监督器重启 CLI。桌面版还有 Electron 外壳，仅退出后端不足以完成桌面重启。本部署适配器复用原连接器的身份认证、权限、回执、模型和插件下发，不修改 DSH 安装包或连接器底座。
 
-仅适用于 macOS、已安装的 DeepSeek Harness 桌面版和 `@aiwuk/connector-bundle` 1.0.0。Linux 与 Windows 无需安装。要求 Python 3、Node 22+、Xcode Command Line Tools，且用户已登录图形会话。连接器实际使用 App 自带的 Node 运行时。
+仅适用于 macOS、已安装的 DeepSeek Harness 桌面版和 `@aiwuk/connector-bundle` 1.0.0。Linux 与 Windows 无需安装。要求 Python 3、Node 24.9+、Xcode Command Line Tools，且用户已登录图形会话。连接器实际使用 App 自带的 Node 运行时。
 
 ## 安装
 

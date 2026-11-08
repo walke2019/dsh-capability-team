@@ -6,7 +6,7 @@ Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) (
 dsh plugin add @aiwuk/memory
 ```
 
-Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22.
+Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 24.9.
 
 A profile-wide, Host-only bundle (`@aiwuk/memory`, patch id `global-memory`) providing `memory_search`, `memory_write`, and bounded automatic recall. It does not create an agent preset or automatic transcript ingestion. Memory is local by default; OpenAI-compatible embeddings and an OpenViking shared backend are optional. Its settings live on the plugin's page under DSH's **Plugins** (see [Settings page](#settings-page)).
 

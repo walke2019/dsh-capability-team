@@ -6,7 +6,7 @@ Part of [AIWUK Team for DSH](https://github.com/walke2019/dsh-capability-team) (
 dsh plugin add @aiwuk/autocomplete
 ```
 
-Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 22.
+Requires DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 24.9.
 
 Composer autocomplete for DSH Web (`@aiwuk/autocomplete`, patch id `autocomplete`). The plugin name, description, settings and on-screen text follow the DSH language (Chinese / English).
 
@@ -86,4 +86,4 @@ Change them from **Settings → General** or the plugin's page under **Plugins**
 
 ## Development
 
-`client.js` is generated from `client/*.js`; edit the fragments and run `npm run build:autocomplete` from the repository root. Tests live in `tests/autocomplete/`.
+`client.js` is generated from `client/*.js` and is not tracked in git. It is built by `pretest`, by `prepack` (so `npm pack` and `npm publish` build it automatically) and by the CI "Build generated files" step. Edit the fragments, then run `npm run build:autocomplete` from the repository root. Tests live in `tests/autocomplete/`.

@@ -4,7 +4,7 @@
 
 ## 开发与测试
 
-使用 Node.js 22 或更高版本。项目采用 Node.js 内置 `node:test`，通过模拟 DSH 上下文、模型目录和确认对话框运行；自动化测试不会调用真实模型或搜索服务。
+使用 Node.js 24.9 或更高版本（CI 使用 Node 24.x）。项目采用 Node.js 内置 `node:test`，通过模拟 DSH 上下文、模型目录和确认对话框运行；自动化测试不会调用真实模型或搜索服务。
 
 ```sh
 npm test          # 构建 client.js 后运行测试
@@ -30,7 +30,7 @@ npm run build:client  # 重建客户端 bundle
 
 ## 客户端构建
 
-工作台源码位于 `client/`。运行 `npm run build:client` 按文件名顺序合并为发布用的 `client.js`。DSH 加载单一客户端文件；修改源码后重建，不要直接编辑生成 bundle。
+工作台源码位于 `client/`。运行 `npm run build:client` 按文件名顺序合并为发布用的 `client.js`。DSH 加载单一客户端文件；修改源码后重建，不要直接编辑生成 bundle。`client.js` 与 `packages/*/shared/**` 不再纳入 git，由 `pretest`、`prepack`（`npm pack`/`npm publish` 自动构建）和 CI 的 "Build generated files" 步骤生成。
 
 ## 发布文件清单
 

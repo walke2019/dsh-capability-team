@@ -125,7 +125,7 @@
 ```json
 {
   "name":"@aiwuk/memory", "version":"0.1.0", "private":true,
-  "type":"module", "engines":{"node":">=22"},
+  "type":"module", "engines":{"node":">=24.9"},
   "description":"Explicit memory tools and bounded automatic recall for DSH sessions",
   "exports":{".":"./index.js","./locale/*.json":"./locale/*.json","./icon":"./icon.svg"},
   "files":["index.js","runtime.js","config.js","tools.js","identity.js","shared/**","cordis.patch.yml","locale/*.json","icon.svg","README.md"],

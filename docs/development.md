@@ -4,7 +4,7 @@ This guide is for contributors. For the authoritative collaboration, file, secur
 
 ## Development and tests
 
-Install/use a supported Node.js runtime (22 or newer). The project uses the built-in `node:test` runner and mocked DSH contexts, catalogs, and dialogs; automated tests do not make live model or search calls.
+Install/use a supported Node.js runtime (24.9 or newer; CI runs Node 24.x). The project uses the built-in `node:test` runner and mocked DSH contexts, catalogs, and dialogs; automated tests do not make live model or search calls.
 
 ```sh
 npm test          # build client.js, then run tests
@@ -30,7 +30,7 @@ The full enforceable file, token, and collaboration rules are in [AGENTS.md](../
 
 ## Client build
 
-The workbench source is organized under `client/`. Run `npm run build:client` to concatenate the source modules in filename order into the shipped `client.js`. The package exposes the single bundle to DSH; edit source modules, then rebuild rather than editing the generated bundle directly.
+The workbench source is organized under `client/`. Run `npm run build:client` to concatenate the source modules in filename order into the shipped `client.js`. The package exposes the single bundle to DSH; edit source modules, then rebuild rather than editing the generated bundle directly. `client.js` and `packages/*/shared/**` are not tracked in git: `pretest`, `prepack` (so `npm pack` and `npm publish` build them automatically) and the CI "Build generated files" step create them.
 
 ## Release file inventory
 
