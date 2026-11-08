@@ -20,10 +20,10 @@ const EXPECTED_RENAME = {
   '@dsh-mothership/connector-updater': '@aiwuk/connector-updater',
 };
 const PACKAGES = [
-  { dir: '.', key: 'team', name: '@aiwuk/team', version: '5.0.7' },
+  { dir: '.', key: 'team', name: '@aiwuk/team', version: '5.0.8' },
   { dir: 'packages/autocomplete', key: 'autocomplete', name: '@aiwuk/autocomplete', version: '1.0.4' },
-  { dir: 'packages/global-memory', key: 'memory', name: '@aiwuk/memory', version: '1.0.4' },
-  { dir: 'packages/omni-search', key: 'search', name: '@aiwuk/search', version: '1.0.4' },
+  { dir: 'packages/global-memory', key: 'memory', name: '@aiwuk/memory', version: '1.0.5' },
+  { dir: 'packages/omni-search', key: 'search', name: '@aiwuk/search', version: '1.1.0' },
 ];
 
 test('brand constants and rename map match the contract', () => {

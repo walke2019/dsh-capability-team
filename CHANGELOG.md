@@ -32,6 +32,10 @@ All notable changes to this project are documented in this file. The format foll
 - Memory: team `capability_memory_*` tools and `@aiwuk/memory` `memory_*` tools share one pipeline (`createMemoryCore` in `memory-store.js`). `@aiwuk/memory` gains a trusted `ingest()` and `markUsed` in search. Public `memory_write` still rejects role scope and `handoff`/`result` kinds. The storage format is unchanged.
 - Design notes: `docs/design/p0-p2-native-reuse.md` records the native-reuse review. Native goals (same-session only), `workflowEngine` (would regress dispatch policy) and schedule/MCP/subagent (already native, no wrapper needed) were skipped.
 
+### Released
+
+- Team 5.0.8, Memory 1.0.5, Search 1.1.0 (Autocomplete stays at 1.0.4): Search 1.1.0 adds the opt-in native fetch provider `aiwuk-fetch` (off by default). Memory 1.0.5 and Team 5.0.8 share one write/search pipeline between the team hub and `@aiwuk/memory`, and Team drops the duplicated timing view in favour of the native `sessionStats`. Node >= 24.9 is now required, generated files (`client.js`, `shared/`) are built in `prepack`, and `release.yml` can publish `@aiwuk/autocomplete`.
+
 ### Fixed
 
 - Composer placeholder overlap (Autocomplete 1.0.4): in next-message mode the ghost suggestion was drawn on top of DSH's native placeholder text. The placeholder is now hidden (via a scoped `data-aiwuk-ghost-next` attribute and a style rule, never by changing DSH text) while the next-mode ghost is visible and restored on dismiss, typing or unmount. The ghost also uses `white-space: pre` so its spacing is preserved.

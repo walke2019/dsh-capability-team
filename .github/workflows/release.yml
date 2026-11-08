@@ -12,6 +12,7 @@ on:
           - root
           - omni-search
           - global-memory
+          - autocomplete
 
 permissions:
   contents: read
@@ -44,6 +45,7 @@ jobs:
             root) dir=. ;;
             omni-search) dir=packages/omni-search ;;
             global-memory) dir=packages/global-memory ;;
+            autocomplete) dir=packages/autocomplete ;;
             *) echo "::error::Unknown package input: $PACKAGE_INPUT"; exit 1 ;;
           esac
           name=$(node -p "require('./$dir/package.json').name")
