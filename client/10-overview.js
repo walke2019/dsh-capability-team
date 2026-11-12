@@ -78,6 +78,8 @@
       // The Lead's agentTeam projection is pushed live; without it the board falls back to the last refresh.
       const liveTeam = live?.projections?.(effectiveSessionId)?.agentTeam;
       const liveActivity = liveTeam ? teamActivityFrom(liveTeam, live) : null;
+      const statusMemberIds = (liveTeam?.members ?? d?.activity?.members ?? []).map(m => m.id).filter(Boolean).sort().join('\n');
+      React.useEffect(() => live?.watchMembers?.(statusMemberIds ? statusMemberIds.split('\n') : []), [live, effectiveSessionId, statusMemberIds]);
       // Models come only from this plugin's own request records (withTrustedRoutes), never from the host roster.
       const roster = withTrustedRoutes(liveRoster(effectiveSessionId, liveActivity ?? d?.activity, children?.sessionId === effectiveSessionId ? children.entries : null, live, liveActivity ? Date.now() : current.at), live, d);
       const usage = usageRows(d, liveTeam, live);

@@ -51,14 +51,51 @@ test('上下文超长、内容拒绝等非可用性错误不切换', async () =>
   assert.equal(await f.recover(agent, fail('CONTEXT_WINDOW_EXCEEDED', 400)), false);
   assert.equal(f.route(agent, 1, 1, role).primary, true);
 });
-test('故障模型短暂冷却，冷却结束自动回到主模型', async () => {
+test('healthy backup stays selected after cooldown until an explicit activity reset', async () => {
   const { f, advance } = harness(); const agent = {};
   f.route(agent, 1, 1, role);
   for (let i = 0; i < 3; i++) await f.recover(agent, fail('SERVER'));
   assert.equal(f.route(agent, 1, 2, role).provider, 'provider-a'); // next step skips the cooling primary
   advance(config.failover.cooldownMs + 1);
-  assert.equal(f.route(agent, 1, 3, role).primary, true);
+  assert.equal(f.route(agent, 1, 3, role).provider, 'provider-a');
+  assert.equal(f.route(agent, 2, 1, role).provider, 'provider-a');
+  f.reset(agent);
+  assert.equal(f.route(agent, 3, 1, role).primary, true);
 });
+test('another agent cooling the sticky backup cannot resurrect an already tried primary', async () => {
+  const { f, advance } = harness(); const agent = {}, peer = {};
+  f.route(agent, 1, 1, role); await f.recover(agent, fail('QUOTA'));
+  advance(config.failover.cooldownMs + 1);
+  const backupRole = { ...role, provider: 'provider-a', model: 'gpt-6.1-sol', fallbacks: [] };
+  f.route(peer, 1, 1, backupRole); await f.recover(peer, fail('QUOTA'));
+  assert.equal(f.route(agent, 1, 2, role).model, 'claude-opus-4-8');
+  assert.equal(f.status(agent).failed[0].route, 'win/gpt-6.1-sol');
+});
+
+test('shared cooldown exhaustion fails closed instead of replaying tried or cooling routes', async () => {
+  const { f, advance, waits } = harness(); const agent = {}, peer = {};
+  const pair = { ...role, fallbacks: role.fallbacks.slice(0, 1) };
+  f.route(agent, 1, 1, pair); await f.recover(agent, fail('QUOTA'));
+  advance(config.failover.cooldownMs + 1);
+  f.route(peer, 1, 1, { ...role, provider: 'provider-a', fallbacks: [] }); await f.recover(peer, fail('QUOTA'));
+  const unavailable = { unavailable: true, reason: 'no-healthy-untried-route' };
+  assert.deepEqual(f.route(agent, 1, 2, pair), unavailable);
+  assert.equal(f.status(agent).unavailable, true); assert.equal(f.status(agent).active, undefined);
+  assert.equal(await f.recover(agent, fail('QUOTA')), false); assert.deepEqual(waits, []);
+  assert.deepEqual(f.route(agent, 1, 2, pair), unavailable);
+  assert.deepEqual(f.route(agent, 2, 1, pair), unavailable);
+});
+
+test('all cooling or unregistered routes return unavailable without throwing or probing', async () => {
+  const { f } = harness(); const only = { ...role, fallbacks: [] };
+  const first = {}; f.route(first, 1, 1, only); await f.recover(first, fail('QUOTA'));
+  const fresh = {};
+  assert.equal(f.route(fresh, 1, 1, only).unavailable, true);
+  assert.equal(await f.recover(fresh, fail('QUOTA')), false);
+  const missing = harness({ registered: () => false }).f;
+  assert.equal(missing.route({}, 1, 1, role).unavailable, true);
+});
+
 test('未注册渠道的备选被跳过', async () => {
   const { f } = harness({ registered: p => p !== 'provider-a' }); const agent = {};
   f.route(agent, 1, 1, role);

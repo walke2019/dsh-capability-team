@@ -5,8 +5,9 @@ import { budgetDenial, sessionUsage } from './usage.js';
 import { createLongContext, promptTokens } from './long-context.js';
 import { ensurePreset } from './access.js';
 import { bindRuntime } from './runtime-observability.js';
-import { FILE_LIMITS, fileLimitRules } from './file-limits.js';
-import { TOKEN_RULES, tokenRuleText } from './token-discipline.js';
+import { fileLimitRules } from './file-limits.js';
+import { tokenRuleText } from './token-discipline.js';
+import { createContinuation } from './failover-continuation.js';
 // `allowed` is the free list resolved from OpenCode's catalog (opencode.js); nothing is fixed here.
 export function freeArgs(prompt, model, allowed = []) {
   if (typeof model !== 'string' || !allowed.includes(model)) throw new Error(modelText('roles.359'));
@@ -14,17 +15,28 @@ export function freeArgs(prompt, model, allowed = []) {
   return ['run', '--format', 'json', '--model', model, '--', prompt];
 }
 // Static rules hold no role names, models or tiers: those come from the per-Agent team context.
-export const policy = roleText('roles.361', { 0: fileLimitRules(FILE_LIMITS), 1: tokenRuleText(TOKEN_RULES) });
+export const policy = roleText('roles.361');
+export function policyText(effective) {
+  const w = effective?.workflow;
+  return [policy, w?.mode === 'enforce' ? roleText('roles.workflow.enforce') : w?.mode === 'remind' ? roleText('roles.workflow.remind') : '',
+    fileLimitRules(w?.fileLimits), tokenRuleText(w?.tokens), w?.rotation ? roleText('roles.rotation') : '',
+    w?.enforceWriteScopes ? roleText('roles.scopes') : ''].filter(Boolean).join('\n');
+}
 /**
  * Route every model request by the native Team identity.
- * The loop re-runs agent/request for each retry, so the failover state picks the attempt's route.
+ * Retries retain the prepared selection; a route switch resumes at a native idle boundary.
  */
-export function apply(ctx, team, failover, observability, taskControl) {
+export function apply(ctx, team, failover, observability, taskControl, continuationOptions) {
+  const continuation = createContinuation(ctx, team, failover, continuationOptions);
   const installed = new WeakSet();
   const installPolicy = agent => {
     if (!team.owns(agent) || installed.has(agent)) return;
     installed.add(agent);
-    agent.ctx.systemPrompt.context({ name: 'capability-team:policy', order: 95, text: () => team.owns(agent) ? policy : '' });
+    agent.ctx.systemPrompt.context({ name: 'capability-team:policy', order: 95, text: () => {
+      if (!team.owns(agent)) return '';
+      const project = team.pinned?.(agent);
+      return policyText(project ? team.loadSync(project, agent).effective : team.base);
+    } });
   };
   ctx.on('agent/created', async ({ agent }) => { installPolicy(agent); await preselect(ctx, team, failover, agent); });
   for (const agent of ctx.agents?.list?.() ?? []) installPolicy(agent);
@@ -52,6 +64,7 @@ export function apply(ctx, team, failover, observability, taskControl) {
     const routed = controlled.taskLeaseSignature ? controlled : longContext.apply(agent.session, controlled, promptTokens(projections, agent.session));
     // Always explicit: the loop pins the last logged header, so the primary must be restored by name.
     const selected = failover.route(agent, turn, step, routed);
+    if (selected.unavailable) throw new Error(modelText('roles.unavailable', { 0: role.displayName ?? role.id }));
     if (observability) {
       try {
         bindRuntime(agent, observability, ctx.agentTeams);
@@ -77,7 +90,9 @@ export function apply(ctx, team, failover, observability, taskControl) {
     // A retry reuses the step's fixed route, so a switch is recorded for the next step instead of retried here.
     if (agent.model?.select && after && after !== before) {
       const slash = after.indexOf('/');
-      agent.model.select({ provider: after.slice(0, slash), model: after.slice(slash + 1) });
+      const route = { provider: after.slice(0, slash), model: after.slice(slash + 1) };
+      agent.model.select(route);
+      await continuation.arm(agent, route, signal);
       return undefined;
     }
     return { kind: 'retry' };
@@ -98,6 +113,7 @@ export async function preselect(ctx, team, failover, agent) {
     const role = await team.resolve(agent);
     if (role.unassigned || !role.provider) return; // agent/request fails closed with guidance
     const route = failover.route(agent, 0, 0, role);
+    if (route.unavailable) return;
     if (!sameRoute(agent.model.current?.(), route)) agent.model.select({ provider: route.provider, model: route.model });
   } catch (error) {
     ctx.logger?.warn?.(`capability-team: route preselection failed: ${String(error?.message ?? error)}`);

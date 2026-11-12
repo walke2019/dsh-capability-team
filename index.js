@@ -4,6 +4,8 @@ import { ownsCapabilityTeam } from './preset-guard.js';
 import { apply as applyIntegrations } from './integrations.js';
 import { apply as applyTheme } from './theme-plugin.js';
 import { createTeam } from './team.js';
+import { applyDispatchPreflight } from './dispatch-preflight.js';
+import { applySpawnConfirm } from './spawn-confirm.js';
 import { createFailover } from './failover.js';
 import { createWorkflow } from './workflow.js';
 import { applyAccess } from './access.js';
@@ -52,6 +54,7 @@ export function apply(host, config = {}) {
     registered: provider => ctx.llm.listProviders().some(p => p.id === provider),
     log: message => ctx.logger?.info?.(`capability-team: ${message}`),
   });
+  applyDispatchPreflight(ctx, team, failover);
   const taskControl = createTaskControl(ctx, team, { audit: createTaskAudit(team.root), onChanged: () => observability.notifyTaskControl(),
     predecessorOf: (leadId, name) => rotation.predecessorOf(leadId, name) });
   const planGate = createPlanGate(ctx, team);
@@ -61,7 +64,9 @@ export function apply(host, config = {}) {
   const board = createBoardDispatch(ctx, team);
   const prefs = createModelPrefs(team.root);
   setRouteStore(createRouteStore(team.root)); // per-task confirmed routes survive a DSH restart
-  const workflow = createWorkflow(ctx, team, { onDelegate: (lead, roles) => planGate.reset(lead, roles), onAssignments: (lead, assignments) => taskControl.dispatch(lead, assignments), dispatchConfirm: createDispatchConfirm(ctx, team, { prefs, health: () => mergeHealth(routeHealth.recent(), failover.health()) }), rotation, board });
+  const dispatchConfirm = createDispatchConfirm(ctx, team, { prefs, health: () => mergeHealth(routeHealth.recent(), failover.health()) });
+  applySpawnConfirm(ctx, team, failover, dispatchConfirm);
+  const workflow = createWorkflow(ctx, team, { onDelegate: (lead, roles) => planGate.reset(lead, roles), onAssignments: (lead, assignments) => taskControl.dispatch(lead, assignments), dispatchConfirm, rotation, board });
   taskControl.setWorkflow(workflow);
   taskControl.register();
   workflow.register();

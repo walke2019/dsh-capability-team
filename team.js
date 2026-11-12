@@ -59,6 +59,11 @@ export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = 
     if (!pins.has(agent)) pins.set(agent, projectRoot(await ctx.workingDirectory.ensure(agent), root));
     return pins.get(agent);
   };
+  const resolveMember = (membership, effective, policy) => {
+    const role = resolveRole(membership, effective);
+    const confirmed = membership?.role === 'teammate' && membership.root ? confirmedRoute(membership.root.id, baseName(membership.name)) : undefined;
+    return applyModelPolicy(withConfirmedRoute(role, confirmed), policy.disabledRoutes);
+  };
   return {
     get base() { return detector.get().base; },
     preset, root,
@@ -87,13 +92,15 @@ export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = 
     async resolve(agent) {
       const { effective, policy } = await this.load(agent);
       const membership = ctx.agentTeams.membership(agent);
-      const role = resolveRole(membership, effective);
-      // Routes are confirmed per role, so a rotation successor (<role>-rN) keeps the route the user chose.
-      const confirmed = membership?.role === 'teammate' && membership.root ? confirmedRoute(membership.root.id, baseName(membership.name)) : undefined;
-      const resolved = applyModelPolicy(withConfirmedRoute(role, confirmed), policy.disabledRoutes);
+      const resolved = resolveMember(membership, effective, policy);
       // The Lead follows the user's pick (lead-route.js), which needs its tier's models and the policy to stay same-tier.
       return membership?.role === 'teammate' ? resolved
-        : { ...resolved, leadContext: { tierModels: [...(effective.tiers?.[role.tier] ?? [])], disabledRoutes: [...policy.disabledRoutes] } };
+        : { ...resolved, leadContext: { tierModels: [...(effective.tiers?.[resolved.tier] ?? [])], disabledRoutes: [...policy.disabledRoutes] } };
+    },
+    /** Creation-time preview uses exactly the request resolver, without creating a native member. */
+    async resolveMember(lead, name) {
+      const { effective, policy } = await this.load(lead);
+      return resolveMember({ role: 'teammate', name, root: lead }, effective, policy);
     },
     // After a save, the saving Lead moves to the configured root if it was a different directory.
     repin(agent, project) { pins.set(agent, project); },

@@ -96,7 +96,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
     /** Lead guard: no new work for a retired member or one past the hard line; successors may be spawned. */
     guard(exec) {
       const membership = ctx.agentTeams.tryMembership(exec.agent);
-      if (!ownsCapabilityTeam(ctx, exec.agent) || membership?.role !== 'lead') return undefined;
+      if (!ownsCapabilityTeam(ctx, exec.agent) || membership?.role !== 'lead' || !limitsOf(exec.agent)) return undefined;
       const lead = exec.agent;
       if (restrictiveToolName(exec.name, TRACKED_TOOLS) === 'send_message') {
         const target = exec.arguments?.target;

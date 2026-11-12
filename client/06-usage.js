@@ -11,7 +11,7 @@
     function teamActivityFrom(team, live) {
       return {
         members: (team.members ?? []).map(m => ({ id: m.id, name: m.name, role: m.role,
-          status: PHASE[m.phase] ?? (m.phase === 'active' ? (live.running(m.id) ? 'running' : 'idle') : 'inactive'),
+          status: PHASE[m.phase] ?? (m.phase === 'active' ? (live.running(m.id) === true ? 'running' : live.running(m.id) === false ? 'idle' : 'unknown') : 'inactive'),
           diagnostics: m.error ? [String(m.error.message ?? m.error)] : [] })),
         tasks: (team.tasks ?? []).map(task => ({
           id: task.id,
@@ -165,13 +165,12 @@
      */
     /** Pushed status wins; otherwise the catalog/snapshot, never trusting a possibly stale "running". */
     function memberStatus(member, push, fresh) {
-      if (push) {
-        if (push.error && !push.running) return 'failed';
-        return push.running ? 'running' : 'idle';
-      }
+      if (push?.error && push.running !== true) return 'failed';
+      if (typeof push?.running === 'boolean') return push.running ? 'running' : 'idle';
       if (member.resident === false) return 'inactive';
-      if (member.status === 'running' && !fresh) return 'idle';
-      return member.status ?? (member.resident ? 'idle' : 'inactive');
+      if (member.status === 'provisioning' || member.status === 'failed' || member.status === 'inactive') return member.status;
+      if (!fresh || !member.status) return 'unknown';
+      return member.status;
     }
     function liveRoster(leadId, snapshot, children, live, snapshotAt) {
       // A snapshot status is trusted only if no push could have been missed since it was taken.
@@ -190,6 +189,6 @@
       });
       return { members, tasks: snapshot?.tasks ?? [], unavailable: snapshot?.unavailable, at: live ? Date.now() : undefined };
     }
-    const LIVE = { running: 'brand', provisioning: 'brand', idle: 'success', failed: 'error', inactive: undefined };
+    const LIVE = { running: 'brand', provisioning: 'brand', idle: 'success', failed: 'error', inactive: undefined, unknown: undefined };
     const elapsed = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
     /** Join configured roles with live roster rows: Lead by role, teammates by their spawn name (= role id). */

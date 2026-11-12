@@ -10,6 +10,7 @@ import { modelCatalog, verifyRoutes } from './allocation.js';
 import { routeKey, routeMatcher } from './model-policy.js';
 import { saveProject } from './theme.js';
 import { applyPreferences, unhealthyRoutes } from './model-prefs.js';
+import { effectiveRoute } from './single-model.js';
 export const DISPATCH_CONFIRM_PATH = '/api/capability-team.dispatch-confirm';
 export { CONFIRM_MODES } from './config.js';
 export const MAX_ROUTE_FALLBACKS = 3;
@@ -50,7 +51,8 @@ export function planRoutes(plan, effective, disabledRoutes, catalog) {
     const candidates = catalog.entries.filter(e => !disabled(routeKey(e)))
       .map(e => ({ provider: e.provider, model: e.model, sameTier: tierModels.includes(e.model) }))
       .sort((a, b) => Number(b.sameTier) - Number(a.sameTier));
-    const allowed = [...(c.provider ? [{ provider: c.provider, model: c.model }] : []), ...(c.fallbacks ?? [])].filter(r => !disabled(routeKey(r)));
+    const configured = effectiveRoute(c, effective.singleModel);
+    const allowed = [...(configured.provider ? [{ provider: configured.provider, model: configured.model }] : []), ...(configured.fallbacks ?? [])].filter(r => !disabled(routeKey(r)));
     return { role: a.role, displayName: a.displayName, capability: a.capability, tier: c.tier, task: a.task,
       primary: allowed[0] ?? null, fallbacks: allowed.slice(1, 1 + MAX_ROUTE_FALLBACKS), candidates };
   });
@@ -203,6 +205,14 @@ function waitForAnswer(ctx, state, exec, callId, spec, { graceMs, heartbeatMs, t
   });
 }
 export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, heartbeatMs = HEARTBEAT_MS, timeoutMs = CONFIRM_TIMEOUT_MS, prefs, health = () => ({}) } = {}) {
+  const queues = new Map();
+  const serial = (leadId, action) => {
+    const result = (queues.get(leadId) ?? Promise.resolve()).catch(() => {}).then(action);
+    const tail = result.catch(() => {});
+    queues.set(leadId, tail);
+    void tail.finally(() => { if (queues.get(leadId) === tail) queues.delete(leadId); });
+    return result;
+  };
   async function saveDefaults(exec, routes) {
     const changed = routes.filter(r => r.changed);
     if (!changed.length) return null;
@@ -226,7 +236,11 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
      * Ask the user to confirm a delegate plan. Resolves with the confirmed routes (applied to this Lead),
      * or throws when the user cancels. `mode` is workflow.confirmDispatch.
      */
-    async confirm(exec, plan, effective, policy, mode = 'on-change') {
+    async confirm(exec, plan, effective, policy, mode = 'on-change', options = {}) {
+      return serial(exec.agent.id, async () => {
+      exec.signal?.throwIfAborted?.();
+      if (options.prepare) ({ plan, effective, policy, mode } = await options.prepare());
+      else if (typeof team.load === 'function') { const loaded = await team.load(exec.agent); if (loaded.effective) { effective = loaded.effective; policy = loaded.policy ?? policy; mode = effective.workflow.confirmDispatch; } }
       const leadId = exec.agent.id;
       const state = stateOf(leadId);
       const catalog = await modelCatalog(ctx.llm, effective.tiers);
@@ -235,12 +249,28 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
       const project = prefs ? await team.pin(exec.agent) : undefined;
       const habits = project ? await prefs.habits(project).catch(() => ({})) : {};
       const unhealthy = unhealthyRoutes(health());
+      const disabled = routeMatcher(policy.disabledRoutes);
+      let invalidated = false;
+      for (const a of plan.assignments) {
+        const prior = state.routes.get(a.role);
+        if (prior && [prior.primary, ...(prior.fallbacks ?? [])].some(r => !r?.provider || !r?.model || disabled(routeKey(r)) || !catalog.entries.some(c => sameRoute(c, r)))) {
+          state.routes.delete(a.role); state.confirmed.delete(a.role); invalidated = true;
+        }
+      }
+      if (invalidated) routeStore?.save(leadId, state.routes, state.confirmed);
       const offered = planRoutes(plan, effective, policy.disabledRoutes, catalog).map(r => {
         const base = { primary: r.primary, fallbacks: r.fallbacks };
         const prior = state.routes.get(r.role);
         const shaped = prior ? { ...r, primary: prior.primary, fallbacks: prior.fallbacks, learned: { unhealthy: {} } } : applyPreferences(r, habits[r.capability], unhealthy);
         return { ...shaped, base };
       });
+      let staleConfirmation = false;
+      for (const r of offered) {
+        if ([r.primary, ...r.fallbacks].some(route => !route || !r.candidates.some(c => sameRoute(c, route)))) {
+          staleConfirmation = state.confirmed.delete(r.role) || staleConfirmation;
+        }
+      }
+      if (staleConfirmation) routeStore?.save(leadId, state.routes, state.confirmed);
       const unchanged = offered.every(r => state.confirmed.get(r.role) === keyOf(r));
       if (mode === 'never' || (mode === 'on-change' && unchanged)) return { asked: false, routes: offered };
       const catalogVersion = createHash('sha256').update(JSON.stringify(offered.map(r => r.candidates))).digest('hex').slice(0, 16);
@@ -248,7 +278,8 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
       const result = await waitForAnswer(ctx, state, exec, callId, { offered, catalogVersion, subject: modelText('dispatch-confirm.204'), consequence: modelText('dispatch-confirm.205'), retry: modelText('dispatch-confirm.206'),
         validate: answer => validateAnswer(offered, answer), ask: signal => askNative(ctx.userQuestions, exec, offered, signal) }, { graceMs, heartbeatMs, timeoutMs });
       if (result.decision === 'cancel') throw new Error(modelText('dispatch-confirm.207'));
-      if (result.scope === 'project') await saveDefaults(exec, result.routes);
+      await options.validate?.(result);
+      const savedRevision = result.scope === 'project' ? await saveDefaults(exec, result.routes) : null;
       if (project) void prefs.record(project, result.routes).catch(() => {});
       for (const r of result.routes) {
         if (result.scope === 'task' && r.changed) state.routes.set(r.role, { primary: r.primary, fallbacks: r.fallbacks });
@@ -256,7 +287,8 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
         state.confirmed.set(r.role, keyOf(r));
       }
       routeStore?.save(leadId, state.routes, state.confirmed);
-      return { asked: true, scope: result.scope, routes: result.routes.map(r => ({ ...offered.find(o => o.role === r.role), primary: r.primary, fallbacks: r.fallbacks, changed: r.changed })) };
+      return { asked: true, scope: result.scope, savedRevision, routes: result.routes.map(r => ({ ...offered.find(o => o.role === r.role), primary: r.primary, fallbacks: r.fallbacks, changed: r.changed })) };
+      });
     },
   };
 }

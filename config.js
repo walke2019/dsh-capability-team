@@ -36,10 +36,10 @@ export const seed = deepFreeze({
     failoverCodes: ['RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT', 'EMPTY_RESPONSE', 'UNKNOWN', 'QUOTA', 'ACCOUNT_QUOTA', 'AUTH', 'INVALID_CREDENTIAL', 'MISSING_CREDENTIAL', 'NO_ADAPTER'],
     failoverStatuses: [401, 403, 404, 408, 429, 500, 502, 503, 504],
   },
-  // Lead dispatch workflow: every new user request is analysed and assigned before execution.
+  // Optional Lead dispatch policies; native collaboration and execution are the default.
   // Tools not listed in either list count as execution (shell, file writes, search, generic subagents).
   workflow: {
-    mode: 'enforce',
+    mode: 'off',
     analysisBudget: 6, // read-only steps allowed before a dispatch plan exists
     directBudget: 3, // execution steps allowed when the Lead decides to handle a request alone
     // Tools of the free OpenCode model: none (text only) / read (read+search project) / write (also
@@ -50,7 +50,8 @@ export const seed = deepFreeze({
     // always / on-change (the first plan of a session, then only when a route changes) / never.
     confirmDispatch: 'on-change',
     // Edits outside the write scopes of the board tasks a teammate holds are refused (DSH itself only warns).
-    enforceWriteScopes: true,
+    enforceWriteScopes: false,
+    fileLimits: false, rotation: false, tokens: false,
     // Optional order of free models; empty = every free model in OpenCode's catalog, newest first.
     // Entries are re-checked against the catalog at run time, so a paid model can never be listed in.
     freeModels: [],

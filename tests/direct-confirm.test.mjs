@@ -9,10 +9,10 @@ import { answerPending, createDispatchConfirm, forgetLead, pendingView } from '.
 import { effectiveConfig } from '../config.js';
 import { base } from './fixture.mjs';
 
-const W = effectiveConfig({}, base).workflow;
+const W = effectiveConfig({ workflow: { mode: 'enforce' } }, base).workflow;
 
 function harness(answer, overrides = {}) {
-  const eff = effectiveConfig(overrides, base);
+  const eff = effectiveConfig({ ...overrides, workflow: { mode: 'enforce', ...overrides.workflow } }, base);
   let guard; let claimed; const tools = {}; const asked = [];
   const lead = { id: 'lead' };
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: f => f(), on: (name, fn) => { if (name === 'agent/inbox/claimed') claimed = fn; },
@@ -59,7 +59,8 @@ test('只有 userRequested 严格为 true 才询问；其他模式和非强制�
   assert.equal(h.asked.length, 0);
   const remind = harness(() => true, { workflow: { mode: 'remind' } });
   remind.user();
-  assert.equal(JSON.parse(await remind.plan(personal)).directBudget, W.directBudget);
+  assert.equal(JSON.parse(await remind.plan(personal)).directBudget, null);
+  for (let i = 0; i < W.directBudget + 1; i++) assert.equal(remind.call('pwsh'), undefined);
   assert.equal(remind.asked.length, 0);
 });
 
@@ -199,7 +200,7 @@ test('确认卡片：已转到原生问答框时只提示去那里回答，不�
 });
 
 test('端到端：工作流经真实确认通道等待用户，允许后才放开', async () => {
-  const eff = effectiveConfig({}, base);
+  const eff = effectiveConfig({ workflow: { mode: 'enforce' } }, base);
   let guard; const tools = {};
   const lead = { id: 'direct-e2e' };
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: f => f(), on: () => {},

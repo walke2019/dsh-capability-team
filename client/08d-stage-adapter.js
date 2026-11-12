@@ -19,7 +19,7 @@
         return {
           id: card.id, memberId, name: card.name, capability: card.role?.capability ?? (card.lead ? 'orchestrator' : ''), lead: !!card.lead,
           status: card.status, statusLabel: label(t, `live.${card.status}`, card.status),
-          activity, activityLabel: label(t, `stage.act.${activity}`, activity), actKey: toolAct ? (cur?.id ?? cur?.startedAt ?? cur?.tool ?? '') : '',
+          activity, activityLabel: card.status === 'unknown' ? t('live.unknown') : label(t, `stage.act.${activity}`, activity), actKey: toolAct ? (cur?.id ?? cur?.startedAt ?? cur?.tool ?? '') : '',
           task, route: card.model ?? null, routeAlias: badge?.alias ?? card.model ?? '', grade: badge?.grade ?? 'default',
           icon: STAGE_ACT_GLYPH[activity] ?? '',
           bubble: bubble.text, bubbleSince: bubble.since ?? null,

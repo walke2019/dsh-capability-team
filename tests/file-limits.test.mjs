@@ -79,7 +79,8 @@ test('fileLimits 配置校验：默认值、合并、false 关闭、非法值', 
   assert.throws(() => validateFileLimits({ bogus: 1 }), /does not support fields/);
   assert.throws(() => validateFileLimits({ sourceMax: 10 }), /50 to 20000/);
   assert.throws(() => validateFileLimits({ sourceWarn: 700, sourceMax: 600 }), /must not exceed/);
-  assert.deepEqual(effectiveConfig({}).workflow.fileLimits, FILE_LIMITS);
+  assert.equal(effectiveConfig({}).workflow.fileLimits, false);
+  assert.deepEqual(effectiveConfig({ workflow: { fileLimits: {} } }).workflow.fileLimits, FILE_LIMITS);
 });
 
 test('备选模型最多 3 个', () => {

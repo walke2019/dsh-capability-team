@@ -25,7 +25,7 @@ export function teamContext(team, agent, membership, failover, workflow, planGat
     self = role;
     const limits = accessSummary(access);
     if (limits) self.access = modelText('theme-plugin.509', { 0: limits });
-    const planState = planGate?.status(agent, membership, role);
+    const planState = role.planFirst === true ? planGate?.status(agent, membership, role) : undefined;
     if (planState) self.plan = planState;
     const live = failover?.status(agent);
     const allowed = [role, ...(role.fallbacks ?? [])].map(r => `${r.provider}/${r.model}`);
@@ -40,7 +40,7 @@ export function teamContext(team, agent, membership, failover, workflow, planGat
       return { id, displayName, capability, ...(whenToUse ? { whenToUse } : {}), model: provider ? `${provider}/${model}${singleModel ? modelText('theme-plugin.512') : ''}` : modelText('theme-plugin.513'), ...(limits ? { access: limits } : {}) };
     } catch (error) { return { id: entry.id, displayName: entry.displayName, model: modelText('theme-plugin.514'), error: error.message }; }
   });
-  const status = membership?.role === 'lead' ? workflow?.status(agent, loaded.effective.workflow) : undefined;
+  const status = membership?.role === 'lead' && loaded.effective.workflow.mode !== 'off' ? workflow?.status(agent, loaded.effective.workflow) : undefined;
   return modelText('theme-plugin.515', { 0: loaded.effective.name, 1: loaded.revision, 2: project, 3: JSON.stringify(self), 4: JSON.stringify(roster), 5: status ? `\n${status}` : '' });
 }
 async function confirm(ctx, exec, lines, revision) {
@@ -152,7 +152,7 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
       text: () => (ownsCapabilityTeam(ctx, agent) ? teamContext(team, agent, ctx.agentTeams.tryMembership(agent), failover, workflow, planGate) : '') });
     const removeBudgetContext = taskControl && ctx.agentTeams.tryMembership(agent)?.role === 'lead'
       ? agent.ctx.systemPrompt.context({ name: 'capability-team:task-budget', order: 99, required: true,
-        text: () => (ownsCapabilityTeam(ctx, agent) ? taskControl.summary(agent) : '') }) : () => {};
+        text: () => (ownsCapabilityTeam(ctx, agent) && team.loadSync(team.pinned(agent), agent).effective.workflow.mode !== 'off' ? taskControl.summary(agent) : '') }) : () => {};
     const removeWriter = registerPolicyWriter(agent, (routes, revision) => team.savePolicy(agent, routes, revision));
     installed.set(agent, () => { removeReader(); removeWriter(); removeContext(); removeBudgetContext(); });
   };

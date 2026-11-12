@@ -4,11 +4,12 @@ import { createWorkflow, validatePlan, decide } from '../workflow.js';
 import { effectiveConfig, applyPatch, describeChanges } from '../config.js';
 import { base } from './fixture.mjs';
 
-const effective = effectiveConfig({}, base);
+const legacyWorkflow = { mode: 'enforce' };
+const effective = effectiveConfig({ workflow: legacyWorkflow }, base);
 const W = effective.workflow;
 
 function harness(overrides = {}) {
-  const eff = effectiveConfig(overrides, base);
+  const eff = effectiveConfig({ ...overrides, workflow: { ...legacyWorkflow, ...overrides.workflow } }, base);
   let guard; let claimed; const tools = {};
   const lead = { id: 'lead' }; const mate = { id: 'mate' };
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' },
@@ -24,7 +25,7 @@ function harness(overrides = {}) {
   return { wf, lead, mate, call, plan, user, tools, claimed: m => claimed({ agent: lead, message: m }) };
 }
 
-test('默认配置启用强制工作流，档位/工具清单可校验', () => {
+test('Explicit enforcement preserves workflow validation', () => {
   assert.equal(W.mode, 'enforce');
   assert.ok(W.coordinationTools.includes('spawn_teammate'));
   assert.throws(() => effectiveConfig({ workflow: { mode: 'always' } }, base), /Workflow mode/);

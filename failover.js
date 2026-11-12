@@ -22,24 +22,36 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
   const healthy = route => (cooling.get(key(route))?.until ?? 0) <= now();
   const candidates = role => [{ provider: role.provider, model: role.model }, ...(role.fallbacks ?? [])];
   return {
+    /** Static creation preflight only: no requests, step state or cooldown writes. Not an auth probe. */
+    eligibility(role) {
+      const list = candidates(role).filter(r => r.provider && r.model);
+      const available = list.filter(r => registered(r.provider) && healthy(r));
+      return { eligible: available.length > 0, reason: available.length ? null : list.some(r => registered(r.provider)) ? 'cooling' : 'unregistered' };
+    },
     /** Route for this attempt: the step's current candidate, else the first healthy registered one. */
     route(agent, turn, step, role) {
       const list = candidates(role);
-      const signature = `${list.map(key).join('|')}|${role.taskLeaseSignature ?? ''}`;
+      const signature = `${list.map(key).join('|')}|${role.taskLeaseSignature?.split(':')[0] ?? ''}`;
       let state = steps.get(agent);
       if (!state || state.turn !== turn || state.step !== step || state.signature !== signature) {
-        const usable = list.map((r, i) => i).filter(i => registered(list[i].provider));
-        const start = usable.find(i => healthy(list[i])) ?? usable[0] ?? 0;
-        state = { turn, step, signature, index: start, retries: 0, tried: [], role };
+        // A successful backup remains selected throughout the activity, even after primary cooldown expires.
+        const sameActivity = state?.signature === signature;
+        const history = sameActivity ? state.tried : [];
+        const tried = new Set(history.map(item => item.route));
+        const usable = r => !tried.has(key(r)) && registered(r.provider) && healthy(r);
+        const sticky = sameActivity && state.index >= 0 && usable(list[state.index]);
+        const start = list.findIndex(usable);
+        state = { turn, step, signature, index: sticky ? state.index : start, retries: 0, tried: history, role };
         steps.set(agent, state);
       }
       state.role = role;
+      if (state.index < 0) return { unavailable: true, reason: 'no-healthy-untried-route' };
       return { ...list[state.index], primary: state.index === 0, index: state.index };
     },
     /** Decide recovery after DSH's own retries declined. Returns true to retry the step. */
     async recover(agent, failure, signal) {
       const state = steps.get(agent);
-      if (!state || signal?.aborted) return false;
+      if (!state || state.index < 0 || signal?.aborted) return false;
       const { failover: policy } = state.role;
       const list = candidates(state.role);
       const current = list[state.index];
@@ -71,12 +83,17 @@ export function createFailover({ now = Date.now, sleep = wait, registered = () =
       state.index = next; state.retries = 0;
       return true;
     },
+    /** Compatibility with the continuation bridge; routing now retains the whole activity chain. */
+    continue() {},
+    /** Explicit native owner-input, cancellation or disposal boundary; cooldown health is retained. */
+    reset(agent) { steps.delete(agent); },
     /** Model-facing status for the team context. */
     status(agent) {
       const state = steps.get(agent);
       if (!state) return undefined;
       const list = candidates(state.role);
-      return { active: key(list[state.index]), primary: state.index === 0, failed: state.tried };
+      return { active: state.index < 0 ? undefined : key(list[state.index]), primary: state.index === 0, failed: state.tried,
+        ...(state.index < 0 ? { unavailable: true } : {}) };
     },
     cooling: () => [...cooling].filter(([, v]) => v.until > now()).map(([route, v]) => ({ route, failure: v.failure, until: new Date(v.until).toISOString(), strikes: v.strikes })),
     /** Recent failure record per route (for ranking choices), including routes whose cooldown has ended. */

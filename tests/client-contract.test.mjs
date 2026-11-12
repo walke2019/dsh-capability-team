@@ -10,11 +10,12 @@ test('客户端可解析并注册总览与全部工具卡片，不导入内部UI
   } } } });
   const views = [], callbacks = [], tabs = [];
   let dictionaries;
-  plugin.apply({ effect: fn => callbacks.push(fn), locale: { bind: () => key => key, register: (_ns, dict) => { dictionaries = dict; } },
+  plugin.apply({ effect: (fn, label) => callbacks.push({ fn, label }), locale: { bind: () => key => key, register: (_ns, dict) => { dictionaries = dict; } },
     remote: { commands: {} }, sidebarRightTabs: { register: definition => { tabs.push(definition); return () => {}; } },
     slots: { inject: (_name, fn) => fn(), register: (options, component) => { views.push({ options, component }); } } });
-  callbacks[0]();
-  callbacks[2]();
+  // Select the tested host registrations by label, independent of lifecycle ordering.
+  const cleanups = callbacks.filter(({ label }) => label === 'capability-team: dictionaries' || label === 'capability-team: right sidebar tab')
+    .map(({ fn }) => fn()).filter(off => typeof off === 'function');
   assert.deepEqual(Object.keys(dictionaries.zh).sort(), Object.keys(dictionaries.en).sort());
   const keys = views.filter(v => v.options.name === 'tool.call.toolview').map(v => v.options.key).sort();
   // Every capability-team tool that returns JSON has a card, so raw JSON never reaches the conversation.
@@ -26,4 +27,5 @@ test('客户端可解析并注册总览与全部工具卡片，不导入内部UI
   assert.equal(tabs[0].guide[0].title(), 'overview.title');
   assert.equal(views.find(v => v.options.id === 'capability-team-overview').options.name, 'sidebar.right.pane.tab');
   assert.equal(views.some(v => v.options.name === 'conversation.view'), false);
+  for (const off of cleanups.reverse()) off();
 });

@@ -5,6 +5,8 @@ import { createHarness } from './helpers/client-harness.mjs';
 // Lead + two teammates: diao-chan is running an edit tool call at 80% context, lv-bu is idle with nothing live.
 function fixture() {
   const state = {
+    // Listed host summaries carry authoritative running baselines, unlike catalog-only placeholders.
+    ids: ['m1', 'm2'],
     byId: { m1: { running: true }, m2: { running: false } },
     projectionsBySession: {
       s_lead: { values: { agentTeam: {

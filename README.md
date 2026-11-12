@@ -56,7 +56,7 @@ The lead reports the roster, the tier of each role and which of your models were
 | Team lifecycle, messaging, task board | — | ✅ | ✅ (reuses the official ones) |
 | Per-role model routing | — | No per-role choice; all teammates use the profile's spawn provider | ✅ Tier-based, auto-matched from your models; fails closed |
 | Same-tier failover | — | — | ✅ With exponential cooldown, no cross-tier downgrade |
-| Cost controls / budgets | — | Usage projections | ✅ Tier routing, per-role token budgets, token discipline |
+| Cost controls / budgets | — | Usage projections | ✅ Tier routing and usage; explicit per-role budgets and optional token discipline |
 | Dispatch triage | — | — | ✅ `delegate` / `free` / `direct` dispatch plan |
 | Write-scope enforcement | — | — | ✅ Per-task `write_scopes`, per-role path/tool/sandbox policy |
 | Workbench | — | Team UI | ✅ Overview, board, usage, model management, pixel office stage |
@@ -67,8 +67,9 @@ See [docs/comparison.md](docs/comparison.md) for a longer comparison, including 
 
 ```mermaid
 flowchart LR
-  R[User request] --> P[Dispatch plan<br/>delegate / free / direct]
-  P --> T[Roles routed by tier<br/>high · upper · medium · low]
+  R[User request] --> T[Roles routed by tier<br/>high · upper · medium · low]
+  R -. optional .-> P[Dispatch plan<br/>delegate / free / direct]
+  P --> T
   T --> B[Native task board<br/>write scopes + dependencies]
   B --> V[Verify<br/>QA / architect review]
   V --> D[Lead delivers]
@@ -77,15 +78,17 @@ flowchart LR
 ```
 
 - **Capability tiers.** Models registered in your DSH catalog are graded `high` / `upper` / `medium` / `low` by vendor naming rules; non-chat, free/trial and below-floor models are excluded. Each capability gets a primary and up to three same-tier backups.
-- **Per-role routing.** Every role (capability) has its own tier and vendor preference. Unassigned roles fail closed.
-- **Failover.** Same-route retries first, then the next same-tier backup. Failed routes cool down (doubling, capped at 30 minutes) and the primary returns after recovery. Auth and quota errors skip straight to the next backup.
-- **Dispatch and board.** The lead must call `capability_dispatch_plan` first; delegated subtasks become board tasks with `write_scopes` and `blocked_by`, and edits outside a held task's scopes are rejected.
-- **Guardrails.** Per-role sandbox / tool / path access, optional plan-first approval, session rotation with handoff, and token discipline (stable prompt prefix, output trimming, idle compaction).
-- **Workbench and memory.** A live right-side panel shows the team overview, board, usage and model management with a pixel office stage; a local memory hub recalls past pitfalls and decisions for new tasks.
+- **Per-role routing.** Every role (capability) has its own tier and vendor preference. Unassigned roles fail closed. With `confirmDispatch: "on-change"` (the new default) or `"always"`, Lead spawns reuse the existing primary/backup model card after native approval and guards, before member creation. `on-change` asks on the first spawn for a role and again when its route changes; `always` asks each time. Canceling the card creates no member. Explicit `"never"` retains the static role/model, provider-registration and cooldown preflight on the native permission `allow` path; `ask` is passed through without rerunning that preflight after approval. Readiness or member creation does not prove authentication, quota or an LLM response; the first model request still fails closed against unavailable routes.
+- **Failover.** Same-route retries first, then the next same-tier backup. Failed routes cool down (doubling, capped at 30 minutes); a healthy backup stays selected during the activity, rather than switching back solely because a timer expired. New owner input or a route/lease change starts a fresh selection boundary. Auth and quota errors skip straight to the next backup.
+- **Native-first collaboration.** Dispatch enforcement is off by default. Use the official team tools directly; `capability_dispatch_plan` remains optional. Explicit `workflow.mode: "enforce"` requires a plan. Task-scope enforcement, rotation, extra file rules and token discipline are independent opt-ins; role-model confirmation is independent of dispatch enforcement.
+- **Safety and optional policies.** Native sandbox, approval and file-observation rules remain active. Explicit role access, `planFirst` and `maxTokens` settings are preserved; disabling dispatch enforcement grants no new authority.
+- **Workbench and memory.** A live right-side panel shows the team overview, board, usage and model management with a pixel office stage; a local memory hub recalls past pitfalls and decisions for new tasks. Member cards, running counts and the canvas share native session-status data; unknown status stays unknown while synchronizing, not idle. In-progress tasks and catalog residency are not running-member counts.
 
 ## Configuration
 
 Most settings are changed by asking the lead (the change is validated and shown in DSH's confirmation dialog before it is saved) or from the workbench. Tools: `capability_team_read`, `capability_team_save`, `capability_team_import`.
+
+Unset policy fields use native-first defaults: `workflow.mode: "off"`, `confirmDispatch: "on-change"`, and `enforceWriteScopes`, `fileLimits`, `rotation`, `tokens` set to `false`. Existing explicit values, including `confirmDispatch: "never"` and legacy `enforce`, remain effective; loading does not rewrite stored configuration. Role names, canvas synchronization, role models and automatic failover, memory, status and token usage remain enabled independently. Canvas state is derived from native live projections, not a separate execution state machine.
 
 ```json
 { "capabilities": { "writer": { "tier": "low", "search": false } } }

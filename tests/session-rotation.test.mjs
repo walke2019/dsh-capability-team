@@ -67,7 +67,7 @@ test('rotation 配置校验', () => {
   assert.throws(() => validateRotation({ softRatio: 2 }), /greater than 0 and at most 1/);
   assert.throws(() => validateRotation({ softCompactions: 5, hardCompactions: 3 }), /soft thresholds/);
   assert.throws(() => validateRotation({ nope: 1 }), /does not support/);
-  assert.deepEqual(effectiveConfig({}).workflow.rotation, ROTATION);
+  assert.deepEqual(effectiveConfig({ workflow: { rotation: {} } }).workflow.rotation, ROTATION);
 });
 
 test('接替者沿用原角色的模型和权限', () => {
@@ -91,7 +91,7 @@ function fakeTeam(root, members, { tasks = [] } = {}) {
       listMembers: () => roster, listTasks: () => tasks,
     },
   };
-  const team = { root, pinned: () => '/p', loadSync: () => ({ effective: effectiveConfig({}) }) };
+  const team = { root, pinned: () => '/p', loadSync: () => ({ effective: effectiveConfig({ workflow: { rotation: {} } }) }) };
   return { ctx, team, lead, agents };
 }
 

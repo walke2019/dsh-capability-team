@@ -52,8 +52,8 @@ export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'ca
   const rules = agent => {
     if (rulesOf) return rulesOf(agent);
     const project = team.pinned(agent);
-    if (!project) return TOKEN_RULES;
-    try { return team.loadSync(project, agent).effective.workflow.tokens; } catch { return TOKEN_RULES; }
+    if (!project) return team.base?.workflow?.tokens ?? false;
+    try { return team.loadSync(project, agent).effective.workflow.tokens; } catch { return false; }
   };
   const isMember = agent => ownsCapabilityTeam(ctx, agent) && !!ctx.agentTeams.tryMembership(agent);
   const ratioOf = agent => {

@@ -60,6 +60,44 @@ All notable changes to this project are documented in this file. The format foll
 - `dsh-capability-autocomplete` 0.3.1: the settings form (model routing, provider/model, candidates) was missing on instances where DSH is installed by pnpm, because the optional `@deepseek-ai/schemastery` peer could not be resolved from the profile and the plugin exported no `Config`. schemastery is now a direct dependency pinned to the version DSH ships.
 - Autocomplete works across terminals: the client calls the endpoint relative to the page, and the endpoint accepts the forwarded host of the Mothership hub tunnel or a reverse proxy as same-origin, so phones and remote browsers are no longer refused as cross-origin.
 
+## [5.2.2] — Client session-service startup dependency
+
+### Fixed
+
+- Declare `uiSession` in the client plugin's Cordis injections and `@deepseek-ai/dsh-client-ui-session` in the package's client dependency list, with the matching optional peer. Cordis enforces declared service access even through optional chaining; the missing declaration could prevent Team overview and tool widgets from registering at startup. Source-level tests use real Cordis sibling providers to verify failure without the declaration and successful widget registration with it. Generated client artifacts must be rebuilt from the corrected source. This repository fix does not replace or verify an installed hotfix, and test results are not live browser or deployment acceptance evidence.
+
+## [5.2.1] — Native member-status synchronization
+
+### Fixed
+
+- Member cards, running counts and the canvas now share the same resolved native session status. `uiSession.sessionStatus` and `api-session/status` updates are authoritative; unknown current-team members receive one lightweight `remote.session.state({ sessionId })` baseline, refreshed after connection reset without polling or transcript inspection. Generation and revision guards prevent late baselines or stale catalog entries from reviving an explicitly idle or removed member. Unknown status remains unknown while synchronizing rather than being displayed as idle. Catalog `activity: running` denotes residency, not execution; task counts and open turns are not used to infer running members. Source-level tests are not live browser or deployment acceptance evidence.
+
+## [5.2.0] — First-role model confirmation
+
+### Changed
+
+- Unset `confirmDispatch` now defaults to `on-change`: the first Lead spawn for each role and later route changes reuse the existing primary/backup model confirmation card. `always` asks on every spawn, while existing explicit `never` remains unchanged. Native-first `workflow.mode: "off"` is preserved; role-model confirmation does not require a dispatch plan.
+- For `on-change` and `always`, the spawn wrapper runs after native approval and guards and before the native tool body, so cancellation does not create a member. `never` retains the static preflight behavior described in 5.1.1. Confirmation is not an authentication, quota or LLM probe; first-request fail-closed checks remain in place. Invalidated route confirmations are cleared, and configuration or identity changes during confirmation require retry rather than creating a member with stale choices. These source changes do not imply publication or deployment.
+
+## [5.1.1] — Dispatch readiness preflight
+
+### Fixed
+
+- Capability-team Lead calls to `spawn_teammate` now receive a static role/model readiness check on the downstream `allow` path before native member creation, including when dispatch enforcement is off. The check reuses role resolution and verifies configured routes, provider registration and cooldown without consuming failover state or probing credentials or model requests. Native `ask`, `deny` and `cancel` decisions remain unchanged; an `ask` approved later does not rerun this hook, so preflight is not a guarantee for every creation transaction. Safe localized errors report readiness problems without exposing raw resolver errors. The first model request still fails closed against unavailable routes to handle races. Static readiness and successful member creation do not guarantee authentication, quota or an actual LLM response; these source changes do not imply publication or deployment.
+
+## [5.1.0] — Native-first team policies
+
+### Changed
+
+- Native-first policy defaults: dispatch enforcement and confirmation, task write-scope enforcement, extra file rules, rotation and token-discipline actions are opt-in. Explicit stored policies remain effective without automatic configuration rewrites. Core role naming, native-projection canvas synchronization, role models and failover, memory, status and token usage are retained.
+- Product workflow instructions are conditional on enabled policies; repository maintenance conventions remain separate. Healthy fallback routes stay selected within an activity instead of returning to the primary merely when cooldown expires. Source changes and tests do not imply that running installations have been updated.
+
+## [5.0.9] — Team failover patch
+
+### Fixed
+
+- Same-tier failover now resumes unfinished work automatically after a channel failure, including `QUOTA` reported with HTTP 503. DSH 0.2.2-rc.1 pins the model route for each prepared step: `agent.model.select()` changes future selections but does not restart a failed turn, and returning `retry` would still call the old route. The plugin waits for the native idle boundary, then sends one source-labelled notice through the native inbox to open a new turn with the selected backup and existing conversation history. Tried routes survive continuation and task-lease revision updates, preventing exhaustion loops even after cooldown expiry; cancellation, disposal, queued owner input and owner route changes suppress the pending wake. No configured backup means no automatic wake. Existing permissions and approval requirements remain unchanged, and the notice instructs the model not to replay completed tool calls. Ordinary tool `INVALID_ARGS` failures are not channel outages. Regression coverage includes the native driver boundary and task-control lease changes; this local patch package does not imply npm publication or deployment to a running instance.
+
 ## [5.0.0] — AIWUK rebrand
 
 ### Changed

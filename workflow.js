@@ -209,7 +209,9 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
           // Structured result: the model reads the fields, the Web card renders them without parsing prose.
           const result = { mode: plan.mode, decision: DECISION[plan.mode], analysis: plan.analysis, ...(plan.reason ? { reason: plan.reason } : {}) };
           if (plan.mode === 'direct') {
-            Object.assign(result, directConfirmed
+            Object.assign(result, effective.workflow.mode !== 'enforce'
+              ? { directBudget: null, directUsed: s.directUsed, next: modelText('workflow.native') }
+              : directConfirmed
               ? { directBudget: null, directUsed: s.directUsed, confirmed: { by: 'user', scope: 'turn' }, next: modelText('workflow.666') }
               : { directBudget: effective.workflow.directBudget, directUsed: s.directUsed, next: modelText('workflow.667', { 0: effective.workflow.directBudget }) });
           } else if (plan.mode === 'free') {

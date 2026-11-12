@@ -85,7 +85,7 @@
       'overview.title': '团队总览', 'overview.hint': '读取本会话真实状态，不启动模型、不修改配置。', 'overview.empty': '尚未读取团队配置。',
       'overview.ready': '已就绪', 'overview.notMounted': '未挂载', 'overview.abnormal': '需处理', 'overview.preset': '预设', 'overview.missingTools': '缺少工具', 'overview.details': '挂载诊断',
       'overview.revision': '版本 {rev}', 'overview.updated': '更新于 {time}', 'overview.statRoles': '角色', 'overview.firstLoad': '读取团队配置', 'overview.logNote': '实时状态由宿主推送，不写入对话；点“刷新”读取配置时，对话里会留下一条命令记录。', 'overview.statWorking': '工作中',
-      'live.title': '团队工作台', 'live.runningCount': '{n} 个正在工作', 'live.polling': '实时推送', 'live.running': '工作中', 'live.idle': '空闲', 'live.inactive': '未启动', 'live.provisioning': '启动中', 'live.failed': '异常',
+      'live.title': '团队工作台', 'live.runningCount': '{n} 个正在工作', 'live.polling': '实时推送', 'live.running': '工作中', 'live.idle': '空闲', 'live.unknown': '状态未知', 'live.inactive': '未启动', 'live.provisioning': '启动中', 'live.failed': '异常',
       'live.noTask': '暂无任务', 'live.open': '打开该队友的会话', 'live.busyNoTask': '正在处理消息…', 'live.liveModel': '最近一次实际请求的模型（插件用量记录）', 'live.configModel': '配置的主用模型（尚无实际请求记录）',
       'live.lastRequest': '上次请求', 'live.fallback': '备选', 'live.notInConfig': '非配置路由', 'live.configTag': '配置', 'live.leadPick': '对话中选择的模型（尚无实际请求记录）', 'live.routeWarn': '⚠ 不在配置内', 'live.routeWarnHint': '实际请求的模型不在该角色的主模型与备选中，请检查路由或配置',
       'models.prefixTitle': '按前缀排除', 'models.prefixPlaceholder': '输入前缀，如 @cf/、provider-a/or/、grok-imagine', 'models.prefixAdd': '排除',

@@ -13,7 +13,7 @@ function harness(remote = { commands: {} }, sessions, { runEffects = false } = {
   };
   new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => { plugin = spec.factory(() => React); } } } });
   let view;
-  plugin.apply({ effect() {}, locale: { bind: () => key => key }, remote, sessions, slots: {
+  plugin.apply({ effect: (fn, label) => { if (label !== 'capability-team: styles + stage theme') return fn(); }, locale: { bind: () => key => key, register() {} }, sidebarRightTabs: { register: () => () => {} }, remote, sessions, slots: {
     inject: (_name, fn) => fn(), register(options, component) { if (options.id === 'capability-team-overview') view = component; },
   } });
   const render = (component, props) => { cursor = 0; return component(props); };
@@ -249,7 +249,7 @@ test('按前缀排除：预览匹配数、加入草稿并随保存提交，被�
 
 test('不刷新也实时显示：工作台与用量来自 DSH 自带的会话投影，且不执行任何命令', async () => {
   const lines = []; const refreshed = [];
-  const state = { byId: { s2: { running: true } }, projectionsBySession: {
+  const state = { ids: ['s2'], byId: { s2: { running: true } }, projectionsBySession: {
     s1: { values: { agentTeam: { members: [{ id: 's1', name: 'lead', role: 'lead', phase: 'active' }, { id: 's2', name: 'qa', role: 'teammate', phase: 'active' }, { id: 's3', name: 'fe', role: 'teammate', phase: 'provisioning' }],
       tasks: [{ id: 'task-1', subject: '回归测试', status: 'in_progress', ownerName: 'qa' }] } } },
     s2: { values: { capabilityTeamUsage: { totals: { uncachedInputTokens: 1000, outputTokens: 200, cacheReadTokens: 5000, cacheWriteTokens: 0 }, routes: [{ route: 'provider-a/gpt-6.1-sol', uncachedInputTokens: 1000, outputTokens: 200, cacheReadTokens: 5000, cacheWriteTokens: 0 }], coverage: 'complete', reportedSamples: 1, attemptsWithoutUsage: 0 },

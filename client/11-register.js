@@ -57,26 +57,89 @@
     function liveStore(ctx) {
       const remote = ctx.remote;
       const sessions = ctx.sessions;
+      const sessionStatus = ctx.uiSession?.sessionStatus;
       const states = new Map();
       const listeners = new Set();
       const requested = new Set();
+      const baselines = new Map(), pendingStatus = new Map(), revisions = new Map(), watched = new Map();
+      let generation = 0, disposed = false;
       let roster = 0;
       const notify = () => { for (const listener of listeners) listener(); };
       // DSH's own projection frames (agentTeam, modelSelection, tokenUsage, sessionStats) reach the shared Session store without any command.
       if (typeof sessions?.list?.subscribe === 'function') ctx.effect(() => sessions.list.subscribe(notify), 'capability-team: session store');
       const snapshot = () => { try { return sessions?.list?.getSnapshot?.(); } catch { return undefined; } };
-      const on = (event, listener) => { if (typeof remote?.$on === 'function') remote.$on(event, listener); };
+      const nativeObserved = new Map();
+      if (typeof sessionStatus?.subscribe === 'function') ctx.effect(() => sessionStatus.subscribe(() => {
+        for (const id of watched.keys()) {
+          const running = sessionStatus.getSnapshot()?.get(id)?.running;
+          if (typeof running === 'boolean' && running !== nativeObserved.get(id)) {
+            revisions.set(id, (revisions.get(id) ?? 0) + 1);
+            states.delete(id); baselines.delete(id);
+          }
+          nativeObserved.set(id, running);
+        }
+        notify();
+      }), 'capability-team: native session status');
+      const statusOf = id => {
+        const pushed = states.get(id);
+        const running = sessionStatus?.getSnapshot?.()?.get(id)?.running;
+        if (pushed) return pushed;
+        if (baselines.has(id)) {
+          const baseline = baselines.get(id);
+          if (typeof running === 'boolean' && running !== baseline?.nativeRunning) return { known: true, running };
+          return baseline;
+        }
+        if (typeof running === 'boolean') return { known: true, running };
+        // Only listed host summaries carry a baseline; catalog-only byId rows default to false.
+        const list = snapshot();
+        const baseline = list?.ids?.includes(id) ? list.byId?.[id]?.running : undefined;
+        return typeof baseline === 'boolean' ? { known: true, running: baseline } : undefined;
+      };
+      const ensureStatus = (id, force = false) => {
+        if (disposed || !watched.has(id) || (!force && typeof statusOf(id)?.running === 'boolean') || pendingStatus.has(id) || typeof remote?.session?.state !== 'function') return;
+        const ticket = { generation, revision: revisions.get(id) ?? 0 };
+        if (force) baselines.set(id, { nativeRunning: sessionStatus?.getSnapshot?.()?.get(id)?.running }); // Ignore the previous connection's running bit.
+        pendingStatus.set(id, ticket);
+        Promise.resolve().then(() => {
+          if (disposed || !watched.has(id) || generation !== ticket.generation || pendingStatus.get(id) !== ticket) return undefined;
+          return remote.session.state({ sessionId: id });
+        }).then(value => {
+          if (disposed || !watched.has(id) || generation !== ticket.generation || pendingStatus.get(id) !== ticket || (revisions.get(id) ?? 0) !== ticket.revision) return;
+          baselines.set(id, typeof value?.running === 'boolean' ? { known: true, running: value.running, nativeRunning: sessionStatus?.getSnapshot?.()?.get(id)?.running } : undefined);
+          notify();
+        }, () => {}); // Keep the ticket after failure: no render-driven retry loop.
+      };
+      ctx.effect(() => () => { disposed = true; generation++; pendingStatus.clear(); watched.clear(); }, 'capability-team: status baselines');
+      if (typeof ctx.on === 'function') ctx.on('connection/reset', () => {
+        generation++; states.clear(); baselines.clear(); pendingStatus.clear(); revisions.clear(); roster++;
+        for (const id of watched.keys()) ensureStatus(id, true);
+        notify();
+      });
+      const on = (event, listener) => { if (typeof remote?.$on === 'function') ctx.effect(() => remote.$on(event, listener), `capability-team: ${event}`); };
       on('api-session/status', (id, running) => {
+        revisions.set(id, (revisions.get(id) ?? 0) + 1);
         const previous = states.get(id) ?? {};
         if (!previous.known) roster++;
         states.set(id, { known: true, running: !!running, since: running ? previous.since ?? Date.now() : undefined, error: running ? undefined : previous.error });
         notify();
       });
-      on('api-session/error', (id, message) => { states.set(id, { ...(states.get(id) ?? {}), known: true, error: String(message) }); notify(); });
+      on('api-session/error', (id, message) => { revisions.set(id, (revisions.get(id) ?? 0) + 1); states.set(id, { ...(statusOf(id) ?? {}), known: true, error: String(message) }); notify(); });
       on('api-session/added', () => { roster++; notify(); });
-      on('api-session/removed', id => { states.delete(id); roster++; notify(); });
+      on('api-session/removed', id => { revisions.set(id, (revisions.get(id) ?? 0) + 1); states.set(id, { known: true, running: false }); baselines.delete(id); roster++; notify(); });
       return {
         startedAt: Date.now(),
+        watchMembers(ids) {
+          const members = new Set(ids);
+          for (const id of members) {
+            if (!watched.has(id)) nativeObserved.set(id, sessionStatus?.getSnapshot?.()?.get(id)?.running);
+            watched.set(id, (watched.get(id) ?? 0) + 1); ensureStatus(id);
+          }
+          return () => { for (const id of members) {
+            const count = (watched.get(id) ?? 1) - 1;
+            if (count) watched.set(id, count);
+            else { watched.delete(id); nativeObserved.delete(id); baselines.delete(id); pendingStatus.delete(id); }
+          } };
+        },
         /** Live projection values of one session; asks the host once for a session the store has not loaded yet. */
         projections(id) {
           const entry = snapshot()?.projectionsBySession?.[id];
@@ -102,8 +165,8 @@
             return !!addr && !addr.parentSessionId && !direct;
           } catch { return false; }
         },
-        running: id => snapshot()?.byId?.[id]?.running,
-        status: id => states.get(id),
+        running: id => statusOf(id)?.running,
+        status: statusOf,
         rosterVersion: () => roster,
         subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
         preset: id => {
@@ -180,7 +243,7 @@
     // Test-only seam: harnesses may define window.__ctmTestHook to reach components; browsers never do.
     if (typeof window.__ctmTestHook === 'function') window.__ctmTestHook({ TaskControl, leaseFor, DispatchConfirmCard, DirectConfirmCard, ConfirmDock, dockedSessions, DispatchPlanView, ModelPicker, filterRoutes, CatalogView, BudgetView, SearchView, ExportView, contextMetrics, RoleView, ModelSubTabs, CollapsibleList });
     const plugin = {
-      inject: ['slots', 'locale', 'remote', 'remote.commands', 'remote.credentials', 'configForms', 'sidebarRightTabs', 'sessions', 'uiWorkspace'],
+      inject: ['slots', 'locale', 'remote', 'remote.commands', 'remote.credentials', 'configForms', 'sidebarRightTabs', 'sessions', 'uiSession', 'uiWorkspace'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'capability-team: dictionaries');
         ctx.effect(() => {

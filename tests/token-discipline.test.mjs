@@ -5,15 +5,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TOKEN_RULES, createTokenDiscipline, tokenRuleText, trimText, validateTokenRules } from '../token-discipline.js';
 import { effectiveConfig } from '../config.js';
-import { policy } from '../roles.js';
+import { policyText } from '../roles.js';
 
 test('token 规则：默认值、校验、写进团队铁律', () => {
   assert.deepEqual(validateTokenRules(undefined), TOKEN_RULES);
   assert.equal(validateTokenRules(false), false);
   assert.throws(() => validateTokenRules({ idleCompactRatio: 0.95 }), /0\.1–0\.9/);
   assert.throws(() => validateTokenRules({ keepHeadChars: 5000, keepTailChars: 2000 }), /less than/);
-  assert.deepEqual(effectiveConfig({}).workflow.tokens, TOKEN_RULES);
-  assert.match(policy, /Token rules/);
+  const effective = effectiveConfig({ workflow: { tokens: {} } });
+  assert.deepEqual(effective.workflow.tokens, TOKEN_RULES);
+  assert.match(policyText(effective), /Token rules/);
   assert.equal(tokenRuleText(false), '');
 });
 
