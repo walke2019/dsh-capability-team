@@ -95,16 +95,25 @@ test('新模型必须在DSH目录中，档位可同步扩充', async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 test('每个团队成员获得自己的动态上下文，随保存即时更新', async () => {
-  const root = await temp();
+  const root = await mkdtemp(join(tmpdir(), 'team-plugin-QA-'));
+  const roleContext = text => ({
+    self: JSON.parse(text.split('\n').find(line => line.startsWith('Your role: ')).slice('Your role: '.length)),
+    roster: JSON.parse(text.split('\n').find(line => line.startsWith('Team roster: ')).slice('Team roster: '.length)),
+  });
   try {
     const h = harness(root);
     const member = h.agent({ role: 'teammate', name: 'qa' });
     await h.listeners['agent/created']({ agent: member });
     assert.equal(h.contexts.length, 1);
-    assert.match(h.contexts[0].text(), /QA/);
+    assert.equal(roleContext(h.contexts[0].text()).self.displayName, 'QA');
     await h.tools.capability_team_save.execute({ expected_revision: 0, roles: { 'qa': { displayName: '质量负责人', description: '负责回归' } } }, { agent: h.agent() });
     const text = h.contexts[0].text();
-    assert.match(text, /质量负责人/); assert.match(text, /负责回归/); assert.doesNotMatch(text, /QA/);
+    const after = roleContext(text);
+    assert.equal(after.self.displayName, '质量负责人');
+    assert.equal(after.self.description, '负责回归');
+    assert.equal(after.roster.find(role => role.id === 'qa').displayName, '质量负责人');
+    assert.ok(after.roster.every(role => role.displayName !== 'QA'));
+    assert.ok(text.includes(root), 'The context retains the project path containing QA');
     const outsider = h.agent({ role: 'teammate', name: 'nobody' });
     await h.listeners['agent/created']({ agent: outsider });
     assert.match(h.contexts[1].text(), /is not registered in this project's team configuration/);
