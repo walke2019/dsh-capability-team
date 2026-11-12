@@ -1,10 +1,12 @@
 import { test } from 'node:test';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { freeArgs, apply as applyRoles, policy } from '../roles.js';
-import { createTeam } from '../team.js';
+import { createTeam as createNativeTeam } from '../team.js';
+const createTeam = (ctx, config, options) => createNativeTeam(ctx, config, { ...options, native: fixtureNative(ctx) });
 import { saveProject } from '../theme.js';
 import { seed } from '../config.js';
 import { base, fakeLlm } from './fixture.mjs';
@@ -14,7 +16,7 @@ function fakeCtx(membership, cwd) {
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' },
     effect: fn => fn(),
     systemPrompt: { section: s => { sections.push(s); return () => {}; } },
-    agentTeams: { membership: () => membership(), tryMembership: () => membership() },
+    agentTeams: { membership: () => membership(), tryMembership: () => membership(), listMembers: () => [] },
     workingDirectory: { ensure: async () => cwd() },
     llm: fakeLlm(),
     on: (event, fn) => { listeners[event] = fn; },
@@ -22,7 +24,7 @@ function fakeCtx(membership, cwd) {
   return { ctx, sections, request: (agent, prev, turn = 1, step = 1) => listeners['agent/request']({ agent, turn, step }, async () => prev),
     error: (agent, failure, downstream) => listeners['agent/request-error']({ agent, failure, signal: new AbortController().signal }, async () => downstream) };
 }
-const apply = (ctx, team, failover = createFailover({ sleep: async () => true })) => applyRoles(ctx, team, failover);
+const apply = (ctx, team, failover = createFailover({ sleep: async () => true })) => { team.native ??= fixtureNative(ctx); return applyRoles(ctx, team, failover); };
 test('队友按能力路由，主控跟随用户在对话中选择的模型，且不发起模型调用', async () => {
   const root = await mkdtemp(join(tmpdir(), 'route-'));
   try {
@@ -46,7 +48,7 @@ test('未分配模型时拒绝请求，不静默继承主控模型', async () =>
     await assert.rejects(f.request({}, { provider: 'parent', model: 'inherited' }), /no eligible model.*not inherited/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
-test('maxTokens denial precedes temporary override and longContext restores after release',async()=>{const f=fakeCtx(()=>({role:'teammate',name:'dev'}),()=>'/project');let overridden=true,calls=0,over=false,tokens=120;const role={provider:'p',model:'mid',maxTokens:10,longContext:{provider:'p',model:'long',thresholdTokens:100}};f.ctx.get=k=>k==='sessionProjections'?{stateOf:(_s,key)=>key==='capabilityTeamUsage'?{totals:{uncachedInputTokens:over?10:0,outputTokens:0,cacheWriteTokens:0,cacheReadTokens:0}}:key==='contextPressure'?{surfaceTokens:tokens}:undefined}:undefined;const control={route:async(_a,r)=>{calls++;return overridden?{...r,provider:'p',model:'override',taskLeaseSignature:'lease:1',longContext:undefined}:r;}};applyRoles(f.ctx,{owns:()=>true,resolve:async()=>role},createFailover(),undefined,control);const agent={session:{}};assert.equal((await f.request(agent,{})).model,'override');overridden=false;assert.equal((await f.request(agent,{},1,2)).model,'long');overridden=true;assert.equal((await f.request(agent,{},1,3)).model,'override');tokens=90;overridden=false;assert.equal((await f.request(agent,{},1,4)).model,'mid');over=true;await assert.rejects(()=>f.request(agent,{},1,5),/budget/);assert.equal(calls,4);});
+test('maxTokens denial precedes temporary override and longContext restores after release',async()=>{const f=fakeCtx(()=>({role:'teammate',name:'dev'}),()=>'/project');let overridden=true,calls=0,over=false,tokens=120;const role={provider:'p',model:'mid',maxTokens:10,longContext:{provider:'p',model:'long',thresholdTokens:100}};f.ctx.get=k=>k==='sessionProjections'?{stateOf:(_s,key)=>key==='capabilityTeamUsage'?{totals:{uncachedInputTokens:over?10:0,outputTokens:0,cacheWriteTokens:0,cacheReadTokens:0}}:key==='contextPressure'?{surfaceTokens:tokens}:undefined}:undefined;const control={route:async(_a,r)=>{calls++;return overridden?{...r,provider:'p',model:'override',taskLeaseSignature:'lease:1',longContext:undefined}:r;}};applyRoles(f.ctx,{native:fixtureNative(f.ctx),owns:()=>true,resolve:async()=>role},createFailover(),undefined,control);const agent={session:{}};assert.equal((await f.request(agent,{})).model,'override');overridden=false;assert.equal((await f.request(agent,{},1,2)).model,'long');overridden=true;assert.equal((await f.request(agent,{},1,3)).model,'override');tokens=90;overridden=false;assert.equal((await f.request(agent,{},1,4)).model,'mid');over=true;await assert.rejects(()=>f.request(agent,{},1,5),/budget/);assert.equal(calls,4);});
 test('静态规则不含角色名、模型或档位', () => {
   // Lead and QA are generic coordination terms in English, not roster-specific names.
   for (const r of Object.values(seed.roles)) {

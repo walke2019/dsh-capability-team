@@ -76,7 +76,8 @@
         return () => { stopped = true; };
       }, [effectiveSessionId, live, rosterVersion, isPresetMounted]);
       // The Lead's agentTeam projection is pushed live; without it the board falls back to the last refresh.
-      const liveTeam = live?.projections?.(effectiveSessionId)?.agentTeam;
+      const liveTeam = live?.teamView?.(effectiveSessionId, d?.activity, children?.sessionId === effectiveSessionId ? children.entries : null)
+        ?? live?.projections?.(effectiveSessionId)?.agentTeam;
       const liveActivity = liveTeam ? teamActivityFrom(liveTeam, live) : null;
       const statusMemberIds = (liveTeam?.members ?? d?.activity?.members ?? []).map(m => m.id).filter(Boolean).sort().join('\n');
       React.useEffect(() => live?.watchMembers?.(statusMemberIds ? statusMemberIds.split('\n') : []), [live, effectiveSessionId, statusMemberIds]);
@@ -107,6 +108,7 @@
         let es = null;
 
         const updateData = (newData, isLag = false) => {
+          if (abortCtrl.signal.aborted) return;
           if (!newData || typeof newData !== 'object' || newData.schemaVersion !== 1) {
             setRuntimeState({ data: null, lag: false, unavailable: true });
             return;
@@ -125,6 +127,7 @@
           if (typeof fetch !== 'function') return;
           try {
             const res = await fetch(apiUrl('api/capability-team.runtime', { sessionId: effectiveSessionId }), { signal: abortCtrl.signal });
+            if (abortCtrl.signal.aborted) return;
             if (res.status === 404) {
               setRuntimeState({ data: null, lag: false, unavailable: false });
               return;
@@ -187,7 +190,7 @@
           fetch(apiUrl('api/capability-team.runtime', { sessionId: effectiveSessionId }), { signal: ctrl.signal })
             .then(res => res.ok ? res.json() : null)
             .then(data => {
-              if (data && data.schemaVersion === 1) {
+              if (!ctrl.signal.aborted && data && data.schemaVersion === 1) {
                 setRuntimeState(prev => ({ ...prev, data, lag: true }));
               }
             })
@@ -225,9 +228,9 @@
         ['logs', (d?.memberEvidence?.length ? d.memberEvidence : [d?.requestEvidence ?? {}]).reduce((n, m) => n + (m.records?.length ?? 0), 0)],
       ];
       const currentMember = isTeammateSession && liveTeam?.members?.find(m => m.id === sessionId);
-      const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name || r.id === baseName(currentMember.name) || (currentMember.role === 'lead' && (r.id === 'lead' || r.capability === 'orchestrator'))) : null;
+      const myRole = currentMember ? boardRoles.find(r => r.id === currentMember.name || r.id === baseName(String(currentMember.name).split('/').at(-1)) || (currentMember.role === 'lead' && (r.id === 'lead' || r.capability === 'orchestrator'))) : null;
       const currentMemberDisplayName = myRole?.displayName ?? currentMember?.name;
-      const currentMemberLive = liveByRole.get(myRole?.id ?? sessionId);
+      const currentMemberLive = liveByRole.get(currentMember?.name ?? myRole?.id ?? sessionId);
       const myAllocation = (policy?.allocations ?? []).find(a => a.id === myRole?.id);
       const currentMemberRouted = currentMemberLive?.model ? [currentMemberLive.provider, currentMemberLive.model].filter(Boolean).join('/') : null;
       const currentMemberConfigured = myAllocation?.primary ?? (myRole?.provider ? `${myRole.provider}/${myRole.model}` : null);

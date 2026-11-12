@@ -7,13 +7,20 @@ export function createContinuation(ctx, team, failover, { createMessage } = {}) 
   const pending = new Map();
   let disposed = false;
   const clear = agent => pending.delete(agent);
+  const epochs = new WeakMap();
+  ctx.effect?.(() => team.native.onLocalStart(({ agent, runId }) => {
+    const prior = epochs.get(agent);
+    if (prior !== undefined && prior !== runId) clear(agent);
+    epochs.set(agent, runId);
+  }));
   ctx.effect?.(() => () => { disposed = true; pending.clear(); });
   ctx.on('agent/disposed', ({ agent }) => { clear(agent); failover.reset?.(agent); });
   const watched = new WeakSet();
   const currentSignal = new WeakMap();
   ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
+    const epoch = epochs.get(agent);
     const decision = await next();
-    if (!team.owns(agent)) return decision;
+    if (!team.owns(agent) || epochs.get(agent) !== epoch) return decision;
     // Only the native user producer denotes a new owner task; peer and recovery notices do not.
     if (decision?.kind === 'enter' && decision.messages.some(message => message.source?.kind === 'user')) {
       clear(agent);
@@ -33,7 +40,7 @@ export function createContinuation(ctx, team, failover, { createMessage } = {}) 
     const item = pending.get(agent);
     if (!item) return;
     clear(agent);
-    if (disposed || item.signal?.aborted || !team.owns(agent) || agent.status !== 'idle' || queued(agent)
+    if (disposed || item.signal?.aborted || agent.lifetimeSignal?.aborted || item.epoch !== epochs.get(agent) || !team.owns(agent) || agent.status !== 'idle' || queued(agent)
       || !same(agent.model.current(), item.route)) return;
     try {
       // Synchronous wake preserves the task lease across this transient idle boundary.
@@ -45,13 +52,14 @@ export function createContinuation(ctx, team, failover, { createMessage } = {}) 
   });
   return {
     async arm(agent, route, signal) {
-      if (disposed || signal?.aborted || typeof agent.steer !== 'function' || queued(agent)) return false;
+      if (disposed || signal?.aborted || agent.lifetimeSignal?.aborted || typeof agent.steer !== 'function' || queued(agent)) return false;
+      const epoch = epochs.get(agent);
       try {
         const factory = createMessage ?? (await import('@deepseek-ai/dsh-llm')).createUserMessage;
-        if (disposed || signal?.aborted || queued(agent)) return false;
+        if (disposed || signal?.aborted || agent.lifetimeSignal?.aborted || epoch !== epochs.get(agent) || queued(agent)) return false;
         const text = t('failover.continue');
         const message = factory({ content: [{ type: 'text', text }], source: { kind: 'capability-team-failover', form: 'notice', summary: text } });
-        pending.set(agent, { route, signal, message });
+        pending.set(agent, { route, signal, message, epoch });
         return true;
       } catch (error) {
         ctx.logger?.warn?.(`capability-team: failover continuation unavailable: ${String(error?.message ?? error)}`);

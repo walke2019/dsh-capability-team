@@ -10,7 +10,7 @@ test('每个注册的工具参数都是合法的对象根 JSON Schema，且只�
   const created = [];
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: f => f(), on: (name, fn) => { if (name === 'agent/created') created.push(fn); }, systemPrompt: { section: () => () => {} },
     tools: { register: t => { tools[t.name] = t; return () => {}; }, guard: () => () => {} }, skills: { register: () => () => {} },
-    agents: { list: () => [] }, agentTeams: { membership: () => ({ role: 'lead' }), tryMembership: () => undefined }, workingDirectory: {}, userQuestions: {},
+    agents: { list: () => [] }, agentTeams: { membership: agent => ({ role: agent.id === 'lead' ? 'lead' : 'teammate', name: agent.id === 'lead' ? 'lead' : 'qa', root: agent }), tryMembership: agent => ({ role: agent.id === 'lead' ? 'lead' : 'teammate', name: agent.id === 'lead' ? 'lead' : 'qa', root: agent }), listMembers: () => [] }, workingDirectory: {}, userQuestions: {},
     llm: { listProviders: () => [], listModels: async () => [] } };
   apply(ctx, {});
   // Lead-only and teammate-only tools are installed per agent; collect them by creating one of each.

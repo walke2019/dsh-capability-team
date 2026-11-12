@@ -9,7 +9,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-A multi-agent team preset for DeepSeek Harness (DSH). It is a thin enhancement layer on top of the official DSH Agent Teams (the `agentTeams` service, the `team_task_*` board, `spawn_teammate` / `send_message`), not a replacement for them.
+A multi-agent team preset for DeepSeek Harness (DSH). It is a thin enhancement layer over official collaboration: rc.1 uses experimental Agent Teams; rc.2 uses native subagent trees and the `agentTeams` task board. It does not replace native identities, execution, permissions or approvals.
 
 <!-- TODO: docs/assets/demo.gif — lead dispatches, a model is unplugged, same-tier backup takes over -->
 
@@ -17,11 +17,21 @@ A multi-agent team preset for DeepSeek Harness (DSH). It is a thin enhancement l
 
 - **Every teammate runs on your most expensive model → each role is routed to its own capability tier.** Architecture and review go to high/upper-tier models, docs and simple chores to cheaper ones. Teammates never inherit the lead's model, and a role with no qualifying model fails closed instead of silently borrowing one.
 - **One provider outage or exhausted quota stalls the whole team → same-tier failover keeps it running.** After retries, the request moves to a configured backup of the same tier (never a cross-tier downgrade); auth and quota errors switch immediately, and failed routes cool down exponentially before returning.
-- **Agents improvise, overwrite each other and burn tokens → a plan-first, board-driven workflow.** Every request starts with a dispatch plan (delegate / free / direct), subtasks land on the native task board with write scopes, and token discipline keeps prompts cacheable and outputs trimmed.
+- **Keep the team features without a second execution framework.** Role naming, canvas synchronization, model routing/failover, memory, status and token usage remain available. Dispatch enforcement, budgets, rotation and additional file/token rules are opt-in; `workflow.mode=off` preserves native execution.
 
 ## Quick start
 
-Requirements: DSH >= 0.2.2-rc.1 (below 0.3.0), Node.js >= 24.9, and the official `@deepseek-ai/dsh-experimental-agent-team-profile` bundle enabled in your DSH profile.
+Requirements: DSH >= 0.2.2-rc.1 (below 0.3.0) and Node.js >= 24.9. Team 5.3.0 supports the two verified native contracts below; the version range alone is not proof of compatibility with every future build.
+
+| Native contract | rc.1 | rc.2 |
+| --- | --- | --- |
+| Composition | Enable `@deepseek-ai/dsh-experimental-agent-team-profile` | Team board and subagent services are in native base; no legacy bundle is needed |
+| Create a named role | `spawn_teammate` (`context=fresh/fork`) | `subagent` / `subagent_fork`, with explicit registered role `name` |
+| Message / interrupt target | `target` | `agent` (native full path for nested agents) |
+| Wait | Native rc.1 team wait; teammates end an idle turn | Native input wait with `timeout_ms`; rc.1 teammate-wait restrictions are not imposed |
+| Identity / board | Native team roster and task board | Native subagent root/path identity and task DAG; no plugin-owned roster |
+
+Unknown or unnamed AIWUK roles fail closed before native creation; use the registered internal role ID. Standard-preset delegation is unchanged. The rc.2 native task-board mode remains user-selected; installing this preset does not silently enable it.
 
 **1. Install**
 
@@ -35,9 +45,11 @@ dsh plugin add @aiwuk/autocomplete
 
 **2. Enable Agent Teams from the onboarding card**
 
-If the official Agent Teams bundle is not enabled, an onboarding card detects it and enables it only after you click the button. Note that this affects every session in the profile and disables DSH's native generic subagent tools. The card also shows which capabilities matched a model tier. If some cannot be matched, add a provider, or ask the lead to turn on single-model mode: roles without a match then use your DSH default model, after you confirm it in a dialog.
+On rc.1, the onboarding card can enable the official experimental bundle only after your click. That legacy bundle affects the whole profile and replaces generic subagent tools. On rc.2, the card reports native collaboration instead: it neither enables the removed bundle nor disables native `subagent` / `subagent_fork`. Use DSH's own control to select task-board mode when needed.
 
-> If the card reports that this connection cannot manage plugins, enable `@deepseek-ai/dsh-experimental-agent-team-profile` on DSH's Plugins page instead, and restart DSH if asked.
+The card also shows capability-to-model coverage. Add a provider for unmatched capabilities, or explicitly enable single-model mode after user confirmation. With the default `confirmDispatch=on-change`, the existing primary/fallback card appears for the first role and changed routes, after native approval/guards and before creation. Cancel means no child is created. Existing explicit `never` is preserved; `always` is also available. Confirmation is not an authentication, quota or live-model health check.
+
+> On rc.1 only, if this connection cannot manage plugins, enable `@deepseek-ai/dsh-experimental-agent-team-profile` on DSH's Plugins page and follow any restart request.
 
 **3. Start a team session**
 
@@ -48,6 +60,12 @@ Read the team configuration
 ```
 
 The lead reports the roster, the tier of each role and which of your models were matched.
+
+## Verification boundary for 5.3.0
+
+The pre-release dual-runtime gate passed 867 checks per generation (865 passed, two Desktop-ASAR cases skipped), with real native provider preparation/lifecycle and Cordis injection checks, rc.1/rc.2 smoke checks, lint and build. These results do not establish real gateway authentication, billing/quota availability, browser GUI acceptance or the skipped Desktop-ASAR behavior. Final package validation is a separate release gate; source tests do not mean an installed instance was updated.
+
+The companion `@aiwuk/memory` 1.0.6 restores ordinary-preset memory on rc.2 by checking the current native composition, without the removed team-membership API. Capability-team compositions retain their own memory tools; explicitly selected standard children may use global memory.
 
 ## Comparison
 

@@ -6,6 +6,7 @@ import { createWorkflow } from '../workflow.js';
 import { createTokenDiscipline, TOKEN_RULES } from '../token-discipline.js';
 import { ROTATION, createRotation } from '../session-rotation.js';
 import { teamContext } from '../theme-plugin.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const defaults = { mode: 'off', confirmDispatch: 'on-change', enforceWriteScopes: false, fileLimits: false, rotation: false, tokens: false };
 test('Native-first defaults preserve explicit legacy settings without mutation', () => {
@@ -44,8 +45,8 @@ function harness() {
     agentTeams: { tryMembership: a => a === lead ? { role: 'lead', name: 'lead' } : { role: 'teammate', name: 'backend', root: lead } },
     on: (name, fn) => { events[name] = fn; }, effect: fn => fn(),
     tools: { guard: () => () => {}, register: tool => { tools[tool.name] = tool; return () => {}; } },
-    get: () => ({ stateOf: (_session, key) => key === 'tokenUsage' ? { inputTokens: 100, outputTokens: 10 } : undefined }) };
-  const team = { base: seed, pinned: () => '/project', loadSync: () => ({ effective }), load: async () => ({ effective }) };
+    get: name => name === 'sessionProjections' ? { stateOf: (_session, key) => key === 'tokenUsage' ? { inputTokens: 100, outputTokens: 10 } : undefined } : undefined };
+  const team = { native: fixtureNative(ctx), base: seed, pinned: () => '/project', loadSync: () => ({ effective }), load: async () => ({ effective }) };
   return { ctx, team, lead, mate, events, tools, set: patch => { effective = effectiveConfig(patch); } };
 }
 test('Dynamic off leaves native spawn/send/board unrestricted and hides dispatch status', () => {
@@ -69,9 +70,9 @@ test('tokens false disables output rewriting and idle compaction but keeps nativ
   assert.equal(td.metrics.snapshot(h.mate).steps[0].output, 10);
 });
 
-test('rotation false does not guard messages and retains manual handoff APIs', () => {
+test('rotation false does not guard messages and retains manual handoff APIs', async () => {
   const h = harness(), rotation = createRotation(h.ctx, h.team);
-  assert.equal(rotation.guard({ agent: h.lead, name: 'send_message', arguments: { target: 'backend' } }), undefined);
+  assert.equal(await rotation.guard({ agent: h.lead, name: 'send_message', arguments: { target: 'backend' } }), undefined);
   assert.equal(typeof rotation.writeHandoff, 'function');
   assert.equal(typeof rotation.rotate, 'function');
   assert.deepEqual(rotation.status(h.mate), { level: 'ok', reasons: [] });

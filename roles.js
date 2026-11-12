@@ -38,7 +38,14 @@ export function apply(ctx, team, failover, observability, taskControl, continuat
       return policyText(project ? team.loadSync(project, agent).effective : team.base);
     } });
   };
-  ctx.on('agent/created', async ({ agent }) => { installPolicy(agent); await preselect(ctx, team, failover, agent); });
+  ctx.on('agent/created', async ({ agent }) => {
+    installPolicy(agent);
+    if (team.native.kind() === 'rc1') await preselect(ctx, team, failover, agent);
+  });
+  ctx.effect?.(() => team.native.onLocalStart(({ agent }) => {
+    installPolicy(agent);
+    if (team.native.kind() === 'rc2') preselectSync(team, failover, agent);
+  }));
   for (const agent of ctx.agents?.list?.() ?? []) installPolicy(agent);
   const longContext = createLongContext();
   const hadOverride = new WeakSet();
@@ -46,7 +53,7 @@ export function apply(ctx, team, failover, observability, taskControl, continuat
     const previous = await next();
     if (!team.owns(agent)) return previous;
     const resolved = await team.resolve(agent);
-    const lead = ctx.agentTeams?.tryMembership?.(agent)?.role === 'lead';
+    const lead = team.native.identity(agent)?.role === 'lead';
     const { leadContext, ...configuredRole } = resolved;
     // The Lead uses the model the user picked in the conversation; teammates are routed strictly by role.
     const role = lead ? followUserChoice(configuredRole, previous, leadContext) : configuredRole;
@@ -67,7 +74,7 @@ export function apply(ctx, team, failover, observability, taskControl, continuat
     if (selected.unavailable) throw new Error(modelText('roles.unavailable', { 0: role.displayName ?? role.id }));
     if (observability) {
       try {
-        bindRuntime(agent, observability, ctx.agentTeams);
+        bindRuntime(agent, observability, team.native);
         observability.request(agent, { turn, step, role, routed, selected });
       } catch { /* telemetry must never change model selection */ }
     }
@@ -98,6 +105,14 @@ export function apply(ctx, team, failover, observability, taskControl, continuat
     return { kind: 'retry' };
   });
 }
+function preselectSync(team, failover, agent) {
+  const identity = team.native.identity(agent);
+  if (identity?.role !== 'teammate' || !agent.model?.select) return;
+  const role = team.resolveSync(agent);
+  if (role.unassigned || !role.provider) return;
+  const route = failover.route(agent, 0, 0, role);
+  if (!route.unavailable && !sameRoute(agent.model.current?.(), route)) agent.model.select({ provider: route.provider, model: route.model });
+}
 const sameRoute = (a, b) => a?.provider === b?.provider && a?.model === b?.model;
 /** Same route as the step's selection: its reasoning effort is part of the fixed selection and must be kept. */
 function keepEffort(previous, request) {
@@ -109,7 +124,7 @@ function keepEffort(previous, request) {
  */
 export async function preselect(ctx, team, failover, agent) {
   try {
-    if (!agent?.model?.select || !team.owns(agent) || ctx.agentTeams?.tryMembership?.(agent)?.role !== 'teammate') return;
+    if (!agent?.model?.select || !team.owns(agent) || team.native.identity(agent)?.role !== 'teammate') return;
     const role = await team.resolve(agent);
     if (role.unassigned || !role.provider) return; // agent/request fails closed with guidance
     const route = failover.route(agent, 0, 0, role);

@@ -70,15 +70,14 @@ export function accessSummary(access) {
   if (access.deny.length) parts.push(modelText('access.014', { 0: access.deny.join('、') }));
   return parts.length ? parts.join('；') : undefined;
 }
-import { ownsCapabilityTeam } from './preset-guard.js';
 export function applyAccess(ctx, team) {
   ctx.effect(() => ctx.tools.guard(exec => {
-    const membership = ctx.agentTeams.tryMembership(exec.agent);
-    if (!ownsCapabilityTeam(ctx, exec.agent) || membership === undefined) return undefined;
+    const membership = team.native.identity(exec.agent);
+    if (!membership) return undefined;
     const project = team.pinned(exec.agent);
     if (!project) return undefined; // Pinned before the first request; nothing can run earlier.
     let role, effective;
-    try { effective = team.loadSync(project, exec.agent).effective; role = resolveRole(membership, effective); }
+    try { effective = team.loadSync(project, exec.agent).effective; role = resolveRole({ ...membership, name: membership.roleName }, effective); }
     catch (error) {
       // An unregistered teammate is already blocked at request routing; a broken config fails closed.
       return /is not registered in this project's team configuration/.test(error.message) ? undefined : modelText('access.015', { 0: error.message });

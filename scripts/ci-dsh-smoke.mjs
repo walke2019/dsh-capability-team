@@ -2,7 +2,8 @@
 // Usage: node scripts/ci-dsh-smoke.mjs [dshPackageDir]   (or set DSH_PACKAGE_DIR)
 // Without an argument the global npm root is used.
 import { readFileSync, existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, dirname } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
@@ -36,14 +37,20 @@ try { semver = requireFromDsh('semver'); } catch {
 }
 
 /** Return the installed version of a @deepseek-ai package, or undefined. */
-function installedVersion(name) {
-  if (name === dsh.name) return dsh.version;
-  for (const base of [join(dshDir, 'node_modules'), join(dshDir, '..', '..')]) {
-    const file = join(base, ...name.split('/'), 'package.json');
-    if (existsSync(file)) return readJson(file).version;
+function packageFile(name) {
+  if (name === dsh.name) return join(dshDir, 'package.json');
+  for (const parent of [join(dshDir, 'package.json'), ...['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-experimental-voice-input-bundle'].map(bundle => { try { return requireFromDsh.resolve(`${bundle}/package.json`); } catch { return join(dshDir, 'package.json'); } })]) {
+    try { return createRequire(parent).resolve(`${name}/package.json`); } catch { /* older packages may not export metadata */ }
+    for (const base of [join(dirname(parent), 'node_modules'), join(dshDir, '..', '..')]) {
+      const file = join(base, ...name.split('/'), 'package.json');
+      if (existsSync(file)) return file;
+    }
   }
-  return undefined;
 }
+const installedVersion = name => { const file = packageFile(name); return file ? readJson(file).version : undefined; };
+const nativeTeam = packageFile('@deepseek-ai/dsh-agent-team');
+const generation = nativeTeam && !installedVersion('@deepseek-ai/dsh-experimental-agent-team') ? 'rc2' : 'rc1';
+const generationPeers = new Set(generation === 'rc2' ? ['@deepseek-ai/dsh-agent-team', '@deepseek-ai/dsh-subagent'] : ['@deepseek-ai/dsh-experimental-agent-team']);
 
 let checked = 0;
 for (const manifest of manifests) {
@@ -51,6 +58,7 @@ for (const manifest of manifests) {
   const label = `${pkg.name} (${manifest})`;
   const peers = Object.entries(pkg.peerDependencies ?? {}).filter(([name]) => name.startsWith('@deepseek-ai/'));
   for (const [name, range] of peers) {
+    if (['@deepseek-ai/dsh-experimental-agent-team', '@deepseek-ai/dsh-agent-team', '@deepseek-ai/dsh-subagent'].includes(name) && !generationPeers.has(name)) continue;
     checked++;
     const version = installedVersion(name);
     if (!version) failures.push(`${label}: peer ${name}@${range} is not installed in the DSH CLI`);
@@ -65,9 +73,26 @@ for (const manifest of manifests) {
   }
 }
 
-const profileVersion = installedVersion(profilePackage);
-if (!profileVersion) failures.push(`Official agent-team profile ${profilePackage} is missing from the DSH CLI`);
-else console.log(`ok  ${profilePackage}@${profileVersion}`);
+if (generation === 'rc1') {
+  const profileVersion = installedVersion(profilePackage);
+  if (!profileVersion) failures.push(`Official agent-team profile ${profilePackage} is missing from the DSH CLI`);
+  else console.log(`ok  ${profilePackage}@${profileVersion}`);
+} else {
+  for (const [name, methods] of [['@deepseek-ai/dsh-agent-team', ['isEnabled', 'createTask', 'getTask', 'listTasks', 'updateTask']], ['@deepseek-ai/dsh-subagent', ['rootOf', 'namesOf', 'listDescendants', 'resolveName', 'sendMessage', 'startActivation']]]) {
+    try {
+      const file = packageFile(name);
+      if (!file) throw new Error('package missing');
+      const entry = resolve(dirname(file), readJson(file).main ?? 'lib/index.js');
+      const loaded = await import(pathToFileURL(entry).href);
+      const prototype = (loaded.default ?? loaded.TeamService ?? loaded.SubagentRuntime)?.prototype;
+      for (const method of methods) if (typeof prototype?.[method] !== 'function') failures.push(`${name}: required native method ${method} is missing`);
+      console.log(`ok  ${name}: native service imported`);
+    } catch (error) { failures.push(`${name}: native import failed: ${error.message}`); }
+  }
+  const baseFile = packageFile('@deepseek-ai/dsh-base');
+  const patch = baseFile ? readFileSync(join(dirname(baseFile), 'cordis.patch.yml'), 'utf8') : '';
+  for (const name of ['@deepseek-ai/dsh-agent-team', '@deepseek-ai/dsh-tool-agent-team', '@deepseek-ai/dsh-tool-subagent', '@deepseek-ai/dsh-tool-subagent-control']) if (!patch.includes(`name: '${name}'`)) failures.push(`Native base composition is missing ${name}`);
+}
 
 if (failures.length) {
   console.error(`\nDSH compatibility smoke FAILED against ${dsh.name}@${dsh.version}:`);

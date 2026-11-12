@@ -16,7 +16,7 @@ export const taskControlSnapshot = id => leadBindings.get(id)?.snapshot({id}) ??
 export const taskControlBinding = agent => bindings.get(agent);
 export function taskError(code, message, status = 422) { return Object.assign(new Error(message), { code, status }); }
 export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged = () => {}, predecessorOf } = {}) {
-  const groups = new Map(); let workflow;
+  const groups = new Map(), starting = new WeakMap(); let workflow;
   const changed = lead => { group(lead).revision++; try { onChanged(lead.id); } catch { /* notification never changes control */ } };
   let disposed = false;
   const group = lead => { if (!groups.has(lead.id)) groups.set(lead.id, { revision: 0, generation: 0, leases: [], auditTail: [], pending: [], tombstones: new Map(), timer: null, queue: Promise.resolve() }); return groups.get(lead.id); };
@@ -38,11 +38,11 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
     if (args.complexity !== undefined && (!Object.hasOwn(ESTIMATES,args.complexity) || !['simple','medium','complex'].includes(args.complexity))) throw taskError('INVALID','Invalid complexity');
     if (args.timeout_seconds !== undefined && (args.timeout_seconds < 60 || args.timeout_seconds > 28800)) throw taskError('INVALID','Invalid timeout');
   };
-  const member = (lead, role) => {
-    if (!ownsCapabilityTeam(ctx, lead) || ctx.agents.get(lead?.id) !== lead || ctx.agentTeams.tryMembership(lead)?.role !== 'lead') throw taskError('FORBIDDEN', 'Lead only', 403);
+  const member = async (lead, role) => {
+    if (!ownsCapabilityTeam(ctx, lead, team.native) || ctx.agents.get(lead?.id) !== lead || team.native.identity(lead)?.role !== 'lead') throw taskError('FORBIDDEN', 'Lead only', 403);
     if (typeof role !== 'string' || role.length > 80) throw taskError('BAD_REQUEST','Invalid role',400);
     if (role === 'lead') throw taskError('FORBIDDEN', 'Cannot target Lead', 403);
-    const found = ctx.agentTeams.listMembers(lead).find(m => m.name === role && m.role !== 'lead');
+    const found = (await team.native.list(lead)).find(m => m.name === role && m.role !== 'lead' && m.local !== false);
     if (!found) throw taskError('NOT_FOUND', 'Member unavailable', 404);
     return found;
   };
@@ -65,12 +65,12 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
   const serial = (lead, action) => { const g = group(lead), result = g.queue.catch(() => {}).then(action); g.queue = result; return result; };
   const active = (lead, role) => group(lead).leases.find(l => l.roleId === role && l.status !== 'ended');
   // A rotation successor (<role>-rN) works on its predecessor's assignment.
-  const currentAssignment = (lead, role) => {const plan=workflow?.state(lead).plan;return plan?.mode==='delegate'?plan.assignments?.find(a=>a.role===role||a.role===baseName(role)):undefined;};
+  const currentAssignment = (lead, role) => {const plan=workflow?.state(lead).plan;return plan?.mode==='delegate'?plan.assignments?.find(a=>a.role===role||a.role===baseName(role.split('/').at(-1))):undefined;};
   const requireAssignment = (lead, role) => { if (!currentAssignment(lead, role)) throw taskError('FORBIDDEN', 'Role not in current delegate assignment', 403); };
   const checkCAS = (lease, args) => { if (!lease || args.lease_id !== lease.leaseId || args.expected_revision !== lease.revision) throw taskError('CONFLICT', 'CONFLICT', 409); };
   const steps = id => { const agent = ctx.agents.get(id); try { return ctx.get?.('sessionProjections')?.stateOf(agent.session, 'capabilityTeamReport')?.view?.stepsStarted ?? 0; } catch { return 0; } };
   async function candidates(lead, roleId) {
-    member(lead, roleId); const { effective, policy } = await team.load(lead); const entry = effective.roles[roleId] ?? effective.roles[baseName(roleId)] ?? effective.roles[legacyRoleId(baseName(roleId), effective.roles)], capability = effective.capabilities[entry?.capability];
+    await member(lead, roleId); const { effective, policy } = await team.load(lead); const entry = effective.roles[roleId] ?? effective.roles[baseName(roleId.split('/').at(-1))] ?? effective.roles[legacyRoleId(baseName(roleId.split('/').at(-1)), effective.roles)], capability = effective.capabilities[entry?.capability];
     if (!capability) throw taskError('NOT_FOUND', 'Unknown role', 404);
     const rows = [];
     for (const provider of ctx.llm.listProviders()) {
@@ -98,7 +98,7 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
         g.pending=pending;
       });
       for(const assignment of pending){
-        valid();try{member(lead,assignment.role);await api.budget(lead,{action:'start',role:assignment.role,complexity:assignment.complexity,assignment_id:assignment.assignmentId},{kind:'system',id:lead.id});valid();}catch(error){valid();if(error.status!==404)throw error;}
+        valid();try{await member(lead,assignment.role);await api.budget(lead,{action:'start',role:assignment.role,complexity:assignment.complexity,assignment_id:assignment.assignmentId},{kind:'system',id:lead.id});valid();}catch(error){valid();if(error.status!==404)throw error;}
       }
       valid();
     },
@@ -107,7 +107,7 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
       const generation=group(lead).generation;
       return serial(lead, async () => {
         if(args.action==='start'&&generation!==group(lead).generation)throw taskError('CONFLICT','Dispatch superseded',409);
-        const m = member(lead, args.role); bindings.set(lead, api); leadBindings.set(lead.id, api); await sweep(lead);
+        const m = await member(lead, args.role); bindings.set(lead, api); leadBindings.set(lead.id, api); await sweep(lead);
         if (args.action === 'inspect') return api.snapshot(lead);
         let lease = active(lead, args.role);
         if (args.action === 'finish') { checkCAS(lease, args); await end(lead, lease, 'explicit-finish'); return structuredClone(lease); }
@@ -142,7 +142,7 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
      */
     async inherit(lead, from, to) {
       return serial(lead, async () => {
-        const g = group(lead), m = member(lead, to); await sweep(lead);
+        const g = group(lead), m = await member(lead, to); await sweep(lead);
         if (active(lead, to)) return null;
         const prev = g.leases.find(l => l.roleId === from && l._generation === g.generation);
         if (!prev || !currentAssignment(lead, to)) return null;
@@ -163,7 +163,7 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
     async override(lead, args, actor = { kind: 'lead', id: lead.id }) {
       validate(args,'override');
       return serial(lead, async () => {
-        member(lead, args.role); await sweep(lead); const lease = active(lead,args.role);
+        await member(lead, args.role); await sweep(lead); const lease = active(lead,args.role);
         if (args.action === 'inspect') return structuredClone(lease??null);
         checkCAS(lease,args);
         if (args.action === 'clear') { lease._actor=actor;lease._source=actor.kind==='owner'?'panel':'tool';await append(lead,'override-clear',lease,args.reason,true);checkCAS(lease,args);await sweep(lead);checkCAS(lease,args);lease.override=null; lease.revision++;changed(lead);return structuredClone(lease); }
@@ -182,15 +182,16 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
       });
     },
     async route(agent, role) {
-      const ownIdentity=ctx.agentTeams.tryMembership(agent);
+      await starting.get(agent);
+      const ownIdentity=team.native.identity(agent);
       if(ownIdentity?.role==='lead') {await api.update(agent);return role;}
-      const identity=ctx.agentTeams.tryMembership(agent); if(!identity || identity.role==='lead') return role;
+      const identity=team.native.identity(agent); if(!identity || identity.role==='lead') return role;
       const lead=identity.root ?? ctx.agents.get(identity.leadSessionId ?? identity.rootId); if(!lead) return role;
-      const before=active(lead,identity.name);if(before&&(before._routable===false||before._generation!==group(lead).generation||now()>=before.expiresAt))return role;
-      await api.update(lead); const lease=active(lead,identity.name); if(!lease?.override || lease._routable===false || lease._generation!==group(lead).generation || now()>=lease.expiresAt) return role;
+      const before=active(lead,identity.address);if(before&&(before._routable===false||before._generation!==group(lead).generation||now()>=before.expiresAt))return role;
+      await api.update(lead); const lease=active(lead,identity.address); if(!lease?.override || lease._routable===false || lease._generation!==group(lead).generation || now()>=lease.expiresAt) return role;
       const revision=lease.revision, override=lease.override;
-      const catalog=await candidates(lead,identity.name);
-      if(lease._routable===false || lease._generation!==group(lead).generation || active(lead,identity.name)!==lease || lease.status==='ended' || lease.revision!==revision || lease.override!==override || now()>=lease.expiresAt)return role;
+      const catalog=await candidates(lead,identity.address);
+      if(lease._routable===false || lease._generation!==group(lead).generation || active(lead,identity.address)!==lease || lease.status==='ended' || lease.revision!==revision || lease.override!==override || now()>=lease.expiresAt)return role;
       const chosen=catalog.candidates.find(r=>r.provider===override.provider&&r.model===override.model);
       if(!chosen) { lease.override=null; lease.revision++; await append(lead,'override-clear',lease,'override-invalid'); return role; }
       return {...role,provider:chosen.provider,model:chosen.model,fallbacks:(role.fallbacks??[]).filter(r=>catalog.candidates.some(c=>c.provider===r.provider&&c.model===r.model&&rank(c.tier)>=rank(chosen.tier))),longContext:undefined,taskLeaseSignature:`${lease.leaseId}:${lease.revision}`};
@@ -225,16 +226,16 @@ export function createTaskControl(ctx, team, { audit, now = Date.now, onChanged 
           void api.update(lead).catch(()=>{});
         }
       })));
-      ctx.on('agent/status',({agent,status})=>{if(ownsCapabilityTeam(ctx,agent))void api.status(agent,status).catch(()=>{});});
-      ctx.on('agent/created',({agent})=>{if(!ownsCapabilityTeam(ctx,agent))return;const identity=ctx.agentTeams.tryMembership(agent);if(identity?.role==='teammate'){const lead=identity.root;const pending=group(lead).pending.find(a=>a.role===identity.name&&!a.consumed&&!a.claimed&&a.generation===group(lead).generation);if(pending){pending.claimed=true;void api.budget(lead,{action:'start',role:pending.role,complexity:pending.complexity,assignment_id:pending.assignmentId},{kind:'system',id:lead.id}).catch(()=>{});}else{const from=predecessorOf?.(lead.id,identity.name);if(from)void api.inherit(lead,from,identity.name).catch(()=>{});}}});
-      ctx.on('agent/disposed',({agent})=>{if(ownsCapabilityTeam(ctx,agent))void api.status(agent,'disposed').catch(()=>{});});
+      ctx.on('agent/status',({agent,status})=>{if(ownsCapabilityTeam(ctx,agent,team.native))void api.status(agent,status).catch(()=>{});});
+      ctx.effect(() => team.native.onLocalStart(({agent})=>{if(!ownsCapabilityTeam(ctx,agent,team.native))return;const identity=team.native.identity(agent);if(identity?.role==='teammate'){const lead=identity.root;const pending=group(lead).pending.find(a=>a.role===identity.address&&!a.consumed&&!a.claimed&&a.generation===group(lead).generation);if(pending){pending.claimed=true;starting.set(agent,api.budget(lead,{action:'start',role:pending.role,complexity:pending.complexity,assignment_id:pending.assignmentId},{kind:'system',id:lead.id}).catch(()=>{}));}else{const from=predecessorOf?.(lead.id,identity.address);if(from)starting.set(agent,api.inherit(lead,from,identity.address).catch(()=>{}));}}}));
+      ctx.on('agent/disposed',({agent})=>{if(ownsCapabilityTeam(ctx,agent,team.native))void api.status(agent,'disposed').catch(()=>{});});
       for(const [name,method] of [['capability_task_budget','budget'],['capability_member_override','override']]) ctx.effect(()=>ctx.tools.register({name,description:modelText('member-task-control.265'),parameters:params(Object.fromEntries((method==='budget'?['action','role','lease_id','expected_revision','task_id','assignment_id','complexity','timeout_seconds','reason']:['action','role','lease_id','expected_revision','provider','model','catalog_version','reason']).map(k=>[k,{type:['expected_revision','timeout_seconds'].includes(k)?'number':'string',...(k==='action'?{enum:method==='budget'?['start','finish','inspect']:['set','clear','inspect']}:k==='complexity'?{enum:['simple','medium','complex']}:{})}])),['action','role']),output:{schema:{type:'string'},render:(_a,v)=>[{type:'text',text:v}]},execute:async(args,exec)=>JSON.stringify(await api[method](exec.agent,args))}));
     },
   };
   for (const method of ['budget','override']) {
     const original=api[method];
     api[method]=async (lead,args,actor)=>{try{return await original(lead,args,actor);}catch(error){
-      if(ctx.agentTeams.tryMembership(lead)?.role==='lead') await append(lead,'rejected',null,error.code??'rejected');
+      if(team.native.identity(lead)?.role==='lead') await append(lead,'rejected',null,error.code??'rejected');
       throw error;
     }};
   }

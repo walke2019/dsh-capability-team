@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { memberFixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { apply } from '../roles.js';
 import { createFailover } from '../failover.js';
@@ -16,7 +17,7 @@ function fixture({ role: changes = {}, createMessage = input => ({ ...input, id:
     steer(message) { notices.push(message); this.status = 'running'; } };
   let clock = 0;
   const f = createFailover({ now: () => clock, sleep: async ms => { waits.push(ms); return true; } });
-  apply(ctx, { owns: () => true, resolve: async () => role }, f, undefined, undefined, { createMessage });
+  apply(ctx, { native: memberFixtureNative, owns: () => true, resolve: async () => role }, f, undefined, undefined, { createMessage });
   let turn = 1, step = 1, controller = new AbortController();
   const emit = (name, payload) => { for (const fn of listeners.get(name) ?? []) fn(payload); };
   return { agent, f, notices, waits, warnings, effects, role,

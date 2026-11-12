@@ -33,7 +33,7 @@
       const members = liveTeam?.members ?? [...snapshot.values()].map(m => ({ id: m.sessionId, name: m.name }));
       const refreshedAt = d?.at;
       return members.map(m => {
-        const values = liveTeam ? live.projections(m.id) : undefined;
+        const values = live?.projections?.(m.id);
         const before = snapshot.get(m.id)?.usage;
         const route = trustedRoute(values, before);
         const ownUsage = values?.capabilityTeamUsage;
@@ -75,7 +75,7 @@
         h('p', { className: 'ctm-sub ctm-ov-help' }, t('usage.hint')),
         members.length ? h('span', { className: 'ctm-label' }, fmt(t('usage.total'), { n: usageTotal(members) == null ? t('usage.unknown') : compact(usageTotal(members)) })) : null,
         ...(members.length ? members.map((m, index) => {
-          const role = byId.get(m.name) ?? byId.get(baseName(m.name));
+          const role = byId.get(m.name) ?? byId.get(baseName(String(m.name).split('/').at(-1)));
           // Same contract as usageTotal and cardMeters: the server sends zeroed totals with coverage 'unknown'.
           const used = isUnknownUsage(m) ? null : billable(m.totals);
           const max = role?.maxTokens;

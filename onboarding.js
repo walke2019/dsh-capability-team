@@ -29,19 +29,24 @@ export async function tierCoverage(llm, capabilities = seed.capabilities) {
   return { known: true, models: entries.length, capabilities: report.length, covered: report.length - unassigned.length, unassigned, ...(errors.length ? { catalogErrors: errors } : {}) };
 }
 /** Everything the onboarding card shows; each part degrades to `known: false` instead of failing. */
-export async function onboardingStatus(ctx) {
+export async function onboardingStatus(ctx, native) {
   const selection = (() => { try { return ctx.get?.('agentDefaultModel')?.currentSelection?.(); } catch { return undefined; } })();
+  const teams = ctx.get?.('agentTeams');
+  const nativeGeneration = native?.kind() ?? (typeof teams?.tryMembership === 'function' ? 'rc1'
+    : typeof teams?.isEnabled === 'function' && typeof teams?.listTasks === 'function' ? 'rc2' : 'unavailable');
   return {
-    teamServicePresent: !!ctx.get?.('agentTeams'),
-    bundle: await teamBundleStatus(ctx.get?.('pluginManager')),
+    nativeGeneration,
+    legacyBundleRequired: nativeGeneration !== 'rc2',
+    teamServicePresent: !!teams,
+    bundle: nativeGeneration === 'rc2' ? { known: true, required: false } : await teamBundleStatus(ctx.get?.('pluginManager')),
     coverage: await tierCoverage(ctx.get?.('llm')).catch(() => ({ known: false })),
     ...(selection?.provider && selection?.model ? { defaultModel: `${selection.provider}/${selection.model}` } : {}),
   };
 }
-export function applyOnboardingApi(ctx) {
+export function applyOnboardingApi(ctx, native) {
   ctx.inject?.(['connection'], scoped => scoped.connection.fetch.register({ path: ONBOARDING_PATH, methods: ['GET'], requestBody: 'buffered',
     fetch: async () => {
-      try { return Response.json(await onboardingStatus(ctx), { headers: { 'cache-control': 'no-store' } }); }
+      try { return Response.json(await onboardingStatus(ctx, native), { headers: { 'cache-control': 'no-store' } }); }
       catch { return Response.json({ code: 'UNAVAILABLE' }, { status: 503 }); }
     } }));
 }

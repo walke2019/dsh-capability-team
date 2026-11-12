@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { createHarness } from './helpers/client-harness.mjs';
+import { buildClient } from '../scripts/build-client.mjs';
+const clientSource = await buildClient();
 
 test('MVP-B 11: 降级模式下 memberSig 响应真实 running 状态与 modelSelection 路由变更', async () => {
   let fetchCount = 0;
@@ -108,25 +110,32 @@ test('MVP-B 12: 成果货架请求传递 AbortSignal，卸载或取消后中止�
 
   const sessions = { list: { getSnapshot: () => state, subscribe: () => () => {} }, refreshProjections: async () => {} };
   let setStateCallCount = 0;
+  let component = 'overview';
+  const stateCalls = { overview: 0, rack: 0 };
+  const cleanups = { overview: [], rack: [] };
   let unmountCallback = null;
   const customReact = {
     useState(initial) {
       let val = initial;
+      const owner = component;
       return [val, updater => {
+        stateCalls[owner]++;
         setStateCallCount++;
         val = typeof updater === 'function' ? updater(val) : updater;
       }];
     },
     useRef(initial) { return { current: initial }; },
     useEffect(fn) {
-      unmountCallback = fn();
+      const off = fn();
+      if (typeof off === 'function') cleanups[component].push(off);
+      unmountCallback = off;
     },
     useMemo(fn) { return fn(); },
     createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
   };
 
   let customPlugin;
-  new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({
+  new Script(clientSource).runInNewContext({
     window: { __ModuleLoader__: { load: spec => { customPlugin = spec.factory(() => customReact); } } },
     fetch: fakeFetch,
     AbortController: globalThis.AbortController,
@@ -157,6 +166,7 @@ test('MVP-B 12: 成果货架请求传递 AbortSignal，卸载或取消后中止�
   // The artifacts panel now wraps its content in an ErrorBoundary (also typeof 'function', being a class);
   // require the ArtifactsRack-specific `sessionId` prop so this does not match that wrapper instead.
   const rack = findNode(artPanel, n => typeof n.type === 'function' && 'sessionId' in n.props);
+  component = 'rack';
   const rackTree = rack.type(rack.props);
   const chg = findNode(rackTree, n => n.props?.className === 'ctm-chg-item');
 
@@ -164,10 +174,12 @@ test('MVP-B 12: 成果货架请求传递 AbortSignal，卸载或取消后中止�
   const togglePromise = chg.props.onToggle({ target: { open: true } });
   assert.equal(summaryFetchCount, 1, 'Initial summary fetch fired');
   const initialSetStateCount = setStateCallCount;
+  const beforeUnmount = { ...stateCalls };
 
   // Now trigger unmount cleanup
   assert.equal(typeof unmountCallback, 'function', 'ArtifactsRack registered cleanup effect');
   unmountCallback(); // Calls abortRef.current.abort()
+  for (const off of cleanups.overview.reverse()) off();
   assert.equal(capturedSignals[0].aborted, true, 'Signal aborted on unmount');
 
   // Release the first fetch
@@ -176,6 +188,8 @@ test('MVP-B 12: 成果货架请求传递 AbortSignal，卸载或取消后中止�
 
   // Assert: subsequent files diff fetch was aborted/skipped and no setState happened after unmount
   assert.equal(summaryFetchCount, 1, 'Subsequent diff fetches must not execute after abort');
+  assert.equal(stateCalls.rack, beforeUnmount.rack, 'rack must not setState after abort');
+  assert.equal(stateCalls.overview, beforeUnmount.overview, 'overview must not setState after unmount');
   assert.equal(setStateCallCount, initialSetStateCount, 'setState must not be called after abort');
 });
 

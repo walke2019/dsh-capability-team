@@ -9,7 +9,7 @@
 
 [English](README.md) | **简体中文**
 
-面向 DeepSeek Harness（DSH）的多智能体团队预设。它是构建在官方 DSH Agent Teams（`agentTeams` 服务、`team_task_*` 看板、`spawn_teammate` / `send_message`）之上的一层轻量增强，而不是替代品。
+面向 DeepSeek Harness（DSH）的多智能体团队预设。它在官方协作机制上做轻量增强：rc.1 使用实验 Agent Teams，rc.2 使用原生子智能体树和 `agentTeams` 任务看板，不替代原生身份、执行、权限或审批。
 
 <!-- TODO: docs/assets/demo.gif — lead dispatches, a model is unplugged, same-tier backup takes over -->
 
@@ -17,11 +17,21 @@
 
 - **每个队友都在用你最贵的模型 → 每个角色按能力档位路由。** 架构与审查交给 high/upper 档模型，文档和简单杂活交给更便宜的模型。队友不会继承主控的模型；没有合格模型的角色直接 fail-closed，绝不悄悄借用别的模型。
 - **一个渠道宕机或额度耗尽，整个团队卡住 → 同档容灾让团队继续运转。** 重试之后，请求切换到已配置的同档备选（绝不跨档降级）；鉴权与额度错误立即切换，故障路由按指数冷却后再恢复。
-- **智能体各自乱干、互相覆盖、浪费 Token → 计划先行、看板驱动的工作流。** 每个请求先出派活计划（delegate / free / direct），子任务带写入范围进入原生任务看板，Token 纪律保证提示词可缓存、输出被裁剪。
+- **保留团队特色，不再建立第二套执行框架。** 角色命名、画布同步、模型路由及自动回退、记忆、状态和 Token 用量照常保留。强制派工、预算、轮换及附加文件/Token 规则按配置启用；默认 `workflow.mode=off` 复用原生执行。
 
 ## 快速开始
 
-前置条件：DSH >= 0.2.2-rc.1（且 < 0.3.0）、Node.js >= 24.9，并在 DSH profile 中启用官方 `@deepseek-ai/dsh-experimental-agent-team-profile` bundle。
+前置条件：DSH >= 0.2.2-rc.1（且 < 0.3.0）、Node.js >= 24.9。Team 5.3.0 支持以下两套已验证的原生契约；版本范围本身不代表未来所有构建都已兼容。
+
+| 原生契约 | rc.1 | rc.2 |
+| --- | --- | --- |
+| 挂载方式 | 启用 `@deepseek-ai/dsh-experimental-agent-team-profile` | 原生 base 已包含团队看板与子智能体服务，不需要旧 bundle |
+| 创建角色 | `spawn_teammate`（`context=fresh/fork`） | `subagent` / `subagent_fork`，显式传入已登记角色 `name` |
+| 消息 / 中断目标 | `target` | `agent`（嵌套成员使用原生完整路径） |
+| 等待 | rc.1 原生团队等待；队友空闲时结束本轮 | 使用 `timeout_ms` 的原生输入等待，不套用 rc.1 队友禁等规则 |
+| 身份 / 看板 | 原生成员名册与任务看板 | 原生子智能体根与路径身份、任务 DAG，不建立插件名册 |
+
+AIWUK 中未知或未命名角色会在原生成员创建前 fail-closed，请使用登记的内部角色 ID；标准预设的派生行为不变。rc.2 原生任务看板模式由用户选择，安装本预设不会静默启用。
 
 **1. 安装**
 
@@ -35,9 +45,11 @@ dsh plugin add @aiwuk/autocomplete
 
 **2. 在引导卡片中启用 Agent Teams**
 
-如果官方 Agent Teams bundle 未启用，引导卡片会检测到，只有你点击按钮后才会启用。注意：启用后会影响该 profile 下的所有会话，并停用 DSH 原生的通用子智能体工具。卡片还会显示哪些能力已匹配到模型档位。如果有能力匹配不到，可以补充渠道，或让主控开启单模型模式：未匹配的角色改用你的 DSH 默认模型，开启前会弹出确认框由你确认。
+rc.1 的引导卡片仅在你点击后启用官方实验 bundle；旧 bundle 会影响整个 profile 并替换通用子智能体工具。rc.2 的卡片改为报告原生协作，不启用已移除的旧 bundle，也不禁用 `subagent` / `subagent_fork`；需要任务看板时使用 DSH 自己的模式开关。
 
-> 如果卡片提示当前连接不能管理插件，请在 DSH 的“插件”页手动启用 `@deepseek-ai/dsh-experimental-agent-team-profile`，并按提示重启 DSH。
+卡片仍显示模型档位覆盖情况。未匹配的能力可补充渠道，或经用户确认显式启用单模型模式。默认 `confirmDispatch=on-change` 在角色首次使用及路由变化时，复用主备模型选择卡；卡片位于原生审批与守卫之后、创建之前，取消不创建。已有显式 `never` 保留，也可选 `always`。确认不代表认证、额度或实时模型健康检查通过。
+
+> 仅 rc.1：如果当前连接不能管理插件，请在 DSH“插件”页启用 `@deepseek-ai/dsh-experimental-agent-team-profile`，并遵循重启提示。
 
 **3. 开始团队会话**
 
@@ -48,6 +60,12 @@ dsh plugin add @aiwuk/autocomplete
 ```
 
 主控会汇报名册、各角色的档位以及匹配到了你的哪些模型。
+
+## 5.3.0 验证边界
+
+发布前双运行时门禁每代运行 867 项检查（865 通过、2 项 Desktop-ASAR 跳过），包括真实原生 provider 准备/生命周期、Cordis 注入、rc.1/rc.2 smoke、lint 与 build。这不等于真实网关认证、计费/额度可用、浏览器 GUI 或跳过的 Desktop-ASAR 行为已经验收。最终包验证仍是独立门禁，源码测试不代表运行实例已更新。
+
+配套 `@aiwuk/memory` 1.0.6 不再依赖已移除的团队 membership API，按当前原生组成恢复 rc.2 普通预设记忆；capability-team 组成仍用自身记忆工具，显式选择 standard 的子会话可使用全局记忆。
 
 ## 对比
 

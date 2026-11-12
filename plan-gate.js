@@ -23,11 +23,11 @@ export function planDenial(exec, role, plan, workflow) {
 }
 export function createPlanGate(ctx, team) {
   const plans = new Map(); // `${teamId}:${role}` → { status, plan, feedback?, at }
-  const keyOf = (membership, role = membership.name) => `${membership.id}:${role}`;
+  const keyOf = (membership, role = membership.address) => `${membership.rootId}:${role}`;
   const roleOf = (agent, membership) => {
     const project = team.pinned(agent);
     const effective = project ? team.loadSync(project, agent).effective : team.base;
-    return { role: resolveRole(membership, effective), effective };
+    return { role: resolveRole({ ...membership, name: membership.roleName }, effective), effective };
   };
   return {
     plans,
@@ -42,8 +42,8 @@ export function createPlanGate(ctx, team) {
       for (const role of roles) plans.delete(keyOf(leadMembership, role));
     },
     guard(exec) {
-      const membership = ctx.agentTeams.tryMembership(exec.agent);
-      if (!ownsCapabilityTeam(ctx, exec.agent) || membership?.role !== 'teammate') return undefined;
+      const membership = team.native.identity(exec.agent);
+      if (membership?.role !== 'teammate') return undefined;
       let resolved;
       try { resolved = roleOf(exec.agent, membership); } catch { return undefined; } // Routing and the access guard report config errors.
       return planDenial(exec, resolved.role, plans.get(keyOf(membership)), resolved.effective.workflow);
@@ -54,14 +54,14 @@ export function createPlanGate(ctx, team) {
         description: modelText('plan-gate.334'),
         parameters: params({ plan: { type: 'string', description: modelText('plan-gate.335') } }, ['plan']),
         async execute(args, exec) {
-          const membership = ctx.agentTeams.membership(exec.agent);
-          if (membership.role !== 'teammate') throw new Error(modelText('plan-gate.336'));
+          const membership = team.native.identity(exec.agent);
+          if (membership?.role !== 'teammate') throw new Error(modelText('plan-gate.336'));
           const { role } = roleOf(exec.agent, membership);
           if (!role.planFirst) throw new Error(modelText('plan-gate.337', { 0: role.displayName }));
           const plan = text(args.plan, 8000, modelText('plan-gate.338'));
           plans.set(keyOf(membership), { status: 'pending', plan, at: Date.now() });
-          await ctx.agentTeams.sendMessage(exec.agent, { target: 'lead', signal: exec.signal, content: [{ type: 'text',
-            text: modelText('plan-gate.339', { 0: role.displayName, 1: membership.name, 2: REVIEW_TOOL, 3: membership.name, 4: plan }) }] });
+          await team.native.send(exec.agent, 'lead', [{ type: 'text',
+            text: modelText('plan-gate.339', { 0: role.displayName, 1: membership.address, 2: REVIEW_TOOL, 3: membership.address, 4: plan }) }], exec.signal);
           return modelText('plan-gate.340', { 0: STATUS.pending });
         },
       }));
@@ -73,8 +73,8 @@ export function createPlanGate(ctx, team) {
           feedback: { type: 'string', description: modelText('plan-gate.344') },
         }, ['role', 'approve']),
         async execute(args, exec) {
-          const membership = ctx.agentTeams.membership(exec.agent);
-          if (membership.role !== 'lead') throw new Error(modelText('plan-gate.345'));
+          const membership = team.native.identity(exec.agent);
+          if (membership?.role !== 'lead') throw new Error(modelText('plan-gate.345'));
           const role = text(args.role, 64, modelText('plan-gate.346'));
           const plan = plans.get(keyOf(membership, role));
           if (!plan || plan.status !== 'pending') throw new Error(modelText('plan-gate.347', { 0: role }));
@@ -82,8 +82,8 @@ export function createPlanGate(ctx, team) {
           const feedback = args.feedback === undefined || args.feedback === '' ? undefined : text(args.feedback, 2000, modelText('plan-gate.349'));
           if (!args.approve && !feedback) throw new Error(modelText('plan-gate.350'));
           plans.set(keyOf(membership, role), { ...plan, status: args.approve ? 'approved' : 'rejected', feedback, at: Date.now() });
-          await ctx.agentTeams.sendMessage(exec.agent, { target: role, signal: exec.signal, content: [{ type: 'text',
-            text: args.approve ? modelText('plan-gate.351', { 0: feedback ? modelText('plan-gate.352', { 0: feedback }) : '' }) : modelText('plan-gate.353', { 0: SUBMIT_TOOL, 1: feedback }) }] });
+          await team.native.send(exec.agent, role, [{ type: 'text',
+            text: args.approve ? modelText('plan-gate.351', { 0: feedback ? modelText('plan-gate.352', { 0: feedback }) : '' }) : modelText('plan-gate.353', { 0: SUBMIT_TOOL, 1: feedback }) }], exec.signal);
           return modelText('plan-gate.354', { 0: args.approve ? modelText('plan-gate.355') : modelText('plan-gate.356'), 1: role });
         },
       }));

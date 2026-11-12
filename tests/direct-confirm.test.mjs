@@ -8,6 +8,7 @@ import { createWorkflow } from '../workflow.js';
 import { answerPending, createDispatchConfirm, forgetLead, pendingView } from '../dispatch-confirm.js';
 import { effectiveConfig } from '../config.js';
 import { base } from './fixture.mjs';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const W = effectiveConfig({ workflow: { mode: 'enforce' } }, base).workflow;
 
@@ -18,7 +19,7 @@ function harness(answer, overrides = {}) {
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: f => f(), on: (name, fn) => { if (name === 'agent/inbox/claimed') claimed = fn; },
     tools: { guard: g => { guard = g; return () => {}; }, register: t => { tools[t.name] = t; return () => {}; } },
     agentTeams: { tryMembership: a => (a === lead ? { role: 'lead' } : undefined), membership: () => ({}) } };
-  const team = { base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff, policy: { disabledRoutes: [] } }) };
+  const team = { native: fixtureNative(ctx), base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff, policy: { disabledRoutes: [] } }) };
   const dispatchConfirm = { confirmDirect: async (_exec, plan) => { asked.push(plan); return answer(); }, confirm: async () => ({ asked: false, routes: [] }) };
   const wf = createWorkflow(ctx, team, { dispatchConfirm }); wf.register();
   return { wf, lead, asked, user: () => claimed({ agent: lead, message: { source: { kind: 'user' } } }),
@@ -206,7 +207,7 @@ test('端到端：工作流经真实确认通道等待用户，允许后才放�
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: f => f(), on: () => {},
     tools: { guard: g => { guard = g; return () => {}; }, register: t => { tools[t.name] = t; return () => {}; } },
     agentTeams: { tryMembership: a => (a === lead ? { role: 'lead' } : undefined) } };
-  const team = { base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff, policy: { disabledRoutes: [] } }) };
+  const team = { native: fixtureNative(ctx), base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff, policy: { disabledRoutes: [] } }) };
   createWorkflow(ctx, team, { dispatchConfirm: createDispatchConfirm(ctx, team, { graceMs: 1000 }) }).register();
   const call = () => guard({ agent: lead, name: 'pwsh', arguments: {} });
   const pending = tools.capability_dispatch_plan.execute(personal, { agent: lead, callId: 'e2e' });

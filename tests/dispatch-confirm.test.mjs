@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { rootFixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import './keep-alive.mjs';
 import { answerPending, confirmedRoute, createDispatchConfirm, forgetLead, handleDispatchConfirm, pendingView, planRoutes, validateAnswer, withConfirmedRoute } from '../dispatch-confirm.js';
@@ -52,7 +53,7 @@ test('full catalog candidates rank same-tier first and preserve configured recom
 
 const lead = id => ({ id, ctx: {} });
 const exec = (id, callId = 'call-1') => ({ agent: lead(id), callId, signal: new AbortController().signal });
-const team = { pin: async () => '/p', load: async () => ({ revision: 0 }) };
+const team = { native: rootFixtureNative, pin: async () => '/p', load: async () => ({ revision: 0 }) };
 
 test('卡片确认后应用到本次任务；同一会话路由没变时不再询问', async () => {
   forgetLead('L1');
@@ -263,9 +264,9 @@ test('HTTP：GET 读取等待中的请求，POST 需要同源与 JSON', async ()
   const p = confirm.confirm({ agent, callId: 'h1' }, plan, effective, { disabledRoutes: [] }, 'always');
   await flush();
   const base = 'http://dsh.test/api/capability-team.dispatch-confirm';
-  const got = await (await handleDispatchConfirm(ctx, new Request(`${base}?sessionId=L5&callId=h1`))).json();
+  const got = await (await handleDispatchConfirm(ctx, new Request(`${base}?sessionId=L5&callId=h1`), rootFixtureNative)).json();
   assert.equal(got.status, 'pending');
-  const post = (headers, body) => handleDispatchConfirm(ctx, new Request(base, { method: 'POST', headers, body: JSON.stringify(body) }));
+  const post = (headers, body) => handleDispatchConfirm(ctx, new Request(base, { method: 'POST', headers, body: JSON.stringify(body) }), rootFixtureNative);
   assert.equal((await post({ 'content-type': 'application/json', origin: 'http://evil.test' }, { sessionId: 'L5', callId: 'h1', decision: 'confirm' })).status, 403);
   assert.equal((await post({ origin: 'http://dsh.test' }, { sessionId: 'L5', callId: 'h1', decision: 'confirm' })).status, 400);
   assert.equal((await post({ 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' }, { sessionId: 'L5', callId: 'h1', decision: 'confirm' })).status, 403);

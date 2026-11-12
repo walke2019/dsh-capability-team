@@ -17,12 +17,12 @@
       for (const member of members) {
         if (!used.has(member)) {
           const lead = member.role === 'lead';
-          const bName = lead ? 'lead' : baseName(member.name);
+          const bName = lead ? 'lead' : baseName(String(member.name).split('/').at(-1));
           const matchedRole = roles.find(r => r.id === bName || (lead && (r.id === 'lead' || r.capability === 'orchestrator')));
           const resolvedName = (matchedRole?.displayName && matchedRole.displayName !== matchedRole.id)
             ? matchedRole.displayName
             : (allocNames.get(bName) ?? matchedRole?.displayName ?? member.name);
-          cards.push({ id: matchedRole?.id ?? member.name, name: resolvedName, lead, member, role: matchedRole ?? null });
+          cards.push({ id: String(member.name).includes('/') ? member.name : matchedRole?.id ?? member.name, name: resolvedName, lead, member, role: matchedRole ?? null });
         }
       }
       return cards.map(card => {
@@ -36,7 +36,7 @@
         // the host roster's model is never used). They are the
         // same route most of the time, but failover/long-context switches or a stale config can make them differ —
         // that difference must stay visible rather than being collapsed into one badge.
-        const configuredModel = primary.get(card.id) ?? (card.role?.provider ? `${card.role.provider}/${card.role.model}` : null);
+        const configuredModel = primary.get(card.role?.id ?? card.id) ?? (card.role?.provider ? `${card.role.provider}/${card.role.model}` : null);
         const lastRequestModel = card.member?.model ? [card.member.provider, card.member.model].filter(Boolean).join('/') : null;
         const fallbackRoutes = (Array.isArray(card.role?.fallbacks) ? card.role.fallbacks : []).map(routeText).filter(Boolean);
         return { ...card, status,
@@ -47,7 +47,7 @@
           lastRequestIsFallback: !!(lastRequestModel && fallbackRoutes.includes(lastRequestModel)),
           // Shown model's source: 'request' (trusted route) or 'config' (configured primary, labelled as such).
           modelSource: lastRequestModel ? 'request' : configuredModel ? 'config' : null,
-          routeWarn: routeOutsideConfig(lastRequestModel, card.role, allocById.get(card.id)),
+          routeWarn: routeOutsideConfig(lastRequestModel, card.role, allocById.get(card.role?.id ?? card.id)),
           liveModel: !!card.member?.model, task, queued: mine.length,
           // A teammate is "delegated to" while it works or holds an in-progress task from the Lead.
           delegated: !card.lead && (status === 'running' || status === 'provisioning' || task?.status === 'in_progress') };

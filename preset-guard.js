@@ -2,8 +2,9 @@
 export const CAPABILITY_PRESET = 'capability-team';
 // A service missing from the caller's `inject` throws on direct property access in cordis; ctx.get() does not.
 const service = (ctx, name) => { try { const direct = ctx[name]; if (direct) return direct; } catch { /* not injected */ } try { return ctx.get?.(name); } catch { return undefined; } };
-export function ownsCapabilityTeam(ctx, agent) {
+export function ownsCapabilityTeam(ctx, agent, native) {
   if (!agent) return false;
+  if (native) return !!native.identity(agent);
   try {
     const membership = service(ctx, 'agentTeams')?.tryMembership(agent);
     const owner = membership?.root ?? agent;

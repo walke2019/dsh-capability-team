@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { boardDetailsOf } from './helpers/client-harness.mjs';
+import { buildClient } from '../scripts/build-client.mjs';
+const clientSource = await buildClient();
 function harness(remote = { commands: {} }, sessions, { runEffects = false } = {}) {
   let plugin, cursor = 0, states = [];
   const React = {
@@ -11,7 +13,7 @@ function harness(remote = { commands: {} }, sessions, { runEffects = false } = {
     useRef(initial) { const index = cursor++; return states[index] ??= { current: initial }; },
     useEffect(fn) { if (runEffects) fn(); },
   };
-  new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => { plugin = spec.factory(() => React); } } } });
+  new Script(clientSource).runInNewContext({ window: { __ModuleLoader__: { load: spec => { plugin = spec.factory(() => React); } } } });
   let view;
   plugin.apply({ effect: (fn, label) => { if (label !== 'capability-team: styles + stage theme') return fn(); }, locale: { bind: () => key => key, register() {} }, sidebarRightTabs: { register: () => () => {} }, remote, sessions, slots: {
     inject: (_name, fn) => fn(), register(options, component) { if (options.id === 'capability-team-overview') view = component; },

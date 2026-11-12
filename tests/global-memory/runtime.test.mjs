@@ -21,13 +21,17 @@ function fixture(options = {}) {
   ctx.listeners = listeners;
   return { ctx, agent, tools, contexts, runtime, claim, assembly, calls: () => calls };
 }
-test('1 ordinary/other presets/subagents eligible; team root and failed services safely yield', () => {
+test('1 current composition isolates ordinary and capability-team memory across native generations', () => {
   for (const preset of ['ordinary','other','subagent']) { const f = fixture({ preset }); assert.equal(f.tools.size, 2); f.runtime.cleanup(); }
   const f = fixture({ preset: 'capability-team' }); assert.equal(f.tools.size, 0);
   f.agent.ctx.preset = 'ordinary';
   f.ctx.agentTeams = { tryMembership: () => ({ root: { ctx: { preset: 'capability-team' } } }) };
+  assert.equal(eligible(f.ctx, f.agent, configuration()), true, 'An explicitly ordinary child uses its own composition');
+  f.ctx.agentTeams = { isEnabled: () => true, listTasks: () => [] };
+  assert.equal(eligible(f.ctx, f.agent, configuration()), true, 'rc2 has no tryMembership and must not disable ordinary memory');
+  f.agent.ctx.preset = 'capability-team';
   assert.equal(eligible(f.ctx, f.agent, configuration()), false);
-  f.ctx.agentTeams.tryMembership = () => { throw Error('unavailable'); };
+  f.ctx.agentPresets.composedPreset = () => { throw Error('unavailable'); };
   assert.equal(eligible(f.ctx, f.agent, configuration()), false);
 });
 test('2 first assembly waits, task stable, non-user ignored, next task refreshes', async () => {

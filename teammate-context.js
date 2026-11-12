@@ -18,14 +18,14 @@ const isTeammateAgent = agent => agent?.session?.header?.parentSession !== undef
  * are also installed for every agent in ctx.agents.list() once registration finished, and lazily on the first
  * agent/pre-step of an agent. Installation is idempotent per agent and tool name.
  */
-export function scopeTools(ctx) {
+export function scopeTools(ctx, native) {
   const lead = [], teammate = [];
   const installed = new WeakMap();
   // Registrations live on the agent's own ctx, which outlives a preset switch (a blank session reused for another
   // preset is recomposed without agent/created or agent/disposed), so each one keeps its disposer and every call
   // re-checks the preset: these tools must never act outside the capability-team preset.
   const gated = (def, agent) => ({ ...def, async execute(args, exec) {
-    if (!ownsCapabilityTeam(ctx, exec?.agent ?? agent)) throw new Error(modelText('teammate-context.496'));
+    if (!ownsCapabilityTeam(ctx, exec?.agent ?? agent, native)) throw new Error(modelText('teammate-context.496'));
     return def.execute(args, exec);
   } });
   const uninstall = agent => {
@@ -35,10 +35,10 @@ export function scopeTools(ctx) {
     for (const dispose of done.values()) { try { dispose?.(); } catch { /* already removed */ } }
   };
   const install = agent => {
-    if (!agent?.ctx?.tools || !ownsCapabilityTeam(ctx, agent)) return;
+    if (!agent?.ctx?.tools || !ownsCapabilityTeam(ctx, agent, native)) return;
     const done = installed.get(agent) ?? new Map();
     installed.set(agent, done);
-    for (const def of isTeammateAgent(agent) ? teammate : lead) {
+    for (const def of native.identity(agent)?.role === 'teammate' ? teammate : lead) {
       if (done.has(def.name)) continue;
       try { done.set(def.name, agent.ctx.tools.register(gated(def, agent))); } catch { done.set(def.name, undefined); /* already present for this agent */ }
     }
@@ -56,12 +56,13 @@ export function scopeTools(ctx) {
   });
   const scoped = new Proxy(ctx, { get: (target, prop) => (prop === 'tools' ? tools : target[prop]) });
   ctx.on('agent/created', ({ agent }) => { install(agent); });
+  ctx.effect?.(() => native.onLocalStart(({ agent }) => install(agent)));
   ctx.on('agent/pre-step', (payload, next) => { install(payload?.agent); return next(); });
   ctx.on('agent/disposed', ({ agent }) => uninstall(agent));
   ctx.on('agent-preset/selected', sessionId => {
     let agent; try { agent = ctx.agents?.get?.(sessionId); } catch { return; }
     if (!agent) return;
-    if (ownsCapabilityTeam(ctx, agent)) install(agent); else uninstall(agent);
+    if (ownsCapabilityTeam(ctx, agent, native)) install(agent); else uninstall(agent);
   });
   // Plugin tools register synchronously during apply; existing agents are backfilled right after it returns.
   const installExisting = () => { let agents = []; try { agents = ctx.agents?.list?.() ?? []; } catch { /* host without agents service */ } for (const agent of agents) install(agent); };
@@ -102,10 +103,10 @@ export function validateSkillsPolicy(value, label) {
  * Shorten the skill catalog for teammates. Registered with `prepend` so it is the outermost agent/pre-step
  * listener and sees the catalog message the skill tool adds downstream.
  */
-export function applySkillCatalog(ctx, policyOf) {
+export function applySkillCatalog(ctx, policyOf, native) {
   ctx.on('agent/pre-step', async (payload, next) => {
     const decision = await next();
-    if (decision?.kind === 'reject' || !ownsCapabilityTeam(ctx, payload.agent) || !isTeammateAgent(payload.agent) || !Array.isArray(decision?.messages)) return decision;
+    if (decision?.kind === 'reject' || !ownsCapabilityTeam(ctx, payload.agent, native) || native.identity(payload.agent)?.role !== 'teammate' || !Array.isArray(decision?.messages)) return decision;
     let policy;
     try { policy = policyOf(payload.agent) ?? 'compact'; } catch { policy = 'compact'; }
     const messages = []; let remaining = CATALOG_MAX_CHARS;

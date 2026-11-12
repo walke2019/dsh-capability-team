@@ -15,6 +15,7 @@ import { saveProject, themePath, STALE_LOCK_MS } from '../theme.js';
 import { inspectTeamRuntime } from '../ui.js';
 import { registerTeamReader } from '../runtime-view.js';
 import { readTeamEvidence } from '../request-evidence.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const models = ['opencode/fixture-a-free', 'opencode/fixture-b-free'];
 const options = { executable: 'fixture', resolveModels: async () => models };
@@ -67,8 +68,8 @@ test('修复：会话策略同时影响同步提示词和异步请求，恢复�
   try {
     const lead = { id: 'fixture-lead' }, mate = { id: 'fixture-mate' };
     const membership = agent => ({ role: agent === lead ? 'lead' : 'teammate', name: agent === lead ? 'lead' : 'lv-bu', root: lead });
-    const ctx = { llm: fakeLlm(), agentTeams: { membership, tryMembership: membership }, workingDirectory: { ensure: async () => root } };
-    const team = createTeam(ctx, {}, { root }); const before = await team.resolve(mate);
+    const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, llm: fakeLlm(), agentTeams: { membership, tryMembership: membership }, workingDirectory: { ensure: async () => root } };
+    const team = createTeam(ctx, {}, { root, native: fixtureNative(ctx) }); const before = await team.resolve(mate);
     await team.savePolicy(lead, [`${before.provider}/${before.model}`], 0);
     const after = await team.resolve(mate);
     assert.notEqual(`${after.provider}/${after.model}`, `${before.provider}/${before.model}`);
@@ -84,7 +85,7 @@ test('修复：会话策略同时影响同步提示词和异步请求，恢复�
 test('修复：主控配置损坏时不放行执行工具', () => {
   const agent = {};
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, agentTeams: { tryMembership: () => ({ role: 'lead' }) } };
-  const team = { pinned: () => 'fixture', loadSync: () => { throw new Error('broken fixture'); } };
+  const team = { native: fixtureNative(ctx), pinned: () => 'fixture', loadSync: () => { throw new Error('broken fixture'); } };
   assert.match(createWorkflow(ctx, team).guard({ agent, name: 'pwsh' }), /Cannot read team configuration/);
 });
 test('修复：等待真人确认的活动锁超过30秒也不能抢占', async () => {
@@ -115,6 +116,6 @@ test('修复：预设未注册或激活失败时不能报告已就绪', async ()
   } finally { off(); }
 });
 test('修复：团队服务尚未就绪时只读诊断保留自身日志而非整体崩溃', async () => {
-  const result = await readTeamEvidence({ readSession: async () => ({ events: [] }) }, { listMembers() { throw new Error('not initialized'); } }, { id: 'fixture' });
+  const result = await readTeamEvidence({ readSession: async () => ({ events: [] }) }, { listMembers() { throw new Error('not initialized'); } }, { id: 'fixture' }, { identity: agent => ({ root: agent }), list() { throw new Error('not initialized'); } });
   assert.equal(result[0].sessionId, 'fixture'); assert.deepEqual(result[0].records, []); assert.match(result[0].unavailable, /not initialized/);
 });

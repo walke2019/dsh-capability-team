@@ -11,7 +11,7 @@ export function apply(ctx, team) {
     async execute(args, exec) {
       const cwd = await ctx.workingDirectory.ensure(exec.agent, exec.signal);
       const { effective } = await team.load(exec.agent);
-      return JSON.stringify(await executeFreeTask({ teams: ctx.agentTeams, agent: exec.agent, prompt: args.prompt, subject: args.subject, cwd, signal: exec.signal, tools: effective.workflow.freeTools, models: effective.workflow.freeModels }));
+      return JSON.stringify(await executeFreeTask({ teams: ctx.agentTeams, native: team.native, agent: exec.agent, prompt: args.prompt, subject: args.subject, cwd, signal: exec.signal, tools: effective.workflow.freeTools, models: effective.workflow.freeModels }));
     },
   }));
 }

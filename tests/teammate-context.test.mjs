@@ -2,11 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applySkillCatalog, rewriteCatalog, scopeTools, shortDescription, validateSkillsPolicy } from '../teammate-context.js';
 import { effectiveConfig } from '../config.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
+const contextNative = host => ({
+  ...fixtureNative(host),
+  identity(agent) {
+    if (!agent || (agent.ctx?.preset && agent.ctx.preset !== 'capability-team')) return undefined;
+    const child = !!agent.session?.header?.parentSession;
+    return { role: child ? 'teammate' : 'lead', root: agent, address: child ? 'backend' : 'lead', roleName: child ? 'backend' : 'lead' };
+  },
+});
 
 test('主控专用工具只装给主控，队友专用工具只装给队友，其他工具照常全局注册', () => {
   const global = [], handlers = {};
   const host = { agentPresets: { composedPreset: () => 'capability-team' }, tools: { register: d => { global.push(d.name); return () => {}; }, guard: () => {} }, on: (n, fn) => { handlers[n] = fn; } };
-  const { ctx } = scopeTools(host);
+  const { ctx } = scopeTools(host, contextNative(host));
   for (const name of ['capability_dispatch_plan', 'capability_team_save', 'capability_handoff', 'capability_team_read', 'omni_search']) ctx.tools.register({ name });
   assert.deepEqual(global, ['capability_team_read', 'omni_search']);
   const install = parentSession => { const got = []; handlers['agent/created']({ agent: { ctx: { tools: { register: d => got.push(d.name) } }, session: { header: parentSession ? { parentSession } : {} } } }); return got; };
@@ -20,7 +29,7 @@ test('插件晚于会话加载：已存在的主控补装主控工具，队友�
   const mk = parentSession => { const got = []; return { got, ctx: { tools: { register: d => { got.push(d.name); return () => {}; } } }, session: { header: parentSession ? { parentSession } : {} } }; };
   const lead = mk(undefined), mate = mk('lead'), late = mk(undefined);
   const host = { agentPresets: { composedPreset: () => 'capability-team' }, tools: { register: () => () => {} }, agents: { list: () => [lead, mate] }, on: (n, fn) => { handlers[n] = fn; } };
-  const { ctx } = scopeTools(host);
+  const { ctx } = scopeTools(host, contextNative(host));
   for (const name of ['capability_dispatch_plan', 'capability_free_task', 'capability_handoff']) ctx.tools.register({ name });
   await new Promise(resolve => setTimeout(resolve, 0)); // existing agents are backfilled after registration
   assert.deepEqual(lead.got, ['capability_dispatch_plan', 'capability_free_task']);
@@ -61,7 +70,7 @@ test('技能目录：精简为名字加一句话，可按名单保留，none 时
 
 test('技能目录处理挂在最外层（prepend），只改队友，不改主控', async () => {
   let registered;
-  applySkillCatalog({ agentPresets: { composedPreset: () => 'capability-team' }, on: (name, fn, opts) => { registered = { name, fn, opts }; } }, () => 'compact');
+  applySkillCatalog({ agentPresets: { composedPreset: () => 'capability-team' }, on: (name, fn, opts) => { registered = { name, fn, opts }; } }, () => 'compact', contextNative({}));
   assert.equal(registered.name, 'agent/pre-step');
   assert.deepEqual(registered.opts, { prepend: true });
   const decision = { kind: 'continue', messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }, catalog] };
@@ -83,7 +92,7 @@ test('空白会话被复用并切到其他预设：主控工具撤下且调用�
   const handlers = {}; const live = new Map(); let calls = 0;
   const lead = { id: 's1', ctx: { preset: 'capability-team', tools: { register: d => { live.set(d.name, d); return () => live.delete(d.name); } } }, session: { header: {} } };
   const host = { agentPresets: { composedPreset: c => c.preset }, tools: { register: () => () => {} }, agents: { list: () => [], get: id => (id === 's1' ? lead : undefined) }, on: (n, fn) => { handlers[n] = fn; } };
-  const { ctx } = scopeTools(host);
+  const { ctx } = scopeTools(host, contextNative(host));
   ctx.tools.register({ name: 'capability_dispatch_plan', execute: async () => { calls++; return 'ok'; } });
   handlers['agent/created']({ agent: lead });
   const tool = live.get('capability_dispatch_plan');

@@ -20,9 +20,9 @@ const EXPECTED_RENAME = {
   '@dsh-mothership/connector-updater': '@aiwuk/connector-updater',
 };
 const PACKAGES = [
-  { dir: '.', key: 'team', name: '@aiwuk/team', version: '5.2.2' },
+  { dir: '.', key: 'team', name: '@aiwuk/team', version: '5.3.0' },
   { dir: 'packages/autocomplete', key: 'autocomplete', name: '@aiwuk/autocomplete', version: '1.0.4' },
-  { dir: 'packages/global-memory', key: 'memory', name: '@aiwuk/memory', version: '1.0.5' },
+  { dir: 'packages/global-memory', key: 'memory', name: '@aiwuk/memory', version: '1.0.6' },
   { dir: 'packages/omni-search', key: 'search', name: '@aiwuk/search', version: '1.1.0' },
 ];
 
@@ -45,7 +45,9 @@ for (const pkg of PACKAGES) {
     assert.equal(manifest.version, pkg.version);
     assert.deepEqual(manifest.engines, { node: '>=24.9', dsh: '>=0.2.2-rc.1 <0.3.0' });
     for (const [peer, range] of Object.entries(manifest.peerDependencies ?? {})) {
-      if (peer.startsWith('@deepseek-ai/dsh-')) assert.equal(range, '>=0.2.2-rc.1', peer);
+      const generationRanges = { '@deepseek-ai/dsh-experimental-agent-team': '>=0.2.2-rc.1 <0.2.2-rc.2', '@deepseek-ai/dsh-agent-team': '>=0.2.2-rc.2', '@deepseek-ai/dsh-subagent': '>=0.2.2-rc.2' };
+      if (peer.startsWith('@deepseek-ai/dsh-')) assert.equal(range, generationRanges[peer] ?? '>=0.2.2-rc.1', peer);
+      if (generationRanges[peer]) assert.equal(manifest.peerDependenciesMeta[peer].optional, true, peer);
     }
     assert.match(manifest.description, /^AIWUK /, 'public description stays English');
     assert.doesNotMatch(manifest.description, /[\u4e00-\u9fff]/);

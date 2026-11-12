@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { arrayArg, createBoardDispatch, inScope, normalizeScope, planTasks } from '../board-dispatch.js';
 import { validatePlan } from '../workflow.js';
 import { effectiveConfig } from '../config.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const assignments = [{ role: 'lv-bu', displayName: '吕布', task: '后端接口' }, { role: 'diao-chan', displayName: '貂蝉', task: '前端页面\n细节' }];
 
@@ -54,7 +55,7 @@ function fakeTeams(members = []) {
 
 test('建看板任务：已存在的队友立刻分到可开始的任务；被依赖挡住的等前置完成', async () => {
   const { teams, tasks, lead } = fakeTeams(['lv-bu']);
-  const board = createBoardDispatch({ agentTeams: teams }, { pinned: () => '/p' });
+  const board = createBoardDispatch({ agentTeams: teams }, { native: fixtureNative({ agentTeams: teams, agentPresets: { composedPreset: () => 'capability-team' } }), pinned: () => '/p' });
   const byRole = await board.create(lead, { assignments }, { 'lv-bu': [{ key: 'api', subject: '加接口' }], 'diao-chan': [{ key: 'ui', subject: '接页面', blocked_by: ['api'] }] });
   assert.deepEqual(byRole['diao-chan'][0].blockedBy, ['task-1']);
   assert.equal(tasks[0].ownerName, 'lv-bu', '吕布已存在，直接分给他');
@@ -64,7 +65,7 @@ test('建看板任务：已存在的队友立刻分到可开始的任务；被�
 
 test('队友开工时领到自己的任务；轮换后接替者接手旧成员未完成的任务', async () => {
   const { teams, tasks, lead, roster } = fakeTeams(['diao-chan']);
-  const board = createBoardDispatch({ agentTeams: teams }, { pinned: () => '/p' });
+  const board = createBoardDispatch({ agentTeams: teams }, { native: fixtureNative({ agentTeams: teams, agentPresets: { composedPreset: () => 'capability-team' } }), pinned: () => '/p' });
   await board.create(lead, { assignments: [assignments[1]] }, {});
   assert.equal(tasks[0].ownerName, 'diao-chan');
   roster.push({ id: 'diao-chan-r2', name: 'diao-chan-r2', role: 'teammate' });
@@ -76,7 +77,7 @@ test('队友开工时领到自己的任务；轮换后接替者接手旧成员�
 
 test('写入范围：只拦认领了带范围任务的队友，范围外的修改被拒绝', async () => {
   const { teams, lead } = fakeTeams(['diao-chan']);
-  const board = createBoardDispatch({ agentTeams: teams, workingDirectory: { get: () => '/p' } }, { pinned: () => '/p' });
+  const board = createBoardDispatch({ agentTeams: teams, workingDirectory: { get: () => '/p' } }, { native: fixtureNative({ agentTeams: teams, agentPresets: { composedPreset: () => 'capability-team' } }), pinned: () => '/p' });
   await board.create(lead, { assignments: [assignments[1]] }, { 'diao-chan': [{ subject: '改前端', write_scopes: ['client'] }] });
   const exec = (name, args) => ({ name, arguments: args, agent: { id: 'diao-chan', session: {} } });
   assert.equal(board.guard(exec('edit', { file_path: 'client/10-overview.js' })), undefined);
@@ -90,7 +91,7 @@ test('写入范围：只拦认领了带范围任务的队友，范围外的修�
 
 test('队友刚创建时改派会失败，插件稍后重试直到分到任务', async () => {
   const { teams, tasks, lead, roster } = fakeTeams([]);
-  const board = createBoardDispatch({ agentTeams: teams }, { pinned: () => '/p' });
+  const board = createBoardDispatch({ agentTeams: teams }, { native: fixtureNative({ agentTeams: teams, agentPresets: { composedPreset: () => 'capability-team' } }), pinned: () => '/p' });
   await board.create(lead, { assignments: [assignments[1]] }, {});
   let tries = 0;
   const sleep = async () => { tries++; if (tries === 2) roster.push({ id: 'diao-chan', name: 'diao-chan', role: 'teammate' }); };

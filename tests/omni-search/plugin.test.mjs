@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { fixtureNative } from '../helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, rm, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -70,7 +71,7 @@ test('team search switch denies external tools; ordinary and other presets unaff
   const capability = effective.roles[roleName].capability;
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, agentTeams: { tryMembership: () => ({ role: 'teammate', name: roleName }) },
     effect: fn => fn(), tools: { guard: fn => { guard = fn; } }, workingDirectory: { get: () => '/example/project' } };
-  const team = { pinned: () => '/example/project', loadSync: () => { effective.capabilities[capability].search = search; return { effective }; } };
+  const team = { native: fixtureNative(ctx), pinned: () => '/example/project', loadSync: () => { effective.capabilities[capability].search = search; return { effective }; } };
   applyAccess(ctx, team);
   for (const name of ['omni_search','omni_fetch','omni_search_providers','omni_transcribe','omni_transcribe_status']) assert.match(guard({ agent, name }), /search=true/);
   search = true; assert.equal(guard({ agent, name: 'omni_search' }), undefined);

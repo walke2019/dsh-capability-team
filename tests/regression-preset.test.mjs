@@ -11,6 +11,7 @@ import { createTokenDiscipline, TOKEN_RULES } from '../token-discipline.js';
 import { createTokenMetrics } from '../token-metrics.js';
 import { createOpenViking } from '../memory-openviking.js';
 import * as integrationConfig from '../integrations-config.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 function fixture(preset, member = true, child = false) {
   const root = { id: 'root', ctx: { preset } };
@@ -36,7 +37,7 @@ for (const [label, preset, member, child] of [
   ['ordinary subagent', undefined, false, true],
 ]) test(`QA regression: ${label} preserves routing, access, memory and output`, async () => {
   const f = fixture(preset, member, child);
-  const team = { owns: a => ownsCapabilityTeam(f.ctx, a),
+  const team = { native: fixtureNative(f.ctx), owns: a => ownsCapabilityTeam(f.ctx, a),
     pinned() { throw new Error('foreign team must not be loaded'); },
     resolve() { throw new Error('foreign route must not resolve'); } };
   applyRoles(f.ctx, team, { recover() { throw new Error('foreign failover'); } });
@@ -60,7 +61,7 @@ for (const [label, preset, member, child] of [
 test('QA regression: owned root permits policy and API GET, session query is mandatory', async () => {
   const f = fixture('capability-team', true, true);
   assert.equal(ownsCapabilityTeam(f.ctx, f.agent), true);
-  applyRoles(f.ctx, { owns: a => ownsCapabilityTeam(f.ctx, a) }, {});
+  applyRoles(f.ctx, { native: fixtureNative(f.ctx), owns: a => ownsCapabilityTeam(f.ctx, a) }, {});
   assert.equal(f.injected(), 1);
   assert.equal(integrationConfig.handleIntegrations, undefined);
   assert.equal(integrationConfig.applyIntegrationsApi, undefined);

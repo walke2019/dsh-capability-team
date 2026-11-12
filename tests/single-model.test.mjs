@@ -10,6 +10,7 @@ import { createTeam } from '../team.js';
 import { saveProject } from '../theme.js';
 import { createFailover } from '../failover.js';
 import { base } from './fixture.mjs';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const SM = { provider: 'only', model: 'one-model', acceptedAt: '2026-11-03T00:00:00.000Z' };
 const emptyLlm = { listProviders: () => [], listModels: async () => [] };
@@ -75,7 +76,7 @@ test('unassigned request is refused with the single-model hint; a saved mode rou
   const root = await mkdtemp(join(tmpdir(), 'single-model-'));
   try {
     const f = fakeCtx(() => ({ role: 'teammate', name: 'backend' }), root);
-    const team = createTeam(f.ctx, {}, { root });
+    const team = createTeam(f.ctx, {}, { root, native: fixtureNative(f.ctx) });
     applyRoles(f.ctx, team, createFailover({ sleep: async () => true }));
     await assert.rejects(f.request({}, { provider: 'lead', model: 'inherited' }), /no eligible model.*single-model mode.*single_model=use-default/);
     await saveProject(root, { singleModel: SM }, 0, { root, base: team.base });

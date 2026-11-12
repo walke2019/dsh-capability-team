@@ -1,7 +1,4 @@
 import { m as modelText } from './i18n.js';
-import { ownsCapabilityTeam } from './preset-guard.js';
-import { restrictiveToolName } from './tool-names.js';
-const SPAWN = new Set(['spawn_teammate']);
 // This is only a pass-through filter, not a replacement for native argument validation.
 // DSH 0.2.2-rc.1 TeamRoster.memberName rejects these shapes without trimming.
 export function preflightShape(args) {
@@ -16,31 +13,35 @@ export function applyDispatchPreflight(ctx, team, failover) {
   ctx.on('tools/pre-execute', async (exec, next) => {
     const downstream = await next();
     if (downstream?.kind !== 'allow') return downstream;
-    if (!ownsCapabilityTeam(ctx, exec.agent) || ctx.agentTeams.tryMembership(exec.agent)?.role !== 'lead'
-      || restrictiveToolName(exec.name, SPAWN) !== 'spawn_teammate' || !preflightShape(exec.arguments)) return downstream;
+    const identity = team.native.identity(exec.agent);
+    if (!identity) return downstream;
+    const creation = team.native.creation(exec);
+    if (!creation) return downstream;
     if (exec.signal?.aborted) return { kind: 'cancel' };
-    const leadId = ctx.agentTeams.tryMembership(exec.agent)?.root?.id ?? exec.agent.id;
+    if (!creation.roleName) return { kind: 'deny', reason: modelText('spawn-confirm.named-role') };
+    const owner = identity.root;
+    const name = creation.address ?? creation.name;
     const stillLead = () => {
-      const membership = ctx.agentTeams.tryMembership(exec.agent);
-      return ownsCapabilityTeam(ctx, exec.agent) && membership?.role === 'lead' && (membership.root?.id ?? exec.agent.id) === leadId;
+      const current = team.native.identity(exec.agent);
+      return !!current && current.rootId === identity.rootId && current.agentId === identity.agentId && current.address === identity.address && current.role === identity.role;
     };
     try {
       if (typeof team.load === 'function') {
-        const { effective } = await team.load(exec.agent);
+        const { effective } = await team.load(owner);
         if (exec.signal?.aborted) return { kind: 'cancel' };
-        if (!stillLead()) return downstream;
+        if (!stillLead()) return { kind: 'cancel' };
         if (effective.workflow.confirmDispatch !== 'never') return downstream;
       }
-      const role = await team.resolveMember(exec.agent, exec.arguments.name);
+      const role = await team.resolveMember(owner, name);
       if (exec.signal?.aborted) return { kind: 'cancel' };
-      if (!stillLead()) return downstream;
+      if (!stillLead()) return { kind: 'cancel' };
       if (role.unassigned || !role.provider || !role.model) return { kind: 'deny', reason: modelText('dispatch-preflight.unassigned', { 0: exec.arguments.name }) };
       const ready = failover.eligibility(role);
       if (!ready.eligible) return { kind: 'deny', reason: modelText(ready.reason === 'cooling' ? 'dispatch-preflight.cooling' : 'dispatch-preflight.unregistered', { 0: exec.arguments.name }) };
       return downstream;
     } catch (error) {
       if (exec.signal?.aborted || error?.name === 'AbortError') return { kind: 'cancel' };
-      if (!stillLead()) return downstream;
+      if (!stillLead()) return { kind: 'cancel' };
       return { kind: 'deny', reason: modelText('dispatch-preflight.resolve', { 0: exec.arguments.name }) };
     }
   });

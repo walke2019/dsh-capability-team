@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
+import { readFileSync } from 'node:fs';
+import { buildClient } from '../scripts/build-client.mjs';
+const clientSource = await buildClient();
 
 // Loads the built client.js with a fake host that records every slot registration.
 function load({ pluginManager, configForms, fetch } = {}) {
@@ -13,7 +15,7 @@ function load({ pluginManager, configForms, fetch } = {}) {
     useEffect() {}, useMemo: fn => fn(), Fragment: Symbol.for('react.fragment'),
     Component: class { constructor(props) { this.props = props; } },
   };
-  new Script(readFileSync(new URL('../client.js', import.meta.url), 'utf8')).runInNewContext({ window: { __ModuleLoader__: { load: spec => { plugin = spec.factory(() => React); } } }, fetch, AbortController });
+  new Script(clientSource).runInNewContext({ window: { __ModuleLoader__: { load: spec => { plugin = spec.factory(() => React); } } }, fetch, AbortController });
   const registered = [];
   const slots = { inject: (_n, fn) => fn(), register: (options, component) => { registered.push({ options, component }); } };
   const services = { 'remote.pluginManager': pluginManager && { slots, remote: { pluginManager }, effect() {} }, configForms: configForms && { slots, configForms, effect() {} } };
@@ -33,6 +35,15 @@ const expand = (tree, depth = 3) => { // render nested function components so th
   return { ...tree, children: (tree.children ?? []).map(c => expand(c, depth)) };
 };
 
+test('rc2 activation card describes native mode without a legacy enable action', () => {
+  const h = load();
+  const entry = h.slot('plugins.bundle.activation', '@aiwuk/team');
+  const card = expand(h.render(entry.component, { status: { nativeGeneration: 'rc2', legacyBundleRequired: false, teamServicePresent: true } }));
+  assert.match(textOf(card), /onb\.nativeTeam/);
+  assert.equal(flat(card).some(n => n.props?.['data-action'] === 'enable-agent-teams'), false);
+  assert.equal(flat(card).some(n => n.props?.['data-warning']), false);
+});
+
 test('activation card warns about profile-wide effect and only enables after the click; applied / restart / failed', async () => {
   const calls = [];
   let answer = { ok: true, value: { application: 'applied' } };
@@ -43,11 +54,11 @@ test('activation card warns about profile-wide effect and only enables after the
   const h = load({ pluginManager });
   const entry = h.slot('plugins.bundle.activation', '@aiwuk/team');
   assert.ok(entry);
-  const card = expand(h.render(entry.component, { onDismiss() {} }));
+  const card = expand(h.render(entry.component, { status: { nativeGeneration: 'rc1', legacyBundleRequired: true }, onDismiss() {} }));
   assert.match(textOf(card), /onb\.teamWarning/);
   assert.deepEqual(calls, []); // rendering never touches the plugin manager
   const button = flat(card).find(n => n.props?.['data-action'] === 'enable-agent-teams');
-  const run = async () => { h.reset(); const tree = expand(h.render(entry.component, {})); const btn = flat(tree).find(n => n.props?.['data-action'] === 'enable-agent-teams'); await btn.props.onClick(); return expand(h.render(entry.component, {})); };
+  const run = async () => { h.reset(); const tree = expand(h.render(entry.component, { status: { nativeGeneration: 'rc1', legacyBundleRequired: true } })); const btn = flat(tree).find(n => n.props?.['data-action'] === 'enable-agent-teams'); await btn.props.onClick(); return expand(h.render(entry.component, { status: { nativeGeneration: 'rc1', legacyBundleRequired: true } })); };
   assert.ok(button);
   let after = await run();
   assert.deepEqual(calls, ['list', ['set', '@deepseek-ai/dsh-experimental-agent-team-profile', true]]);
@@ -66,9 +77,9 @@ test('activation card warns about profile-wide effect and only enables after the
 test('without a plugin manager the click reports a failure code instead of acting', async () => {
   const h = load();
   const entry = h.slot('plugins.bundle.activation', '@aiwuk/team');
-  const btn = flat(expand(h.render(entry.component, {}))).find(n => n.props?.['data-action'] === 'enable-agent-teams');
+  const btn = flat(expand(h.render(entry.component, { status: { nativeGeneration: 'rc1', legacyBundleRequired: true } }))).find(n => n.props?.['data-action'] === 'enable-agent-teams');
   await btn.props.onClick();
-  assert.match(textOf(expand(h.render(entry.component, {}))), /onb\.failed/);
+  assert.match(textOf(expand(h.render(entry.component, { status: { nativeGeneration: 'rc1', legacyBundleRequired: true } }))), /onb\.failed/);
 });
 
 test('the old key-name editor is gone; the team bundle only registers its integrations summary', () => {

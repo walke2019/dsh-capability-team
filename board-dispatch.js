@@ -54,6 +54,8 @@ export function planTasks(assignments, rawTasksByRole) {
 export function createBoardDispatch(ctx, team) {
   const leads = new Map(); // lead id → Map(task id → { role, key })
   const teams = () => ctx.agentTeams;
+  const native = team.native;
+  const ownerOf = (lead, address) => native.kind() === 'rc2' ? native.resolveTarget(lead, address) : address;
   const boardOf = lead => { if (!leads.has(lead.id)) leads.set(lead.id, new Map()); return leads.get(lead.id); };
   const listTasks = lead => { try { return teams().listTasks?.(lead) ?? []; } catch { return []; } };
   /** Reassign ready, unowned tasks planned for `role` to member `name` (Lead authority). Returns how many failed. */
@@ -62,7 +64,7 @@ export function createBoardDispatch(ctx, team) {
     for (const task of listTasks(lead)) {
       const entry = planned.get(task.id);
       if (!entry || entry.role !== role || task.status !== 'pending' || task.ownerName || !task.ready) continue;
-      try { await teams().updateTask(lead, { taskId: task.id, expectedRevision: task.revision, action: 'reassign', owner: name }); } catch { failed++; }
+      try { await teams().updateTask(lead, { taskId: task.id, expectedRevision: task.revision, action: 'reassign', owner: await ownerOf(lead, name) }); } catch { failed++; }
     }
     return failed;
   }
@@ -90,9 +92,9 @@ export function createBoardDispatch(ctx, team) {
         boardOf(lead).set(view.id, { role: t.role, key: t.key });
         (byRole[t.role] ??= []).push({ id: view.id, subject: t.subject, writeScopes: t.writeScopes, blockedBy: t.blockedBy.map(k => ids.get(k)) });
       }
-      const members = (() => { try { return teams().listMembers(lead); } catch { return []; } })();
+      const members = await native.list(lead);
       for (const role of Object.keys(byRole)) {
-        const live = members.filter(m => m.role !== 'lead' && baseName(m.name) === role).sort((a, b) => b.name.length - a.name.length || b.name.localeCompare(a.name))[0];
+        const live = members.filter(m => m.role !== 'lead' && m.local !== false && baseName(m.name) === role).sort((a, b) => b.name.length - a.name.length || b.name.localeCompare(a.name))[0];
         // Existing members are already active, so one attempt is enough and dispatch is not delayed.
         if (live) await handOut(lead, role, live.name, { attempts: 1 });
       }
@@ -107,16 +109,16 @@ export function createBoardDispatch(ctx, team) {
     async transfer(lead, from, to) {
       for (const task of listTasks(lead)) {
         if (task.ownerName !== from || (task.status !== 'in_progress' && task.status !== 'pending')) continue;
-        try { await teams().updateTask(lead, { taskId: task.id, expectedRevision: task.revision, action: 'reassign', owner: to }); } catch { /* the lead can still reassign by hand */ }
+        try { await teams().updateTask(lead, { taskId: task.id, expectedRevision: task.revision, action: 'reassign', owner: await ownerOf(lead, to) }); } catch { /* the lead can still reassign by hand */ }
       }
     },
     /** Deny an edit outside the write scopes of the tasks a teammate holds (when any of them declares scopes). */
     guard(exec, limits = { enforce: true }) {
       exec = { ...exec, name: restrictiveToolName(exec.name, new Set(['write', 'edit', 'str_replace_editor'])) };
       if (!limits.enforce || !['write', 'edit', 'str_replace_editor'].includes(exec.name) || (exec.name === 'str_replace_editor' && exec.arguments?.command === 'view')) return undefined;
-      const m = teams()?.tryMembership?.(exec.agent);
+      const m = native.identity(exec.agent);
       if (m?.role !== 'teammate' || !m.root) return undefined;
-      const held = api.owned(m.root, m.name);
+      const held = api.owned(m.root, m.address);
       const scopes = held.flatMap(t => t.writeScopes ?? []);
       if (!held.length || !scopes.length) return undefined;
       const project = team.pinned(exec.agent);
@@ -129,11 +131,11 @@ export function createBoardDispatch(ctx, team) {
     },
     /** Runtime context for a teammate: its board tasks and the DSH board workflow. Empty when it has none. */
     context(agent) {
-      const m = teams()?.tryMembership?.(agent);
+      const m = native.identity(agent);
       if (m?.role !== 'teammate' || !m.root) return '';
-      const mine = listTasks(m.root).filter(t => t.status !== 'completed' && (t.ownerName === m.name || (!t.ownerName && boardOf(m.root).get(t.id)?.role === baseName(m.name))));
+      const mine = listTasks(m.root).filter(t => t.status !== 'completed' && (t.ownerName === m.address || (!t.ownerName && boardOf(m.root).get(t.id)?.role === baseName(m.roleName))));
       if (!mine.length) return '';
-      const line = t => `${t.id}「${t.subject}」${t.ownerName === m.name ? modelText('board-dispatch.042') : t.ready ? modelText('board-dispatch.043') : modelText('board-dispatch.044', { 0: t.blockedBy.join('、') })}${t.writeScopes?.length ? modelText('board-dispatch.045', { 0: t.writeScopes.join('、') }) : ''}`;
+      const line = t => `${t.id}「${t.subject}」${t.ownerName === m.address ? modelText('board-dispatch.042') : t.ready ? modelText('board-dispatch.043') : modelText('board-dispatch.044', { 0: t.blockedBy.join('、') })}${t.writeScopes?.length ? modelText('board-dispatch.045', { 0: t.writeScopes.join('、') }) : ''}`;
       return modelText('board-dispatch.046', { 0: mine.map(line).join('；') });
     },
   };

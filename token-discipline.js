@@ -55,7 +55,7 @@ export function createTokenDiscipline(ctx, team, { spillDir = join(tmpdir(), 'ca
     if (!project) return team.base?.workflow?.tokens ?? false;
     try { return team.loadSync(project, agent).effective.workflow.tokens; } catch { return false; }
   };
-  const isMember = agent => ownsCapabilityTeam(ctx, agent) && !!ctx.agentTeams.tryMembership(agent);
+  const isMember = agent => !!team.native.identity(agent);
   const ratioOf = agent => {
     try {
       const projections = ctx.get?.('sessionProjections');

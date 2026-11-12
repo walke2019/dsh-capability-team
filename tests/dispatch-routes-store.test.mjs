@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { createRouteStore } from '../dispatch-routes-store.js';
 import { answerPending, confirmedRoute, createDispatchConfirm, forgetLead, pendingView, setRouteStore } from '../dispatch-confirm.js';
 import { effectiveConfig } from '../config.js';
+import { rootFixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const effective = effectiveConfig({
   tiers: { medium: ['m1', 'm2', 'm3'] },
@@ -20,7 +21,7 @@ test('“只用于这次任务”的路由写盘，DSH 重启（内存清空）�
   const root = await mkdtemp(join(tmpdir(), 'routes-'));
   setRouteStore(createRouteStore(root));
   t.after(() => setRouteStore(undefined));
-  const confirm = createDispatchConfirm({ llm }, { pin: async () => '/proj', load: async () => ({ revision: 0 }) }, { graceMs: 1000 });
+  const confirm = createDispatchConfirm({ llm }, { native: rootFixtureNative, pin: async () => '/proj', load: async () => ({ revision: 0 }) }, { graceMs: 1000 });
   forgetLead('LR');
   const p = confirm.confirm({ agent: { id: 'LR' }, callId: 'c' }, plan, effective, { disabledRoutes: [] }, 'always');
   for (let i = 0; i < 500 && pendingView('LR', 'c').status !== 'pending'; i++) await tick();

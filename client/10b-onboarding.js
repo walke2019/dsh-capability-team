@@ -54,7 +54,7 @@
       return h('div', { className: 'ctm-ov-callout', 'data-tone': status?.teamServicePresent ? undefined : 'warn', 'data-onboarding': '' },
         h('span', { className: 'ctm-name' }, t('onb.title')),
         h('span', { className: 'ctm-label' }, t('onb.step1')),
-        status?.teamServicePresent ? h('span', { className: 'ctm-sub', 'data-step': 'team-ready' }, `✓ ${t('onb.teamReady')}`) : h('div', { 'data-step': 'team-missing' },
+        status?.legacyBundleRequired === false ? h('span', { className: 'ctm-sub', 'data-step': 'native-team' }, t('onb.nativeTeam')) : status?.teamServicePresent ? h('span', { className: 'ctm-sub', 'data-step': 'team-ready' }, `✓ ${t('onb.teamReady')}`) : h('div', { 'data-step': 'team-missing' },
           h('p', { className: 'ctm-sub' }, fmt(t('onb.teamMissing'), { name: AGENT_TEAM_BUNDLE })),
           h('p', { className: 'ctm-sub ctm-warn', 'data-warning': '' }, t('onb.teamWarning')),
           enable ? h('button', { type: 'button', className: 'ctm-btn', 'data-primary': '', 'data-action': 'enable-agent-teams', disabled: pending || outcome?.kind === 'applied' || outcome?.kind === 'restart', onClick: click },
@@ -109,7 +109,12 @@
       const enable = () => enableAgentTeams(pluginManager);
       const gate = props => h(OnboardingGate, { t: props?.t ?? t, enable, fetchStatus: fetchOnboarding });
       ctx.slots.inject('plugins.bundle.activation', () => ctx.slots.register({ name: 'plugins.bundle.activation', key: '@aiwuk/team', locale: NS },
-        props => h(OnboardingCard, { status: null, enable, t, onDismiss: props.onDismiss, dismissLabel: t('onb.later') })));
+        function ActivationCard(props) {
+          const status = useOnboardingStatus(fetchOnboarding);
+          if (!status && !props.status) return null;
+          const current = props.status ?? status;
+          return h(OnboardingCard, { status: current, enable: current.legacyBundleRequired === false ? undefined : enable, t, onDismiss: props.onDismiss, dismissLabel: t('onb.later') });
+        }));
       ctx.inject?.(['configForms', 'slots'], scoped => {
         const forms = scoped.configForms;
         scoped.slots.inject('settings.onboarding', () => scoped.slots.register({ name: 'settings.onboarding', id: 'capability-team-welcome', order: 50, label: () => t('onb.title'), locale: NS },

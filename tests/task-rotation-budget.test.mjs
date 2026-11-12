@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTaskControl } from '../member-task-control.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 // A rotation successor (`dev-r2`) continues its predecessor's budget without a manual start.
 function setup() {
@@ -16,9 +17,9 @@ function setup() {
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), on: (key, fn) => { handlers[key] = fn; }, tools: { register: () => () => {} }, agents: { get: id => agents.get(id) },
     agentTeams: { tryMembership: a => (a === lead ? { role: 'lead', name: 'lead', root: lead } : names.has(a) ? { role: 'teammate', name: names.get(a), root: lead } : undefined),
       listMembers: () => members, listTasks: () => [] },
-    get: () => ({ stateOf: session => ({ view: { stepsStarted: steps[session.header.id] } }) }),
+    get: name => name === 'sessionProjections' ? { stateOf: session => ({ view: { stepsStarted: steps[session.header.id] } }) } : undefined,
     llm: { listProviders: () => [{ id: 'p' }], listModels: async () => ['low', 'mid', 'upper'].map(id => ({ id })) } };
-  const control = createTaskControl(ctx, { load: async () => ({ effective, policy: { disabledRoutes: [] } }) },
+  const control = createTaskControl(ctx, { native: fixtureNative(ctx), load: async () => ({ effective, policy: { disabledRoutes: [] } }) },
     { now: () => 1000, audit: { append: async (_id, r) => { logs.push(r); } }, predecessorOf: (leadId, name) => (leadId === 'l' && name === 'dev-r2' ? 'dev' : undefined) });
   control.setWorkflow({ state: () => ({ plan: { mode: 'delegate', assignments: [{ role: 'dev' }] } }) });
   return { control, lead, worker, next, members, steps, handlers, logs };

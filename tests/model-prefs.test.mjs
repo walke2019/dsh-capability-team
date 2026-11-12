@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { rootFixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -50,7 +51,7 @@ const pendingFor = async (lead, callId) => {
 test('确认分派会被记录，之后的新会话预选你的习惯；“保存为项目默认”仍按配置比较', async () => {
   const root = await mkdtemp(join(tmpdir(), 'prefs-'));
   const prefs = createModelPrefs(root);
-  const team = { pin: async () => '/proj', load: async () => ({ revision: 0 }) };
+  const team = { native: rootFixtureNative, pin: async () => '/proj', load: async () => ({ revision: 0 }) };
   const confirm = createDispatchConfirm({ llm }, team, { prefs, graceMs: 1000 });
   for (const lead of ['L1', 'L2']) {
     forgetLead(lead);

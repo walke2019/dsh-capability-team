@@ -9,6 +9,7 @@ import { DEFAULT_ROLES, THREE_KINGDOMS_ROLES, themePatch } from '../roster-defau
 import { apply } from '../theme-plugin.js';
 import { createTeam } from '../team.js';
 import { CATALOG, fakeLlm } from './fixture.mjs';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 const temp = () => mkdtemp(join(tmpdir(), 'roster-'));
 const names = e => Object.fromEntries(Object.entries(e.roles).map(([id, r]) => [id, r.displayName]));
 const HEROES = ['lead', 'zhuge-liang', 'lv-bu', 'diao-chan', 'zhao-yun', 'chen-lin', 'zhou-yu'];
@@ -101,7 +102,7 @@ test('capability_team_import { theme } applies the skin through the confirmed sa
       tools: { register: v => { tools[v.name] = v; return () => {}; } }, agentTeams: { membership, tryMembership: membership }, agents: { list: () => [] },
       workingDirectory: { ensure: async () => root }, llm: fakeLlm(CATALOG), on: () => {},
       userQuestions: { ask: async req => { asked.push(req); return { answers: [{ id: 'confirm', selected: ['Save'] }] }; } } };
-    const team = createTeam(ctx, {}, { root }); apply(ctx, team);
+    const team = createTeam(ctx, {}, { root, native: fixtureNative(ctx) }); apply(ctx, team);
     const exec = { agent: { ctx: { systemPrompt: { context: () => () => {} } } } };
     assert.deepEqual(tools.capability_team_import.parameters.properties.theme.enum, ['default', 'three-kingdoms']);
     await assert.rejects(tools.capability_team_import.execute({ expected_revision: 0 }, exec), /exactly one/);

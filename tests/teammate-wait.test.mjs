@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { teammateWaitDenial, applyTeammateWait, TEAMMATE_WAIT_DENIAL } from '../teammate-wait.js';
 import { policy } from '../roles.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 test('队友调用 wait_agent（含前缀别名）被拒绝并提示结束本轮；主控与其他工具不受影响', () => {
   const mate = { role: 'teammate' };
@@ -23,7 +24,7 @@ test('只在能力协作预设内生效：默认预设的队友仍可调用原�
     agentPresets: { composedPreset: () => preset.value },
   };
   const owner = { ctx: {} };
-  applyTeammateWait(ctx);
+  applyTeammateWait(ctx, fixtureNative(ctx));
   const mate = { role: 'teammate', ctx: {} };
   assert.equal(guard({ name: 'wait_agent', agent: mate }), undefined, 'standard preset is untouched');
   preset.value = 'capability-team';

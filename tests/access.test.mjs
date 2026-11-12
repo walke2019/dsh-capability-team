@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { globRegex, checkAccess, applyAccess, accessSummary, presetActive, ensurePreset } from '../access.js';
 import { effectiveConfig } from '../config.js';
@@ -54,7 +55,7 @@ test('守卫按队友角色生效，非团队会话与未登记队友不拦截',
   const members = new Map([['w', { role: 'teammate', name: 'writer' }], ['b', { role: 'teammate', name: 'backend' }], ['x', { role: 'teammate', name: 'ghost' }]]);
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), tools: { guard: fn => { guard = fn; } },
     agentTeams: { tryMembership: agent => members.get(agent.id) }, workingDirectory: { get: () => '/repo' } };
-  applyAccess(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }) });
+  applyAccess(ctx, { native: fixtureNative(ctx), pinned: () => '/repo', loadSync: () => ({ effective }) });
   const call = (id, name, args) => guard({ agent: { id, session: {} }, name, arguments: args });
   assert.match(call('w', 'bash', {}), /Writer \(writer\) may not execute commands/);
   for (const name of ['omni_search', 'brisk_omni_search', 'mcp__s__brisk_omni_search']) assert.match(call('w', name, {}), /has not enabled external services/);
@@ -100,7 +101,7 @@ test('守卫读取官方预设是否生效来决定是否放行命令', () => {
   let active = false;
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), tools: { guard: fn => { guard = fn; } }, get: key => key === 'permissionPresets' ? { current: () => active ? 'read-only' : 'danger-full-access' } : undefined,
     agentTeams: { tryMembership: () => ({ role: 'teammate', name: 'researcher' }) }, workingDirectory: { get: () => '/repo' } };
-  applyAccess(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }) });
+  applyAccess(ctx, { native: fixtureNative(ctx), pinned: () => '/repo', loadSync: () => ({ effective }) });
   const call = () => guard({ agent: { id: 'r', session: {} }, name: 'bash', arguments: {} });
   assert.match(call(), /is not active yet/);
   active = true;

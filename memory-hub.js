@@ -17,9 +17,9 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
   const recall = new Map(); // agent id → { query, block }
   const reports = new Map(); // `${session}:${callId}` → text of a pending teammate report
   const identity = agent => {
-    const m = ctx.agentTeams.tryMembership(agent);
-    if (!m || !ownsCapabilityTeam(ctx, agent)) return undefined;
-    return { project: team.pinned(agent) ?? team.pinned(m.root ?? agent), role: m.role === 'lead' ? 'lead' : baseName(m.name), session: agent.id, lead: m.role === 'lead', leadId: (m.root ?? agent).id, name: m.name ?? 'lead' };
+    const m = team.native.identity(agent);
+    if (!m) return undefined;
+    return { project: team.pinned(agent) ?? team.pinned(m.root), role: m.role === 'lead' ? 'lead' : baseName(m.roleName), session: agent.id, lead: m.role === 'lead', leadId: m.rootId, name: m.address };
   };
   // Redaction, embedding, scope mapping, write + shared-backend sync and use counting are shared with @aiwuk/memory.
   const core = createMemoryCore({ store, embedder, backend, secrets });
@@ -84,23 +84,27 @@ export function createMemoryHub(ctx, team, { store = createMemoryStore(team.root
       return r?.block ? modelText('memory-hub.287', { 0: r.block }) : '';
     },
     register() {
-      ctx.on('agent/created', ({ agent }) => {
-        if (!ownsCapabilityTeam(ctx, agent) || !ctx.agentTeams.tryMembership(agent)) return;
+      const installed = new WeakSet();
+      const install = agent => {
+        if (!team.native.identity(agent) || installed.has(agent)) return;
+        installed.add(agent);
         agent.ctx.systemPrompt.context({ name: 'capability-team:memory', order: 97, text: () => hub.recallText(agent) });
-      });
+      };
+      ctx.on('agent/created', ({ agent }) => { install(agent); });
+      ctx.effect(() => team.native.onLocalStart(({ agent }) => install(agent)));
       ctx.on('agent/inbox/claimed', ({ agent, message }) => {
         const text = messageText(message);
-        if (text.length >= 8 && ownsCapabilityTeam(ctx, agent) && ctx.agentTeams.tryMembership(agent)) void hub.refreshRecall(agent, text.slice(0, 2000)).catch(() => {});
+        if (text.length >= 8 && team.native.identity(agent)) void hub.refreshRecall(agent, text.slice(0, 2000)).catch(() => {});
       });
       // A teammate's successful final report to the Lead becomes a 'result' memory of its role.
       try {
         ctx.on('session/event', (session, event) => {
           const agent = session?.id && ctx.agents.get(session.id);
-          if (!ownsCapabilityTeam(ctx, agent) || ctx.agentTeams.tryMembership(agent)?.role !== 'teammate') return;
+          if (team.native.identity(agent)?.role !== 'teammate') return;
           const d = event?.data ?? {};
           if (event.type === 'tool/call' && d.name === 'send_message') {
             let args = {}; try { args = typeof d.arguments === 'string' ? JSON.parse(d.arguments) : d.arguments ?? {}; } catch { return; }
-            if (args.target === 'lead' && String(args.message ?? '').length >= 200) reports.set(`${session.id}:${d.callId}`, String(args.message));
+            if ((args.target ?? args.agent) === 'lead' && String(args.message ?? '').length >= 200) reports.set(`${session.id}:${d.callId}`, String(args.message));
           } else if (event.type === 'tool/result') {
             const key = `${session.id}:${d.message?.toolCallId}`;
             const text = reports.get(key);

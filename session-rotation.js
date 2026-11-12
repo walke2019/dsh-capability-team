@@ -89,20 +89,21 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
     } catch { return undefined; }
   };
   const dir = leadId => join(root, 'handoffs', createHash('sha256').update(leadId).digest('hex').slice(0, 32));
+  const fileOf = name => `${name.includes('/') ? createHash('sha256').update(name).digest('hex') : name}.json`;
   const api = {
     metrics: id => metrics.get(id),
     status(agent) { return rotationLevel(metrics.get(agent.id), ratioOf(agent), limitsOf(agent)); },
     retiredTo: (leadId, name) => retired.get(`${leadId}:${name}`),
     /** Lead guard: no new work for a retired member or one past the hard line; successors may be spawned. */
-    guard(exec) {
-      const membership = ctx.agentTeams.tryMembership(exec.agent);
-      if (!ownsCapabilityTeam(ctx, exec.agent) || membership?.role !== 'lead' || !limitsOf(exec.agent)) return undefined;
+    async guard(exec) {
+      const membership = team.native.identity(exec.agent);
+      if (!ownsCapabilityTeam(ctx, exec.agent, team.native) || membership?.role !== 'lead' || !limitsOf(exec.agent)) return undefined;
       const lead = exec.agent;
       if (restrictiveToolName(exec.name, TRACKED_TOOLS) === 'send_message') {
-        const target = exec.arguments?.target;
+        const target = exec.arguments?.agent ?? exec.arguments?.target;
         const next = retired.get(`${lead.id}:${target}`);
         if (next) return modelText('session-rotation.444', { 0: target, 1: next, 2: next });
-        const member = ctx.agentTeams.listMembers(lead).find(m => m.name === target && m.role !== 'lead');
+        const member = (await team.native.list(lead)).find(m => m.name === target && m.role !== 'lead');
         const agent = member && ctx.agents.get(member.id);
         const status = agent && api.status(agent);
         if (status?.level === 'hard') return modelText('session-rotation.445', { 0: target, 1: status.reasons.join('、') });
@@ -114,37 +115,37 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
     /** The member a planned successor replaces, if any. */
     predecessorOf: (leadId, name) => planned.get(`${leadId}:${name}`)?.from,
     async writeHandoff(agent, args) {
-      const membership = ctx.agentTeams.tryMembership(agent);
+      const membership = team.native.identity(agent);
       if (membership?.role !== 'teammate') throw new Error(modelText('session-rotation.446'));
       const lead = membership.root;
       const project = team.pinned(agent) ?? ctx.workingDirectory?.get?.(agent.session);
       const m = metrics.get(agent.id) ?? emptyMetrics();
       let tasks = [];
-      try { tasks = (ctx.agentTeams.listTasks?.(lead) ?? []).filter(t => t.status !== 'deleted' && t.status !== 'completed' && (t.ownerId === agent.id || t.ownerName === membership.name)).map(t => ({ id: t.id, subject: t.subject, status: t.status })); } catch { /* optional */ }
+      try { tasks = (ctx.agentTeams.listTasks?.(lead) ?? []).filter(t => t.status !== 'deleted' && t.status !== 'completed' && (t.ownerId === agent.id || t.ownerName === membership.address)).map(t => ({ id: t.id, subject: t.subject, status: t.status })); } catch { /* optional */ }
       const text = (v, max = 4000) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
-      const handoff = { schemaVersion: 1, at: now(), lead: lead.id, member: membership.name, role: baseName(membership.name), session: agent.id,
+      const handoff = { schemaVersion: 1, at: now(), lead: lead.id, member: membership.address, role: baseName(membership.roleName), session: agent.id,
         written: { goal: text(args.goal), done: text(args.done), remaining: text(args.remaining), pitfalls: text(args.pitfalls), open: text(args.open), verify: text(args.verify) },
         facts: { diffStat: project ? await diffStat(project) : null, openTasks: tasks, lastTest: m.lastTest, compactions: m.compactions, turns: m.turns } };
       if (!handoff.written.remaining && !handoff.written.done) throw new Error(modelText('session-rotation.447'));
-      handoffs.set(`${lead.id}:${membership.name}`, handoff);
+      handoffs.set(`${lead.id}:${membership.address}`, handoff);
       await mkdir(dir(lead.id), { recursive: true });
-      await writeFile(join(dir(lead.id), `${membership.name}.json`), JSON.stringify(handoff, null, 2) + '\n');
+      await writeFile(join(dir(lead.id), fileOf(membership.address)), JSON.stringify(handoff, null, 2) + '\n');
       try { await onHandoff?.(handoff); } catch { /* the handoff is saved even if the memory hub is unavailable */ }
       return handoff;
     },
     async readHandoff(leadId, name) {
       const key = `${leadId}:${name}`;
       if (handoffs.has(key)) return handoffs.get(key);
-      try { const h = JSON.parse(await readFile(join(dir(leadId), `${name}.json`), 'utf8')); handoffs.set(key, h); return h; } catch { return undefined; }
+      try { const h = JSON.parse(await readFile(join(dir(leadId), fileOf(name)), 'utf8')); handoffs.set(key, h); return h; } catch { return undefined; }
     },
     /** Plan the successor for a member: name, fresh-context prompt, and the calls the Lead makes. */
     async rotate(lead, args) {
       const name = String(args.role ?? '');
-      const members = ctx.agentTeams.listMembers(lead).filter(m => m.role !== 'lead');
+      const members = (await team.native.list(lead)).filter(m => m.role !== 'lead' && m.local !== false);
       const current = members.find(m => m.name === name) ?? members.filter(m => baseName(m.name) === baseName(name)).sort((a, b) => generation(b.name) - generation(a.name))[0];
       if (!current) throw new Error(modelText('session-rotation.448', { 0: name }));
       const limits = limitsOf(lead) || ROTATION;
-      const used = ctx.agentTeams.listMembers(lead).length;
+      const used = (await team.native.list(lead)).length;
       if (used >= limits.maxMembers) {
         return { rotated: false, reason: modelText('session-rotation.449', { 0: used, 1: limits.maxMembers }),
           next: modelText('session-rotation.450', { 0: current.name }) };
@@ -167,15 +168,18 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
         modelText('session-rotation.466')].filter(Boolean).join('\n\n');
       planned.set(`${lead.id}:${successor}`, { from: current.name, prompt });
       retired.set(`${lead.id}:${current.name}`, successor);
+      if (team.native.kind() === 'rc2') return { rotated: true, from: current.name, to: successor, handoff: handoff ? 'member' : 'facts-only',
+        next: [`interrupt_agent agent=${current.name}`, `subagent name=${successor.split('/').at(-1)}`,
+          `parent=${current.name.includes('/') ? current.name.slice(0, current.name.lastIndexOf('/')) : 'lead'}`].join('\n'), prompt };
       return { rotated: true, from: current.name, to: successor, handoff: handoff ? 'member' : 'facts-only',
         next: [`1. interrupt_agent target=${current.name}`, modelText('session-rotation.467', { 0: successor }),
           facts.openTasks?.length ? modelText('session-rotation.468', { 0: facts.openTasks.map(t => t.id).join('、'), 1: successor }) : null].filter(Boolean).join('\n'), prompt };
     },
     register() {
-      try { ctx.on('session/event', (session, event) => { if (session?.id && ownsCapabilityTeam(ctx, ctx.agents.get(session.id)) && ctx.agentTeams.tryMembership?.(ctx.agents.get(session.id))?.role === 'teammate') foldEvent(counters(session.id), event); }); } catch { /* host without session observers */ }
-      ctx.on('agent/created', ({ agent }) => {
-        const identity = ctx.agentTeams.tryMembership(agent);
-        if (!ownsCapabilityTeam(ctx, agent) || identity?.role !== 'teammate') return;
+      try { ctx.on('session/event', (session, event) => { if (session?.id && ownsCapabilityTeam(ctx, ctx.agents.get(session.id), team.native) && team.native.identity(ctx.agents.get(session.id))?.role === 'teammate') foldEvent(counters(session.id), event); }); } catch { /* host without session observers */ }
+      ctx.effect(() => team.native.onLocalStart(({ agent }) => {
+        const identity = team.native.identity(agent);
+        if (!ownsCapabilityTeam(ctx, agent, team.native) || identity?.role !== 'teammate') return;
         counters(agent.id);
         // Runtime context only says something once a threshold is crossed, so it does not churn the cache.
         agent.ctx.systemPrompt.context({ name: 'capability-team:rotation', order: 98, text: () => {
@@ -185,7 +189,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
             ? modelText('session-rotation.469', { 0: s.reasons.join('、') })
             : modelText('session-rotation.470', { 0: s.reasons.join('、'), 1: s.stalled ? modelText('session-rotation.471') : '' });
         } });
-      });
+      }));
       ctx.effect(() => ctx.tools.guard(exec => api.guard(exec)));
       ctx.effect(() => ctx.tools.register({ name: 'capability_handoff', output,
         description: modelText('session-rotation.472'),
@@ -196,7 +200,7 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
         description: modelText('session-rotation.473'),
         parameters: params({ role: { type: 'string', description: modelText('session-rotation.474') }, task: { type: 'string', description: modelText('session-rotation.475') }, without_handoff: { type: 'boolean', description: modelText('session-rotation.476') } }, ['role']),
         async execute(args, exec) {
-          if (ctx.agentTeams.tryMembership(exec.agent)?.role !== 'lead') throw new Error(modelText('session-rotation.477'));
+          if (team.native.identity(exec.agent)?.role !== 'lead') throw new Error(modelText('session-rotation.477'));
           return JSON.stringify(await api.rotate(exec.agent, args));
         },
       }));

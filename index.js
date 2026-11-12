@@ -4,6 +4,7 @@ import { ownsCapabilityTeam } from './preset-guard.js';
 import { apply as applyIntegrations } from './integrations.js';
 import { apply as applyTheme } from './theme-plugin.js';
 import { createTeam } from './team.js';
+import { createNativeCompat } from './native-compat.js';
 import { applyDispatchPreflight } from './dispatch-preflight.js';
 import { applySpawnConfirm } from './spawn-confirm.js';
 import { createFailover } from './failover.js';
@@ -31,8 +32,9 @@ import { configureI18n } from './i18n.js';
 export function apply(host, config = {}) {
   configureI18n(host);
   // Lead-only and teammate-only plugin tools are installed per agent, so teammates do not carry the lead's tool schemas.
-  const { ctx } = scopeTools(host);
-  const team = createTeam(ctx, config); // Validates preset bindings up front.
+  const native = createNativeCompat(host);
+  const { ctx } = scopeTools(host, native);
+  const team = createTeam(ctx, config, { native }); // Validates preset bindings up front.
   // Memory endpoints/models are read-only user file/environment configuration.
   // Keys come from DSH's own credential store first (Settings → credentials), the environment second.
   // The same binding also feeds the managed manifest reader, so locked fields win over local settings.
@@ -78,16 +80,16 @@ export function apply(host, config = {}) {
   createTokenDiscipline(host, team).register();
   applySkillCatalog(host, agent => {
     const project = team.pinned(agent);
-    const m = host.agentTeams.tryMembership(agent);
+    const m = team.native.identity(agent);
     if (!project || !m?.name) return undefined;
     const { effective } = team.loadSync(project, agent);
-    const id = baseName(m.name);
+    const id = baseName(m.roleName ?? m.name);
     return effective.capabilities[effective.roles[legacyRoleId(id, effective.roles) ?? id]?.capability]?.skills;
-  });
+  }, native);
   applyAccess(ctx, team);
-  applyTeammateWait(ctx);
+  applyTeammateWait(ctx, team.native);
   applyRoles(ctx, team, failover, observability, taskControl);
-  applyMemberModels(host);
+  applyMemberModels(host, team.native);
   applyIntegrations(ctx, team);
   applyTheme(ctx, team, failover, workflow, planGate, taskControl);
 }
@@ -98,17 +100,17 @@ export function apply(host, config = {}) {
  */
 function applyBoard(ctx, team, board, rotation) {
   ctx.on('agent/inbox/claimed', ({ agent }) => {
-    const m = ctx.agentTeams.tryMembership(agent);
-    if (!ownsCapabilityTeam(ctx, agent) || m?.role !== 'teammate' || !m.root) return;
+    const m = team.native.identity(agent);
+    if (!m || m.role !== 'teammate' || !m.root) return;
     const from = rotation.predecessorOf(m.root.id, m.name);
     void (async () => { if (from) await board.transfer(m.root, from, m.name); await board.handOut(m.root, baseName(m.name), m.name); })().catch(() => {});
   });
-  ctx.on('agent/created', ({ agent }) => {
-    if (!ownsCapabilityTeam(ctx, agent) || ctx.agentTeams.tryMembership(agent)?.role !== 'teammate') return;
+  team.native.onLocalStart(({ agent, identity }) => {
+    if (identity.role !== 'teammate') return;
     agent.ctx.systemPrompt.context({ name: 'capability-team:board', order: 96, text: () => board.context(agent) });
   });
   ctx.effect(() => ctx.tools.guard(exec => {
-    if (!ownsCapabilityTeam(ctx, exec.agent)) return undefined;
+    if (!ownsCapabilityTeam(ctx, exec.agent, team.native)) return undefined;
     const project = team.pinned(exec.agent);
     if (!project) return undefined;
     let enforce;

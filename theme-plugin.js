@@ -94,7 +94,7 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
   }));
   /** Validate, check new routes against the catalog, and save only after the user approves the full diff. */
   async function saveConfirmed(exec, patch, expectedRevision) {
-    if (ctx.agentTeams.membership(exec.agent).role !== 'lead') throw new Error(modelText('theme-plugin.538'));
+    if (team.native.identity(exec.agent)?.role !== 'lead') throw new Error(modelText('theme-plugin.538'));
     const project = await team.pin(exec.agent);
     const result = await saveProject(project, patch, expectedRevision, { base: team.base, root: team.root,
       async check(before, after) {
@@ -134,7 +134,7 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
   // Install the team context in each Team member's own scope, like the native Team identity.
   const installed = new Map();
   const install = async agent => {
-    if (installed.has(agent) || !ownsCapabilityTeam(ctx, agent) || ctx.agentTeams.tryMembership(agent) === undefined) return;
+    if (installed.has(agent) || !ownsCapabilityTeam(ctx, agent, team.native) || team.native.identity(agent) === undefined) return;
     installed.set(agent, undefined);
     // Pin before the first step; a failure must not block creation and resurfaces on the next request.
     await team.pin(agent).catch(() => {});
@@ -149,21 +149,22 @@ export function apply(ctx, team, failover, workflow, planGate, taskControl) {
         modelNotice: t('theme-plugin.548') };
     });
     const removeContext = agent.ctx.systemPrompt.context({ name: 'capability-team:roster', order: 98, required: true,
-      text: () => (ownsCapabilityTeam(ctx, agent) ? teamContext(team, agent, ctx.agentTeams.tryMembership(agent), failover, workflow, planGate) : '') });
-    const removeBudgetContext = taskControl && ctx.agentTeams.tryMembership(agent)?.role === 'lead'
+      text: () => (ownsCapabilityTeam(ctx, agent, team.native) ? teamContext(team, agent, team.native.identity(agent), failover, workflow, planGate) : '') });
+    const removeBudgetContext = taskControl && team.native.identity(agent)?.role === 'lead'
       ? agent.ctx.systemPrompt.context({ name: 'capability-team:task-budget', order: 99, required: true,
-        text: () => (ownsCapabilityTeam(ctx, agent) && team.loadSync(team.pinned(agent), agent).effective.workflow.mode !== 'off' ? taskControl.summary(agent) : '') }) : () => {};
+        text: () => (ownsCapabilityTeam(ctx, agent, team.native) && team.loadSync(team.pinned(agent), agent).effective.workflow.mode !== 'off' ? taskControl.summary(agent) : '') }) : () => {};
     const removeWriter = registerPolicyWriter(agent, (routes, revision) => team.savePolicy(agent, routes, revision));
     installed.set(agent, () => { removeReader(); removeWriter(); removeContext(); removeBudgetContext(); });
   };
   for (const agent of ctx.agents.list()) void install(agent);
-  ctx.on('agent/created', async ({ agent }) => { await install(agent); });
+  ctx.effect(() => team.native.onLocalStart(({ agent }) => install(agent)));
+  ctx.on('agent/created', async ({ agent }) => { if (team.native.kind() === 'rc1' || team.native.identity(agent)?.role === 'lead') await install(agent); });
   ctx.on('agent/disposed', ({ agent }) => { installed.get(agent)?.(); installed.delete(agent); });
   // A blank session reused for another preset is recomposed without agent/created or agent/disposed.
   ctx.on('agent-preset/selected', sessionId => {
     let agent; try { agent = ctx.agents?.get?.(sessionId); } catch { return; }
     if (!agent) return;
-    if (ownsCapabilityTeam(ctx, agent)) { void install(agent); return; }
+    if (ownsCapabilityTeam(ctx, agent, team.native)) { void install(agent); return; }
     installed.get(agent)?.(); installed.delete(agent);
   });
   ctx.effect(() => () => { for (const dispose of installed.values()) dispose?.(); installed.clear(); });

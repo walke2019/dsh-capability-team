@@ -2,14 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createPlanGate, SUBMIT_TOOL, REVIEW_TOOL } from '../plan-gate.js';
 import { effectiveConfig } from '../config.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 function fixture(planFirst = true) {
   const effective = effectiveConfig({ capabilities: { backend: { planFirst } } });
   const guards = []; const tools = new Map(); const sent = [];
   const lead = { id: 'L', session: {} }; const mate = { id: 'M', session: {} };
-  const members = new Map([[lead, { id: 'T', role: 'lead', name: 'lead' }], [mate, { id: 'T', role: 'teammate', name: 'lv-bu' }]]);
+  const members = new Map([[lead, { id: 'T', role: 'lead', name: 'lead', root: lead }], [mate, { id: 'T', role: 'teammate', name: 'lv-bu', root: lead }]]);
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => fn(), tools: { guard: fn => guards.push(fn), register: tool => tools.set(tool.name, tool) },
     agentTeams: { tryMembership: a => members.get(a), membership: a => members.get(a), sendMessage: async (from, request) => { sent.push({ from: from.id, to: request.target, text: request.content[0].text }); } } };
-  const gate = createPlanGate(ctx, { pinned: () => '/repo', loadSync: () => ({ effective }), base: effective });
+  const gate = createPlanGate(ctx, { native: fixtureNative(ctx), pinned: () => '/repo', loadSync: () => ({ effective }), base: effective });
   gate.register();
   const call = (agent, name, args = {}) => guards.map(g => g({ agent, name, arguments: args })).find(Boolean);
   const run = (agent, name, args) => tools.get(name).execute(args, { agent, signal: undefined });
@@ -40,7 +41,7 @@ test('退回必须写意见；新的派活计划使旧批准失效', async () =>
   await f.run(f.mate, SUBMIT_TOOL, { plan: 'v2' });
   await f.run(f.lead, REVIEW_TOOL, { role: 'lv-bu', approve: true });
   assert.equal(f.call(f.mate, 'edit', { file_path: 'a.js' }), undefined);
-  f.gate.reset({ id: 'T' }, ['lv-bu']);
+  f.gate.reset({ rootId: f.lead.id }, ['lv-bu']);
   assert.match(f.call(f.mate, 'edit', { file_path: 'a.js' }), /No plan submitted yet/);
 });
 test('未开启 planFirst 的角色不受影响，也不能提交计划；只有主控能审批', async () => {

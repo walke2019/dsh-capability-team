@@ -30,15 +30,16 @@ async function serial(listeners, payload) {
 
 test('every agent/created listener uses a block body so it cannot bail the serial chain', async () => {
   const offenders = [];
-  let seen = 0;
+  const seen = new Set();
+  const expected = ['memory-hub.js', 'native-compat.js', 'packages/global-memory/runtime.js', 'roles.js', 'teammate-context.js', 'theme-plugin.js'];
   for (const file of await sources(root)) {
     const text = await readFile(file, 'utf8');
     for (const match of text.matchAll(/on\(\s*['"]agent\/created['"]\s*,\s*(?:async\s*)?(\([^)]*\)|\w+)\s*=>\s*(\S)/g)) {
-      seen++;
+      seen.add(relative(root, file).split('\\').join('/'));
       if (match[2] !== '{') offenders.push(`${relative(root, file)}: ${match[0]}`);
     }
   }
-  assert.ok(seen >= 7, `expected to find the known agent/created listeners, found ${seen}`);
+  assert.deepEqual([...seen].sort(), expected, 'Known creation-hook sources remain covered after native-start migration');
   assert.deepEqual(offenders, []);
 });
 

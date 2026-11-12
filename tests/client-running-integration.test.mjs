@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const entry = process.env.DSH_NATIVE_LOOP_ENTRY;
 test('native child execution status supplies baseline without catalog or history activation', { skip: !entry }, async () => {
-  const source = await readFile(resolve(dirname(entry), '../../dsh-api-session-controller/lib/index.js'), 'utf8');
+  const source = await readFile(process.env.DSH_NATIVE_SESSION_ENTRY ?? resolve(dirname(entry), '../../dsh-api-session-controller/lib/index.js'), 'utf8');
   const start = source.indexOf('var StateController = class'), end = source.indexOf('//#endregion', start);
   assert.ok(start >= 0 && end > start);
   const Native = vm.runInNewContext(`${source.slice(start, end)};StateController`, { AbortSignal, queueItems: () => [] });

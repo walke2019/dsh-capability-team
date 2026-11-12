@@ -11,6 +11,7 @@ import { routeKey, routeMatcher } from './model-policy.js';
 import { saveProject } from './theme.js';
 import { applyPreferences, unhealthyRoutes } from './model-prefs.js';
 import { effectiveRoute } from './single-model.js';
+export const confirmationAddress = address => String(address).split('/').map((part, index, parts) => index === parts.length - 1 ? part.replace(/-r\d+$/, '') : part).join('/');
 export const DISPATCH_CONFIRM_PATH = '/api/capability-team.dispatch-confirm';
 export { CONFIRM_MODES } from './config.js';
 export const MAX_ROUTE_FALLBACKS = 3;
@@ -35,7 +36,7 @@ export const parseRoute = text => {
   return i > 0 && i < s.length - 1 && !/\s/.test(s) ? { provider: s.slice(0, i), model: s.slice(i + 1) } : undefined;
 };
 /** Per-task route the user confirmed for a member of this Lead, if any. */
-export function confirmedRoute(leadId, role) { return (leads.has(leadId) || routeStore ? stateOf(leadId) : undefined)?.routes.get(role); }
+export function confirmedRoute(leadId, role) { return (leads.has(leadId) || routeStore ? stateOf(leadId) : undefined)?.routes.get(confirmationAddress(role)); }
 /** Apply a confirmed per-task route to a resolved role (before the model policy). */
 export function withConfirmedRoute(role, route) {
   if (!route?.primary) return role;
@@ -216,8 +217,9 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
   async function saveDefaults(exec, routes) {
     const changed = routes.filter(r => r.changed);
     if (!changed.length) return null;
-    const project = await team.pin(exec.agent);
-    const { revision } = await team.load(exec.agent);
+    const owner = team.native.identity(exec.agent)?.root ?? exec.agent;
+    const project = await team.pin(owner);
+    const { revision } = await team.load(owner);
     const capabilities = Object.fromEntries(changed.map(r => [r.capability, { provider: r.primary.provider, model: r.primary.model, fallbacks: r.fallbacks }]));
     const result = await saveProject(project, { capabilities }, revision, { base: team.base, root: team.root,
       async check(_before, after) { verifyRoutes(changed.flatMap(r => [r.primary, ...r.fallbacks].map(x => ({ ...x, capability: r.capability }))), await modelCatalog(ctx.llm, after.tiers)); } });
@@ -237,16 +239,18 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
      * or throws when the user cancels. `mode` is workflow.confirmDispatch.
      */
     async confirm(exec, plan, effective, policy, mode = 'on-change', options = {}) {
-      return serial(exec.agent.id, async () => {
+      const owner = team.native.identity(exec.agent)?.root ?? exec.agent;
+      return serial(owner.id, async () => {
       exec.signal?.throwIfAborted?.();
       if (options.prepare) ({ plan, effective, policy, mode } = await options.prepare());
-      else if (typeof team.load === 'function') { const loaded = await team.load(exec.agent); if (loaded.effective) { effective = loaded.effective; policy = loaded.policy ?? policy; mode = effective.workflow.confirmDispatch; } }
-      const leadId = exec.agent.id;
+      else if (typeof team.load === 'function') { const loaded = await team.load(owner); if (loaded.effective) { effective = loaded.effective; policy = loaded.policy ?? policy; mode = effective.workflow.confirmDispatch; } }
+      plan = { ...plan, assignments: plan.assignments.map(a => ({ ...a, role: confirmationAddress(a.role) })) };
+      const leadId = owner.id;
       const state = stateOf(leadId);
       const catalog = await modelCatalog(ctx.llm, effective.tiers);
       // Learned habits and recent failures shape what the card preselects; a route the user already confirmed in
       // this session wins over both. `base` keeps the configured route, which "save as default" compares against.
-      const project = prefs ? await team.pin(exec.agent) : undefined;
+      const project = prefs ? await team.pin(owner) : undefined;
       const habits = project ? await prefs.habits(project).catch(() => ({})) : {};
       const unhealthy = unhealthyRoutes(health());
       const disabled = routeMatcher(policy.disabledRoutes);
@@ -293,14 +297,13 @@ export function createDispatchConfirm(ctx, team, { graceMs = CARD_GRACE_MS, hear
   };
 }
 /** GET ?sessionId=[&callId=] → pending view (latest one without callId); POST {sessionId, callId, decision, scope, routes, catalogVersion}. */
-import { ownsCapabilityTeam } from './preset-guard.js';
-export async function handleDispatchConfirm(ctx, request) {
+export async function handleDispatchConfirm(ctx, request, native) {
   const fail = (status, code, message) => Response.json({ code, message }, { status });
   try {
     const url = new URL(request.url);
     const lead = id => {
       const agent = typeof id === 'string' && /^[\w.:-]{1,256}$/.test(id) ? ctx.get('agents')?.get(id) : undefined;
-      return ownsCapabilityTeam(ctx, agent) && ctx.get('agentTeams')?.tryMembership(agent)?.role === 'lead' ? agent : undefined;
+      return native?.identity(agent)?.role === 'lead' ? agent : undefined;
     };
     if (request.method === 'GET') {
       const agent = lead(url.searchParams.get('sessionId'));
@@ -319,7 +322,7 @@ export async function handleDispatchConfirm(ctx, request) {
     return Response.json(answerPending(agent.id, callId, answer), { headers: { 'cache-control': 'no-store' } });
   } catch (error) { return fail(error.status ?? 503, error.code ?? 'UNAVAILABLE', error.status ? error.message : 'Dispatch confirm unavailable'); }
 }
-export function applyDispatchConfirmApi(ctx) {
+export function applyDispatchConfirmApi(ctx, native) {
   ctx.inject?.(['connection', 'agents', 'agentTeams'], scoped => scoped.connection.fetch.register({
-    path: DISPATCH_CONFIRM_PATH, methods: ['GET', 'POST'], requestBody: 'buffered', fetch: req => handleDispatchConfirm(scoped, req) }));
+    path: DISPATCH_CONFIRM_PATH, methods: ['GET', 'POST'], requestBody: 'buffered', fetch: req => handleDispatchConfirm(scoped, req, native) }));
 }

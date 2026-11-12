@@ -1,9 +1,9 @@
 import { t, m as modelText } from './i18n.js';
 import { runFreeWorker } from './free-worker.mjs';
 // A dedicated task avoids overwriting a user's existing task or declaring unrelated work done.
-export async function executeFreeTask({ teams, agent, prompt, subject = t('task-bridge.485'), cwd, signal, tools = 'none', models, worker = runFreeWorker }) {
-  const membership = teams.membership(agent);
-  if (membership.role !== 'lead') throw new Error(modelText('task-bridge.486'));
+export async function executeFreeTask({ teams, native, agent, prompt, subject = t('task-bridge.485'), cwd, signal, tools = 'none', models, worker = runFreeWorker }) {
+  const membership = native.identity(agent);
+  if (membership?.role !== 'lead') throw new Error(modelText('task-bridge.486'));
   // Validate before creating persistent task state.
   if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 16000) throw new Error(modelText('task-bridge.487'));
   if (typeof subject !== 'string' || !subject.trim() || subject.length > 120) throw new Error(modelText('task-bridge.488'));

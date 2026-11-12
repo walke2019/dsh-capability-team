@@ -1,4 +1,3 @@
-import { ownsCapabilityTeam } from './shared/preset-guard.js';
 import { projectRoot } from './shared/theme.js';
 const service = (ctx, name) => { try { const direct = ctx[name]; if (direct) return direct; } catch { /* not injected */ } try { return ctx.get?.(name); } catch { return undefined; } };
 export function eligible(ctx, agent, config) {
@@ -6,9 +5,8 @@ export function eligible(ctx, agent, config) {
   try {
     const presets = service(ctx, 'agentPresets');
     if (typeof presets?.composedPreset !== 'function') return false;
-    const membership = service(ctx, 'agentTeams')?.tryMembership(agent);
-    presets.composedPreset((membership?.root ?? agent).ctx); // distinguish service failure from helper false
-    return !ownsCapabilityTeam(ctx, agent);
+    const selected = presets.composedPreset(agent.ctx);
+    return typeof selected === 'string' && selected !== 'capability-team';
   } catch { return false; }
 }
 export function identities(ctx) {

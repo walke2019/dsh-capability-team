@@ -7,6 +7,7 @@ import { cosine, createEmbedder, embedSettings, normalize, vectorKey } from '../
 import { INTEGRATION_DEFAULTS, resolveIntegrations } from '../integrations-config.js';
 import { createMemoryStore, rank, tokenize, visible } from '../memory-store.js';
 import { createMemoryHub } from '../memory-hub.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const tmp = () => mkdtemp(join(tmpdir(), 'mem-'));
 // Never read the user's real integrations (a configured shared-memory server would make tests hit the network).
@@ -146,7 +147,7 @@ function fakeCtx() {
 test('记忆枢纽：交接自动入库，接到任务时自动召回，队友最终汇报入库', async () => {
   const root = await tmp();
   const { ctx, fe, handlers, tools } = fakeCtx();
-  const hub = createMemoryHub(ctx, { root, pinned: () => P }, { embedder: createEmbedder({ settings: settingsWith({ baseUrl: null }) }) });
+  const hub = createMemoryHub(ctx, { native: fixtureNative(ctx), root, pinned: () => P }, { embedder: createEmbedder({ settings: settingsWith({ baseUrl: null }) }) });
   hub.register();
   handlers['agent/created']({ agent: fe });
   await hub.ingestHandoff({ session: 'fe1', role: 'diao-chan', member: 'diao-chan', lead: 'lead', written: { done: '任务控制面板完成', remaining: '本地化分隔符', pitfalls: 'client.js 是生成文件，改 client/ 下的源文件' } });

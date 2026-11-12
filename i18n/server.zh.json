@@ -1,4 +1,5 @@
 {
+  "spawn-confirm.named-role": "协作团队委派必须显式指定已登记的角色名。请用 capability_team_read 查看角色，并设置原生 subagent 的 name；未命名委派不会沿用主控模型。",
   "failover.continue": "模型渠道故障，已选择配置中的同档备用模型。请依据现有对话和已记录的工具结果继续未完成任务，不要重放已完成的工具调用或重复产生副作用。保持所有权限与审批要求；此通知不授予任何新授权。",
   "dispatch-preflight.resolve": "未创建队友 {0}：无法解析角色或模型配置。请用 capability_team_read 查看内部角色 ID，通过 capability_team_save 登记角色或选择允许的模型后重试。这只是静态配置检查，不是凭据或实时模型探测。",
   "dispatch-preflight.unassigned": "未创建队友 {0}：该角色未分配模型。请用 capability_team_read 和 capability_model_catalog 查看配置，再通过 capability_team_save 设置能力的渠道与模型；不会继承主控模型或降档。",

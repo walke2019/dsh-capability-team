@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { fixtureNative } from '../helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFile, mkdtemp, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -25,8 +26,8 @@ test('QA every external tool observes search switch only for owned teammates', (
   const effective = structuredClone(seed), member = Object.keys(effective.roles).find(k => effective.roles[k].capability !== 'orchestrator');
   const capability = effective.roles[member].capability;
   const agent = { ctx: {}, session: {} };
-  const ctx = { agentPresets: { composedPreset: () => preset }, agentTeams: { tryMembership: () => ({ role: 'teammate', name: member }) }, effect: fn => fn(), tools: { guard: fn => { guard = fn; } }, workingDirectory: { get: () => 'example' } };
-  const team = { pinned: () => 'example', loadSync: () => { effective.capabilities[capability].search = enabled; return { effective }; } };
+  const ctx = { agentPresets: { composedPreset: () => preset }, agentTeams: { tryMembership: () => preset === 'capability-team' ? { role: 'teammate', name: member } : undefined }, effect: fn => fn(), tools: { guard: fn => { guard = fn; } }, workingDirectory: { get: () => 'example' } };
+  const team = { native: fixtureNative(ctx), pinned: () => 'example', loadSync: () => { effective.capabilities[capability].search = enabled; return { effective }; } };
   applyAccess(ctx, team);
   for (const name of names) assert.match(guard({ agent, name }), /search=true/);
   enabled = true;

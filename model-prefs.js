@@ -94,7 +94,7 @@ export function applyModelPrefsTool(ctx, team, prefs) {
     async execute(args, exec) {
       const project = await team.pin(exec.agent);
       if (args.action === 'clear') {
-        if (ctx.agentTeams.tryMembership(exec.agent)?.role !== 'lead') throw new Error(modelText('model-prefs.317'));
+        if (team.native.identity(exec.agent)?.role !== 'lead') throw new Error(modelText('model-prefs.317'));
         await prefs.clear(project);
         return JSON.stringify({ cleared: true, project });
       }

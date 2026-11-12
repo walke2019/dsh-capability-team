@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -17,7 +18,7 @@ function harness() {
   const ctx = { agentPresets: { composedPreset: () => preset },
     agentTeams: { tryMembership: agent => ({ role: agent === lead ? 'lead' : 'teammate' }) },
     on: (name, fn) => { assert.equal(name, 'tools/pre-execute'); hook = fn; } };
-  const team = { resolveMember: async () => { calls++; return { id: 'backend', provider: 'p', model: 'm' }; } };
+  const team = { native: fixtureNative(ctx), resolveMember: async () => { calls++; return { id: 'backend', provider: 'p', model: 'm' }; } };
   const failover = createFailover();
   applyDispatchPreflight(ctx, team, failover);
   return { ctx, team, failover, lead, mate, count: () => calls, preset: value => { preset = value; },
@@ -78,16 +79,16 @@ test('Cancellation before or during async resolution remains native cancellation
   const during = new AbortController(); h.team.resolveMember = async () => { during.abort(); throw new Error('aborted'); };
   assert.equal((await h.run({ signal: during.signal })).kind, 'cancel');
 });
-test('Preset or membership changes during resolution return the original native decision', async () => {
+test('Owned creation cancels when preset or membership changes during resolution', async () => {
   const h = harness(), allow = { kind: 'allow', marker: 'native' };
   h.team.resolveMember = async () => { h.preset('standard'); return { unassigned: true }; };
-  assert.equal(await h.run({}, allow), allow);
+  assert.deepEqual(await h.run({}, allow), { kind: 'cancel' });
   h.preset('capability-team');
   h.team.resolveMember = async () => { h.preset('standard'); throw new Error('unknown role'); };
-  assert.equal(await h.run({}, allow), allow);
+  assert.deepEqual(await h.run({}, allow), { kind: 'cancel' });
   h.preset('capability-team');
   h.team.resolveMember = async () => { h.ctx.agentTeams.tryMembership = () => ({ role: 'teammate' }); return { unassigned: true }; };
-  assert.equal(await h.run({}, allow), allow);
+  assert.deepEqual(await h.run({}, allow), { kind: 'cancel' });
 });
 test('Creation preview shares request resolution for legacy, rotation, confirmed and disabled routes', async () => {
   const root = await mkdtemp(join(tmpdir(), 'preflight-'));
@@ -95,7 +96,7 @@ test('Creation preview shares request resolution for legacy, rotation, confirmed
   let name = 'lv-bu-r2';
   const ctx = { llm: fakeLlm(), workingDirectory: { ensure: async () => root },
     agentTeams: { membership: agent => agent === lead ? { role: 'lead', root: lead } : { role: 'teammate', name, root: lead } } };
-  const team = createTeam(ctx, {}, { root });
+  const team = createTeam(ctx, {}, { root, native: fixtureNative(ctx) });
   try {
     assert.deepEqual(await team.resolveMember(lead, name), await team.resolve(mate));
     const primary = { provider: 'confirmed', model: 'confirmed-model' };

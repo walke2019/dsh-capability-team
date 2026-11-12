@@ -23,7 +23,7 @@ function harness({ native = new Map(), state } = {}) {
   const live = runInNewContext(`${storeSource}\nliveStore`, {})(ctx);
   return { live, callbacks, events, cleanup, listeners, calls, list, native };
 }
-const helpers = runInNewContext(`${source('06-usage.js')}\n${source('07-board-parts.js')}\n({teamActivityFrom,liveRoster,boardCards})`, { baseName: x => x, routeOutsideConfig: () => false, routeText: x => x });
+const helpers = runInNewContext(`${source('06c-native-team.js')}\n${source('06-usage.js')}\n${source('07-board-parts.js')}\n({teamActivityFrom,liveRoster,boardCards})`, { baseName: x => x, routeOutsideConfig: () => false, routeText: x => x });
 const team = { members: [{ id: 'lead', name: 'lead', role: 'lead', phase: 'active' }, { id: 'back', name: 'backend', phase: 'active' }, { id: 'front', name: 'frontend', phase: 'active' }] };
 function cards(live) {
   const activity = helpers.teamActivityFrom(team, live);

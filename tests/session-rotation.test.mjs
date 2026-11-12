@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { createNativeCompat } from '../native-compat.js';
 import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -91,7 +92,7 @@ function fakeTeam(root, members, { tasks = [] } = {}) {
       listMembers: () => roster, listTasks: () => tasks,
     },
   };
-  const team = { root, pinned: () => '/p', loadSync: () => ({ effective: effectiveConfig({ workflow: { rotation: {} } }) }) };
+  const team = { native: createNativeCompat(ctx), root, pinned: () => '/p', loadSync: () => ({ effective: effectiveConfig({ workflow: { rotation: {} } }) }) };
   return { ctx, team, lead, agents };
 }
 
@@ -113,7 +114,7 @@ test('交接写入并带上插件采集的事实；轮换生成接替者与调�
   assert.match(plan.next, /interrupt_agent target=diao-chan/);
   assert.match(plan.next, /task-3/);
   assert.equal(r.plannedSuccessor('lead-1', 'diao-chan-r2'), true);
-  assert.match(r.guard({ agent: lead, name: 'send_message', arguments: { target: 'diao-chan' } }), /handed off to diao-chan-r2/);
+  assert.match(await r.guard({ agent: lead, name: 'send_message', arguments: { target: 'diao-chan' } }), /handed off to diao-chan-r2/);
   const fresh = createRotation(ctx, team, { diffStat: async () => null });
   assert.equal((await fresh.readHandoff('lead-1', 'diao-chan')).written.remaining, 'B 未做', '交接持久化到磁盘');
 });
@@ -128,14 +129,14 @@ test('名额用完时不轮换，改为省上下文模式', async () => {
   assert.match(out.reason, /capacity exhausted \(8\/8\)/);
 });
 
-test('硬线时主控不能再给该队友派新活', () => {
+test('硬线时主控不能再给该队友派新活', async () => {
   const { ctx, team, lead, agents } = fakeTeam('/tmp', [{ id: 'm1', name: 'diao-chan' }]);
   const r = createRotation(ctx, team);
   ctx.on = (name, fn) => { if (name === 'session/event') ctx.onEvent = fn; };
   ctx.effect = () => {}; ctx.tools = { guard() {}, register() {} };
   r.register();
   for (let i = 0; i < 3; i++) ctx.onEvent(agents.get('m1').session = { id: 'm1' }, { type: 'compaction/end', data: {} });
-  for (const name of ['send_message', 'brisk_send_message', 'mcp__s__brisk_send_message']) assert.match(r.guard({ agent: lead, name, arguments: { target: 'diao-chan' } }), /reached the session rotation threshold.*capability_rotate_member/);
+  for (const name of ['send_message', 'brisk_send_message', 'mcp__s__brisk_send_message']) assert.match(await r.guard({ agent: lead, name, arguments: { target: 'diao-chan' } }), /reached the session rotation threshold.*capability_rotate_member/);
 });
 
 test('接替者沿用用户为该角色确认的路由', async () => {
@@ -145,7 +146,7 @@ test('接替者沿用用户为该角色确认的路由', async () => {
   const effective = effectiveConfig({ tiers: { medium: ['m1', 'm2'] }, capabilities: { frontend: { provider: 'provider-a', model: 'm1', tier: 'medium', fallbacks: [] } }, roles: { 'diao-chan': { displayName: '貂蝉', capability: 'frontend', description: 'x' } } });
   const llm = { listProviders: () => [{ id: 'provider-a', name: 'c' }], listModels: async () => [{ id: 'm1' }, { id: 'm2' }] };
   forgetLead('LR');
-  const confirm = createDispatchConfirm({ llm }, { pin: async () => '/p' }, { graceMs: 1000 });
+  const confirm = createDispatchConfirm({ llm }, { native: { identity: () => ({ role: 'lead', rootId: 'LR', address: 'lead' }) }, pin: async () => '/p' }, { graceMs: 1000 });
   const p = confirm.confirm({ agent: { id: 'LR' }, callId: 'c' }, { mode: 'delegate', assignments: [{ role: 'diao-chan', capability: 'frontend', task: 't' }] }, effective, { disabledRoutes: [] }, 'always');
   await new Promise(r => setTimeout(r, 10));
   assert.equal(pendingView('LR', 'c').status, 'pending');

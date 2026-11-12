@@ -23,7 +23,7 @@ test('QA archive JS bytes match current runtime and shared source snapshots', as
   assert.ok(checked >= 20);
 });
 const tick = () => new Promise(resolve => setImmediate(resolve));
-function fixture({ preset, teamPreset, search, timeout = 100 } = {}) {
+function fixture({ preset = 'standard', teamPreset, search, timeout = 100 } = {}) {
   const tools = new Map(), contexts = new Map(), events = new Map();
   const a = { id: 'qa', ctx: { preset, tools: { register: d => { tools.set(d.name, d); return () => tools.delete(d.name); } }, systemPrompt: { context: d => { contexts.set(d.name, d); return () => contexts.delete(d.name); } } } };
   const ctx = { agents: { list: () => [a] }, agentPresets: { composedPreset: c => c.preset }, workingDirectory: { ensure: async () => undefined }, on: (n, fn) => { events.set(n, fn); return () => events.delete(n); }, effect() {} };
@@ -35,7 +35,7 @@ function fixture({ preset, teamPreset, search, timeout = 100 } = {}) {
   const assemble = async signal => { const value = { contexts: [{ name: CONTEXT, text: '' }], sections: ['unchanged'] }; return runtime.assemble(value, { agent: a, signal }, async () => value); };
   return { a, ctx, tools, contexts, runtime, claim, assemble, calls: () => calls };
 }
-for (const [label, options] of [['ordinary', {}], ['other preset', { preset: 'standard' }], ['ordinary subagent', { teamPreset: 'other-team' }]]) {
+for (const [label, options] of [['ordinary', {}], ['other preset', { preset: 'standard' }], ['ordinary subagent', { preset: 'standard', teamPreset: 'other-team' }], ['explicit standard child', { preset: 'standard', teamPreset: 'capability-team' }]]) {
   test(`QA eligible ${label}: real scoped tools and bounded stable first-step recall`, async () => {
     const f = fixture(options);
     assert.deepEqual([...f.tools.keys()], ['memory_search', 'memory_write']);
@@ -48,7 +48,7 @@ for (const [label, options] of [['ordinary', {}], ['other preset', { preset: 'st
     f.runtime.cleanup(); assert.equal(f.tools.size, 0); assert.equal(f.contexts.size, 0);
   });
 }
-for (const [label, options] of [['root', { preset: 'capability-team' }], ['member', { preset: 'ordinary', teamPreset: 'capability-team' }]]) {
+for (const [label, options] of [['root', { preset: 'capability-team' }], ['member', { preset: 'capability-team', teamPreset: 'capability-team' }]]) {
   test(`QA capability ${label}: no tools context or recall`, async () => {
     const f = fixture(options); await f.claim('team task'); await f.assemble();
     assert.equal(f.tools.size, 0); assert.equal(f.contexts.size, 0); assert.equal(f.calls(), 0);

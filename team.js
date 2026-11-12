@@ -1,4 +1,5 @@
 import { m as modelText } from './i18n.js';
+import { createNativeCompat } from './native-compat.js';
 // Shared runtime: pins each Team member to one project and resolves its effective role.
 import { confirmedRoute, withConfirmedRoute } from './dispatch-confirm.js';
 import { baseName } from './session-rotation.js';
@@ -47,7 +48,7 @@ export function createDetector(llm, preset, { now = Date.now, retryMs = DETECT_R
     },
   };
 }
-export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = {}) {
+export function createTeam(ctx, config = {}, { root = defaultRoot(), detect, native = createNativeCompat(ctx) } = {}) {
   const preset = baseConfig(config);
   const detector = createDetector(ctx.llm, preset, detect);
   const pins = new WeakMap();
@@ -56,22 +57,27 @@ export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = 
     : detector.get().base;
   // Pinned once per Agent: a later cd into a subdirectory or elsewhere keeps the same project.
   const pin = async agent => {
-    if (!pins.has(agent)) pins.set(agent, projectRoot(await ctx.workingDirectory.ensure(agent), root));
-    return pins.get(agent);
+    const identity = native.identity(agent);
+    const owner = identity?.root ?? agent;
+    if (!pins.has(owner)) pins.set(owner, projectRoot(await ctx.workingDirectory.ensure(owner), root));
+    if (owner !== agent) pins.set(agent, pins.get(owner));
+    return pins.get(owner);
   };
   const resolveMember = (membership, effective, policy) => {
-    const role = resolveRole(membership, effective);
-    const confirmed = membership?.role === 'teammate' && membership.root ? confirmedRoute(membership.root.id, baseName(membership.name)) : undefined;
+    if (!membership) throw new Error('Native team identity is unavailable');
+    const role = resolveRole({ ...membership, name: membership.roleName ?? membership.name }, effective);
+    const address = membership.address ?? membership.name;
+    const confirmed = membership.role === 'teammate' && membership.root ? confirmedRoute(membership.root.id, baseName(address)) : undefined;
     return applyModelPolicy(withConfirmedRoute(role, confirmed), policy.disabledRoutes);
   };
   return {
     get base() { return detector.get().base; },
-    preset, root,
+    preset, root, native,
     detection: () => detector.get(),
     refresh: () => detector.ensure(true),
-    owns: agent => ownsCapabilityTeam(ctx, agent) && !!ctx.agentTeams.tryMembership(agent),
+    owns: agent => !!native.identity(agent),
     pin,
-    pinned: agent => pins.get(agent),
+    pinned: agent => pins.get(native.identity(agent)?.root ?? agent),
     async load(agent) {
       await detector.ensure();
       const policy = await this.policy(agent);
@@ -86,21 +92,37 @@ export function createTeam(ctx, config = {}, { root = defaultRoot(), detect } = 
       return readGlobalPolicy(root);
     },
     async savePolicy(agent, disabledRoutes, expectedRevision) {
-      if (ctx.agentTeams.membership(agent).role !== 'lead') throw new Error(modelText('team.495'));
+      if (native.identity(agent)?.role !== 'lead') throw new Error(modelText('team.495'));
       return saveGlobalPolicy(disabledRoutes, expectedRevision, root);
     },
     async resolve(agent) {
       const { effective, policy } = await this.load(agent);
-      const membership = ctx.agentTeams.membership(agent);
+      const membership = native.identity(agent);
       const resolved = resolveMember(membership, effective, policy);
       // The Lead follows the user's pick (lead-route.js), which needs its tier's models and the policy to stay same-tier.
       return membership?.role === 'teammate' ? resolved
         : { ...resolved, leadContext: { tierModels: [...(effective.tiers?.[resolved.tier] ?? [])], disabledRoutes: [...policy.disabledRoutes] } };
     },
+    resolveSync(agent) {
+      const membership = native.identity(agent);
+      if (!membership) throw new Error('Native team identity is unavailable');
+      const project = pins.get(membership.root);
+      if (!project) throw new Error('Native team project is not pinned before child publication');
+      const { effective, policy } = this.loadSync(project, agent);
+      return resolveMember(membership, effective, policy);
+    },
+    resolveMemberSync(lead, name) {
+      const identity = native.identity(lead);
+      const owner = identity?.root ?? lead;
+      const project = pins.get(owner);
+      if (!project) throw new Error('Native team project is not pinned before child publication');
+      const { effective, policy } = this.loadSync(project, lead);
+      return resolveMember({ role: 'teammate', name, address: name, roleName: name.split('/').at(-1), root: owner }, effective, policy);
+    },
     /** Creation-time preview uses exactly the request resolver, without creating a native member. */
     async resolveMember(lead, name) {
       const { effective, policy } = await this.load(lead);
-      return resolveMember({ role: 'teammate', name, root: lead }, effective, policy);
+      return resolveMember({ role: 'teammate', name, address: name, roleName: name.split('/').at(-1), root: native.identity(lead)?.root ?? lead }, effective, policy);
     },
     // After a save, the saving Lead moves to the configured root if it was a different directory.
     repin(agent, project) { pins.set(agent, project); },

@@ -10,7 +10,7 @@
 ## 零、最高总则：复用优先与版本紧跟
 
 1. **一切 DSH 本身具备的策略、机制、投影与工具，凡能复用者必须坚决复用**。严禁重复自研脆弱的替代品，严禁另立标准。
-2. **紧跟 DSH 开源项目（`deepseek-ai/deepseek-harness`）最新版本与机制演进**。当前运行基线为 DSH `0.2.2-rc.1`（Node >= 24.9 / Node 24.21.0），所有 API 接入、Cordis 插件机制、生命周期钩子、权限预设及 JSON Schema 规范必须与官方最新标准保持严格一致。
+2. **紧跟 DSH 开源项目（`deepseek-ai/deepseek-harness`）最新版本与机制演进**。当前已验证协作基线为 DSH `0.2.2-rc.1` 与 `0.2.2-rc.2`（Node >= 24.9），所有 API 接入、Cordis 插件机制、生命周期钩子、权限预设及 JSON Schema 规范必须与官方最新标准保持严格一致。
 3. **团队特色保留、其余收缩补缺**：保留 AIWUK 角色命名、画布状态同步、角色模型及自动回退、记忆、状态展示与 token 用量；其他能力应收缩为官方缺失功能的补充，优先复用官方协作、执行、权限与投影，禁止重造平行状态或执行器，避免双重事实源与生命周期漂移。
 4. **角色确认不等于强制派工或认证**：`workflow.mode=off` 保持原生协作；未设置的 `confirmDispatch` 默认 `on-change`，首次角色及路由变化时复用主备模型卡，`always` 每次询问，已有显式 `never` 不覆写。模型卡必须在原生审批和守卫之后、创建成员之前，取消不创建；确认不是认证、额度或模型请求成功的证明，避免替代原生安全边界或虚报就绪。
 
@@ -20,13 +20,15 @@
 
 **Cordis 服务注入规则**：读取宿主服务即使使用可选链也必须声明对应 `inject`，客户端同时核对包的 `dsh.client.inject` 依赖；新增宿主服务须用真实 Cordis 兄弟 provider 验证缺声明负例与声明后注册正例，不能仅用无约束 mock 或根上下文特权测试，以免漏掉启动失败。生成产物必须从修正源码重建，不手改产物或覆盖用户安装热修。
 
+**双代原生身份规则**：只通过单一兼容适配器读取原生服务，不以包名替换伪造兼容。rc.2 可选 `subagents` 用动态声明注入；根 Session id、完整路径和直接父地址分开。`agent/created` 早于原生身份发布，本地 `subagent/start` 的 reserved path 已可读且初始消息未交付，同步预选角色模型并保留首次请求 fail-closed；不得新建持久身份表或执行器。rc.2 消息目标用 `agent`、等待用 `timeout_ms`，不套旧队友禁等策略，不静默开启原生任务模式；未知或未命名 AIWUK 角色创建前明确拒绝。
+
 **成员状态同源规则**：成员卡片、运行人数与画布必须同源使用官方 `sessionStatus` 及状态事件；未知不同于空闲，仅当前团队未知成员按需读取一次原生轻量状态基线，重连后重取并防迟包覆盖。目录驻留、进行中的任务数和未闭合 turn 不证明成员正在执行，禁止据此推断，避免漏计或虚增运行人数；没有现场证据不得声称已通过浏览器验收。
 
 | 领域 | DSH 原生机制（必须复用，严禁重造） | 本插件职责（能力扩展与策略增强） |
 |---|---|---|
-| **团队底座** | `dsh-experimental-agent-team`（`ctx.agentTeams` 服务）、成员注册表与 Peer-to-Peer 消息通信 | 团队生命周期挂钩、项目配置绑定、多会话隔离 |
+| **团队底座** | rc.1 实验 `agentTeams` 名册；rc.2 原生 `subagents` 根/路径身份与 `agentTeams` 任务 DAG | 团队生命周期挂钩、项目配置绑定、多会话隔离 |
 | **协同看板** | 原生任务看板工具：`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`，CAS revision 乐观锁 | 派活自动建看板任务、依赖无环校验（DAG）、任务认领路由绑定 |
-| **智能体控制** | `spawn_teammate`、`send_message`、`wait_agent`、`interrupt_agent`、`list_agents` | 角色名册注入、派活卡片交互确认、按需动态扩充角色 |
+| **智能体控制** | rc.1 `spawn_teammate`；rc.2 `subagent` / `subagent_fork`；其余通信与等待按原生代际签名 | 角色名册注入、派活卡片交互确认、按需动态扩充角色 |
 | **文件观察** | `dsh-fs-observation-policy`（必须先读后改，严禁盲改，读写原子性） | 显式启用 [file-limits.js](file-limits.js) 后附加行数、覆盖及大文件整读限制 |
 | **权限沙箱** | `dsh-sandbox-policy`、官方权限预设（`read-only`、`workspace-write`） | 按角色能力自动绑定只读沙箱、防止越界命令执行 |
 | **统计与投影** | 官方 `sessionProjections`：`modelSelection`、`tokenUsage`、`sessionStats`、`contextPressure` | 用量不虚报、每步平均输入与缓存分析、战报真实聚合 |
@@ -165,7 +167,7 @@
 ## 九、开发、测试与构建规范
 
 1. **全绿验收准则**：
-   - 修改代码后必须运行 `npm test`，确保全部单元测试 100% 通过（当前基线：根目录 487 项通过、2 项跳过 + omni-search 26 项 + global-memory 26 项通过，0 失败）；
+   - 修改代码后必须运行 `npm test`，确保全部单元测试 100% 通过（2026-11-13 首轮双代门禁：每代 867 项，865 通过、2 项 Desktop-ASAR 跳过，0 失败；不能将跳过项或 fixture provider 当作真实 GUI、网关认证/额度验收）；
    - 运行 `npm run lint`，确保语法、文件行数上限及 `client.js` 一致性检查完全通过；
    - 运行 `npm run build`，确保打包闭包与导出清单完全合规。
 2. **托管凭据优先级**：锁定的 canonical 凭据必须覆盖对应集成分区或搜索引擎的旧/自定义密钥别名；缺失时不得回退本地别名，未托管行为不变，且存在性报告与脱敏必须使用同一解析规则（Windows 旧配置绕过锁定凭据回归，2026-11-07）。

@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { memberFixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createFailover } from '../failover.js';
 import { effectiveConfig, seed } from '../config.js';
@@ -112,7 +113,7 @@ test('DSH自带重试优先，之后由容灾层接管并改写下一次请求',
   const listeners = {};
   const ctx = { effect: fn => fn(), systemPrompt: { section: () => () => {} }, on: (e, fn) => { listeners[e] = fn; } };
   const resolved = { ...role, capability: 'qa' };
-  const team = { owns: () => true, resolve: async () => resolved };
+  const team = { native: memberFixtureNative, owns: () => true, resolve: async () => resolved };
   const f = createFailover({ sleep: async () => true });
   apply(ctx, team, f);
   const agent = {}; const signal = new AbortController().signal;

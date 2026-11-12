@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applyMemberModels, correctRoster, selectedRoute } from '../member-models.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const agentOn = (provider, model, preset = 'capability-team') => ({ ctx: { preset }, model: { current: () => ({ provider, model }) } });
 function fixture({ preset = 'capability-team', logs = {} } = {}) {
@@ -19,7 +20,7 @@ function fixture({ preset = 'capability-team', logs = {} } = {}) {
     },
     on: (event, fn) => { listeners[event] = fn; },
   };
-  applyMemberModels(ctx);
+  applyMemberModels(ctx, fixtureNative(ctx));
   // DSH's native roster rows: model is the inherited Lead model.
   const rows = [{ target: 'lead', role: 'lead', status: 'running', model: 'claude-opus-5-5', diagnostics: [] },
     { target: 'researcher', role: 'teammate', status: 'inactive', provider: 'spawn', model: 'claude-opus-5-5', diagnostics: [] }];

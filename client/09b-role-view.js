@@ -11,7 +11,8 @@
      */
     function RoleView({ sessionId, role, liveByRole, usage, d, liveTeam, live, runtimeState, t }) {
       const myRoleId = role?.id;
-      const ownUsage = usage.filter(row => row.id === sessionId || row.name === role?.displayName || row.name === role?.id || baseName(row.name) === role?.id);
+      const ownName = liveTeam?.members?.find(m => m.id === sessionId)?.name;
+      const ownUsage = usage.filter(row => row.id === sessionId || (!ownName && (row.name === role?.displayName || row.name === role?.id || baseName(row.name) === role?.id)));
       const ownEvidence = { ...d, memberEvidence: (d?.memberEvidence ?? []).filter(m => m.sessionId === sessionId) };
       const ownLiveTeam = liveTeam ? { ...liveTeam, members: (liveTeam.members ?? []).filter(m => m.id === sessionId) } : liveTeam;
       const control = runtimeState?.data?.taskControl;
@@ -20,7 +21,7 @@
       const allTasks = Array.isArray(liveTeam?.tasks) ? liveTeam.tasks : [];
       const myTasks = allTasks.filter(task => {
         const owner = task.ownerName ?? task.owner;
-        return owner && (owner === sessionId || owner === myRoleId || baseName(owner) === myRoleId);
+        return owner && (owner === sessionId || owner === ownName || (!String(ownName ?? '').includes('/') && (owner === myRoleId || baseName(owner) === myRoleId)));
       });
       const taskWeight = { in_progress: 1, pending: 2, completed: 3 };
       const sortedTasks = [...myTasks].sort((a, b) => (taskWeight[a.status] ?? 9) - (taskWeight[b.status] ?? 9));

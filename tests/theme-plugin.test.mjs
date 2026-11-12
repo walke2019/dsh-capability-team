@@ -8,6 +8,7 @@ import { createTeam } from '../team.js';
 import { loadProject } from '../theme.js';
 import { seed } from '../config.js';
 import { CATALOG, fakeLlm } from './fixture.mjs';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 function harness(root, { role = 'lead', answer = 'Save', extra = [] } = {}) {
   const tools = {}; const contexts = []; const listeners = {}; const asked = []; let skill;
   const membership = agent => agent.member ?? { role, name: role };
@@ -22,7 +23,7 @@ function harness(root, { role = 'lead', answer = 'Save', extra = [] } = {}) {
     userQuestions: { ask: async req => { asked.push(req); return { answers: [{ id: 'confirm', selected: [answer] }] }; } },
     on: (event, fn) => { listeners[event] = fn; },
   };
-  const team = createTeam(ctx, {}, { root });
+  const team = createTeam(ctx, {}, { root, native: fixtureNative(ctx) });
   apply(ctx, team);
   const agent = (member) => ({ member, ctx: { systemPrompt: { context: v => { contexts.push(v); return () => { v.disposed = true; }; } } } });
   return { tools, contexts, listeners, asked, team, agent, get skill() { return skill; } };
@@ -35,7 +36,7 @@ test('初始化未完成时卸载不会抛错或在卸载后注册上下文', as
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: fn => { const value = fn(); if (typeof value === 'function') cleanup = value; },
     skills: { register: () => () => {} }, tools: { register: () => () => {} },
     agentTeams: { tryMembership: () => ({ role: 'lead' }) }, agents: { list: () => [agent] }, on() {} };
-  apply(ctx, { pin: () => pending });
+  apply(ctx, { native: fixtureNative(ctx), pin: () => pending });
   assert.doesNotThrow(() => cleanup());
   release(); await pending; await Promise.resolve();
   assert.equal(contexts, 0);

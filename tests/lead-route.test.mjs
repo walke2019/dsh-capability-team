@@ -5,6 +5,7 @@ import { followUserChoice, leadRequest, userChoice } from '../lead-route.js';
 import { apply as applyRoles } from '../roles.js';
 import { createFailover } from '../failover.js';
 import { seed } from '../config.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const lead = { id: 'lead', capability: 'orchestrator', tier: 'high', provider: 'provider-a', model: 'claude-opus-5-5',
   fallbacks: [{ provider: 'provider-b', model: 'claude-opus-5-5' }], failover: seed.failover, longContext: { provider: 'provider-a', model: 'long', thresholdTokens: 10 } };
@@ -65,7 +66,7 @@ function hook(membership, resolved) {
   const ctx = { effect: fn => fn(), systemPrompt: { section: () => () => {} }, on: (e, fn) => { listeners[e] = fn; },
     agentTeams: { tryMembership: () => membership, membership: () => membership } };
   const failover = createFailover({ sleep: async () => true });
-  applyRoles(ctx, { owns: () => true, resolve: async () => resolved }, failover);
+  applyRoles(ctx, { native: fixtureNative(ctx), owns: () => true, resolve: async () => resolved }, failover);
   const agent = {}; const signal = new AbortController().signal;
   return {
     request: prev => listeners['agent/request']({ agent, turn: 1, step: 1 }, async () => prev),

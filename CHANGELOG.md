@@ -4,6 +4,23 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.3.0] - 2026-11-13
+
+### Added
+
+- Native rc.1 / rc.2 collaboration compatibility: reuse the legacy experimental roster on rc.1 and native subagent trees plus the task DAG on rc.2. Exact native root/path identities, synchronous local-start role preselection and generation-specific communication remain owned by DSH; no parallel roster or executor is introduced.
+- Native `subagent` / `subagent_fork` role creation on rc.2 reuses the primary/fallback confirmation card after native approval and guards. Explicit registered role names are required; unknown or unnamed roles fail closed before creation. `workflow.mode=off`, existing explicit `confirmDispatch=never` and unchanged-confirmation cache semantics are preserved.
+
+### Fixed
+
+- Normalize native task owners, nested addresses, model/status evidence, canvas members and live token projections across both generations; retain role naming, role routing and same-tier failover, memory, status and usage. Onboarding no longer offers the removed experimental bundle on rc.2 or claims generic subagent tools must be disabled there.
+- Companion Memory 1.0.6 restores ordinary-preset tools and recall on rc.2 using the current composed preset, rather than the removed membership method. Capability-team compositions remain isolated; explicit standard-preset children use global memory.
+- Compatibility CI preserves the exact resolved DSH version, refreshes npm metadata and retries only bounded transient install failures; native smoke validates the selected generation's actual service APIs and base composition rather than aliasing missing legacy packages.
+
+### Verification
+
+- First dual-runtime gate: 867 checks per generation, 865 passed and two Desktop-ASAR cases skipped; rc.1/rc.2 native smoke, lint and build passed. Native provider preparation/lifecycle uses fixtures, not a real gateway. No browser GUI, live authentication/quota or skipped-ASAR acceptance is claimed; final package validation remains a separate gate.
+
 ## [Unreleased]
 
 ### Added

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { TOKEN_RULES, createTokenDiscipline, tokenRuleText, trimText, validateTokenRules } from '../token-discipline.js';
 import { effectiveConfig } from '../config.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 import { policyText } from '../roles.js';
 
 test('token 规则：默认值、校验、写进团队铁律', () => {
@@ -23,7 +24,7 @@ const mkCtx = (extra = {}) => ({ agentPresets: { composedPreset: () => 'capabili
 
 test('长的命令输出只保留头尾，完整内容存到文件；读文件结果不截', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'spill-'));
-  const td = createTokenDiscipline(mkCtx(), {}, { spillDir: dir, rulesOf: () => TOKEN_RULES });
+  const td = createTokenDiscipline(mkCtx(), { native: fixtureNative(mkCtx()) }, { spillDir: dir, rulesOf: () => TOKEN_RULES });
   const long = 'L'.repeat(4000) + 'MIDDLE' + 'T'.repeat(4000);
   const out = await td.trim({ name: 'bash', callId: 'c1', agent: member }, { content: [{ type: 'text', text: long }] });
   assert.ok(out[0].text.length < 5200);
@@ -43,7 +44,7 @@ test('长的命令输出只保留头尾，完整内容存到文件；读文件�
 test('post-execute 钩子只在接受且未被别人改写时替换内容', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'spill-'));
   let hook;
-  const td = createTokenDiscipline(mkCtx({ on: (name, fn) => { if (name === 'tools/post-execute') hook = fn; } }), {}, { spillDir: dir, rulesOf: () => TOKEN_RULES });
+  const td = createTokenDiscipline(mkCtx({ on: (name, fn) => { if (name === 'tools/post-execute') hook = fn; } }), { native: fixtureNative(mkCtx()) }, { spillDir: dir, rulesOf: () => TOKEN_RULES });
   td.register();
   const big = { content: [{ type: 'text', text: 'x'.repeat(9000) }] };
   const accepted = await hook({ name: 'grep', callId: 'g', agent: member }, big, async () => ({ kind: 'accept' }));
@@ -61,14 +62,14 @@ test('成员空闲且上下文超过阈值时压缩；未超过、非成员、�
   const service = { compactNow: async agent => { calls.push(agent.id); return { shadowedSeqs: [] }; } };
   const projections = { stateOf: () => ({ ...state, surfaceTokens: tokens }) };
   const ctx = mkCtx({ get: () => projections, on: () => {}, inject: (names, fn) => { assert.deepEqual(names, ['compaction']); fn({ compaction: service }); } });
-  const td = createTokenDiscipline(ctx, {}, { rulesOf: () => TOKEN_RULES });
+  const td = createTokenDiscipline(ctx, { native: fixtureNative(ctx) }, { rulesOf: () => TOKEN_RULES });
   td.register();
   assert.equal(await td.compactIdle(member), true, '90k/200k = 45% ≥ 35%');
   tokens = 50000;
   assert.equal(await td.compactIdle(member), false, '25% 不压缩');
   tokens = 150000;
   assert.equal(await td.compactIdle({ id: 'other', session: {} }), false, '非成员不动');
-  const busy = createTokenDiscipline(mkCtx({ get: () => projections, on: () => {}, inject: (_n, fn) => fn({ compaction: { compactNow: async () => { throw new Error('busy'); } } }) }), {}, { rulesOf: () => TOKEN_RULES });
+  const busy = createTokenDiscipline(mkCtx({ get: () => projections, on: () => {}, inject: (_n, fn) => fn({ compaction: { compactNow: async () => { throw new Error('busy'); } } }) }), { native: fixtureNative(mkCtx()) }, { rulesOf: () => TOKEN_RULES });
   busy.register();
   assert.equal(await busy.compactIdle(member), false, '忙时放弃，下次空闲再试');
   assert.deepEqual(calls, ['m']);
@@ -80,7 +81,7 @@ test('宿主禁止直接读取未注入的服务时也不会抛出（曾因此�
   });
   let listener;
   guarded.on = (name, fn) => { if (name === 'agent/status') listener = fn; };
-  const td = createTokenDiscipline(guarded, {}, { rulesOf: () => TOKEN_RULES });
+  const td = createTokenDiscipline(guarded, { native: fixtureNative(guarded) }, { rulesOf: () => TOKEN_RULES });
   td.register();
   assert.equal(await td.compactIdle(member), false);
   assert.doesNotThrow(() => listener({ agent: member, status: 'idle' }));

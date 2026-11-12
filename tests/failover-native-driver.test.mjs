@@ -26,6 +26,7 @@ test('installed native driver wakes once from its own failing-driver idle bounda
   const signal = new AbortController();
   agent.phase = { kind: 'running', turn: 1, step: 1, abort: signal, wakeRequested: false };
   agent.activityDone = Promise.resolve();
+  agent.lifetimeSignal = new AbortController().signal;
   agent.model = { current: () => ({ provider: 'backup', model: 'm' }) };
   agent.inbox = {
     nextStep: [], nextTurn: [],

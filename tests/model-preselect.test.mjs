@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { apply as applyRoles, preselect } from '../roles.js';
 import { createFailover } from '../failover.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 // DSH 0.2.2-rc.1 fixes provider/model from agent.model.current() before step preparation and rejects an
 // agent/request result that names another route. This mirrors that check (dsh-agent-loop prepareRequest).
@@ -16,7 +17,7 @@ function fixture({ role = 'teammate', resolved = { provider: 'p', model: 'role-m
   const agent = { session: {}, ctx: { systemPrompt: { context: () => () => {} } }, model: { current: () => ({ ...recorded }), select: s => { selections.push(s); recorded = { ...s }; } } };
   const ctx = { agentTeams: { tryMembership: () => ({ role, name: 'architect' }) }, on: (event, fn) => { listeners[event] = fn; }, logger: { info() {}, warn() {} } };
   const failover = createFailover({ sleep: async () => true });
-  const team = { owns: () => true, resolve: async () => ({ ...resolved }) };
+  const team = { native: fixtureNative(ctx), owns: () => true, resolve: async () => ({ ...resolved }) };
   applyRoles(ctx, team, failover);
   const step = async (turn, n) => {
     const selection = agent.model.current();

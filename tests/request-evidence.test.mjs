@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import { requestEvidence, readRequestEvidence, readTeamEvidence } from '../request-evidence.js';
 test('请求证据仅使用明确日志字段，跳过继承记录与敏感内容', () => {
@@ -16,10 +17,13 @@ test('请求证据仅使用明确日志字段，跳过继承记录与敏感内�
 });
 test('团队证据只读取成员清单且保留单个读取错误', async () => {
   const read = [];
+  const lead = { id: 'lead' };
+  const teams = { tryMembership: () => ({ role: 'lead', root: lead }), listMembers: () => [{ id: 'lead', name: 'lead' }, { id: 'mate', name: 'qa', model: 'inherited' }] };
+  const native = fixtureNative({ agentTeams: teams, agentPresets: { composedPreset: () => 'capability-team' } });
   const result = await readTeamEvidence({ readSession: async id => {
     read.push(id); if (id === 'mate') throw new Error('missing');
     return { events: [] };
-  } }, { listMembers: () => [{ id: 'lead', name: 'lead' }, { id: 'mate', name: 'qa', model: 'inherited' }] }, {});
+  } }, teams, lead, native);
   assert.deepEqual(read, ['lead', 'mate']);
   assert.equal(result[1].unavailable, 'missing');
   assert.equal(result[1].inheritedModel, 'inherited');

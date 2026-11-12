@@ -40,7 +40,7 @@ export function correctRoster(value, lookup) {
   }
   return value;
 }
-export function applyMemberModels(ctx) {
+export function applyMemberModels(ctx, native) {
   // An idle teammate is unloaded; DSH then falls back to its creation options (the Lead model) and no live
   // Agent is left to ask. Remember each session's last selection, which DSH records as `model/selection`.
   const recorded = new Map(); // session id → { provider, model }
@@ -62,7 +62,7 @@ export function applyMemberModels(ctx) {
     } catch { return undefined; }
   };
   const routesFor = async (lead, rows) => {
-    const members = ctx.agentTeams.listMembers(lead);
+    const members = await native.list(lead);
     const routes = new Map([['lead', selectedRoute(lead)]]);
     for (const row of Array.isArray(rows) ? rows : [rows?.member]) {
       const member = members.find(m => m.name === row?.target && m.role !== 'lead');
@@ -74,8 +74,8 @@ export function applyMemberModels(ctx) {
     const decision = await next();
     try {
       if (decision?.kind !== 'accept' || Object.hasOwn(decision, 'value') || Object.hasOwn(decision, 'content') || result?.isError) return decision;
-      if (!ROSTER_TOOLS.has(restrictiveToolName(exec?.name, ROSTER_TOOLS)) || !ownsCapabilityTeam(ctx, exec.agent)) return decision;
-      const membership = ctx.agentTeams.tryMembership(exec.agent);
+      if (!ROSTER_TOOLS.has(restrictiveToolName(exec?.name, ROSTER_TOOLS)) || !ownsCapabilityTeam(ctx, exec.agent, native)) return decision;
+      const membership = native.identity(exec.agent);
       if (!membership?.root) return decision;
       const value = correctRoster(result.value, await routesFor(membership.root, result.value));
       return value === result.value ? decision : { ...decision, value };

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { executeFreeTask } from '../task-bridge.js';
+import { rootFixtureNative } from './helpers/backend-native-fixture.mjs';
 function fakeTeams() {
   let task; const actions = [];
   return { actions, membership: () => ({ role: 'lead' }),
@@ -11,15 +12,15 @@ function fakeTeams() {
 }
 test('免费结果先回填再完成', async () => {
   const teams = fakeTeams();
-  const result = await executeFreeTask({ teams, agent: {}, prompt: 'test', worker: async () => ({ model: 'free', text: '结果' }) });
+  const result = await executeFreeTask({ native: rootFixtureNative, teams, agent: {}, prompt: 'test', worker: async () => ({ model: 'free', text: '结果' }) });
   assert.equal(result.status, 'completed'); assert.deepEqual(teams.actions, ['claim','edit','complete']); assert.match(teams.getTask().description, /结果/);
 });
 test('工具级别与模型顺序透传给执行器，默认无工具；改动文件写入看板', async () => {
   const seen = [];
   const worker = async (_p, opts) => { seen.push([opts.tools, opts.models]); return { model: 'free', text: 'x', toolCalls: [{ tool: 'edit', status: 'completed', file: 'a.md' }, { tool: 'write', status: 'error', file: 'b' }] }; };
-  await executeFreeTask({ teams: fakeTeams(), agent: {}, prompt: 't', worker });
+  await executeFreeTask({ native: rootFixtureNative, teams: fakeTeams(), agent: {}, prompt: 't', worker });
   const teams = fakeTeams();
-  const r = await executeFreeTask({ teams, agent: {}, prompt: 't', worker, tools: 'write', models: ['m'] });
+  const r = await executeFreeTask({ native: rootFixtureNative, teams, agent: {}, prompt: 't', worker, tools: 'write', models: ['m'] });
   assert.deepEqual(seen, [['none', undefined], ['write', ['m']]]);
   assert.deepEqual(r.changedFiles, ['a.md']);
   assert.match(teams.getTask().description, /Changed files: a\.md/);
@@ -27,12 +28,12 @@ test('工具级别与模型顺序透传给执行器，默认无工具；改动�
 test('无效输入在创建持久任务前拒绝', async () => {
   const teams = fakeTeams(); let created = false;
   teams.createTask = async () => { created = true; throw new Error('不应调用'); };
-  await assert.rejects(executeFreeTask({ teams, agent: {}, prompt: '' }), /[Tt]ask/);
+  await assert.rejects(executeFreeTask({ native: rootFixtureNative, teams, agent: {}, prompt: '' }), /[Tt]ask/);
   assert.equal(created, false);
 });
 test('分析期间别人修改任务则不覆盖也不完成', async () => {
   const teams = fakeTeams();
-  await assert.rejects(executeFreeTask({ teams, agent: {}, prompt: 'test', worker: async () => {
+  await assert.rejects(executeFreeTask({ native: rootFixtureNative, teams, agent: {}, prompt: 'test', worker: async () => {
     const current = teams.getTask();
     await teams.updateTask({}, { expectedRevision: current.revision, action: 'edit', description: '用户改动' });
     return { model: 'free', text: '分析结果' };
@@ -43,6 +44,6 @@ test('分析期间别人修改任务则不覆盖也不完成', async () => {
 });
 test('失败保留原因并释放，不标完成', async () => {
   const teams = fakeTeams();
-  await assert.rejects(executeFreeTask({ teams, agent: {}, prompt: 'test', worker: async () => { throw new Error('测试失败'); } }));
+  await assert.rejects(executeFreeTask({ native: rootFixtureNative, teams, agent: {}, prompt: 'test', worker: async () => { throw new Error('测试失败'); } }));
   assert.deepEqual(teams.actions, ['claim','edit','release']); assert.equal(teams.getTask().status, 'pending'); assert.match(teams.getTask().description, /测试失败/);
 });

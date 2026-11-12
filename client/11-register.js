@@ -149,7 +149,21 @@
           }
           return entry?.values;
         },
+        teamView(rootSessionId, statusSnapshot, childrenSnapshot) {
+          return resolveTeamView({ rootSessionId, nativeProjections: id => this.projections(id), statusSnapshot, childrenSnapshot });
+        },
         parentSessionId: id => {
+          const list = snapshot();
+          if (typeof sessions?.subagentAddress === 'function') {
+            const seen = new Set(); let cursor = id;
+            while (!seen.has(cursor)) {
+              seen.add(cursor);
+              const parent = sessions.subagentAddress(cursor)?.parentSessionId ?? list?.byId?.[cursor]?.parentId;
+              if (!parent) return cursor !== id && list?.ids?.includes(cursor) ? cursor : undefined;
+              cursor = parent;
+            }
+            return undefined;
+          }
           const direct = snapshot()?.projectionsBySession?.[id]?.values?.agentTeam?.parentSessionId;
           if (direct) return direct;
           try {
@@ -160,7 +174,17 @@
         // the overview must then show only the notice, never a team canvas rooted at the wrong session.
         isOrphanSubagent: id => {
           try {
-            const addr = sessions?.binding?.(id)?.session?.getSnapshot?.()?.subagent?.address;
+            const addr = sessions?.subagentAddress?.(id) ?? sessions?.binding?.(id)?.session?.getSnapshot?.()?.subagent?.address;
+            if (addr && typeof sessions?.subagentAddress === 'function') {
+              const seen = new Set(); let cursor = id;
+              while (!seen.has(cursor)) {
+                seen.add(cursor);
+                const parent = sessions.subagentAddress(cursor)?.parentSessionId ?? snapshot()?.byId?.[cursor]?.parentId;
+                if (!parent) return !snapshot()?.ids?.includes(cursor);
+                cursor = parent;
+              }
+              return true;
+            }
             const direct = snapshot()?.projectionsBySession?.[id]?.values?.agentTeam?.parentSessionId;
             return !!addr && !addr.parentSessionId && !direct;
           } catch { return false; }
@@ -213,8 +237,12 @@
           if (s && s !== 'capability-team') return false;
           return undefined;
         },
+        memberTarget(parentSessionId, childSessionId) {
+          return sessions?.subagentAddress?.(childSessionId) ?? { parentSessionId, childSessionId, mode: 'continuable' };
+        },
         async children(parentId) {
-          const reply = await remote?.subagents?.list?.(parentId);
+          if (typeof remote?.subagents?.list !== 'function') return null;
+          const reply = await remote.subagents.list(parentId);
           if (!reply?.ok) throw new Error(reply?.error?.message ?? 'subagent catalog unavailable');
           return reply.value?.entries ?? [];
         },
@@ -295,7 +323,7 @@
               if (!childSessionId || childSessionId === parentSessionId) {
                 ctx.uiWorkspace.openSession(parentSessionId);
               } else {
-                ctx.uiWorkspace.openSession({ parentSessionId, childSessionId, mode: 'continuable' });
+                ctx.uiWorkspace.openSession(effectiveLive.memberTarget?.(parentSessionId, childSessionId) ?? { parentSessionId, childSessionId, mode: 'continuable' });
               }
             } : undefined });
         }));

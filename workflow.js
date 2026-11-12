@@ -47,7 +47,7 @@ export function decide(state, exec, workflow) {
   const plan = state.plan;
   const replan = modelText('workflow.614');
   if (kind === 'coordination') {
-    if (canonicalTool(exec.name, workflow) !== 'spawn_teammate') return undefined;
+    if (!['spawn_teammate', 'subagent', 'subagent_fork'].includes(canonicalTool(exec.name, workflow))) return undefined;
     const name = exec.arguments?.name;
     if (!plan) return modelText('workflow.615');
     if (plan.mode !== 'delegate' || !plan.assignments.some(a => a.role === name)) {
@@ -122,7 +122,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
     if (!states.has(agent)) states.set(agent, { plan: undefined, analysisUsed: 0, directUsed: 0 });
     return states.get(agent);
   };
-  const isLead = agent => ownsCapabilityTeam(ctx, agent) && ctx.agentTeams.tryMembership(agent)?.role === 'lead';
+  const isLead = agent => ownsCapabilityTeam(ctx, agent, team.native) && team.native.identity(agent)?.role === 'lead';
   const effectiveOf = agent => {
     const project = team.pinned(agent);
     return project ? team.loadSync(project, agent).effective : team.base;
@@ -145,7 +145,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
       if (workflow.mode !== 'enforce') return undefined;
       // A successor planned by capability_rotate_member stands in for its assigned role.
       const name = exec.arguments?.name;
-      if (canonicalTool(exec.name, workflow) === 'spawn_teammate' && rotation?.plannedSuccessor(exec.agent.id, name)) {
+      if (['spawn_teammate', 'subagent', 'subagent_fork'].includes(canonicalTool(exec.name, workflow)) && rotation?.plannedSuccessor(exec.agent.id, name)) {
         const plan = state(exec.agent).plan;
         if (plan?.mode === 'delegate' && plan.assignments.some(a => a.role === baseName(name))) return undefined;
       }
@@ -204,7 +204,7 @@ export function createWorkflow(ctx, team, { onDelegate, onAssignments, dispatchC
           const s = state(exec.agent);
           s.plan = plan;
           s.directConfirmed = directConfirmed;
-          if (plan.mode === 'delegate') onDelegate?.(ctx.agentTeams.membership(exec.agent), plan.assignments.map(a => a.role));
+          if (plan.mode === 'delegate') onDelegate?.(team.native.identity(exec.agent), plan.assignments.map(a => a.role));
           await onAssignments?.(exec.agent, plan.mode === 'delegate' ? plan.assignments : []);
           // Structured result: the model reads the fields, the Web card renders them without parsing prose.
           const result = { mode: plan.mode, decision: DECISION[plan.mode], analysis: plan.analysis, ...(plan.reason ? { reason: plan.reason } : {}) };

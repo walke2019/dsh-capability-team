@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import './keep-alive.mjs';
 import { applySpawnConfirm } from '../spawn-confirm.js';
@@ -20,7 +21,7 @@ function harness(mode = 'on-change') {
   const ctx = { llm: { listProviders: () => [...new Set(entries.map(e => e.provider))].map(id => ({ id })), listModels: async id => entries.filter(e => e.provider === id).map(e => ({ id: e.model })) },
     agentPresets: { composedPreset: () => preset }, agentTeams: { tryMembership: () => ({ role: 'lead', root: lead }) }, on: (event, fn) => { assert.equal(event, 'tools/execute'); hook = fn; } };
   const policy = { disabledRoutes: [], revision: 0 };
-  const team = { load: async () => ({ effective: structuredClone(effective), policy: structuredClone(policy), revision }),
+  const team = { native: fixtureNative(ctx), load: async () => ({ effective: structuredClone(effective), policy: structuredClone(policy), revision }),
     resolveMember: async (_lead, name) => withConfirmedRoute(resolveRole({ role: 'teammate', name }, effective), confirmedRoute(lead.id, baseName(name))) };
   const confirm = createDispatchConfirm(ctx, team, { graceMs: 100000, timeoutMs: 1000 });
   applySpawnConfirm(ctx, team, { eligibility: () => ({ eligible: true }) }, confirm);

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 import assert from 'node:assert/strict';
 import './keep-alive.mjs';
 import { readFile } from 'node:fs/promises';
@@ -18,6 +19,8 @@ test('native approval and guards precede role card, which precedes spawn body', 
   const Native = vm.runInNewContext(`${source.slice(start, end)};ToolExecutionPipeline`, {
     scopeTarget: (_tools, agent) => agent, snapshotJsonValue: structuredClone, deepFreeze: value => value,
     createExecutionToken: () => ({}), toolErrorResult: error => ({ isError: true, error: { message: String(error.message) } }),
+    APPROVAL_ERROR_NAME: 'ApprovalError', APPROVAL_REJECTED: 'APPROVAL_REJECTED', APPROVAL_CANCELLED: 'APPROVAL_CANCELLED', APPROVAL_UNAVAILABLE: 'APPROVAL_UNAVAILABLE',
+    approvalDenial: (reason, code) => ({ kind: 'deny', reason, info: { name: 'ApprovalError', code } }),
   });
   const lead = { id: 'native-spawn-confirm-integration' }, events = [];
   let hook, preset = 'capability-team', outcome = 'allowed-once', reads = 0;
@@ -33,6 +36,7 @@ test('native approval and guards precede role card, which precedes spawn body', 
     get: () => ({ request: async () => { events.push('approval'); return outcome; } }),
   };
   const team = {
+    native: fixtureNative(ctx),
     load: async () => { reads++; return { effective: structuredClone(effective), policy: { disabledRoutes: [] }, revision: 0 }; },
     resolveMember: async (_lead, name) => withConfirmedRoute(resolveRole({ role: 'teammate', name }, effective), confirmedRoute(lead.id, baseName(name))),
   };
@@ -58,7 +62,7 @@ test('native approval and guards precede role card, which precedes spawn body', 
     assert.equal((await pipeline.dispatch(repeated.exec)).result.isError, false);
     assert.equal(pendingView(lead.id, 'rotation').status, 'none');
     outcome = 'rejected'; const count = reads;
-    assert.equal((await pipeline.prepare(input('rejected'))).kind, 'post-result'); assert.equal(reads, count);
+    const denied = await pipeline.prepare(input('rejected')); assert.equal(denied.kind, 'post-result', JSON.stringify(denied.result)); assert.equal(reads, count);
     outcome = 'allowed-once'; preset = 'standard';
     const standard = await pipeline.prepare(input('standard', 'unknown'));
     assert.equal((await pipeline.dispatch(standard.exec)).result.isError, false); assert.equal(reads, count);

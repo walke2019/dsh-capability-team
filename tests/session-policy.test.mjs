@@ -4,6 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readSessionPolicy, saveSessionPolicy, sessionPolicyPath } from '../session-policy.js';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 test('会话策略持久化、隔离、版本冲突及损坏时拒绝', async () => {
   const root = await mkdtemp(join(tmpdir(), 'session-policy-'));
   try {
@@ -33,7 +34,8 @@ test('模型策略全局共享：一个主会话保存后，其他会话及新�
   try {
     const leadA = { id: 'session-a' }, leadB = { id: 'session-b' }, mateB = { id: 'mate-b' };
     const roles = new Map([[leadA, { role: 'lead', root: leadA }], [leadB, { role: 'lead', root: leadB }], [mateB, { role: 'teammate', name: 'qa', root: leadB }]]);
-    const team = createTeam({ agentTeams: { membership: agent => roles.get(agent) } }, {}, { root });
+    const ctx = { agentTeams: { membership: agent => roles.get(agent) }, agentPresets: { composedPreset: () => 'capability-team' } };
+    const team = createTeam(ctx, {}, { root, native: fixtureNative(ctx) });
     const saved = await team.savePolicy(leadA, ['@cf/*', 'p/m'], 0);
     assert.equal(saved.revision, 1);
     assert.deepEqual((await team.policy(leadB)).disabledRoutes, ['@cf/*', 'p/m']);

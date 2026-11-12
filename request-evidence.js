@@ -16,9 +16,9 @@ export function requestEvidence(snapshot, limit = 30) {
   }
   return result;
 }
-export async function readTeamEvidence(query, teams, agent) {
+export async function readTeamEvidence(query, teams, agent, native) {
   let members;
-  try { members = teams ? teams.listMembers(agent) : [{ id: agent.id, name: 'lead' }]; }
+  try { members = native ? await native.list(native.identity(agent)?.root ?? agent) : [{ id: agent.id, name: 'lead' }]; }
   catch (error) {
     return [{ sessionId: agent.id, name: 'lead', ...await readRequestEvidence(query, agent.id),
       unavailable: modelText('request-evidence.357', { 0: error.message ?? error }) }];

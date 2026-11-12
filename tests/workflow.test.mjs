@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createWorkflow, validatePlan, decide } from '../workflow.js';
 import { effectiveConfig, applyPatch, describeChanges } from '../config.js';
 import { base } from './fixture.mjs';
+import { fixtureNative } from './helpers/backend-native-fixture.mjs';
 
 const legacyWorkflow = { mode: 'enforce' };
 const effective = effectiveConfig({ workflow: legacyWorkflow }, base);
@@ -17,7 +18,7 @@ function harness(overrides = {}) {
     tools: { guard: g => { guard = g; return () => {}; }, register: t => { tools[t.name] = t; return () => {}; } },
     agentTeams: { tryMembership: a => a === lead ? { role: 'lead' } : a === mate ? { role: 'teammate', name: 'backend' } : undefined },
   };
-  const team = { base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff }) };
+  const team = { native: fixtureNative(ctx), base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff }) };
   const wf = createWorkflow(ctx, team); wf.register();
   const call = (agent, name, args = {}) => guard({ agent, name, arguments: args });
   const plan = args => tools.capability_dispatch_plan.execute(args, { agent: lead });
@@ -181,7 +182,7 @@ test('delegate 计划把被指派的角色交给 onDelegate（用于让旧的队
   const ctx = { agentPresets: { composedPreset: () => 'capability-team' }, effect: f => f(), on: () => {},
     tools: { guard: () => () => {}, register: t => { tools[t.name] = t; return () => {}; } },
     agentTeams: { tryMembership: () => ({ id: 'T', role: 'lead' }), membership: () => ({ id: 'T', role: 'lead', name: 'lead' }) } };
-  const team = { base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff }) };
+  const team = { native: fixtureNative(ctx), base, pinned: () => 'P', loadSync: () => ({ effective: eff }), load: async () => ({ effective: eff }) };
   createWorkflow(ctx, team, { onDelegate: (m, roles) => calls.push([m.id, roles]) }).register();
   const out = JSON.parse(await tools.capability_dispatch_plan.execute({ analysis: 'x', mode: 'delegate', assignments: [{ role: 'backend', task: 't' }, { role: 'qa', task: 'q' }] }, { agent: lead }));
   assert.deepEqual(calls, [['T', ['backend', 'qa']]]);
