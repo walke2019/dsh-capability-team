@@ -80,7 +80,9 @@ jobs:
           restore-keys: npm-dsh-${{ runner.os }}-
 
       - name: Install @deepseek-ai/dsh@${{ matrix.version }}
-        run: npm install --global --no-audit --no-fund --prefer-offline "@deepseek-ai/dsh@${{ matrix.version }}"
+        env:
+          DSH_COMPAT_VERSION: ${{ matrix.version }}
+        run: node scripts/install-dsh-compat.mjs "$DSH_COMPAT_VERSION"
 
       # The native Cordis cases need a Desktop asar (DSH_NATIVE_ASAR) and skip here;
       # the static patch assertions still run.
