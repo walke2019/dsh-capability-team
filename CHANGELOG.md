@@ -55,6 +55,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- Team locale resolution uses an event-driven, shared settings snapshot to remove repeated `settings.describe()` calls from translation and history replay hot paths. Locale-change notifications are coalesced while environment overrides, English fallback and disposal cleanup are preserved.
 - Composer placeholder overlap (Autocomplete 1.0.4): in next-message mode the ghost suggestion was drawn on top of DSH's native placeholder text. The placeholder is now hidden (via a scoped `data-aiwuk-ghost-next` attribute and a style rule, never by changing DSH text) while the next-mode ghost is visible and restored on dismiss, typing or unmount. The ghost also uses `white-space: pre` so its spacing is preserved.
 - Autocomplete on desktop (Autocomplete 1.0.3): ghost text overlapped existing input text. It is now positioned right after the caret, using DOM-based caret-at-end detection that handles multi-paragraph (Lexical `<p>`) editors. It is hidden while the caret is not at the end and hides again on `selectionchange` and scroll. Prefix stripping is now case-insensitive.
 - Roster model display for idle teammates (Team 5.0.7): once a teammate finished and DSH unloaded it, the roster fell back to its creation options again and showed the Lead model. The correction now also uses the teammate's last recorded `model/selection`, observed live or read once from its durable log through DSH's `sessionQuery` after a restart.
