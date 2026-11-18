@@ -132,11 +132,20 @@ test('名额用完时不轮换，改为省上下文模式', async () => {
 test('硬线时主控不能再给该队友派新活', async () => {
   const { ctx, team, lead, agents } = fakeTeam('/tmp', [{ id: 'm1', name: 'diao-chan' }]);
   const r = createRotation(ctx, team);
-  ctx.on = (name, fn) => { if (name === 'session/event') ctx.onEvent = fn; };
-  ctx.effect = () => {}; ctx.tools = { guard() {}, register() {} };
+  const hooks = new Map();
+  ctx.on = (name, fn) => hooks.set(name, fn);
+  ctx.effect = fn => fn();
+  ctx.tools = { guard: () => assert.fail('rotation must not use a synchronous guard'), register() {} };
   r.register();
-  for (let i = 0; i < 3; i++) ctx.onEvent(agents.get('m1').session = { id: 'm1' }, { type: 'compaction/end', data: {} });
-  for (const name of ['send_message', 'brisk_send_message', 'mcp__s__brisk_send_message']) assert.match(await r.guard({ agent: lead, name, arguments: { target: 'diao-chan' } }), /reached the session rotation threshold.*capability_rotate_member/);
+  const execute = hooks.get('tools/execute');
+  const send = { agent: lead, name: 'send_message', arguments: { target: 'diao-chan' } };
+  const dispatch = async () => 'executed';
+  assert.equal(await execute(send, dispatch), 'executed');
+  for (let i = 0; i < 3; i++) hooks.get('session/event')(agents.get('m1').session = { id: 'm1' }, { type: 'compaction/end', data: {} });
+  for (const name of ['send_message', 'brisk_send_message', 'mcp__s__brisk_send_message']) {
+    await assert.rejects(execute({ ...send, name }, () => assert.fail('denied tool executed')), /reached the session rotation threshold.*capability_rotate_member/);
+  }
+  for (const name of ['bash', 'skill']) assert.equal(await execute({ agent: lead, name }, dispatch), 'executed');
 });
 
 test('接替者沿用用户为该角色确认的路由', async () => {

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Local 5.3.1 compatibility fix
+
+- Run the asynchronous rotation check after native guards and approvals. In DSH 0.2.2-rc.3, registering it as a synchronous guard caused unrelated calls such as `bash` and `skill` to fail JSON serialization before they ran.
+
 ## [5.3.1] - 2026-11-14
 
 ### Fixed

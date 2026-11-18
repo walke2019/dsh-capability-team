@@ -96,18 +96,17 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
     retiredTo: (leadId, name) => retired.get(`${leadId}:${name}`),
     /** Lead guard: no new work for a retired member or one past the hard line; successors may be spawned. */
     async guard(exec) {
+      if (restrictiveToolName(exec.name, TRACKED_TOOLS) !== 'send_message') return undefined;
       const membership = team.native.identity(exec.agent);
       if (!ownsCapabilityTeam(ctx, exec.agent, team.native) || membership?.role !== 'lead' || !limitsOf(exec.agent)) return undefined;
       const lead = exec.agent;
-      if (restrictiveToolName(exec.name, TRACKED_TOOLS) === 'send_message') {
-        const target = exec.arguments?.agent ?? exec.arguments?.target;
-        const next = retired.get(`${lead.id}:${target}`);
-        if (next) return modelText('session-rotation.444', { 0: target, 1: next, 2: next });
-        const member = (await team.native.list(lead)).find(m => m.name === target && m.role !== 'lead');
-        const agent = member && ctx.agents.get(member.id);
-        const status = agent && api.status(agent);
-        if (status?.level === 'hard') return modelText('session-rotation.445', { 0: target, 1: status.reasons.join('、') });
-      }
+      const target = exec.arguments?.agent ?? exec.arguments?.target;
+      const next = retired.get(`${lead.id}:${target}`);
+      if (next) return modelText('session-rotation.444', { 0: target, 1: next, 2: next });
+      const member = (await team.native.list(lead, exec.signal)).find(m => m.name === target && m.role !== 'lead');
+      const agent = member && ctx.agents.get(member.id);
+      const status = agent && api.status(agent);
+      if (status?.level === 'hard') return modelText('session-rotation.445', { 0: target, 1: status.reasons.join('、') });
       return undefined;
     },
     /** Whether `name` is a successor this Lead asked for via capability_rotate_member. */
@@ -190,7 +189,12 @@ export function createRotation(ctx, team, { root = team.root, diffStat = gitStat
             : modelText('session-rotation.470', { 0: s.reasons.join('、'), 1: s.stalled ? modelText('session-rotation.471') : '' });
         } });
       }));
-      ctx.effect(() => ctx.tools.guard(exec => api.guard(exec)));
+      // The native guard contract is synchronous, but listing teammates can await the host.
+      ctx.on('tools/execute', async (exec, next) => {
+        const reason = await api.guard(exec);
+        if (reason !== undefined) throw new Error(reason);
+        return next();
+      });
       ctx.effect(() => ctx.tools.register({ name: 'capability_handoff', output,
         description: modelText('session-rotation.472'),
         parameters: params({ goal: { type: 'string' }, done: { type: 'string' }, remaining: { type: 'string' }, pitfalls: { type: 'string' }, open: { type: 'string' }, verify: { type: 'string' } }, ['done', 'remaining']),
